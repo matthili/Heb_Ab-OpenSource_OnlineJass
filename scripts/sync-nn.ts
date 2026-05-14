@@ -1,35 +1,35 @@
 #!/usr/bin/env tsx
 /**
  * Lädt das NN-Artefakt (`jass-nn-vX.Y.Z.zip`) aus einem GitHub-Release des
- * Schwester-Repos und entpackt es nach `external/jass-nn/`.
+ * Schwester-Repos via `gh release download` und entpackt es nach `external/jass-nn/`.
  *
- * Lauf: `pnpm sync:nn`
+ * Lauf: `pnpm sync:nn`        (idempotent)
+ *       `pnpm sync:nn --force` (erzwingt Neudownload)
  *
- * Datenquellen:
- *   - Version + Repo: package.json#jassNn.{version,repo}
+ * Voraussetzung: GitHub CLI (`gh`) installiert und authentifiziert.
+ *   - Lokal: `gh auth login` (einmalig)
+ *   - CI:    Umgebungsvariable `GH_TOKEN` setzen (GitHub Actions liefert sie als
+ *            `${{ secrets.GITHUB_TOKEN }}` mit Read-Zugang zum eigenen Repo;
+ *            für fremde Repos einen Token mit `repo:read` bereitstellen).
+ *
+ * Datenquellen: package.json#jassNn.{version,repo}
  *
  * Ablauf:
- *   1. Release-Metadaten via GitHub-API holen (öffentliches Repo → kein Token nötig).
- *   2. Asset mit Pattern `jass-nn-*.zip` finden.
- *   3. ZIP nach `external/jass-nn/.cache/<filename>` herunterladen.
- *   4. SHA-256 gegen API-`digest` verifizieren (Schutz gegen korruptes Download).
- *   5. Inhalt nach `external/jass-nn/` entpacken (via `tar -xf`, cross-platform
- *      auf Windows 10+, Linux, macOS).
- *   6. Sanity-Check: `MANIFEST.json` ist da.
+ *   1. Auflösen, wo `gh` liegt (PATH; auf Windows: Standard-Installationspfade).
+ *   2. Skippen, wenn `external/jass-nn/MANIFEST.json` schon zur gepinnten Version passt.
+ *   3. Ziel-Inhalt aufräumen (außer .cache/).
+ *   4. `gh release download <ver> --repo <repo> --pattern jass-nn-*.zip --dir .cache`
+ *   5. ZIP entpacken, Top-Level-Direktorie (`jass-nn-vX.Y.Z/`) abflachen.
+ *   6. Sanity: MANIFEST.json muss existieren.
  *
- * Idempotent: existiert bereits eine passende `MANIFEST.json` mit gleicher
- * Version, wird der Download übersprungen — außer `--force` ist gesetzt.
- *
- * In Produktion lädt CI das gleiche Asset; lokal entwickeln + CI bauen mit
- * exakt derselben Schnittstelle. Niemals direkt aus dem NN-Repo-Pfad lesen.
+ * Die anschließende Datei-für-Datei-Hash-Verifikation läuft separat über
+ * `pnpm verify:nn` (siehe scripts/verify-nn-manifest.ts).
  */
-import { createHash } from "node:crypto";
-import { createWriteStream, existsSync, readFileSync } from "node:fs";
-import { mkdir, rm, readdir, rename } from "node:fs/promises";
+import { existsSync, readFileSync } from "node:fs";
+import { mkdir, readdir, rename, rm } from "node:fs/promises";
+import { spawn } from "node:child_process";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { Readable } from "node:stream";
-import { pipeline } from "node:stream/promises";
 import extract from "extract-zip";
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -40,18 +40,6 @@ const FORCE = process.argv.includes("--force");
 
 interface RootPackageJson {
   jassNn?: { version?: string; repo?: string };
-}
-
-interface ReleaseAsset {
-  name: string;
-  browser_download_url: string;
-  digest?: string;
-  size: number;
-}
-
-interface ReleaseResponse {
-  tag_name: string;
-  assets: ReleaseAsset[];
 }
 
 interface ExistingManifest {
@@ -80,49 +68,48 @@ function alreadyUpToDate(version: string): boolean {
   }
 }
 
-async function fetchReleaseMeta(repo: string, version: string): Promise<ReleaseResponse> {
-  const url = `https://api.github.com/repos/${repo}/releases/tags/${version}`;
-  const headers: Record<string, string> = {
-    Accept: "application/vnd.github+json",
-    "User-Agent": "vorarlberger-jass-app-sync-nn",
-  };
-  if (process.env.GITHUB_TOKEN) {
-    headers.Authorization = `Bearer ${process.env.GITHUB_TOKEN}`;
+/**
+ * Lokalisiert die `gh`-Binary. Versucht erst den PATH (via `process.env.PATH`
+ * + plattform-übliche Suffixe), dann Windows-Standard-Installationspfade.
+ */
+function findGh(): string {
+  if (process.platform === "win32") {
+    const candidates = [
+      "C:\\Program Files\\GitHub CLI\\gh.exe",
+      "C:\\Program Files (x86)\\GitHub CLI\\gh.exe",
+    ];
+    for (const c of candidates) {
+      if (existsSync(c)) return c;
+    }
   }
-  const res = await fetch(url, { headers });
-  if (!res.ok) {
-    throw new Error(`GitHub API ${res.status} für ${url}: ${await res.text()}`);
-  }
-  return (await res.json()) as ReleaseResponse;
+  // Auf POSIX-Systemen vertrauen wir darauf, dass `gh` im PATH liegt.
+  // child_process.spawn löst PATH automatisch auf.
+  return "gh";
 }
 
-async function downloadFile(url: string, target: string): Promise<void> {
-  await mkdir(dirname(target), { recursive: true });
-  const headers: Record<string, string> = {
-    "User-Agent": "vorarlberger-jass-app-sync-nn",
-  };
-  if (process.env.GITHUB_TOKEN) {
-    headers.Authorization = `Bearer ${process.env.GITHUB_TOKEN}`;
-    headers.Accept = "application/octet-stream";
-  }
-  const res = await fetch(url, { headers });
-  if (!res.ok || !res.body) {
-    throw new Error(`Download fehlgeschlagen (${res.status}): ${url}`);
-  }
-  // Node 22+: Web-ReadableStream → Node-Readable
-  const nodeStream = Readable.fromWeb(res.body as Parameters<typeof Readable.fromWeb>[0]);
-  await pipeline(nodeStream, createWriteStream(target));
-}
-
-function sha256OfFile(path: string): string {
-  const buf = readFileSync(path);
-  return createHash("sha256").update(buf).digest("hex");
+function runGh(args: string[]): Promise<void> {
+  const bin = findGh();
+  return new Promise((resolveProc, rejectProc) => {
+    const proc = spawn(bin, args, { stdio: "inherit" });
+    proc.on("error", (err) => {
+      if ((err as NodeJS.ErrnoException).code === "ENOENT") {
+        rejectProc(
+          new Error(
+            `GitHub CLI ('gh') nicht gefunden. Installation: https://cli.github.com/ — danach \`gh auth login\`.`
+          )
+        );
+      } else {
+        rejectProc(err);
+      }
+    });
+    proc.on("exit", (code) => {
+      if (code === 0) resolveProc();
+      else rejectProc(new Error(`gh ${args.join(" ")} → exit code ${code}`));
+    });
+  });
 }
 
 async function extractZipFlattenTopDir(zipPath: string, target: string): Promise<void> {
-  // Das ZIP enthält eine Top-Level-Direktorie `jass-nn-vX.Y.Z/`. Wir entpacken
-  // in ein Staging-Verzeichnis und schieben den Inhalt der Top-Dir nach `target`,
-  // sodass am Ende `target/MANIFEST.json`, `target/tfjs/...` etc. liegt.
   const staging = join(target, ".staging");
   await rm(staging, { recursive: true, force: true });
   await mkdir(staging, { recursive: true });
@@ -137,11 +124,18 @@ async function extractZipFlattenTopDir(zipPath: string, target: string): Promise
     );
   }
   const top = join(staging, topDirs[0] as string);
-  const inner = await readdir(top);
-  for (const name of inner) {
+  for (const name of await readdir(top)) {
     await rename(join(top, name), join(target, name));
   }
   await rm(staging, { recursive: true, force: true });
+}
+
+async function clearTargetExceptCache(): Promise<void> {
+  if (!existsSync(TARGET_DIR)) return;
+  for (const e of await readdir(TARGET_DIR)) {
+    if (e === ".cache") continue;
+    await rm(join(TARGET_DIR, e), { recursive: true, force: true });
+  }
 }
 
 async function main(): Promise<void> {
@@ -156,52 +150,40 @@ async function main(): Promise<void> {
     return;
   }
 
-  console.info(`[sync-nn] hole Release-Metadaten ...`);
-  const release = await fetchReleaseMeta(repo, version);
-  const asset = release.assets.find((a) => /^jass-nn-.*\.zip$/.test(a.name));
-  if (!asset) {
-    throw new Error(
-      `Kein Asset 'jass-nn-*.zip' im Release ${version} gefunden. ` +
-        `Vorhandene Assets: ${release.assets.map((a) => a.name).join(", ")}`
-    );
-  }
-
-  // Vorhandenen Ziel-Inhalt aufräumen, Cache behalten wir bewusst nicht zwischen
-  // Läufen — eindeutige Reproduzierbarkeit ist wichtiger als Wiederverwendung.
-  if (existsSync(TARGET_DIR)) {
-    const entries = await readdir(TARGET_DIR);
-    for (const e of entries) {
-      if (e === ".cache") continue; // cache überleben lassen, aber gleich überschreiben
-      await rm(join(TARGET_DIR, e), { recursive: true, force: true });
-    }
-  }
+  await clearTargetExceptCache();
   await mkdir(CACHE_DIR, { recursive: true });
 
-  const zipLocal = join(CACHE_DIR, asset.name);
-  console.info(`[sync-nn] lade ${asset.name} (${asset.size} bytes) ...`);
-  await downloadFile(asset.browser_download_url, zipLocal);
+  // gh release download lädt das passende Asset; --clobber überschreibt evtl.
+  // gecachte alte Versionen.
+  console.info(`[sync-nn] gh release download ${version} ...`);
+  await runGh([
+    "release",
+    "download",
+    version,
+    "--repo",
+    repo,
+    "--pattern",
+    "jass-nn-*.zip",
+    "--dir",
+    CACHE_DIR,
+    "--clobber",
+  ]);
 
-  if (asset.digest) {
-    // Format der GitHub-API: "sha256:<hex>"
-    const expected = asset.digest.replace(/^sha256:/, "").toLowerCase();
-    const actual = sha256OfFile(zipLocal);
-    if (expected !== actual) {
-      throw new Error(
-        `SHA-256-Mismatch für ${asset.name}:\n  erwartet: ${expected}\n  aktuell:  ${actual}`
-      );
-    }
-    console.info(`[sync-nn] SHA-256 ok (${actual.slice(0, 16)}...)`);
-  } else {
-    console.warn(`[sync-nn] kein digest im Release-Asset, SHA-Verifikation übersprungen.`);
+  // ZIP-Pfad ermitteln (gh nennt das File so wie im Release-Asset benannt).
+  const zips = (await readdir(CACHE_DIR)).filter((n) => /^jass-nn-.*\.zip$/.test(n));
+  if (zips.length === 0) {
+    throw new Error(`Kein jass-nn-*.zip in ${CACHE_DIR} nach gh release download.`);
   }
+  if (zips.length > 1) {
+    throw new Error(`Mehrere jass-nn-*.zip in ${CACHE_DIR}: ${zips.join(", ")} — bitte aufräumen.`);
+  }
+  const zipPath = join(CACHE_DIR, zips[0] as string);
 
-  console.info(`[sync-nn] entpacke nach ${TARGET_DIR} ...`);
-  await extractZipFlattenTopDir(zipLocal, TARGET_DIR);
+  console.info(`[sync-nn] entpacke ${zips[0]} nach ${TARGET_DIR} ...`);
+  await extractZipFlattenTopDir(zipPath, TARGET_DIR);
 
   if (!existsSync(join(TARGET_DIR, "MANIFEST.json"))) {
-    throw new Error(
-      `Sanity-Check fehlgeschlagen: external/jass-nn/MANIFEST.json fehlt nach Entpacken.`
-    );
+    throw new Error(`Sanity-Check fehlgeschlagen: MANIFEST.json fehlt nach Entpacken.`);
   }
   console.info(`[sync-nn] OK — ${version} gesynct. Folge mit \`pnpm verify:nn\`.`);
 }
