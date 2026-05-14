@@ -16,11 +16,15 @@
   "scripts": {
     "build": "tsc -b",
     "typecheck": "tsc -b --noEmit",
-    "lint": "eslint src",
-    "test": "echo 'tests follow in M2'",
-    "test:unit": "echo 'tests follow in M2'"
+    "lint": "eslint src test",
+    "test": "vitest run",
+    "test:unit": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
   },
   "devDependencies": {
-    "@jass/config": "workspace:*"
+    "@jass/config": "workspace:*",
+    "@vitest/coverage-v8": "^3.2.0",
+    "vitest": "^3.2.0"
   }
 }
