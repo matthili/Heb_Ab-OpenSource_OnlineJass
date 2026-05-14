@@ -22,7 +22,6 @@ CREATE TABLE "User" (
     "image" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
-    "displayName" TEXT NOT NULL,
     "role" "Role" NOT NULL DEFAULT 'PLAYER',
     "status" "UserStatus" NOT NULL DEFAULT 'ACTIVE',
     "locale" TEXT NOT NULL DEFAULT 'de-vlbg',
@@ -204,7 +203,7 @@ CREATE TABLE "Blocklist" (
 CREATE UNIQUE INDEX "User_email_key" ON "User"("email");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "User_displayName_key" ON "User"("displayName");
+CREATE UNIQUE INDEX "User_name_key" ON "User"("name");
 
 -- CreateIndex
 CREATE INDEX "User_status_idx" ON "User"("status");

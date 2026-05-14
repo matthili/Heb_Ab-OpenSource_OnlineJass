@@ -34,13 +34,15 @@ model User {
   id            String   @id @default(cuid())
   email         String   @unique
   emailVerified Boolean  @default(false)
-  name          String                              // wird = displayName gehalten
+  // `name` ist der öffentlich sichtbare Spitzname (unique). Better Auth bezeichnet
+  // dieses Feld als "name"; wir behandeln es als das, was der Plan
+  // "displayName" nennt — eine Quelle, kein zweites Feld.
+  name          String   @unique
   image         String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
   // Domänen-Felder oberhalb des Better-Auth-Minimums
-  displayName   String   @unique                    // Spitzname, öffentlich
   role          Role     @default(PLAYER)
   status        UserStatus @default(ACTIVE)
   locale        String   @default("de-vlbg")

@@ -8,7 +8,9 @@ import type { IncomingMessage } from "node:http";
 import { Module } from "@nestjs/common";
 import { LoggerModule } from "nestjs-pino";
 
+import { AuthModule } from "./modules/auth/auth.module.js";
 import { HealthModule } from "./modules/health/health.module.js";
+import { MailModule } from "./modules/mail/mail.module.js";
 import { PrismaModule } from "./modules/prisma/prisma.module.js";
 
 const isDev = process.env["NODE_ENV"] !== "production";
@@ -43,6 +45,6 @@ const pinoHttp = isDev
   : pinoHttpBase;
 
 @Module({
-  imports: [LoggerModule.forRoot({ pinoHttp }), PrismaModule, HealthModule],
+  imports: [LoggerModule.forRoot({ pinoHttp }), PrismaModule, MailModule, AuthModule, HealthModule],
 })
 export class AppModule {}
