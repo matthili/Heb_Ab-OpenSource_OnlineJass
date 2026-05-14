@@ -1,0 +1,19 @@
+{
+  "name": "@jass/config",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Geteilte tsconfig-/eslint-/prettier-Basis für alle Workspace-Pakete.",
+  "type": "module",
+  "files": [
+    "tsconfig"
+  ],
+  "exports": {
+    "./tsconfig/base.json": "./tsconfig/base.json",
+    "./tsconfig/node.json": "./tsconfig/node.json",
+    "./tsconfig/react.json": "./tsconfig/react.json"
+  },
+  "scripts": {
+    "lint": "echo 'no sources to lint'",
+    "typecheck": "echo 'no sources to typecheck'"
+  }
+}

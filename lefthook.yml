@@ -1,0 +1,17 @@
+# Pre-Commit Hooks via Lefthook (https://github.com/evilmartians/lefthook)
+# Installation: pnpm install (Postinstall ruft `lefthook install` auf)
+
+pre-commit:
+  parallel: true
+  commands:
+    format:
+      glob: "*.{ts,tsx,js,jsx,json,md,yml,yaml}"
+      run: pnpm prettier --check {staged_files}
+    lint:
+      glob: "*.{ts,tsx,js,jsx}"
+      run: pnpm eslint {staged_files}
+
+pre-push:
+  commands:
+    typecheck:
+      run: pnpm turbo run typecheck

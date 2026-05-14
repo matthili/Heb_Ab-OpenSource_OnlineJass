@@ -1,0 +1,46 @@
+# dependencies
+node_modules/
+.pnpm-store/
+
+# build artifacts
+dist/
+build/
+.next/
+.astro/
+.turbo/
+*.tsbuildinfo
+
+# test/coverage
+coverage/
+.nyc_output/
+playwright-report/
+test-results/
+
+# env / secrets
+.env
+.env.*
+!.env.example
+
+# editor / OS
+.vscode/
+!.vscode/extensions.json
+!.vscode/settings.json.example
+.idea/
+.DS_Store
+Thumbs.db
+
+# logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# NN-Artefakt — wird per `pnpm sync:nn` aus dem Schwester-Repo gezogen
+external/jass-nn/
+
+# Prisma generated client
+apps/api/prisma/generated/
+
+# misc
+*.tmp
+*.bak
+.claude/
