@@ -1,0 +1,306 @@
+// Datenmodell der Vorarlberger Kreuz-Jass Web-Plattform.
+//
+// Stand M3: Auth + Profil + Audit + Blocklist + Admin-Settings — alles was die
+// Registrierungs-/Login-Flows brauchen. Die Game-/Move-/Chat-Modelle für M4/M8
+// sind hier mit definiert, damit die initiale Migration alle Tabellen enthält
+// und das Schema in einem Stück gelesen werden kann. Der Code, der diese
+// Tabellen befüllt, kommt aber erst mit den jeweiligen Meilensteinen.
+//
+// Quelle für Feldnamen + Beziehungen: Plan-Dokument §4
+// (C:\Users\matth\.claude\plans\projekt-vorarlberger-jass-app-vast-kahn.md).
+// Abweichungen vom Plan:
+//   - Better Auth verlangt die Modelle User, Session, Account, Verification mit
+//     bestimmten Feldnamen (camelCase). Wir spiegeln seine Erwartung und
+//     ergänzen unsere Domain-Felder (role, status, locale, displayName, …).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Better Auth Core (User / Session / Account / Verification)
+//
+// Felder folgen better-auth.com/docs/concepts/database — Pflichtfelder sind
+// id, email, emailVerified (boolean), name, createdAt, updatedAt. Alles
+// andere ist additiv.
+// ─────────────────────────────────────────────────────────────────────
+
+model User {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  emailVerified Boolean  @default(false)
+  name          String                              // wird = displayName gehalten
+  image         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Domänen-Felder oberhalb des Better-Auth-Minimums
+  displayName   String   @unique                    // Spitzname, öffentlich
+  role          Role     @default(PLAYER)
+  status        UserStatus @default(ACTIVE)
+  locale        String   @default("de-vlbg")
+  deletedAt     DateTime?                           // Soft-Delete (Anonymisierung in M10)
+
+  profile       Profile?
+  sessions      Session[]
+  accounts      Account[]
+  games         GameSeat[]
+  movesPlayed   Move[]
+  chatMessages  ChatMessage[]
+  friendshipsOut Friendship[] @relation("FriendshipRequester")
+  friendshipsIn  Friendship[] @relation("FriendshipAddressee")
+  auditActions  AuditLog[]    @relation("AuditActor")
+
+  @@index([status])
+  @@index([deletedAt])
+}
+
+model Session {
+  id        String   @id
+  userId    String
+  expiresAt DateTime
+  token     String   @unique
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model Account {
+  // Better Auth speichert Email-Pass-Credentials sowie OAuth-Linkings hier.
+  id                    String   @id
+  userId                String
+  accountId             String   // bei E-Mail/Passwort = userId; bei OAuth = Provider-Subject
+  providerId            String   // "credential" | "google" | "github" | …
+  password              String?  // Argon2id-Hash (nur bei providerId="credential")
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([providerId, accountId])
+  @@index([userId])
+}
+
+model Verification {
+  // Better Auth Single-Use-Tokens (Email-Verify, Passwort-Reset, OTP, …).
+  id         String   @id
+  identifier String   // Email-Adresse oder User-ID
+  value      String   // Token (URL-safe random)
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([identifier])
+  @@index([expiresAt])
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Domain — Profil + Freundschaften
+// ─────────────────────────────────────────────────────────────────────
+
+model Profile {
+  userId        String   @id
+  realFirstName String?
+  realLastName  String?
+  birthDate     DateTime?
+  city          String?
+  country       String?
+  hobbies       String?
+  bio           String?
+  avatarUrl     String?
+  // Pro Feld eine Sichtbarkeits-Stufe: PUBLIC | LOGGED_IN | FRIENDS | PRIVATE.
+  // Schema-frei als JSONB, weil Felder über die Zeit dazukommen.
+  visibility    Json     @default("{}")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Friendship {
+  requesterId String
+  addresseeId String
+  status      FriendshipStatus @default(PENDING)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  requester User @relation("FriendshipRequester", fields: [requesterId], references: [id], onDelete: Cascade)
+  addressee User @relation("FriendshipAddressee", fields: [addresseeId], references: [id], onDelete: Cascade)
+
+  @@id([requesterId, addresseeId])
+  @@index([addresseeId, status])
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Domain — Spiel (M4–M10)
+// ─────────────────────────────────────────────────────────────────────
+
+model Game {
+  id           String   @id @default(cuid())
+  variant      GameVariant
+  ruleVersion  String                              // spec_version aus jass_rules.json
+  modelVersion String?                             // NN-Release-Tag (für Replays)
+  startedAt    DateTime @default(now())
+  endedAt      DateTime?
+  finalScore   Json?                               // { team0: 81, team1: 76, matsch: false }
+
+  seats        GameSeat[]
+  moves        Move[]
+  rounds       RoundDecision[]
+  chatMessages ChatMessage[]
+
+  @@index([startedAt])
+}
+
+model GameSeat {
+  gameId      String
+  seat        Int                                  // 0..3 bei Kreuz-4P
+  userId      String?                              // null = KI-Sitz
+  aiSeatType  String?                              // "nn-v0.1.0" | "random" | …
+
+  game Game  @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@id([gameId, seat])
+  @@index([userId])
+}
+
+model Move {
+  id        BigInt   @id @default(autoincrement())
+  gameId    String
+  seq       Int                                    // 1..36 (gesamt-spielweit)
+  seat      Int                                    // 0..3
+  cardIndex Int                                    // 0..35
+  trickIdx  Int                                    // 0..8
+  ts        DateTime @default(now())
+  userId    String?                                // wer den Zug gespielt hat (null = KI)
+
+  game Game  @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@unique([gameId, seq])
+  @@index([gameId, trickIdx])
+}
+
+model RoundDecision {
+  id        String   @id @default(cuid())
+  gameId    String
+  roundIdx  Int
+  mode      String                                 // trumpf | oben | unten | slalom
+  trumpSuit Int?                                   // 0..3 oder null
+  starter   Int                                    // seat
+  weisen    Json                                   // per-Spieler-Liste
+
+  game Game @relation(fields: [gameId], references: [id], onDelete: Cascade)
+
+  @@unique([gameId, roundIdx])
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Domain — Chat (M8)
+// ─────────────────────────────────────────────────────────────────────
+
+model ChatMessage {
+  id         BigInt   @id @default(autoincrement())
+  channel    ChatChannel
+  channelKey String                                // "lobby:global" | "game:<id>" | "dm:<a>:<b>"
+  senderId   String
+  body       String                                // sanitisierte Markdown→HTML
+  createdAt  DateTime @default(now())
+
+  // Optionale Spiel-Verknüpfung — beim DM, der während eines Spiels läuft, wird hier
+  // gameId gesetzt. Profil-History rendert dann "Während Partie #X, Mitspieler: …".
+  gameId     String?
+
+  sender User  @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  game   Game? @relation(fields: [gameId], references: [id], onDelete: SetNull)
+
+  @@index([channelKey, createdAt])
+  @@index([senderId])
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Admin / Audit / Blocklist
+// ─────────────────────────────────────────────────────────────────────
+
+model AuditLog {
+  id        BigInt   @id @default(autoincrement())
+  actorId   String?
+  action    String                                 // "auth.register" | "user.block" | …
+  target    String?
+  meta      Json                                   @default("{}")
+  ip        String?
+  createdAt DateTime @default(now())
+
+  actor User? @relation("AuditActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt])
+  @@index([action])
+}
+
+model AdminSetting {
+  // Sensitive Werte (z.B. smtp.password) werden mit dem App-Secret AES-GCM
+  // verschlüsselt im `value` als { ciphertext, iv, tag } abgelegt.
+  key       String   @id                           // "smtp.host" | "registration.enabled" | …
+  value     Json
+  updatedAt DateTime @updatedAt
+  updatedBy String?
+}
+
+model Blocklist {
+  pattern   String   @id                           // Regex über E-Mail oder Domain
+  reason    String?
+  createdAt DateTime @default(now())
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Enums
+// ─────────────────────────────────────────────────────────────────────
+
+enum Role {
+  PLAYER
+  MODERATOR
+  ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  BLOCKED
+  DELETED_SOFT
+}
+
+enum FriendshipStatus {
+  PENDING
+  ACCEPTED
+  BLOCKED
+}
+
+enum GameVariant {
+  KREUZ_4P
+  KREUZ_6P
+  KREUZ_STEIGERN
+  BODENSEE_2P
+}
+
+enum ChatChannel {
+  LOBBY
+  GAME
+  DM
+}

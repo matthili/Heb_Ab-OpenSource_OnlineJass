@@ -1,0 +1,47 @@
+{
+  "name": "@jass/api",
+  "version": "0.0.0",
+  "private": true,
+  "description": "NestJS-Backend für Vorarlberger Kreuz-Jass: REST + Socket.IO Gateway, Better Auth, Prisma, server-autoritativer Spielzustand.",
+  "type": "module",
+  "main": "./dist/main.js",
+  "scripts": {
+    "build": "nest build",
+    "dev": "nest start --watch",
+    "start": "node dist/main.js",
+    "typecheck": "tsc -b --noEmit",
+    "lint": "eslint src",
+    "test": "vitest run",
+    "test:unit": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
+  },
+  "dependencies": {
+    "@fastify/cookie": "^11.0.0",
+    "@fastify/helmet": "^13.0.0",
+    "@jass/engine": "workspace:*",
+    "@nestjs/common": "^11.0.0",
+    "@nestjs/core": "^11.0.0",
+    "@nestjs/platform-fastify": "^11.0.0",
+    "@prisma/client": "^6.19.3",
+    "dotenv": "^17.4.2",
+    "fastify": "^5.0.0",
+    "nestjs-pino": "^4.4.0",
+    "pino": "^9.5.0",
+    "pino-http": "^10.4.0",
+    "pino-pretty": "^13.0.0",
+    "reflect-metadata": "^0.2.0",
+    "rxjs": "^7.8.0",
+    "zod": "^4.0.0"
+  },
+  "devDependencies": {
+    "@jass/config": "workspace:*",
+    "@nestjs/cli": "^11.0.0",
+    "@nestjs/schematics": "^11.0.0",
+    "@nestjs/testing": "^11.0.0",
+    "@types/node": "^22.10.0",
+    "@vitest/coverage-v8": "^3.2.0",
+    "prisma": "^6.19.3",
+    "vitest": "^3.2.0"
+  }
+}

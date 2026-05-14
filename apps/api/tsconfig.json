@@ -1,0 +1,12 @@
+{
+  "extends": "@jass/config/tsconfig/node.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "rootDir": ".",
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "strictPropertyInitialization": false
+  },
+  "include": ["src/**/*", "test/**/*"],
+  "exclude": ["dist", "node_modules"]
+}

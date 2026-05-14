@@ -42,5 +42,24 @@ export default tseslint.config(
       ],
       "no-console": ["warn", { allow: ["warn", "error", "info"] }],
     },
+  },
+  {
+    // NestJS-DI-Klassen werden über Constructor-Param-Types per reflect-metadata
+    // aufgelöst — ESLint erkennt das nicht als Runtime-Use und meldet den Import
+    // fälschlich als type-only. Für DI-relevante Dateien deshalb die Regel
+    // entspannen.
+    files: [
+      "apps/api/src/**/*.controller.ts",
+      "apps/api/src/**/*.service.ts",
+      "apps/api/src/**/*.module.ts",
+      "apps/api/src/**/*.gateway.ts",
+      "apps/api/src/**/*.guard.ts",
+      "apps/api/src/**/*.pipe.ts",
+      "apps/api/src/**/*.interceptor.ts",
+      "apps/api/src/**/*.filter.ts",
+    ],
+    rules: {
+      "@typescript-eslint/consistent-type-imports": "off",
+    },
   }
 );

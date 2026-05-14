@@ -57,7 +57,7 @@ Geteilte Logik:
 │  apps/api (NestJS+Fastify)  │         │  apps/web + apps/landing      │
 │  ├─ REST Controllers        │         │  (statisch via Caddy)         │
 │  ├─ Socket.IO Gateway       │         └──────────────────────────────┘
-│  ├─ Lucia Auth (Sessions PG)│
+│  ├─ Better Auth (Sessions PG)│
 │  ├─ Prisma Client           │
 │  ├─ Game Service (autorit.) │
 │  └─ Inference HTTP Client ──┼─────┐
@@ -77,12 +77,12 @@ Mehr Details (Datenmodell, Auth-Flow, KI-Integration, Tests-Pyramide) im Plan-Do
 
 ## Tech-Stack-Entscheidungen — Verweis auf ADRs
 
-| Entscheidung                      | ADR                                                  |
-| --------------------------------- | ---------------------------------------------------- |
-| pnpm + Turborepo statt Nx         | [0001](./ADRs/0001-monorepo-pnpm-turborepo.md)       |
-| REST + WS statt tRPC              | [0002](./ADRs/0002-rest-and-ws-not-trpc.md)          |
-| Lucia statt Auth.js/Passport      | [0003](./ADRs/0003-lucia-not-authjs.md)              |
-| Inferenz als eigener Microservice | [0004](./ADRs/0004-inference-as-separate-service.md) |
+| Entscheidung                             | ADR                                                  |
+| ---------------------------------------- | ---------------------------------------------------- |
+| pnpm + Turborepo statt Nx                | [0001](./ADRs/0001-monorepo-pnpm-turborepo.md)       |
+| REST + WS statt tRPC                     | [0002](./ADRs/0002-rest-and-ws-not-trpc.md)          |
+| Better Auth statt Lucia/Auth.js/Passport | [0003](./ADRs/0003-lucia-not-authjs.md)              |
+| Inferenz als eigener Microservice        | [0004](./ADRs/0004-inference-as-separate-service.md) |
 
 ## Sicherheit
 

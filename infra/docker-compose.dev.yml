@@ -1,0 +1,55 @@
+# Dev-Stack für lokale Entwicklung — Datenbank, Cache und Mail-Catcher.
+# Start: `pnpm dev:stack` oder `docker compose -f infra/docker-compose.dev.yml up -d`
+# Stop:  `docker compose -f infra/docker-compose.dev.yml down`
+# Reset: `docker compose -f infra/docker-compose.dev.yml down -v` (Volumes weg)
+#
+# Bewusst keine API/Web/Inference-Services hier — die laufen lokal via `pnpm dev`
+# außerhalb von Compose, damit Hot-Reload funktioniert. Prod-Stack folgt in M11.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: jass-pg-dev
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: jass
+      POSTGRES_USER: jass
+      POSTGRES_PASSWORD: jass
+    ports:
+      - "5432:5432"
+    volumes:
+      - jass-pg-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U jass -d jass"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: jass-redis-dev
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - jass-redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  mailhog:
+    # SMTP-Sink für Dev: alle Mails landen im Web-UI auf :8025, gehen nicht raus.
+    # Standardalternative axllent/mailpit ist auch ok; mailhog ist „klassisch".
+    image: mailhog/mailhog:v1.0.1
+    container_name: jass-mailhog-dev
+    restart: unless-stopped
+    ports:
+      - "1025:1025" # SMTP
+      - "8025:8025" # Web-UI + JSON-API
+
+volumes:
+  jass-pg-data:
+  jass-redis-data:

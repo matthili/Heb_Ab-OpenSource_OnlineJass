@@ -5,7 +5,7 @@ Sicherheit wird **ab Tag 1** mitgedacht, nicht „später nachgerüstet". Diese 
 | #   | Kontrolle                                                       | Wo eingebaut                              | Meilenstein             |
 | --- | --------------------------------------------------------------- | ----------------------------------------- | ----------------------- |
 | 1   | Argon2id (m=64MiB, t=3, p=1)                                    | `apps/api/src/modules/auth`               | M3                      |
-| 2   | HttpOnly + Secure + SameSite=Lax Session-Cookies                | Lucia                                     | M3                      |
+| 2   | HttpOnly + Secure + SameSite=Lax Session-Cookies                | Better Auth                               | M3                      |
 | 3   | CSRF: Double-Submit-Token für state-changing REST               | API-Middleware                            | M3                      |
 | 4   | Rate-Limit Auth (IP+E-Mail), Chat, WS-Events                    | Redis + `@nestjs/throttler` + WS-Guard    | M3 / M4 / M8            |
 | 5   | Zod-Validation auf jedem Endpoint und WS-Event                  | `ZodValidationPipe`, Gateway-Interceptors | M3                      |
@@ -29,7 +29,7 @@ Sicherheit wird **ab Tag 1** mitgedacht, nicht „später nachgerüstet". Diese 
 - **Manipulation der KI-Inferenz:** KI läuft im eigenen Microservice; Client sendet niemals state-Vektoren. Eingaben kommen ausschließlich aus dem server-gehaltenen Zustand.
 - **Brute-Force auf Login:** Argon2id + Rate-Limit pro IP+E-Mail + Turnstile-Challenge ab Fail-Schwelle.
 - **XSS via Chat:** Markdown-Allowlist, DOMPurify im Client _und_ Server-seitige Sanitization vor Persistenz.
-- **Account-Übernahme:** Lucia-Sessions in DB sofort widerrufbar (z.B. bei Passwort-Reset oder Block); Verify-Tokens single-use mit kurzem TTL.
+- **Account-Übernahme:** Better Auth-Sessions in DB sofort widerrufbar (z.B. bei Passwort-Reset oder Block); Verify-Tokens single-use mit kurzem TTL.
 - **DSGVO-Verletzung:** Soft-Delete + Anonymisierung statt Hard-Delete; Cookie-Banner mit echter Wahl; Daten-Export.
 
 ## Reporting

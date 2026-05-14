@@ -26,7 +26,7 @@ Selbst-hostbare Multiplayer-Plattform für **Vorarlberger Kreuz-Jass**, auf der 
 | API-Stil         | REST (OpenAPI) + WebSocket (Socket.IO)                     |
 | DB               | PostgreSQL 16 + Prisma 5                                   |
 | Cache/Pub-Sub    | Redis 7                                                    |
-| Auth             | Lucia v3 + Argon2id                                        |
+| Auth             | Better Auth + Argon2id                                     |
 | KI-Inferenz      | eigener Microservice mit `@tensorflow/tfjs-node`           |
 | Reverse Proxy    | Caddy 2                                                    |
 | Container        | Docker Compose (Dev/NAS) + Helm (k8s)                      |
@@ -72,7 +72,7 @@ pnpm lint            # ESLint über alle Pakete
 | M0  | Repo & CI-Skelett, Karten-Assets                              | **in Arbeit** |
 | M1  | NN-Artefakt-Pipeline (TF.js-Export im NN-Repo, Sync-Workflow) | offen         |
 | M2  | TS-Port der Engine + Encoder, Fixture-Tests                   | offen         |
-| M3  | NestJS-API mit Lucia-Auth, Postgres, Mail                     | offen         |
+| M3  | NestJS-API mit Better-Auth, Postgres, Mail                    | offen         |
 | M4  | WS-Gateway + Single-Table-Game-Loop                           | offen         |
 | M5  | Inferenz-Microservice mit echtem NN                           | offen         |
 | M6  | Lobby + Tisch-Modi + KI-Auffüllung                            | offen         |
