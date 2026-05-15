@@ -1,8 +1,10 @@
-# Vorarlberger Kreuz-Jass — Web-Plattform
+# Heb ab!
+
+> _Der OpenSource-Jass nach vorarlberger Spielart._
 
 Selbst-hostbare Multiplayer-Plattform für **Vorarlberger Kreuz-Jass**, auf der echte Menschen gegen- und miteinander spielen können — wahlweise mit KI-Gegnern, die ein neuronales Netz aus dem Schwester-Projekt [`jass-neuronales-netz`](../jass_neuronales_netz/) nutzen.
 
-> **Status:** M0 — Repo- und CI-Skelett. Implementierung folgt schrittweise gemäß [Architektur-Plan](./docs/ARCHITECTURE.md).
+> **Status:** M3 in Arbeit — Auth-Flow (Register/Verify/Login) läuft end-to-end. Lobby + WS-Gameplay folgen mit M4+. Siehe [Meilenstein-Roadmap](#meilenstein-roadmap-kurzfassung).
 
 ## Vision
 

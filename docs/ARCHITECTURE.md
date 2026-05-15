@@ -1,6 +1,6 @@
-# Architektur
+# Architektur — Heb ab!
 
-> Lebendes Dokument. Quelle der konkreten Begründungen ist der vom Nutzer abgenommene Implementierungs-Plan (`C:\Users\matth\.claude\plans\projekt-vorarlberger-jass-app-vast-kahn.md`).
+> Lebendes Dokument. Projektname: **„Heb ab!"** — der OpenSource-Jass nach vorarlberger Spielart. Quelle der konkreten Begründungen ist der vom Nutzer abgenommene Implementierungs-Plan (`C:\Users\matth\.claude\plans\projekt-vorarlberger-jass-app-vast-kahn.md`).
 
 ## Überblick
 

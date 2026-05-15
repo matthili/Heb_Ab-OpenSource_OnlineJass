@@ -153,6 +153,14 @@ async function main(): Promise<void> {
   await clearTargetExceptCache();
   await mkdir(CACHE_DIR, { recursive: true });
 
+  // Alte jass-nn-*.zip-Dateien aus dem Cache räumen (Versions-Wechsel würde
+  // sonst zur Doppel-ZIP-Situation führen). Nicht-ZIP-Cache-Dateien bleiben.
+  for (const f of await readdir(CACHE_DIR)) {
+    if (/^jass-nn-.*\.zip$/.test(f)) {
+      await rm(join(CACHE_DIR, f), { force: true });
+    }
+  }
+
   // gh release download lädt das passende Asset; --clobber überschreibt evtl.
   // gecachte alte Versionen.
   console.info(`[sync-nn] gh release download ${version} ...`);

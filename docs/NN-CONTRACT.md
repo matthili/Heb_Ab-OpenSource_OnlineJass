@@ -16,7 +16,7 @@ Im Web-Repo wird die NN-Version in `package.json#jassNn.version` gepinnt:
 
 ```json
 "jassNn": {
-  "version": "v0.1.0",
+  "version": "v0.3.0",
   "repo": "matthili/jass-neuronales-netz",
   "encodingVersion": "1.0.0",
   "specVersion": "1.0.0"
@@ -59,15 +59,17 @@ Ein neues NN-Modell wird so eingespielt:
 
 ## Status der Pipeline
 
-| Komponente                                   | Status                                                       |
-| -------------------------------------------- | ------------------------------------------------------------ |
-| Python-Engine + Tests im NN-Repo             | ✅ vorhanden                                                 |
-| `jass_rules.json` (spec_version 1.0.0)       | ✅ in Release v0.1.0                                         |
-| `state_encoding.md` (encoding_version 1.0.0) | ✅ in Release v0.1.0                                         |
-| `encoding_fixtures.json`                     | ✅ in Release v0.1.0                                         |
-| `keras/best.keras`                           | ✅ in Release v0.1.0 (1.7 MB)                                |
-| Release-ZIP + MANIFEST                       | ✅ Release v0.1.0 öffentlich verfügbar                       |
-| `pnpm sync:nn` (Download + SHA-Verify)       | ✅ produktiv                                                 |
-| `tfjs/` (TF.js-Modell)                       | ⏳ erst in **v0.2.0** (Multi-Head-Modell, kommt diese Woche) |
+Aktuell gepinnt: **v0.3.0** (`package.json#jassNn.version`).
 
-Solange `tfjs/` fehlt, kann `apps/inference` noch nicht gestartet werden — das blockiert aber nur **M5+**. M2 (TS-Port der Engine), M3 (API + Auth) und M4 (WS-Gateway + Game-Loop mit Random-KI) sind davon nicht betroffen.
+| Komponente                                   | Status                                                                |
+| -------------------------------------------- | --------------------------------------------------------------------- |
+| Python-Engine + Tests im NN-Repo             | ✅ vorhanden                                                          |
+| `jass_rules.json` (spec_version 1.0.0)       | ✅ unverändert seit v0.1.0                                            |
+| `state_encoding.md` (encoding_version 1.0.0) | ✅ unverändert seit v0.1.0                                            |
+| `encoding_fixtures.json`                     | ✅ unverändert seit v0.1.0                                            |
+| `keras/final.keras`                          | ✅ in Release v0.3.0 (RL-v2-Modell, 1.8 MB)                           |
+| Release-ZIP + MANIFEST                       | ✅ Release v0.3.0 öffentlich verfügbar                                |
+| `pnpm sync:nn` (Download + SHA-Verify)       | ✅ produktiv                                                          |
+| `tfjs/` (TF.js-Modell für Web-Inferenz)      | ⏳ in v0.3.0 noch **nicht enthalten**, trotz Release-Body-Versprechen |
+
+**Status `tfjs/`:** Der Release-Body von v0.1.0 und v0.3.0 listet beide ein `tfjs/`-Verzeichnis, das tatsächliche ZIP enthält es aber nicht (MANIFEST listet nur die 5 Spec-/Keras-Files). Solange `tfjs/` fehlt, kann `apps/inference` (M5) nicht hochfahren. **M2, M3, M4 sind davon unberührt** — TS-Engine, Auth + Game-Loop arbeiten ausschließlich gegen Spec + Fixtures, die voll vorhanden sind. Für M4 kann der KI-Sitz übergangsweise einen `RandomLegalMovePlayer` nutzen.
