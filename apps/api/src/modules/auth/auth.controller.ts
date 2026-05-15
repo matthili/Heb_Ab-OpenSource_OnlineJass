@@ -20,6 +20,9 @@ export class AuthController {
 
   constructor(private readonly auth: AuthService) {}
 
+  // Catch-all für /api/auth/<irgendwas>. Fastify's find-my-way akzeptiert nur
+  // `*` als Wildcard am Pfad-Ende; das überschattet *nicht* andere Routen mit
+  // anderem Prefix.
   @All("*")
   async handle(@Req() req: FastifyRequest, @Res() reply: FastifyReply): Promise<void> {
     const webRequest = toWebRequest(req);
