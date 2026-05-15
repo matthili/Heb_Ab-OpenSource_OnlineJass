@@ -1,23 +1,26 @@
 /**
  * Wrapper, der die Better-Auth-Instanz lazy aus den injizierten Nest-Providern
- * (Prisma, Mail, Logger) zusammenbaut.
+ * (Prisma, Mail, Blocklist, Audit, Logger) zusammenbaut.
  *
  * Warum nicht direkt eine Top-Level-Konstante wie in den Better-Auth-Docs?
  *   - Wir wollen den Custom-Argon2id-Hasher konfigurieren, ohne Module-Load-
  *     Reihenfolge zu zerstören.
- *   - Mail-Versand braucht den Nest-`MailService`.
+ *   - Mail-Versand, Blocklist und Audit-Log brauchen Nest-Services.
  *   - In Tests können wir Better Auth gegen eine andere Prisma-Instanz binden,
  *     ohne globalen State zu mutieren.
  *
  * Better Auth selbst exposed seinen HTTP-Handler über `auth.handler(req)` —
  * den ruft der AuthController auf und reicht ihn an Fastify durch.
  */
+import { APIError } from "better-auth/api";
 import { Injectable, Logger, type OnModuleInit } from "@nestjs/common";
 import { betterAuth, type BetterAuthOptions } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 
-import { PrismaService } from "../prisma/prisma.service.js";
+import { AuditService } from "../audit/audit.service.js";
+import { BlocklistService } from "../blocklist/blocklist.service.js";
 import { MailService } from "../mail/mail.service.js";
+import { PrismaService } from "../prisma/prisma.service.js";
 import { hashPassword, verifyPassword } from "./password.js";
 
 // Better Auth liefert keinen stabilen `Auth`-Export-Type, der zu unserer
@@ -31,7 +34,9 @@ export class AuthService implements OnModuleInit {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly mail: MailService
+    private readonly mail: MailService,
+    private readonly blocklist: BlocklistService,
+    private readonly audit: AuditService
   ) {}
 
   onModuleInit(): void {
@@ -53,6 +58,9 @@ export class AuthService implements OnModuleInit {
       );
     }
     const baseURL = process.env["BETTER_AUTH_URL"] ?? "http://localhost:3000";
+
+    const blocklist = this.blocklist;
+    const audit = this.audit;
 
     const options: BetterAuthOptions = {
       secret,
@@ -91,11 +99,108 @@ export class AuthService implements OnModuleInit {
         cookieCache: { enabled: true, maxAge: 60 * 5 }, // 5 min lokal cachen
       },
       advanced: {
-        // In Prod hinter Caddy gibt's Cross-Subdomain-Cookies in M11; aktuell
-        // bleibt's same-site Lax.
         cookiePrefix: "jass",
+      },
+      // Rate-Limit: globaler Fallback + strengere Regeln pro Auth-Pfad.
+      // Storage in-memory ist ok solange wir Single-Instance laufen; in M11
+      // wechseln wir auf `storage: "secondary-storage"` mit Redis-Adapter.
+      rateLimit: {
+        enabled: true,
+        window: 60, // Sekunden für den globalen Default
+        max: 60,
+        customRules: {
+          "/sign-up/email": { window: 3600, max: 3 }, // 3 Registrierungen / Stunde / IP
+          "/sign-in/email": { window: 900, max: 5 }, // 5 Login-Versuche / 15 min / IP
+          "/forget-password": { window: 3600, max: 3 },
+          "/verify-email": { window: 900, max: 10 }, // gegen Token-Brute-Force
+          "/reset-password": { window: 900, max: 5 },
+        },
+      },
+      databaseHooks: {
+        user: {
+          create: {
+            before: async (user, ctx) => {
+              // Blocklist greift hier — wir werfen einen Better-Auth-APIError,
+              // der vom Handler als sauber formatierte Response zurückgegeben wird.
+              const match = await blocklist.check(user.email);
+              if (match.blocked) {
+                await audit.record({
+                  action: "auth.register.blocked",
+                  meta: {
+                    email: user.email,
+                    matchedPattern: match.pattern ?? null,
+                    reason: match.reason ?? null,
+                  },
+                  ip: extractIp(ctx),
+                });
+                throw new APIError("BAD_REQUEST", {
+                  message: "Diese E-Mail-Adresse darf sich nicht registrieren.",
+                  code: "EMAIL_BLOCKED",
+                });
+              }
+              return { data: user };
+            },
+            after: async (user, ctx) => {
+              await audit.record({
+                action: "auth.register.success",
+                actorId: user.id,
+                meta: { email: user.email, name: user.name },
+                ip: extractIp(ctx),
+              });
+            },
+          },
+          update: {
+            after: async (user, ctx) => {
+              // Verify-Step setzt emailVerified=true → eigenes Event.
+              if (user.emailVerified === true) {
+                await audit.record({
+                  action: "auth.verify",
+                  actorId: user.id,
+                  meta: { email: user.email },
+                  ip: extractIp(ctx),
+                });
+              }
+            },
+          },
+        },
+        session: {
+          create: {
+            // Bei jedem Sign-in legt Better Auth eine Session an — perfekter
+            // Hook für „login.success". Login-Fail loggt Better Auth selbst
+            // nicht über DB-Hooks; das ergänzen wir bei Bedarf in M3-F per
+            // before-Middleware auf `/sign-in/email`.
+            after: async (session, ctx) => {
+              await audit.record({
+                action: "auth.login.success",
+                actorId: session.userId,
+                meta: {
+                  sessionId: session.id,
+                  userAgent: session.userAgent ?? null,
+                },
+                ip: session.ipAddress ?? extractIp(ctx),
+              });
+            },
+          },
+        },
       },
     };
     return betterAuth(options);
   }
+}
+
+/**
+ * Holt die Client-IP aus dem Better-Auth-Context-Headers — fallback null.
+ * In M11 hinter Caddy/Cloudflare wird X-Forwarded-For ausgewertet (Fastify
+ * `trustProxy: true` ist bereits gesetzt, also ist `req.ip` korrekt).
+ */
+function extractIp(ctx: unknown): string | null {
+  // ctx ist Better-Auth-spezifisch; defensiv per Property-Sondierung.
+  const c = ctx as { request?: { headers?: Headers }; ip?: string } | undefined;
+  if (!c) return null;
+  if (typeof c.ip === "string") return c.ip;
+  const forwarded = c.request?.headers?.get?.("x-forwarded-for");
+  if (typeof forwarded === "string" && forwarded.length > 0) {
+    return forwarded.split(",")[0]?.trim() ?? null;
+  }
+  return null;
 }
