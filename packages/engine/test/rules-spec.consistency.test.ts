@@ -67,6 +67,7 @@ interface JassRulesSpec {
   deck: SpecDeck;
   variants: {
     trumpf: SpecVariantTrumpf;
+    gumpf: SpecVariantTrumpf; // gleiche Struktur wie TRUMPF (trump+non_trump)
     oben: SpecVariantObenOrUnten;
     unten: SpecVariantObenOrUnten;
   };
@@ -92,14 +93,34 @@ function loadSpec(): JassRulesSpec {
 describe("Spec-Konsistenz: types.ts gegen jass_rules.json", () => {
   const spec = loadSpec();
 
-  it("SPEC_VERSION matched", () => {
+  it("SPEC_VERSION matched (1.1.0 mit Gumpf-Variante)", () => {
     expect(SPEC_VERSION).toBe(spec.spec_version);
+    expect(SPEC_VERSION).toBe("1.1.0");
   });
 
-  it("ENCODING_VERSION ist auf 1.0.0 fixiert (passt zur Fixture-Datei)", () => {
+  it("ENCODING_VERSION ist auf 3.0.0 fixiert (passt zur Fixture-Datei)", () => {
     // jass_rules.json enthält encoding_version nicht selbst — die liegt in
     // encoding_fixtures.json + MANIFEST.json. Hier nur Selbst-Konsistenz.
-    expect(ENCODING_VERSION).toBe("1.0.0");
+    expect(ENCODING_VERSION).toBe("3.0.0");
+  });
+
+  it("Gumpf-Variante ist in der Spec vorhanden", () => {
+    expect(spec.variants.gumpf).toBeDefined();
+    expect(spec.variants.gumpf.card_points.trump.UNTER).toBe(20); // Buur
+    expect(spec.variants.gumpf.card_points.trump.NEUN).toBe(14); // Nell
+    expect(spec.variants.gumpf.card_points.non_trump.ACHT).toBe(0); // KEIN Geiss-8er-Bonus
+  });
+
+  it("GUMPF: trump-Punktwerte = POINT_VALUES_TRUMP (identisch zu TRUMPF)", () => {
+    for (const r of RANKS) {
+      expect(spec.variants.gumpf.card_points.trump[r]).toBe(POINT_VALUES_TRUMP[r]);
+    }
+  });
+
+  it("GUMPF: non-trump-Punktwerte = POINT_VALUES_NORMAL (identisch zu TRUMPF non-trump)", () => {
+    for (const r of RANKS) {
+      expect(spec.variants.gumpf.card_points.non_trump[r]).toBe(POINT_VALUES_NORMAL[r]);
+    }
   });
 
   it("Deck-Größe = 36", () => {

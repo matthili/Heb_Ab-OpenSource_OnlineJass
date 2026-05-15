@@ -4,6 +4,12 @@
  *
  * Keine State-Mutation, keine Klassen — alles pure functions, damit Encoder
  * und Spielzustand-Logik (state.ts) sie composable wiederverwenden können.
+ *
+ * **Spec 1.1.0**: GUMPF-Variante ist hier zusätzlich kodiert.
+ *   - Wertpunkte: identisch zu TRUMPF (Buur=20, Nell=14, 8er=0, …).
+ *   - Stich-Stärke: Trumpf-Karten wie TRUMPF; Nicht-Trumpf-Karten wie UNTEN
+ *     (invertierte Reihenfolge, 6 sticht Ass in der Lead-Farbe).
+ *   - Legal-Moves: identisch zu TRUMPF (Buur-Ausnahme, kein-Untertrumpfen).
  */
 
 import { cardsEqual } from "./cards.js";
@@ -21,9 +27,14 @@ import {
   LAST_TRICK_BONUS,
 } from "./types.js";
 
+/** True wenn die Variante eine Trumpf-Farbe hat (TRUMPF oder GUMPF). */
+export function hasTrumpSuit(variant: Variant): boolean {
+  return variant.mode === "TRUMPF" || variant.mode === "GUMPF";
+}
+
 /** Punktwert einer Karte unter Berücksichtigung der gewählten Variante. */
 export function cardValue(card: Card, variant: Variant): number {
-  if (variant.mode === "TRUMPF") {
+  if (hasTrumpSuit(variant)) {
     if (card.suit === variant.trump_suit) {
       return POINT_VALUES_TRUMP[card.rank];
     }
@@ -36,20 +47,26 @@ export function cardValue(card: Card, variant: Variant): number {
 /**
  * Stärke einer Karte im aktuellen Stich. Höher = sticht.
  *
- * Drei Skalen:
+ * Skalen (für `trickWinner`):
  *  - Nicht-stechende Karte (falsche Farbe, kein Trumpf): -1
- *  - Lead-Farbe (nicht-Trumpf):                          100 + rank-id  (TRUMPF/OBEN)
- *                                                       100 + (8-rank)  (UNTEN, invertiert)
- *  - Trumpf:                                            1000 + TRUMP_RANK_ORDER
+ *  - Lead-Farbe (nicht-Trumpf):
+ *      * TRUMPF + OBEN:  100 + rank_id     (Ass sticht 6)
+ *      * GUMPF + UNTEN:  100 + (8-rank_id) (6 sticht Ass — invertiert)
+ *  - Trumpf-Farbe (bei TRUMPF + GUMPF):    1000 + TRUMP_RANK_ORDER
  */
 export function cardStrength(card: Card, leadSuit: Suit, variant: Variant): number {
   const mode: PlayMode = variant.mode;
-  if (mode === "TRUMPF") {
+  if (mode === "TRUMPF" || mode === "GUMPF") {
     if (variant.trump_suit === undefined) {
-      throw new Error("Variant.TRUMPF benötigt eine trump_suit.");
+      throw new Error(`Variant.${mode} benötigt eine trump_suit.`);
     }
-    if (card.suit === variant.trump_suit) return 1000 + TRUMP_RANK_ORDER[card.rank];
-    if (card.suit === leadSuit) return 100 + RANK_ID[card.rank];
+    if (card.suit === variant.trump_suit) {
+      return 1000 + TRUMP_RANK_ORDER[card.rank];
+    }
+    if (card.suit === leadSuit) {
+      // GUMPF invertiert die Reihenfolge der Lead-Farbe (wie UNTEN).
+      return mode === "GUMPF" ? 100 + (8 - RANK_ID[card.rank]) : 100 + RANK_ID[card.rank];
+    }
     return -1;
   }
   if (mode === "OBEN") {
@@ -78,7 +95,7 @@ function highestTrumpIn(cards: readonly Card[], trump: Suit): Card | null {
 /**
  * Liste der Karten, die der Spieler legal ausspielen darf.
  *
- * **TRUMPF**:
+ * **TRUMPF / GUMPF** (identische Legal-Move-Logik):
  *   - Bei leerem Stich: alles erlaubt.
  *   - Trumpf wurde angespielt:
  *       * Hat man Nicht-Buur-Trümpfe → muss man bedienen (alle Trümpfe der Hand).
@@ -94,9 +111,6 @@ function highestTrumpIn(cards: readonly Card[], trump: Suit): Card | null {
  *
  * **OBEN/UNTEN (Bock/Geiss/Slalom)**:
  *   - Einfacher Farbzwang; wer Lead-Farbe nicht bedienen kann, wirft frei ab.
- *
- * Reihenfolge der Rückgabe spielt für die Legal-Mask keine Rolle, ist aber
- * stabil definiert für Test-Vergleichbarkeit (deterministisch in Hand-Reihenfolge).
  */
 export function legalMoves(
   hand: readonly Card[],
@@ -105,17 +119,15 @@ export function legalMoves(
 ): Card[] {
   if (currentTrick.length === 0) return [...hand];
 
-  // Index 0 ist garantiert vorhanden (Länge > 0 oben geprüft); der Cast ist
-  // wegen `noUncheckedIndexedAccess` nötig.
   const leadSuit = (currentTrick[0] as Card).suit;
 
-  if (variant.mode !== "TRUMPF") {
+  if (!hasTrumpSuit(variant)) {
     const same = hand.filter((c) => c.suit === leadSuit);
     return same.length > 0 ? same : [...hand];
   }
 
   if (variant.trump_suit === undefined) {
-    throw new Error("Variant.TRUMPF benötigt eine trump_suit.");
+    throw new Error(`Variant.${variant.mode} benötigt eine trump_suit.`);
   }
   const trump: Suit = variant.trump_suit;
   const buur: Card = { suit: trump, rank: "UNTER" as Rank };

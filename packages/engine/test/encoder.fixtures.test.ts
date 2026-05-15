@@ -1,11 +1,13 @@
 /**
  * Fixture-Tests: führt alle Einträge in `external/jass-nn/encoding_fixtures.json`
- * gegen unseren Encoder und unsere Legal-Mask aus und vergleicht byte-equivalent
- * mit den von Python erzeugten Erwartungswerten.
+ * gegen unseren Encoder und unsere Legal-Mask aus und vergleicht mit den von
+ * Python erzeugten Erwartungswerten.
  *
- * Schlägt einer dieser Tests fehl, ist der TS-Port von der Spec gedriftet. Vor
- * einer Code-Änderung am Encoder: Spec und Fixtures aus dem NN-Repo neu syncen
- * (`pnpm sync:nn && pnpm verify:nn`).
+ * Schlägt einer dieser Tests fehl, ist der TS-Port von der Spec gedriftet.
+ * Vor einer Code-Änderung am Encoder: Spec und Fixtures aus dem NN-Repo neu
+ * syncen (`pnpm sync:nn && pnpm verify:nn`).
+ *
+ * **Encoding-Version 3.0.0** (Spec 1.1.0, Release v0.5.0): 421-dim Vektor.
  */
 
 import { readFileSync } from "node:fs";
@@ -17,9 +19,10 @@ import { describe, expect, it } from "vitest";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 import { encodeState, legalActionMask } from "../src/encoder.js";
-import type { Announcement, Card, GameState, Variant } from "../src/types.js";
+import type { Announcement, Card, CompletedTrick, GameState, Variant } from "../src/types.js";
+import { STATE_DIM } from "../src/types.js";
 
-// --- Fixture-Schema (1:1 zum encoding_fixtures.json) ------------------------
+// --- Fixture-Schema (1:1 zu encoding_fixtures.json v3.0.0) ------------------
 
 interface FixtureInput {
   hand: Card[];
@@ -29,7 +32,7 @@ interface FixtureInput {
   current_trick_starter: number;
   player_idx: number;
   teams: number[];
-  completed_tricks: Card[][];
+  completed_tricks: CompletedTrick[];
   own_team_score: number;
   opp_team_score: number;
   round_idx: number;
@@ -83,8 +86,6 @@ function loadFixtures(): FixturesFile {
   }
 }
 
-// --- GameState aus Fixture-Input bauen --------------------------------------
-
 function buildGameState(fx: FixtureInput): GameState {
   return {
     player_idx: fx.player_idx,
@@ -104,23 +105,22 @@ function buildGameState(fx: FixtureInput): GameState {
 
 // --- Tests -------------------------------------------------------------------
 
-describe("Encoder fixtures (state_encoding.md v1.0.0)", () => {
+describe("Encoder fixtures (state_encoding.md v3.0.0)", () => {
   const file = loadFixtures();
 
   it("spec_version stimmt mit SPEC_VERSION in types.ts überein", () => {
-    expect(file.spec_version).toBe("1.0.0");
+    expect(file.spec_version).toBe("1.1.0");
   });
 
   it("encoding_version stimmt mit ENCODING_VERSION in types.ts überein", () => {
-    expect(file.encoding_version).toBe("1.0.0");
+    expect(file.encoding_version).toBe("3.0.0");
   });
 
   it("Anzahl Fixtures stimmt mit fixture_count überein", () => {
     expect(file.fixtures).toHaveLength(file.fixture_count);
   });
 
-  // Tabellen-getrieben: jede Fixture wird einzeln verifiziert, damit Failures
-  // genau eine Zeile anzeigen, nicht eine 12-fach gestapelte Diff.
+  // Tabellen-getrieben: jede Fixture als eigener Test-Run.
   it.each(file.fixtures.map((f) => [f.id, f] as const))(
     "Fixture %s: state_vector + legal_mask byte-equivalent",
     (_id, fx) => {
@@ -128,25 +128,25 @@ describe("Encoder fixtures (state_encoding.md v1.0.0)", () => {
       const vec = encodeState(fx.input.hand, state);
       const mask = legalActionMask(fx.input.hand, state);
 
-      // Shape-Checks zuerst — gibt die hilfreichere Fehlermeldung bei Drift.
-      expect(vec).toHaveLength(132);
+      // Shape-Checks zuerst — hilfreichere Fehlermeldung bei Drift.
+      expect(vec).toHaveLength(STATE_DIM);
       expect(mask).toHaveLength(36);
 
       // Mask ist uint8 (0/1) — exakte Gleichheit.
       expect(Array.from(mask)).toEqual(fx.expected.legal_mask);
 
       // State-Vector: elementweise mit Float32-Toleranz vergleichen.
-      // Die Fixture-Datei rundet Floats beim JSON-Dump auf ~6 Nachkommastellen
-      // (z.B. `0.333333` statt `0.3333333432674408`), unsere Float32Array enthält
-      // die exakte Float32-Cast-Darstellung. Toleranz 1e-4 ist großzügig genug
-      // für die Rundungs-Diff, dabei eng genug um echte Logik-Drift zu fangen.
+      // Python-Fixtures runden Floats beim JSON-Dump auf 6 Nachkommastellen;
+      // unsere Float32Array enthält die exakte Float32-Cast-Darstellung.
+      // atol 1e-5 ist großzügig genug für Rundungs-Diff, aber eng genug für
+      // echte Logik-Drift.
       const actual = Array.from(vec);
       const expected = fx.expected.state_vector;
       expect(actual).toHaveLength(expected.length);
       for (let i = 0; i < expected.length; i++) {
         const a = actual[i] as number;
         const e = expected[i] as number;
-        if (Math.abs(a - e) > 1e-4) {
+        if (Math.abs(a - e) > 1e-5) {
           throw new Error(
             `Vektor-Diff an Index ${i}: erwartet ${e}, erhalten ${a} (Δ=${Math.abs(a - e)})`
           );

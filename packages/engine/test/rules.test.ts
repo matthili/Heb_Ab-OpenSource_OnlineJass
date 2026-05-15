@@ -16,6 +16,7 @@ import type { Card, Variant } from "../src/types.js";
 // Kurz-Konstruktoren, damit Test-Tabellen lesbar bleiben.
 const c = (suit: Card["suit"], rank: Card["rank"]): Card => ({ suit, rank });
 const TRUMPF = (s: Card["suit"]): Variant => ({ mode: "TRUMPF", trump_suit: s });
+const GUMPF = (s: Card["suit"]): Variant => ({ mode: "GUMPF", trump_suit: s });
 const OBEN: Variant = { mode: "OBEN" };
 const UNTEN: Variant = { mode: "UNTEN" };
 
@@ -185,6 +186,86 @@ describe("trickWinner", () => {
 
   it("Wirft bei leerem Stich", () => {
     expect(() => trickWinner([], OBEN)).toThrow();
+  });
+});
+
+describe("GUMPF — Hybrid aus Trumpf und Geiss", () => {
+  it("cardValue: gleich wie TRUMPF — Buur=20, Nell=14 in Trumpf-Farbe, 8er=0 überall", () => {
+    const v = GUMPF("EICHEL");
+    expect(cardValue(c("EICHEL", "UNTER"), v)).toBe(20);
+    expect(cardValue(c("EICHEL", "NEUN"), v)).toBe(14);
+    expect(cardValue(c("HERZ", "ACHT"), v)).toBe(0); // KEIN Geiss-8er-Bonus
+    expect(cardValue(c("LAUB", "UNTER"), v)).toBe(2);
+    expect(cardValue(c("LAUB", "ASS"), v)).toBe(11);
+  });
+
+  it("cardStrength: Trumpf-Karte schlägt jede Nicht-Trumpf-Karte (wie TRUMPF)", () => {
+    const v = GUMPF("EICHEL");
+    const trumpSix = cardStrength(c("EICHEL", "SECHS"), "HERZ", v);
+    const leadAce = cardStrength(c("HERZ", "ASS"), "HERZ", v);
+    expect(trumpSix).toBeGreaterThan(leadAce);
+  });
+
+  it("cardStrength: Lead-Farbe invertiert (wie UNTEN) — 6 sticht Ass", () => {
+    const v = GUMPF("EICHEL");
+    const sixInLead = cardStrength(c("HERZ", "SECHS"), "HERZ", v);
+    const aceInLead = cardStrength(c("HERZ", "ASS"), "HERZ", v);
+    expect(sixInLead).toBeGreaterThan(aceInLead);
+  });
+
+  it("cardStrength: Nicht-Lead-Nicht-Trumpf-Karte ist -1", () => {
+    const v = GUMPF("EICHEL");
+    expect(cardStrength(c("LAUB", "ASS"), "HERZ", v)).toBe(-1);
+  });
+
+  it("trickWinner: 6 in Lead-Farbe gewinnt gegen Lead-Ass", () => {
+    const trick: Card[] = [c("HERZ", "OBER"), c("HERZ", "SECHS"), c("HERZ", "ASS")];
+    expect(trickWinner(trick, GUMPF("EICHEL"))).toBe(1);
+  });
+
+  it("trickWinner: Trumpf schlägt 6 in Lead-Farbe", () => {
+    const trick: Card[] = [c("HERZ", "SECHS"), c("EICHEL", "SECHS"), c("HERZ", "ASS")];
+    // EICHEL ist Trumpf, also schlägt EICHEL-6 (Trumpf-Stärke 10) HERZ-6 (Lead-Stärke 108)
+    // → 1000+0 > 100+8 → Index 1 gewinnt.
+    expect(trickWinner(trick, GUMPF("EICHEL"))).toBe(1);
+  });
+
+  it("legalMoves: Buur-Ausnahme (Nicht-Trumpf-Lead, Lead-Farbe vorhanden + Buur extra)", () => {
+    const hand: Card[] = [c("HERZ", "ASS"), c("HERZ", "SIEBEN"), c("EICHEL", "UNTER")];
+    const trick: Card[] = [c("HERZ", "OBER")];
+    const v = GUMPF("EICHEL");
+    expect(legalMoves(hand, trick, v)).toEqual([
+      c("HERZ", "ASS"),
+      c("HERZ", "SIEBEN"),
+      c("EICHEL", "UNTER"),
+    ]);
+  });
+
+  it("legalMoves: Kein-Untertrumpfen wie TRUMPF (höhere Trümpfe oder Nicht-Trümpfe wenn vorhanden)", () => {
+    // Hand mit höherem Trumpf + tieferem Trumpf + Nicht-Trumpf: nur höhere
+    // Trümpfe + Nicht-Trümpfe spielbar (tieferer Trumpf gesperrt).
+    const hand: Card[] = [
+      c("EICHEL", "UNTER"), // Buur, höchster Trumpf
+      c("EICHEL", "SECHS"), // tiefer Trumpf
+      c("LAUB", "ASS"),
+    ];
+    const trick: Card[] = [c("HERZ", "ASS"), c("EICHEL", "OBER")]; // Trumpf-Ober im Stich
+    const v = GUMPF("EICHEL");
+    // Buur > Ober (höherer Trumpf), EICHEL-SECHS < Ober (gesperrt), LAUB-ASS = Nicht-Trumpf
+    expect(legalMoves(hand, trick, v)).toEqual([c("EICHEL", "UNTER"), c("LAUB", "ASS")]);
+  });
+
+  it("legalMoves: Untertrumpfen erzwungen wenn NUR tiefere Trümpfe in Hand", () => {
+    const hand: Card[] = [c("EICHEL", "SIEBEN"), c("EICHEL", "SECHS")];
+    const trick: Card[] = [c("HERZ", "ASS"), c("EICHEL", "UNTER")]; // Buur = höchster
+    // Keine höheren Trümpfe als Buur, keine Nicht-Trümpfe → alles erlaubt.
+    expect(legalMoves(hand, trick, GUMPF("EICHEL"))).toEqual(hand);
+  });
+
+  it("legalMoves: Trumpf-Lead + nur Buur als Trumpf → frei wählbar", () => {
+    const hand: Card[] = [c("EICHEL", "UNTER"), c("HERZ", "ASS"), c("LAUB", "SIEBEN")];
+    const trick: Card[] = [c("EICHEL", "ASS")];
+    expect(legalMoves(hand, trick, GUMPF("EICHEL"))).toEqual(hand);
   });
 });
 
