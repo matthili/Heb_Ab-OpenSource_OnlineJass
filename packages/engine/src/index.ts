@@ -8,7 +8,32 @@
 
 export * from "./types.js";
 export { cardIndex, cardsEqual, indexToCard, isWeli } from "./cards.js";
-export { cardStrength, cardValue, legalMoves, trickPoints, trickWinner } from "./rules.js";
+export {
+  cardStrength,
+  cardValue,
+  hasTrumpSuit,
+  legalMoves,
+  trickPoints,
+  trickWinner,
+} from "./rules.js";
 export { encodeState, legalActionMask } from "./encoder.js";
+export {
+  type Move,
+  type RandomFn,
+  type RoundScore,
+  type RoundState,
+  DEFAULT_TEAMS,
+  InvalidMoveError,
+  applyMove,
+  dealCards,
+  finalRoundScore,
+  freshDeck,
+  handOf,
+  isRoundDone,
+  newRound,
+  shuffleDeck,
+  viewAsPlayer,
+  whoseTurn,
+} from "./state.js";
 
-export const ENGINE_PACKAGE_VERSION = "0.1.0";
+export const ENGINE_PACKAGE_VERSION = "0.2.0";

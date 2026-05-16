@@ -8,10 +8,9 @@ export default defineConfig({
       provider: "v8",
       reporter: ["text", "lcov"],
       include: ["src/**/*.ts"],
-      exclude: ["src/index.ts", "src/state.ts"],
+      exclude: ["src/index.ts"],
       thresholds: {
         // Plan-Vorgabe für packages/engine: ≥ 95% Coverage.
-        // M2-Stand: rules + encoder voll abgedeckt; state.ts ist ein Re-Export-Stub.
         lines: 95,
         functions: 95,
         branches: 90,
