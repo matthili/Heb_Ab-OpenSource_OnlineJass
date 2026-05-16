@@ -62,6 +62,14 @@ model User {
   friendshipsIn  Friendship[]  @relation("FriendshipAddressee")
   auditActions   AuditLog[]    @relation("AuditActor")
 
+  // M6 — Lobby + Tisch
+  ownedTables     LobbyTable[]      @relation("TableOwner")
+  tableSeats      LobbyTableSeat[]  @relation("TableSeats")
+  joinRequests    GameJoinRequest[] @relation("JoinRequests")
+  invitesReceived TableInvite[]     @relation("InvitesReceived")
+  invitesSent     TableInvite[]     @relation("InvitesSent")
+  rematchVotes    RematchVote[]     @relation("RematchVotes")
+
   @@index([status])
   @@index([deletedAt])
 }
@@ -167,12 +175,24 @@ model Game {
   endedAt      DateTime?
   finalScore   Json? // { team0: 81, team1: 76, matsch: false }
 
+  // M6: Game gehört zu einem LobbyTable (nullable für Pre-M6-Daten und
+  // potenzielle direkt-erzeugte Test-Games; ab M6-C ist es bei Neu-Anlagen
+  // immer gesetzt).
+  tableId String?
+  table   LobbyTable? @relation("TableGames", fields: [tableId], references: [id], onDelete: SetNull)
+
   seats        GameSeat[]
   moves        Move[]
   rounds       RoundDecision[]
   chatMessages ChatMessage[]
+  rematchVotes RematchVote[]
+
+  // 1:1-Rückseite zu LobbyTable.currentGameId — wenn dieses Game gerade
+  // „das aktive" des Tischs ist, zeigt der Tisch hier zurück.
+  currentForTable LobbyTable? @relation("CurrentGame")
 
   @@index([startedAt])
+  @@index([tableId])
 }
 
 model GameSeat {
@@ -217,6 +237,132 @@ model RoundDecision {
   game Game @relation(fields: [gameId], references: [id], onDelete: Cascade)
 
   @@unique([gameId, roundIdx])
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Domain — Lobby + Tisch (M6)
+//
+// Lebenszyklus eines `LobbyTable`:
+//   1. Owner öffnet Tisch (Status WAITING). Sitz 0 = Owner, Sitze 1..3 leer
+//      oder vom Owner direkt mit KI vorbelegt.
+//   2. Andere Spieler joinen je nach `joinMode` (OPEN/REQUEST/INVITE).
+//   3. Sobald 4 Sitze belegt sind (manuell oder per Auto-Fill nach
+//      `autoFillSeconds`) startet das erste Spiel → `currentGameId` zeigt auf
+//      das neue Game, Status wechselt zu IN_GAME.
+//   4. Game endet → Status POST_GAME, Re-Match-Voting läuft. Bei „alle YES"
+//      → neues Game, alter Game-Eintrag bleibt für Replays/Statistik im
+//      `games[]`-Array des Tischs. Bei mindestens 1 NO + Spieler-Drop →
+//      zurück zu WAITING.
+//   5. Letzter Spieler verlässt → Status CLOSED, Tisch verschwindet aus der
+//      Lobby-Liste, Historie bleibt für die Replays.
+// ─────────────────────────────────────────────────────────────────────
+
+model LobbyTable {
+  id              String           @id @default(cuid())
+  ownerId         String
+  joinMode        JoinMode         @default(OPEN)
+  variant         GameVariant      @default(KREUZ_4P)
+  // Default-KI-Typ für Auto-Fill und manuell platzierte KI-Sitze. Owner
+  // konfiguriert das beim Tisch-Erstellen; einzelne Sitze können per
+  // `LobbyTableSeat.aiSeatType` davon abweichen.
+  aiSeatType      String           @default("random") // "random" | "nn" | "nn-vX.Y.Z"
+  // Auto-Fill-Timer in Sekunden ab letzter Sitz-Änderung. `null` = nie
+  // automatisch auffüllen, Owner muss manuell starten.
+  autoFillSeconds Int?             @default(30)
+  // Starter-Bestimmung bei Re-Match (Vorarlberger Tradition). Default ist
+  // `SIEGER_GIBT` — Owner kann beim Tisch-Erstellen umstellen.
+  restartMode     RestartMode      @default(SIEGER_GIBT)
+  status          LobbyTableStatus @default(WAITING)
+
+  // Aktuelles oder zuletzt-aktives Game am Tisch. In WAITING = null.
+  // Wird beim Game-Start gesetzt, beim Re-Match auf das neue Game
+  // umgeschwenkt. Alte Games bleiben über `games[]` erreichbar.
+  currentGameId String? @unique
+  currentGame   Game?   @relation("CurrentGame", fields: [currentGameId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime  @default(now())
+  closedAt  DateTime?
+
+  owner        User              @relation("TableOwner", fields: [ownerId], references: [id], onDelete: Restrict)
+  seats        LobbyTableSeat[]
+  games        Game[]            @relation("TableGames")
+  joinRequests GameJoinRequest[]
+  invites      TableInvite[]
+
+  @@index([status])
+  @@index([createdAt])
+  @@index([ownerId])
+}
+
+model LobbyTableSeat {
+  // 4 Einträge pro Tisch, einer je `seat`-Position 0..3.
+  tableId    String
+  seat       Int // 0..3 bei Kreuz-4P
+  userId     String? // null = entweder leer oder KI-Sitz
+  aiSeatType String? // wenn gesetzt: KI mit diesem Typ; sonst Mensch oder leer
+  // Reihenfolge des Beitritts. Wird für Owner-Wechsel benutzt: wenn der
+  // aktuelle Owner austritt, übernimmt der Spieler mit dem **kleinsten
+  // joinOrder** unter den verbleibenden menschlichen Sitzen.
+  joinOrder  Int
+  joinedAt   DateTime @default(now())
+
+  table LobbyTable @relation(fields: [tableId], references: [id], onDelete: Cascade)
+  user  User?      @relation("TableSeats", fields: [userId], references: [id], onDelete: SetNull)
+
+  @@id([tableId, seat])
+  @@index([userId])
+}
+
+model GameJoinRequest {
+  // Beitritts-Anfrage für Tische im JoinMode=REQUEST. Eine Anfrage pro
+  // (Tisch, User) gleichzeitig — Re-Anfragen nach Ablehnung gehen über einen
+  // neuen Eintrag mit anderem `createdAt` und CANCELLED-Status auf dem alten.
+  id        String            @id @default(cuid())
+  tableId   String
+  userId    String
+  status    JoinRequestStatus @default(PENDING)
+  createdAt DateTime          @default(now())
+  decidedAt DateTime?
+
+  table LobbyTable @relation(fields: [tableId], references: [id], onDelete: Cascade)
+  user  User       @relation("JoinRequests", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([tableId, status])
+  @@index([userId])
+}
+
+model TableInvite {
+  // Einladung an einen registrierten User für einen Tisch im JoinMode=INVITE
+  // (oder als „bevorzugter Schnellbeitritt" für OPEN-/REQUEST-Tische).
+  id              String       @id @default(cuid())
+  tableId         String
+  inviteeUserId   String
+  invitedByUserId String
+  status          InviteStatus @default(PENDING)
+  createdAt       DateTime     @default(now())
+  respondedAt     DateTime?
+
+  table     LobbyTable @relation(fields: [tableId], references: [id], onDelete: Cascade)
+  invitee   User       @relation("InvitesReceived", fields: [inviteeUserId], references: [id], onDelete: Cascade)
+  invitedBy User       @relation("InvitesSent", fields: [invitedByUserId], references: [id], onDelete: Cascade)
+
+  @@unique([tableId, inviteeUserId])
+  @@index([inviteeUserId, status])
+}
+
+model RematchVote {
+  // Pro abgeschlossenem Game stimmt jeder menschliche Spieler über das
+  // Re-Match ab. KI-Sitze stimmen implizit YES (sie sind sowieso bereit).
+  // `gameId + userId` ist eindeutig, ein User kann nicht zweimal voten.
+  gameId  String
+  userId  String
+  vote    RematchVoteValue
+  votedAt DateTime         @default(now())
+
+  game Game @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  user User @relation("RematchVotes", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([gameId, userId])
 }
 
 // ─────────────────────────────────────────────────────────────────────
@@ -309,4 +455,47 @@ enum ChatChannel {
   LOBBY
   GAME
   DM
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Enums — M6 Lobby
+// ─────────────────────────────────────────────────────────────────────
+
+enum LobbyTableStatus {
+  WAITING // wartet auf Mitspieler
+  IN_GAME // Spiel läuft (currentGameId ist gesetzt und nicht finished)
+  POST_GAME // letztes Game abgeschlossen, Re-Match-Voting läuft
+  CLOSED // alle Spieler weg; Tisch verschwindet aus der Lobby-Liste
+}
+
+enum JoinMode {
+  OPEN // jeder darf joinen
+  REQUEST // Owner muss jede Anfrage explizit approve-n
+  INVITE // nur eingeladene User können joinen
+}
+
+enum RestartMode {
+  // Vorarlberger Tradition: zwei Modi für die Starter-Bestimmung beim Re-Match.
+  WELI // Karten werden neu ausgeteilt, wer das Welli (Schelle-6) bekommt, beginnt
+  SIEGER_GIBT // Sieger gibt, der links davon (im Uhrzeigersinn) kommt raus
+}
+
+enum JoinRequestStatus {
+  PENDING
+  APPROVED
+  DENIED
+  CANCELLED // Anfragender hat zurückgezogen oder Owner-Wechsel-Auto-Cancel
+}
+
+enum InviteStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  EXPIRED // z.B. wenn der Tisch geschlossen wurde
+  CANCELLED // Owner hat die Einladung zurückgezogen
+}
+
+enum RematchVoteValue {
+  YES
+  NO
 }
