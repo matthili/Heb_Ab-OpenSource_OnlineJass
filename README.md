@@ -69,20 +69,20 @@ pnpm lint            # ESLint über alle Pakete
 
 ## Meilenstein-Roadmap
 
-| ID  | Inhalt                                                                     | Status        |
-| --- | -------------------------------------------------------------------------- | ------------- |
-| M0  | Repo & CI-Skelett, Karten-Assets                                           | ✅ fertig     |
-| M1  | NN-Artefakt-Pipeline (gh release download, Sync-Workflow)                  | ✅ fertig     |
-| M2  | TS-Port der Engine + Encoder v3.0.0, Fixture-Tests (15 inkl. Gumpf)        | ✅ fertig     |
-| M3  | NestJS-API mit Better-Auth, Postgres, Mail (A–E fertig)                    | **in Arbeit** |
-| M4  | WS-Gateway + Single-Table-Game-Loop                                        | offen         |
-| M5  | Inferenz-Microservice mit echtem NN — blockiert: tfjs/ fehlt im NN-Release | blockiert     |
-| M6  | Lobby + Tisch-Modi + KI-Auffüllung                                         | offen         |
-| M7  | Frontend-Hauptansichten + Landing + E2E                                    | offen         |
-| M8  | Chat (3 Kanäle) + Markdown-Sanitization                                    | offen         |
-| M9  | Admin-Panel + SMTP-Config + Audit-Log                                      | offen         |
-| M10 | Replays, Statistiken, Profil-History, DSGVO                                | offen         |
-| M11 | PWA-Polish, i18n, a11y-Sweep, k8s-Helm                                     | offen         |
+| ID  | Inhalt                                                                 | Status        |
+| --- | ---------------------------------------------------------------------- | ------------- |
+| M0  | Repo & CI-Skelett, Karten-Assets                                       | ✅ fertig     |
+| M1  | NN-Artefakt-Pipeline (gh release download, Sync-Workflow)              | ✅ fertig     |
+| M2  | TS-Port der Engine + Encoder v3.0.0, Fixture-Tests (15 inkl. Gumpf)    | ✅ fertig     |
+| M3  | NestJS-API mit Better-Auth, Postgres, Mail (A–E fertig)                | **in Arbeit** |
+| M4  | WS-Gateway + Single-Table-Game-Loop                                    | offen         |
+| M5  | Inferenz-Microservice mit echtem NN (tfjs/ ist in NN v0.5.0 vorhanden) | bereit        |
+| M6  | Lobby + Tisch-Modi + KI-Auffüllung                                     | offen         |
+| M7  | Frontend-Hauptansichten + Landing + E2E                                | offen         |
+| M8  | Chat (3 Kanäle) + Markdown-Sanitization                                | offen         |
+| M9  | Admin-Panel + SMTP-Config + Audit-Log                                  | offen         |
+| M10 | Replays, Statistiken, Profil-History, DSGVO                            | offen         |
+| M11 | PWA-Polish, i18n, a11y-Sweep, k8s-Helm                                 | offen         |
 
 Details: siehe [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) §8.
 

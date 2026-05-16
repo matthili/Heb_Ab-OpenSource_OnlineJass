@@ -68,9 +68,9 @@ Aktuell gepinnt: **v0.5.0** (`package.json#jassNn.version`).
 | `state_encoding.md` (encoding_version 3.0.0) | ✅ in v0.5.0 — **Breaking Change**: 132 → 421 dims, per-Sitz-History         |
 | `encoding_fixtures.json`                     | ✅ 15 Fixtures (inkl. 3 Gumpf-Cases), TS-Encoder verifiziert byte-equivalent |
 | `keras/best.keras`                           | ✅ in Release v0.5.0 (Multi-Head policy+value, 15 MB)                        |
-| Release-ZIP + MANIFEST                       | ✅ Release v0.5.0 öffentlich verfügbar                                       |
+| **`tfjs/` (TF.js-Modell)**                   | ✅ in Release v0.5.0 (model.json + 2 Shards, ~5 MB) — entblockt M5           |
+| Release-ZIP + MANIFEST                       | ✅ Release v0.5.0 öffentlich verfügbar, 8 Dateien                            |
 | `pnpm sync:nn` (Download + SHA-Verify)       | ✅ produktiv                                                                 |
-| `tfjs/` (TF.js-Modell für Web-Inferenz)      | ⏳ in v0.5.0 weiterhin **nicht im ZIP**, trotz Release-Body-Versprechen      |
 
 ### Encoder-Version-History
 
@@ -80,7 +80,7 @@ Aktuell gepinnt: **v0.5.0** (`package.json#jassNn.version`).
 | 2.0.0     | 348 dims      | Spielerspezifische History (per Sitz aufgeschlüsselt) — übersprungen im Web-Repo                                                    |
 | **3.0.0** | **421 dims**  | + `value_per_card` (36) + `strength_per_card` (36) vorberechnet; `mode` 4 → 5 Bits (`is_gumpf`); `trump_suit`-Onehot auch bei GUMPF |
 
-**Status `tfjs/`:** Die Release-Bodies versprechen seit v0.1.0 ein `tfjs/`-Verzeichnis; das tatsächliche ZIP enthält es bisher nicht. Solange das so bleibt, kann `apps/inference` (M5) nicht hochfahren. **M2, M3, M4 sind davon unberührt** — TS-Engine, Auth + Game-Loop arbeiten ausschließlich gegen Spec + Fixtures. Für M4 kann der KI-Sitz übergangsweise einen `RandomLegalMovePlayer` nutzen.
+**TF.js-Modell:** Seit v0.5.0 ist `tfjs/` (model.json + 2 Binär-Shards, ~5 MB) im Release-ZIP enthalten und vom Hash-Check abgedeckt. M5 (Inferenz-Microservice) ist damit entblockt — `apps/inference` kann das Modell direkt von `external/jass-nn/tfjs/model.json` laden.
 
 ### Spielvarianten (Spec 1.1.0)
 
