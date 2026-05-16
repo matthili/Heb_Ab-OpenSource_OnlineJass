@@ -1,0 +1,48 @@
+# Repository-weiter Docker-Ignore. Wird beim `docker build` aus dem Repo-Root
+# verwendet (relativ zum Dockerfile-Kontext). Ziel: kleiner Build-Context und
+# kein „leaky" Image (Tests, lokale Builds, Secrets bleiben draussen).
+
+# Node-Modulbäume — werden im Container neu installiert.
+**/node_modules/
+
+# Build-Outputs — werden im Container neu erzeugt.
+**/dist/
+**/build/
+**/.turbo/
+**/.astro/
+**/coverage/
+**/*.tsbuildinfo
+
+# NN-Artefakte werden zur Laufzeit als Volume gemountet, nicht ins Image
+# gebacken (siehe apps/inference/Dockerfile).
+external/
+
+# Dev-Tooling, Editor-State, OS-Müll
+.git/
+.github/
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.log
+*.tmp
+
+# Lokale Env-Files — nie in Images!
+.env
+.env.*
+!.env.example
+
+# Test- und Doku-Artefakte
+**/__snapshots__/
+**/__tests__/
+**/test/
+**/*.test.ts
+**/*.spec.ts
+docs/
+infra/
+playwright-report/
+test-results/
+
+# Pnpm-Setup-Spuren
+.pnpm-store/
+.pnpm-debug.log*

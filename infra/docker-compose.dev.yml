@@ -1,10 +1,18 @@
-# Dev-Stack für lokale Entwicklung — Datenbank, Cache und Mail-Catcher.
-# Start: `pnpm dev:stack` oder `docker compose -f infra/docker-compose.dev.yml up -d`
-# Stop:  `docker compose -f infra/docker-compose.dev.yml down`
-# Reset: `docker compose -f infra/docker-compose.dev.yml down -v` (Volumes weg)
+# Dev-Stack für lokale Entwicklung — Datenbank, Cache, Mail-Catcher
+# und (optional, via Profil) der Inferenz-Microservice.
 #
-# Bewusst keine API/Web/Inference-Services hier — die laufen lokal via `pnpm dev`
-# außerhalb von Compose, damit Hot-Reload funktioniert. Prod-Stack folgt in M11.
+# Start (Default — PG, Redis, Mailhog):
+#   `pnpm dev:stack`  bzw.  `docker compose -f infra/docker-compose.dev.yml up -d`
+# Start mit Inference im Container:
+#   `pnpm dev:stack:nn`  bzw.  `docker compose -f infra/docker-compose.dev.yml --profile nn up -d`
+# Stop:
+#   `pnpm dev:stack:stop` (down) bzw. `pnpm dev:stack:reset` (down -v, Volumes weg)
+#
+# Bewusst keine API/Web-Services hier — die laufen lokal via `pnpm dev` außerhalb
+# von Compose, damit Hot-Reload funktioniert. Der Inference-Service ist anders:
+# der lädt ein 5 MB Modell und braucht keinen Hot-Reload — daher hier optional
+# als Container, was den Setup-Aufwand für Frontend-Devs reduziert.
+# Vollständiger Prod-Stack (api + web + landing + caddy) folgt in M11.
 
 services:
   postgres:
@@ -49,6 +57,44 @@ services:
     ports:
       - "1025:1025" # SMTP
       - "8025:8025" # Web-UI + JSON-API
+
+  inference:
+    # NN-Inferenz-Microservice. Optional, nur aktiv im Compose-Profil `nn`:
+    #   docker compose --profile nn up -d
+    # Modell wird per Volume aus `external/jass-nn/` gemountet (read-only); das
+    # Verzeichnis befüllt `pnpm sync:nn`. So ist ein Modell-Update ein Mount-
+    # Reload, kein Image-Rebuild.
+    image: jass-inference:dev
+    build:
+      context: ..
+      dockerfile: apps/inference/Dockerfile
+    container_name: jass-inference-dev
+    profiles: ["nn"]
+    restart: unless-stopped
+    environment:
+      # Im Container loggen wir ohne pino-pretty, damit der Output JSON bleibt
+      # und in einen Log-Aggregator gepiped werden kann.
+      NODE_ENV: production
+      INFERENCE_PORT: "4000"
+      MODEL_DIR: /app/external/jass-nn
+      LOG_LEVEL: info
+    volumes:
+      - ../external/jass-nn:/app/external/jass-nn:ro
+    ports:
+      - "4000:4000"
+    healthcheck:
+      # /health antwortet erst, wenn das Modell + Warm-Up-Predict durch ist.
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:4000/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
 
 volumes:
   jass-pg-data:
