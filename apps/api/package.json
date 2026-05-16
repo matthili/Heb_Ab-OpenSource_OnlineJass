@@ -23,8 +23,11 @@
     "@nestjs/common": "^11.0.0",
     "@nestjs/core": "^11.0.0",
     "@nestjs/platform-fastify": "^11.0.0",
+    "@nestjs/platform-socket.io": "^11.1.21",
+    "@nestjs/websockets": "^11.1.21",
     "@node-rs/argon2": "^2.0.2",
     "@prisma/client": "^6.19.3",
+    "@socket.io/redis-adapter": "^8.3.0",
     "better-auth": "^1.6.11",
     "dotenv": "^17.4.2",
     "fastify": "^5.0.0",
@@ -36,6 +39,7 @@
     "pino-pretty": "^13.0.0",
     "reflect-metadata": "^0.2.0",
     "rxjs": "^7.8.0",
+    "socket.io": "^4.8.3",
     "zod": "^4.0.0"
   },
   "devDependencies": {
@@ -47,6 +51,7 @@
     "@types/nodemailer": "^8.0.0",
     "@vitest/coverage-v8": "^3.2.0",
     "prisma": "^6.19.3",
+    "socket.io-client": "^4.8.3",
     "vitest": "^3.2.0"
   }
 }

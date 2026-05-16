@@ -10,6 +10,7 @@
 import "dotenv/config";
 import { NestFactory } from "@nestjs/core";
 import { FastifyAdapter, type NestFastifyApplication } from "@nestjs/platform-fastify";
+import { IoAdapter } from "@nestjs/platform-socket.io";
 import helmet from "@fastify/helmet";
 import { Logger } from "nestjs-pino";
 
@@ -43,6 +44,11 @@ async function bootstrap(): Promise<void> {
     origin: true,
     credentials: true,
   });
+
+  // Socket.IO als WebSocket-Adapter. NestJS picks den HTTP-Server vom
+  // Fastify-Adapter und mountet die Engine.IO-Endpunkte unter `path: "/ws"`
+  // (siehe GameGateway).
+  app.useWebSocketAdapter(new IoAdapter(app));
 
   const port = Number.parseInt(process.env["API_PORT"] ?? String(DEFAULT_PORT), 10);
   await app.listen({ port, host: "0.0.0.0" });
