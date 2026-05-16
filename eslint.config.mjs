@@ -57,6 +57,7 @@ export default tseslint.config(
       "apps/api/src/**/*.pipe.ts",
       "apps/api/src/**/*.interceptor.ts",
       "apps/api/src/**/*.filter.ts",
+      "apps/api/src/**/*.factory.ts",
     ],
     rules: {
       "@typescript-eslint/consistent-type-imports": "off",

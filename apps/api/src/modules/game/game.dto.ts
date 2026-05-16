@@ -28,7 +28,18 @@ export const CreateGameDtoSchema = z
       .array(
         z.union([
           z.object({ userId: z.string().min(1) }).strict(),
-          z.object({ aiSeatType: z.literal("random") }).strict(),
+          z
+            .object({
+              // "random" für RandomLegalMovePlayer (Baseline),
+              // "nn" oder "nn-vX.Y.Z" für NN-Inferenz (Microservice).
+              aiSeatType: z
+                .string()
+                .regex(
+                  /^(random|nn(-.+)?)$/,
+                  "aiSeatType must be 'random', 'nn' or 'nn-<version>'"
+                ),
+            })
+            .strict(),
         ])
       )
       .length(3),

@@ -24,6 +24,8 @@ import { io, type Socket } from "socket.io-client";
 const API_URL = process.env["API_URL"] ?? "http://localhost:3000";
 const EMAIL = "matthias@jass.local";
 const PASSWORD = "my-secret-passw0rd!";
+// `random` (Default) oder `nn` für echte NN-KI über den Inferenz-Service.
+const AI_TYPE = process.env["AI_TYPE"] ?? "random";
 
 const SUITS = ["EICHEL", "SCHELLE", "HERZ", "LAUB"] as const;
 const RANKS = [
@@ -53,7 +55,7 @@ interface StateUpdate {
 }
 
 async function main(): Promise<void> {
-  console.info("=== M4-Smoke: 1× User + 3× Random-KI, eine komplette Runde ===");
+  console.info(`=== Smoke: 1× User + 3× ${AI_TYPE.toUpperCase()}-KI, eine komplette Runde ===`);
 
   // 1) HTTP sign-in
   const loginRes = await fetch(`${API_URL}/api/auth/sign-in/email`, {
@@ -78,7 +80,7 @@ async function main(): Promise<void> {
     body: JSON.stringify({
       variant: { mode: "TRUMPF", trump_suit: "EICHEL" },
       starter: 0,
-      coplayers: [{ aiSeatType: "random" }, { aiSeatType: "random" }, { aiSeatType: "random" }],
+      coplayers: [{ aiSeatType: AI_TYPE }, { aiSeatType: AI_TYPE }, { aiSeatType: AI_TYPE }],
       rngSeed: 4242,
     }),
   });

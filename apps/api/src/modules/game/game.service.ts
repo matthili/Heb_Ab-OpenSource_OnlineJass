@@ -55,9 +55,11 @@ import {
 } from "@jass/engine";
 
 import { AuditService } from "../audit/audit.service.js";
+import { InferenceUnavailableError } from "../inference/inference-client.service.js";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { RedisService } from "../redis/redis.service.js";
-import { RandomLegalMovePlayer, type AIPlayer } from "./players/random-player.js";
+import { AIPlayerFactory } from "./players/ai-player.factory.js";
+import { RandomLegalMovePlayer } from "./players/random-player.js";
 
 const REDIS_STATE_TTL_SECONDS = 6 * 60 * 60; // 6h ohne Move → State läuft ab
 
@@ -119,7 +121,8 @@ export class GameService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly redis: RedisService,
-    private readonly audit: AuditService
+    private readonly audit: AuditService,
+    private readonly aiFactory: AIPlayerFactory
   ) {}
 
   // ───────────────────────────────────────────────────────────────────
@@ -351,8 +354,27 @@ export class GameService {
     const state = await this.loadRoundState(gameId);
     const view = viewAsPlayer(state, seat);
     const hand = handOf(state, seat);
-    const player = pickAIPlayer(aiSeatType);
-    return Promise.resolve(player.chooseCard(hand, view));
+    const player = this.aiFactory.create(aiSeatType);
+    try {
+      return await Promise.resolve(player.chooseCard(hand, view));
+    } catch (err) {
+      // Fallback bei jedem Inferenz-Problem auf Random-Legal-Move. So bleibt
+      // das Spiel spielbar, selbst wenn der Inferenz-Microservice down oder
+      // überlastet ist. Wir loggen das aber prominent, damit Ops es sieht.
+      if (err instanceof InferenceUnavailableError) {
+        this.log.warn(
+          { gameId, seat, aiSeatType, err: err.message },
+          "Inferenz nicht verfügbar — Fallback auf RandomLegalMovePlayer"
+        );
+        await this.audit.record({
+          action: "game.ai.inference_fallback",
+          target: gameId,
+          meta: asJson({ seat, aiSeatType, reason: err.message }),
+        });
+        return new RandomLegalMovePlayer().chooseCard(hand, view);
+      }
+      throw err;
+    }
   }
 
   // ───────────────────────────────────────────────────────────────────
@@ -443,18 +465,4 @@ function suitToInt(s: Card["suit"]): number {
  */
 function asJson(v: unknown): Prisma.InputJsonValue {
   return v as Prisma.InputJsonValue;
-}
-
-/**
- * Dispatch des KI-Player-Typs anhand des `aiSeatType`-Strings aus dem
- * GameSeat-Record.
- *
- * Erweiterung (M5+): `nn-v0.5.0` → NNInferencePlayer, der den HTTP-Client zum
- * Inferenz-Microservice nutzt. Mit jedem NN-Release kann ein neuer Suffix
- * dazukommen, ohne dass bestehende Spiele brechen — der `aiSeatType`-String
- * dokumentiert, gegen welche Version gespielt wurde.
- */
-function pickAIPlayer(aiSeatType: string): AIPlayer {
-  if (aiSeatType === "random") return new RandomLegalMovePlayer();
-  throw new Error(`Unknown aiSeatType: ${aiSeatType}`);
 }

@@ -13,6 +13,7 @@ import { AuthModule } from "./modules/auth/auth.module.js";
 import { BlocklistModule } from "./modules/blocklist/blocklist.module.js";
 import { GameModule } from "./modules/game/game.module.js";
 import { HealthModule } from "./modules/health/health.module.js";
+import { InferenceModule } from "./modules/inference/inference.module.js";
 import { MailModule } from "./modules/mail/mail.module.js";
 import { PrismaModule } from "./modules/prisma/prisma.module.js";
 import { RedisModule } from "./modules/redis/redis.module.js";
@@ -57,6 +58,7 @@ const pinoHttp = isDev
     MailModule,
     AuditModule,
     BlocklistModule,
+    InferenceModule,
     AuthModule,
     UsersModule,
     GameModule,
