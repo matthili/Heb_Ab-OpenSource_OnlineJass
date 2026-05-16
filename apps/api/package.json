@@ -14,7 +14,9 @@
     "test": "vitest run",
     "test:unit": "vitest run",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
+    "test:integration:watch": "vitest --config vitest.integration.config.ts"
   },
   "dependencies": {
     "@fastify/cookie": "^11.0.0",
@@ -26,7 +28,9 @@
     "@nestjs/platform-socket.io": "^11.1.21",
     "@nestjs/websockets": "^11.1.21",
     "@node-rs/argon2": "^2.0.2",
+    "@prisma/adapter-pg": "^7.8.0",
     "@prisma/client": "^7.8.0",
+    "pg": "^8.20.0",
     "@socket.io/redis-adapter": "^8.3.0",
     "better-auth": "^1.6.11",
     "dotenv": "^17.4.2",
@@ -47,11 +51,17 @@
     "@nestjs/cli": "^11.0.0",
     "@nestjs/schematics": "^11.0.0",
     "@nestjs/testing": "^11.0.0",
+    "@swc/core": "^1.15.33",
+    "@testcontainers/postgresql": "^11.14.0",
+    "@testcontainers/redis": "^11.14.0",
     "@types/node": "^22.10.0",
     "@types/nodemailer": "^8.0.0",
+    "@types/pg": "^8.15.5",
     "@vitest/coverage-v8": "^4.1.6",
     "prisma": "^7.8.0",
     "socket.io-client": "^4.8.3",
+    "testcontainers": "^11.14.0",
+    "unplugin-swc": "^1.5.9",
     "vitest": "^4.1.6"
   }
 }

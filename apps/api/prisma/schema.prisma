@@ -18,8 +18,11 @@ generator client {
 }
 
 datasource db {
-  // Prisma 7: Connection-URL liegt in `prisma.config.ts` (liest `DATABASE_URL`
-  // aus dem .env des API-Workspaces). Hier nur noch der Provider.
+  // Prisma 7: `url` ist NICHT mehr im Schema erlaubt (Fail-Fast bei
+  // `prisma generate`). Die Connection-URL kommt aus zwei Quellen:
+  //   - `prisma.config.ts` für CLI/Migrate
+  //   - `PrismaClient({ datasourceUrl: process.env.DATABASE_URL })` für Runtime
+  //     (siehe `prisma.service.ts`)
   provider = "postgresql"
 }
 

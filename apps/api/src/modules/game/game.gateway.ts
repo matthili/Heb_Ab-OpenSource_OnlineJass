@@ -78,7 +78,18 @@ export class GameGateway
     private readonly auth: AuthService,
     private readonly redis: RedisService,
     private readonly locks: GameLockService
-  ) {}
+  ) {
+    // Defensive: alle DI-Params sollten von NestJS gefüllt sein. Wenn nicht,
+    // ist das ein Setup-Problem (z.B. fehlende `reflect-metadata` /
+    // `decoratorMetadata`-Transform in einer Test-Umgebung) — laut fehlt
+    // statt erst beim ersten Method-Call mit verwirrendem TypeError.
+    if (!games || !auth || !redis || !locks) {
+      throw new Error(
+        "GameGateway: Constructor-DI unvollständig. " +
+          "Prüfe RedisModule/AuthModule-Imports und `emitDecoratorMetadata`."
+      );
+    }
+  }
 
   /**
    * Wird genau einmal nach `WebSocketServer`-Instanzierung aufgerufen.

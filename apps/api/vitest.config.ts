@@ -3,6 +3,10 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
   test: {
     include: ["test/**/*.test.ts"],
+    // Integration-Tests laufen via `vitest.integration.config.ts` — sie
+    // brauchen Docker/Testcontainers und sind hier explizit ausgeschlossen,
+    // damit `pnpm test` (Unit-Run) ohne Docker grün bleibt.
+    exclude: ["test/integration/**", "node_modules/**", "dist/**"],
     environment: "node",
     coverage: {
       provider: "v8",
