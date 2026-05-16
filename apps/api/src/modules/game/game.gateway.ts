@@ -41,6 +41,7 @@ import type { Server, Socket } from "socket.io";
 
 import { AuthService } from "../auth/auth.service.js";
 import { RedisService } from "../redis/redis.service.js";
+import { GameLockService } from "./game-lock.service.js";
 import { GameService, type PlayerView } from "./game.service.js";
 
 interface SocketData {
@@ -75,7 +76,8 @@ export class GameGateway
   constructor(
     private readonly games: GameService,
     private readonly auth: AuthService,
-    private readonly redis: RedisService
+    private readonly redis: RedisService,
+    private readonly locks: GameLockService
   ) {}
 
   /**
@@ -153,17 +155,49 @@ export class GameGateway
       return this.fail(socket, "gameId + card { suit, rank } required");
     }
     try {
-      const { view } = await this.games.playMoveAsUser(gameId, userId, {
-        suit: card.suit as never,
-        rank: card.rank as never,
+      // Single-Owner-Lock pro Game: User-Move + driveAIsLoop laufen als ein
+      // atomarer Block. Parallel ankommende `game:move`-Events warten brav
+      // in der Queue ab.
+      await this.locks.withLock(gameId, async () => {
+        const { view } = await this.games.playMoveAsUser(gameId, userId, {
+          suit: card.suit as never,
+          rank: card.rank as never,
+        });
+        await this.broadcastState(gameId);
+        if (view.status === "finished") {
+          this.server.to(roomKey(gameId)).emit("game:ended", { finalScore: view.finalScore });
+          return;
+        }
+        await this.driveAIsLoop(gameId);
       });
-      await this.broadcastState(gameId);
-      if (view.status === "finished") {
-        this.server.to(roomKey(gameId)).emit("game:ended", { finalScore: view.finalScore });
-      }
     } catch (err) {
       this.fail(socket, this.errorMessage(err));
     }
+  }
+
+  /**
+   * Loop: solange der nächste Sitz eine KI ist (und die Runde nicht zu Ende),
+   * lass den Service eine Karte wählen und applyMove ausführen. Nach jedem
+   * KI-Move broadcasten wir den neuen Zustand, damit die Clients animieren
+   * können — zwischen den Schritten eine kleine Pause, damit das nicht als
+   * "ein Riesensprung" rüberkommt.
+   */
+  private async driveAIsLoop(gameId: string): Promise<void> {
+    // Sicherheitsnetz gegen Endlos-Schleifen: maximal 4 × 9 = 36 Karten pro Runde.
+    for (let i = 0; i < 36; i++) {
+      const next = await this.games.nextAISeat(gameId);
+      if (!next) return; // Mensch ist dran oder Runde vorbei
+      const card = await this.games.aiChooseMove(gameId, next.seat, next.aiSeatType);
+      const { view } = await this.games.playMoveAsSeat(gameId, next.seat, card);
+      await this.broadcastState(gameId);
+      if (view.status === "finished") {
+        this.server.to(roomKey(gameId)).emit("game:ended", { finalScore: view.finalScore });
+        return;
+      }
+      // Soft-Throttle: Frontend hat Zeit für eine Karten-Animation.
+      await sleep(AI_STEP_DELAY_MS);
+    }
+    this.log.warn({ gameId }, "driveAIsLoop hat Sicherheitsgrenze von 36 erreicht");
   }
 
   // ─── Helpers ──────────────────────────────────────────────────────
@@ -220,4 +254,10 @@ export class GameGateway
 
 function roomKey(gameId: string): string {
   return `game:${gameId}`;
+}
+
+const AI_STEP_DELAY_MS = 200;
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((r) => setTimeout(r, ms));
 }

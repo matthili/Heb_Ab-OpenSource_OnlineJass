@@ -102,20 +102,49 @@ async function main(): Promise<void> {
   };
   console.info("    spielen:", move);
 
-  const secondState = waitForEvent<{
+  // game:state-Events sammeln, bis ich wieder dran bin (oder Runde vorbei).
+  const stateUpdates: Array<{
     hand: { suit: string; rank: string }[];
     myTurn: boolean;
     whoseTurnSeat: number;
-  }>(socket, "game:state");
+    status: string;
+  }> = [];
+  let resolveMyTurn: (() => void) | null = null;
+  const myTurnAgain = new Promise<void>((r) => {
+    resolveMyTurn = r;
+  });
+  socket.on(
+    "game:state",
+    (s: {
+      hand: { suit: string; rank: string }[];
+      myTurn: boolean;
+      whoseTurnSeat: number;
+      status: string;
+    }) => {
+      stateUpdates.push(s);
+      if (s.myTurn || s.status === "finished") resolveMyTurn?.();
+    }
+  );
+
   socket.emit("game:move", { gameId, card: move });
-  const state2 = await secondState;
+  await Promise.race([
+    myTurnAgain,
+    new Promise<void>((_, rej) =>
+      setTimeout(() => rej(new Error("timeout waiting for own turn again")), 10_000)
+    ),
+  ]);
+
+  const last = stateUpdates[stateUpdates.length - 1]!;
+  console.info("    state-updates empfangen:", stateUpdates.length);
   console.info(
-    "    nach Move: hand size=",
-    state2.hand.length,
+    "    final: status=",
+    last.status,
+    "hand size=",
+    last.hand.length,
     "myTurn=",
-    state2.myTurn,
+    last.myTurn,
     "whoseTurnSeat=",
-    state2.whoseTurnSeat
+    last.whoseTurnSeat
   );
 
   socket.disconnect();

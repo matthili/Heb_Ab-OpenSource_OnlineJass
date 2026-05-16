@@ -32,6 +32,7 @@
     "dev:stack:stop": "docker compose -f infra/docker-compose.dev.yml down",
     "dev:stack:reset": "docker compose -f infra/docker-compose.dev.yml down -v",
     "dev:stack:logs": "docker compose -f infra/docker-compose.dev.yml logs -f",
+    "play:smoke": "pnpm --filter @jass/api exec tsx scripts/play-smoke.ts",
     "prepare": "lefthook install || true"
   },
   "devDependencies": {

@@ -57,6 +57,7 @@ import {
 import { AuditService } from "../audit/audit.service.js";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { RedisService } from "../redis/redis.service.js";
+import { RandomLegalMovePlayer, type AIPlayer } from "./players/random-player.js";
 
 const REDIS_STATE_TTL_SECONDS = 6 * 60 * 60; // 6h ohne Move → State läuft ab
 
@@ -315,6 +316,46 @@ export class GameService {
   }
 
   // ───────────────────────────────────────────────────────────────────
+  // KI-Auto-Step
+  // ───────────────────────────────────────────────────────────────────
+
+  /**
+   * Liefert die KI-Konfig für den **als-Nächstes-am-Zug**-Sitz, oder `null`
+   * wenn entweder die Runde fertig ist oder ein menschlicher Spieler dran ist.
+   *
+   * Vom Gateway nach jedem akzeptierten Move aufgerufen, um eine Auto-Step-
+   * Loop zu treiben (siehe GameGateway).
+   */
+  async nextAISeat(gameId: string): Promise<{ seat: number; aiSeatType: string } | null> {
+    const state = await this.loadRoundState(gameId);
+    if (isRoundDone(state)) return null;
+    const seat = whoseTurn(state);
+    const row = await this.prisma.gameSeat.findUnique({
+      where: { gameId_seat: { gameId, seat } },
+    });
+    if (!row) {
+      throw new NotFoundException(`GameSeat ${gameId}#${seat} nicht gefunden`);
+    }
+    if (row.userId !== null || row.aiSeatType === null) return null; // Mensch ist dran
+    return { seat, aiSeatType: row.aiSeatType };
+  }
+
+  /**
+   * Wählt für einen KI-Sitz die nächste Karte. Der konkrete Player-Typ
+   * (`random` jetzt, `nn-vX.Y.Z` in M5) wird in `aiSeatType` mitgegeben.
+   *
+   * Pure-Read: schreibt nichts in DB/Redis — der Aufrufer muss anschließend
+   * `playMoveAsSeat()` ausführen.
+   */
+  async aiChooseMove(gameId: string, seat: number, aiSeatType: string): Promise<Card> {
+    const state = await this.loadRoundState(gameId);
+    const view = viewAsPlayer(state, seat);
+    const hand = handOf(state, seat);
+    const player = pickAIPlayer(aiSeatType);
+    return Promise.resolve(player.chooseCard(hand, view));
+  }
+
+  // ───────────────────────────────────────────────────────────────────
   // Redis-State-Helpers
   // ───────────────────────────────────────────────────────────────────
 
@@ -402,4 +443,18 @@ function suitToInt(s: Card["suit"]): number {
  */
 function asJson(v: unknown): Prisma.InputJsonValue {
   return v as Prisma.InputJsonValue;
+}
+
+/**
+ * Dispatch des KI-Player-Typs anhand des `aiSeatType`-Strings aus dem
+ * GameSeat-Record.
+ *
+ * Erweiterung (M5+): `nn-v0.5.0` → NNInferencePlayer, der den HTTP-Client zum
+ * Inferenz-Microservice nutzt. Mit jedem NN-Release kann ein neuer Suffix
+ * dazukommen, ohne dass bestehende Spiele brechen — der `aiSeatType`-String
+ * dokumentiert, gegen welche Version gespielt wurde.
+ */
+function pickAIPlayer(aiSeatType: string): AIPlayer {
+  if (aiSeatType === "random") return new RandomLegalMovePlayer();
+  throw new Error(`Unknown aiSeatType: ${aiSeatType}`);
 }
