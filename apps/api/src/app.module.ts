@@ -11,9 +11,11 @@ import { LoggerModule } from "nestjs-pino";
 import { AuditModule } from "./modules/audit/audit.module.js";
 import { AuthModule } from "./modules/auth/auth.module.js";
 import { BlocklistModule } from "./modules/blocklist/blocklist.module.js";
+import { GameModule } from "./modules/game/game.module.js";
 import { HealthModule } from "./modules/health/health.module.js";
 import { MailModule } from "./modules/mail/mail.module.js";
 import { PrismaModule } from "./modules/prisma/prisma.module.js";
+import { RedisModule } from "./modules/redis/redis.module.js";
 import { UsersModule } from "./modules/users/users.module.js";
 
 const isDev = process.env["NODE_ENV"] !== "production";
@@ -51,11 +53,13 @@ const pinoHttp = isDev
   imports: [
     LoggerModule.forRoot({ pinoHttp }),
     PrismaModule,
+    RedisModule,
     MailModule,
     AuditModule,
     BlocklistModule,
     AuthModule,
     UsersModule,
+    GameModule,
     HealthModule,
   ],
 })
