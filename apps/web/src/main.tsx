@@ -16,6 +16,7 @@ import { createRouter, RouterProvider } from "@tanstack/react-router";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
+import "./i18n/index.js"; // Side-Effect: initialisiert i18next vor dem ersten Render
 import { ToastProvider } from "./lib/toast.js";
 import { routeTree } from "./routeTree.gen.js";
 import "./styles.css";

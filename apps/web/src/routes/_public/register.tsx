@@ -10,6 +10,7 @@
  */
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { type FormEvent, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import { signUp } from "~/lib/auth-client";
 
@@ -18,6 +19,7 @@ export const Route = createFileRoute("/_public/register")({
 });
 
 function RegisterPage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
@@ -29,7 +31,7 @@ function RegisterPage() {
     e.preventDefault();
     setError(null);
     if (password.length < 12) {
-      setError("Das Passwort muss mindestens 12 Zeichen lang sein.");
+      setError(t("auth.register.passwordTooShort"));
       return;
     }
     setLoading(true);
@@ -38,17 +40,15 @@ function RegisterPage() {
         email,
         password,
         name,
-        // Nach Klick auf den Verify-Link kommt der User hier raus —
-        // `?verified=1` triggert in der Home-Route eine Erfolgs-Meldung.
         callbackURL: `${window.location.origin}/?verified=1`,
       });
       if (res.error) {
-        setError(res.error.message ?? "Registrierung fehlgeschlagen.");
+        setError(res.error.message ?? t("auth.register.failed"));
         return;
       }
       await navigate({ to: "/check-email", search: { email } });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unbekannter Fehler.");
+      setError(err instanceof Error ? err.message : t("auth.register.failed"));
     } finally {
       setLoading(false);
     }
@@ -56,13 +56,10 @@ function RegisterPage() {
 
   return (
     <section className="space-y-4">
-      <h1 className="text-2xl font-bold">Registrieren</h1>
-      <p className="text-sm text-stone-600">
-        Mit der Registrierung legst du einen Spielernamen + ein Passwort an. Du bekommst eine
-        Bestätigungs-Mail.
-      </p>
+      <h1 className="text-2xl font-bold">{t("auth.register.title")}</h1>
+      <p className="text-sm text-stone-600">{t("auth.register.intro")}</p>
       <form onSubmit={onSubmit} className="space-y-3" noValidate>
-        <Field label="Spielername" htmlFor="name">
+        <Field label={t("auth.register.nameLabel")} htmlFor="name">
           <input
             id="name"
             type="text"
@@ -75,7 +72,7 @@ function RegisterPage() {
             autoComplete="username"
           />
         </Field>
-        <Field label="E-Mail" htmlFor="email">
+        <Field label={t("auth.register.emailLabel")} htmlFor="email">
           <input
             id="email"
             type="email"
@@ -86,7 +83,7 @@ function RegisterPage() {
             autoComplete="email"
           />
         </Field>
-        <Field label="Passwort (≥ 12 Zeichen)" htmlFor="password">
+        <Field label={t("auth.register.passwordLabel")} htmlFor="password">
           <input
             id="password"
             type="password"
@@ -113,13 +110,13 @@ function RegisterPage() {
           disabled={loading}
           className="w-full rounded bg-stone-900 px-4 py-2 text-white hover:bg-stone-700 disabled:opacity-50"
         >
-          {loading ? "Wird angelegt…" : "Konto anlegen"}
+          {loading ? t("auth.register.submitting") : t("auth.register.submit")}
         </button>
       </form>
       <p className="text-sm text-stone-600">
-        Schon ein Konto?{" "}
+        {t("auth.register.alreadyHave")}{" "}
         <Link to="/login" className="text-stone-900 underline">
-          Anmelden
+          {t("nav.signIn")}
         </Link>
       </p>
     </section>

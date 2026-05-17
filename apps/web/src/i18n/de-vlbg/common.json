@@ -1,0 +1,128 @@
+{
+  "appName": "Heb ab!",
+  "appTagline": "Der OpenSource-Jass nach vorarlberger Spielart.",
+
+  "nav": {
+    "signIn": "Anmelden",
+    "signUp": "Registrieren",
+    "signOut": "Abmelden",
+    "greeting": "Servus, {{name}}"
+  },
+
+  "auth": {
+    "register": {
+      "title": "Registrieren",
+      "intro": "Mit der Registrierung legst du einen Spielernamen + ein Passwort an. Du bekommst eine Bestätigungs-Mail.",
+      "nameLabel": "Spielername",
+      "emailLabel": "E-Mail",
+      "passwordLabel": "Passwort (≥ 12 Zeichen)",
+      "submit": "Konto anlegen",
+      "submitting": "Wird angelegt…",
+      "alreadyHave": "Schon ein Konto?",
+      "passwordTooShort": "Das Passwort muss mindestens 12 Zeichen lang sein.",
+      "failed": "Registrierung fehlgeschlagen."
+    },
+    "login": {
+      "title": "Anmelden",
+      "emailLabel": "E-Mail",
+      "passwordLabel": "Passwort",
+      "submit": "Anmelden",
+      "submitting": "Wird angemeldet…",
+      "noAccount": "Noch kein Konto?",
+      "forgotPassword": "Passwort vergessen?",
+      "failed": "Anmeldung fehlgeschlagen.",
+      "redirectHint": "Nach der Anmeldung geht's zurück zu {{target}}."
+    },
+    "checkEmail": {
+      "title": "Bitte E-Mail bestätigen",
+      "intro": "Wir haben dir einen Link geschickt. Klick drauf, und dann kannst du mitspielen.",
+      "introWithAddress": "Wir haben dir einen Link an <strong>{{email}}</strong> geschickt. Klick drauf, und dann kannst du mitspielen.",
+      "validity": "Der Link ist 24 Stunden gültig. Schau auch im Spam-Ordner nach.",
+      "back": "Zurück zur Anmeldung"
+    },
+    "forgot": {
+      "title": "Passwort zurücksetzen",
+      "intro": "Trag deine E-Mail-Adresse ein — wir schicken dir einen Reset-Link.",
+      "emailLabel": "E-Mail",
+      "submit": "Reset-Link schicken",
+      "submitting": "Sende…",
+      "sent": "Wenn die E-Mail-Adresse bei uns registriert ist, ist der Link unterwegs."
+    },
+    "reset": {
+      "title": "Neues Passwort setzen",
+      "passwordLabel": "Neues Passwort (≥ 12 Zeichen)",
+      "submit": "Passwort speichern",
+      "submitting": "Speichere…",
+      "success": "Passwort geändert. Du kannst dich jetzt anmelden.",
+      "invalidToken": "Reset-Link ist abgelaufen oder ungültig. Bitte neu anfordern."
+    }
+  },
+
+  "home": {
+    "verified": "E-Mail bestätigt. Du kannst dich jetzt anmelden.",
+    "body": "Spiel Vorarlberger Kreuz-Jass gegen echte Menschen oder KI-Gegner — auf deinem eigenen Server, ohne Werbung, ohne Tracking.",
+    "ctaSignIn": "Anmelden",
+    "ctaSignUp": "Konto anlegen"
+  },
+
+  "lobby": {
+    "title": "Lobby",
+    "openTable": "Tisch öffnen",
+    "loading": "Lade Tische …",
+    "empty": "Keine offenen Tische. Öffne den ersten mit „Tisch öffnen“ oben rechts.",
+    "loadError": "Konnte Lobby nicht laden: {{message}}",
+    "mode": {
+      "OPEN": "offen",
+      "REQUEST": "auf Anfrage",
+      "INVITE": "nur Einladung"
+    },
+    "status": {
+      "WAITING": "wartet",
+      "IN_GAME": "läuft",
+      "POST_GAME": "Re-Match-Vote",
+      "CLOSED": "geschlossen"
+    },
+    "seatsTaken": "Sitze: {{taken}}/4",
+    "ai": "KI: {{type}}",
+    "autoFill": "Auto-Fill {{seconds}}s",
+    "autoFillNone": "kein Auto-Fill",
+    "restartWeli": "Welli",
+    "restartSiegerGibt": "Sieger gibt",
+    "join": {
+      "join": "Beitreten",
+      "request": "Anfrage stellen",
+      "inviteOnly": "Nur per Einladung",
+      "myTable": "Mein Tisch",
+      "pending": "Anfrage läuft",
+      "inGame": "Spiel läuft",
+      "closed": "Geschlossen"
+    }
+  },
+
+  "game": {
+    "yourTurn": "Du bist dran.",
+    "otherTurn": "<strong>{{name}}</strong> ist dran.",
+    "finished": "Spiel beendet — siehe Final-Score unten.",
+    "trick": "Stich {{n}} / 9",
+    "scoreOwn": "Eigenes Team: <strong>{{score}}</strong>",
+    "scoreOpp": "Gegner: <strong>{{score}}</strong>",
+    "emptyHand": "Keine Karten mehr in der Hand."
+  },
+
+  "rematch": {
+    "title": "Spiel beendet",
+    "ask": "Nochmal eine Runde?",
+    "yes": "Ja, nochmal!",
+    "no": "Nein, raus",
+    "waitingFor_one": "Warten auf {{count}} weiteren Spieler …",
+    "waitingFor_other": "Warten auf {{count}} weitere Spieler …",
+    "started": "Alle dabei — neue Runde startet. (Tisch wechselt automatisch zum neuen Game.)",
+    "declined": "Nicht alle wollen weiterspielen. Der Tisch geht zurück in die Warte-Phase."
+  },
+
+  "language": {
+    "label": "Sprache",
+    "de-vlbg": "Vorarlbergerisch",
+    "en": "English"
+  }
+}

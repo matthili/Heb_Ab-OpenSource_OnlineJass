@@ -4,9 +4,51 @@ import Base from "../layouts/Base.astro";
 
 <Base title="Über das Projekt — Heb ab!">
   <h1>Über Heb ab!</h1>
+
   <p>
-    Heb ab! ist eine OpenSource-Plattform für den Vorarlberger Kreuz-Jass —
-    selbst-hostbar, server-autoritativ, mit menschlichen und KI-Gegnern.
+    <strong>Heb ab!</strong> ist eine OpenSource-Plattform für den Vorarlberger
+    Kreuz-Jass. Server-autoritativ (kein Cheaten), DSGVO-konform, selbst
+    hostbar und ad-frei.
   </p>
-  <p>Der detaillierte Projekt-Hintergrund folgt mit M7-F.</p>
+
+  <h2>Was steckt drin?</h2>
+  <ul>
+    <li>
+      <strong>Lobby mit drei Beitritts-Modi:</strong> offen, auf Anfrage, nur
+      per Einladung. Auto-Auffüllen mit KI nach einer Wartezeit.
+    </li>
+    <li>
+      <strong>KI-Mitspieler</strong> in zwei Stufen: <em>random</em> als
+      Baseline, <em>nn</em> als neuronales Netz (separater Inferenz-Container).
+    </li>
+    <li>
+      <strong>Re-Match nach Vorarlberger Tradition:</strong> entweder „Welli
+      ausspielen" oder „Sieger gibt — Verlierer kommt raus". Owner stellt das
+      pro Tisch ein.
+    </li>
+    <li>
+      <strong>Echtzeit-Updates</strong> über WebSockets — Lobby-Liste,
+      Tisch-Sitze, Spielzüge, Re-Match-Voting laufen ohne Polling.
+    </li>
+  </ul>
+
+  <h2>Warum OpenSource?</h2>
+  <p>
+    Karten-Spielen gehört allen. Eine zentralisierte Plattform mit Werbung,
+    Bezahl-KI und Datentracking widerspricht dem, wofür der Kreuz-Jass am
+    Stammtisch steht. Heb ab! ist als Selbst-Host gedacht — auf dem
+    Familien-NAS, im Vereinsheim, oder als Hobby-Server für die Freunde.
+  </p>
+
+  <h2>Technik in einem Satz</h2>
+  <p>
+    TypeScript überall (Node 24, React 19, NestJS 11, Astro 6), Postgres 16
+    für die Persistenz, Redis 7 für Live-State, Better Auth + Argon2id für die
+    Sessions, TF.js für das Inferenz-Service.
+  </p>
+
+  <p>
+    <a href="https://github.com/matthili/vorarlberger_jass_app">Code auf GitHub</a>
+    — Issues und Pull-Requests willkommen.
+  </p>
 </Base>

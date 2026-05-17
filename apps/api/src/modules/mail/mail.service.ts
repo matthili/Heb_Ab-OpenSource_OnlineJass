@@ -106,6 +106,52 @@ export class MailService {
 </html>`;
     await this.send({ to, subject, html, text });
   }
+
+  /**
+   * Passwort-Reset-Link. Wird vom Better-Auth-Backend-Hook
+   * `sendResetPassword` getriggert, wenn ein User
+   * `/api/auth/forget-password` aufruft.
+   */
+  async sendResetPasswordMail(opts: {
+    to: string;
+    displayName: string;
+    resetUrl: string;
+  }): Promise<void> {
+    const { to, displayName, resetUrl } = opts;
+    const subject = "Heb ab! — Passwort zurücksetzen";
+    const text = [
+      `Servus ${displayName},`,
+      ``,
+      `du hast einen Passwort-Reset angefordert. Klick auf den folgenden Link:`,
+      resetUrl,
+      ``,
+      `Der Link ist 1 Stunde gültig.`,
+      ``,
+      `Wenn du den Reset nicht angefordert hast, ignoriere diese Mail — dein Passwort bleibt unverändert.`,
+      ``,
+      `Pfiati,`,
+      `Die Vorarlberger Jass-App`,
+    ].join("\n");
+    const html = `<!doctype html>
+<html lang="de">
+  <body style="font-family: system-ui, sans-serif; max-width: 540px; margin: 0 auto; padding: 24px;">
+    <h2 style="color:#444;">Servus ${escapeHtml(displayName)},</h2>
+    <p>Du hast einen Passwort-Reset angefordert.</p>
+    <p style="text-align:center; margin: 32px 0;">
+      <a href="${escapeAttr(resetUrl)}"
+         style="display:inline-block; padding:12px 24px; background:#1f2937; color:#fff; text-decoration:none; border-radius:6px;">
+        Passwort zurücksetzen
+      </a>
+    </p>
+    <p style="font-size: 13px; color: #666;">Oder kopiere diesen Link in den Browser:<br/>
+      <code style="word-break: break-all;">${escapeHtml(resetUrl)}</code></p>
+    <p style="font-size: 12px; color: #999; margin-top: 32px;">
+      Der Link ist 1 Stunde gültig. Wenn du den Reset nicht angefordert hast, ignoriere diese Mail.
+    </p>
+  </body>
+</html>`;
+    await this.send({ to, subject, html, text });
+  }
 }
 
 function escapeHtml(s: string): string {

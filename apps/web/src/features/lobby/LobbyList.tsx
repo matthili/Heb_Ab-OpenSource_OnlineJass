@@ -15,6 +15,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { useCallback } from "react";
+import { useTranslation } from "react-i18next";
 
 import { api, ApiError } from "~/lib/api";
 import { useSession } from "~/lib/auth-client";
@@ -26,6 +27,7 @@ interface ListResponse {
 }
 
 export function LobbyList() {
+  const { t } = useTranslation();
   const { data: session } = useSession();
   const myUserId = session?.user?.id;
   const queryClient = useQueryClient();
@@ -56,48 +58,47 @@ export function LobbyList() {
   });
 
   if (isPending) {
-    return <p className="text-stone-500">Lade Tische …</p>;
+    return <p className="text-stone-500">{t("lobby.loading")}</p>;
   }
   if (error) {
     return (
       <p role="alert" className="text-rose-700">
-        Konnte Lobby nicht laden: {error.message}
+        {t("lobby.loadError", { message: error.message })}
       </p>
     );
   }
 
   const tables = data?.tables ?? [];
   if (tables.length === 0) {
-    return (
-      <p className="text-stone-500">
-        Keine offenen Tische. Öffne den ersten mit „Tisch öffnen" oben rechts.
-      </p>
-    );
+    return <p className="text-stone-500">{t("lobby.empty")}</p>;
   }
 
   return (
     <ul className="divide-y divide-stone-200 border border-stone-200 rounded">
-      {tables.map((t) => (
-        <li key={t.id} className="px-4 py-3 flex items-center gap-4">
+      {tables.map((tbl) => (
+        <li key={tbl.id} className="px-4 py-3 flex items-center gap-4">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
-              <strong className="text-stone-900">{t.ownerName}</strong>
-              <ModeBadge mode={t.joinMode} />
-              <StatusBadge status={t.status} />
+              <strong className="text-stone-900">{tbl.ownerName}</strong>
+              <ModeBadge mode={tbl.joinMode} />
+              <StatusBadge status={tbl.status} />
             </div>
             <div className="text-sm text-stone-500">
-              Sitze: {t.seatsTaken}/4 · KI: {t.aiSeatType} ·{" "}
-              {t.autoFillSeconds === null ? "kein Auto-Fill" : `Auto-Fill ${t.autoFillSeconds}s`}
+              {t("lobby.seatsTaken", { taken: tbl.seatsTaken })} ·{" "}
+              {t("lobby.ai", { type: tbl.aiSeatType })} ·{" "}
+              {tbl.autoFillSeconds === null
+                ? t("lobby.autoFillNone")
+                : t("lobby.autoFill", { seconds: tbl.autoFillSeconds })}
               {" · "}
-              Re-Match: {t.restartMode === "WELI" ? "Welli" : "Sieger gibt"}
+              {tbl.restartMode === "WELI" ? t("lobby.restartWeli") : t("lobby.restartSiegerGibt")}
             </div>
           </div>
           <JoinButton
-            table={t}
-            isMine={t.ownerId === myUserId}
-            isPending={joinMutation.isPending && joinMutation.variables === t.id}
-            onJoin={() => joinMutation.mutate(t.id)}
-            onOpen={() => navigate({ to: "/table/$id", params: { id: t.id } })}
+            table={tbl}
+            isMine={tbl.ownerId === myUserId}
+            isPending={joinMutation.isPending && joinMutation.variables === tbl.id}
+            onJoin={() => joinMutation.mutate(tbl.id)}
+            onOpen={() => navigate({ to: "/table/$id", params: { id: tbl.id } })}
             joinError={joinMutation.error}
           />
         </li>
@@ -114,6 +115,7 @@ function JoinButton(props: {
   onOpen: () => void;
   joinError: Error | null;
 }) {
+  const { t } = useTranslation();
   const { table, isMine, isPending, onJoin, onOpen, joinError } = props;
   const failedHere = joinError instanceof ApiError ? joinError.message : null;
 
@@ -125,30 +127,30 @@ function JoinButton(props: {
         onClick={onOpen}
         className="rounded bg-stone-900 px-3 py-1.5 text-sm text-white hover:bg-stone-700"
       >
-        Mein Tisch
+        {t("lobby.join.myTable")}
       </button>
     );
   }
 
   // Schon pending-Anfrage → Hinweis statt Button.
   if (table.hasPendingRequest) {
-    return <span className="text-sm text-stone-500">Anfrage läuft</span>;
+    return <span className="text-sm text-stone-500">{t("lobby.join.pending")}</span>;
   }
 
   // Status entscheidet, ob überhaupt beitretbar.
   if (table.status === "IN_GAME") {
-    return <span className="text-sm text-stone-400">Spiel läuft</span>;
+    return <span className="text-sm text-stone-400">{t("lobby.join.inGame")}</span>;
   }
   if (table.status === "CLOSED") {
-    return <span className="text-sm text-stone-400">Geschlossen</span>;
+    return <span className="text-sm text-stone-400">{t("lobby.join.closed")}</span>;
   }
 
   const label =
     table.joinMode === "REQUEST"
-      ? "Anfrage stellen"
+      ? t("lobby.join.request")
       : table.joinMode === "INVITE"
-        ? "Nur per Einladung"
-        : "Beitreten";
+        ? t("lobby.join.inviteOnly")
+        : t("lobby.join.join");
   const disabled = table.joinMode === "INVITE" || isPending;
 
   return (
@@ -167,26 +169,25 @@ function JoinButton(props: {
 }
 
 function ModeBadge({ mode }: { mode: "OPEN" | "REQUEST" | "INVITE" }) {
-  const labels = { OPEN: "offen", REQUEST: "auf Anfrage", INVITE: "nur Einladung" };
+  const { t } = useTranslation();
   const colors = {
     OPEN: "bg-emerald-100 text-emerald-800",
     REQUEST: "bg-amber-100 text-amber-800",
     INVITE: "bg-violet-100 text-violet-800",
   };
-  return <span className={`rounded px-1.5 py-0.5 text-xs ${colors[mode]}`}>{labels[mode]}</span>;
+  return (
+    <span className={`rounded px-1.5 py-0.5 text-xs ${colors[mode]}`}>
+      {t(`lobby.mode.${mode}`)}
+    </span>
+  );
 }
 
 function StatusBadge({ status }: { status: "WAITING" | "IN_GAME" | "POST_GAME" | "CLOSED" }) {
+  const { t } = useTranslation();
   if (status === "WAITING") return null; // Default — nicht zeigen
-  const labels = {
-    WAITING: "wartet",
-    IN_GAME: "läuft",
-    POST_GAME: "Re-Match-Vote",
-    CLOSED: "geschlossen",
-  };
   return (
     <span className="rounded bg-stone-100 px-1.5 py-0.5 text-xs text-stone-600">
-      {labels[status]}
+      {t(`lobby.status.${status}`)}
     </span>
   );
 }

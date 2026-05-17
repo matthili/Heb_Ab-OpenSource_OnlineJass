@@ -9,6 +9,7 @@
 import { createRootRouteWithContext, Link, Outlet, useNavigate } from "@tanstack/react-router";
 import type { QueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
+import { useTranslation } from "react-i18next";
 
 import { signOut, useSession } from "~/lib/auth-client";
 import { useToast } from "~/lib/toast";
@@ -103,6 +104,7 @@ function UserEventToasts() {
 }
 
 function Header() {
+  const { t } = useTranslation();
   const { data, isPending } = useSession();
   const navigate = useNavigate();
 
@@ -110,15 +112,20 @@ function Header() {
     <header className="border-b border-stone-200 bg-white">
       <nav className="mx-auto max-w-5xl px-4 py-3 flex items-center gap-6">
         <Link to="/" className="font-semibold text-lg">
-          Heb ab!
+          {t("appName")}
         </Link>
         <div className="ml-auto flex items-center gap-3">
+          <LanguageSwitcher />
           {isPending ? (
             <span className="text-sm text-stone-400">…</span>
           ) : data?.user ? (
             <>
               <span className="text-sm text-stone-600">
-                Servus, <strong className="text-stone-900">{data.user.name}</strong>
+                {/* "Servus, " — fester Präfix; Name als <strong>. Zweisprachig
+                    via i18n: t("nav.greeting") liefert die Variante mit
+                    `{{name}}`-Platzhalter, den wir hier visuell vorab kürzen. */}
+                {t("nav.greeting", { name: data.user.name }).replace(data.user.name, "")}
+                <strong className="text-stone-900">{data.user.name}</strong>
               </span>
               <button
                 type="button"
@@ -128,24 +135,43 @@ function Header() {
                 }}
                 className="rounded border border-stone-300 px-3 py-1.5 text-sm text-stone-700 hover:bg-stone-100"
               >
-                Abmelden
+                {t("nav.signOut")}
               </button>
             </>
           ) : (
             <>
               <Link to="/login" className="text-sm text-stone-700 hover:text-stone-900">
-                Anmelden
+                {t("nav.signIn")}
               </Link>
               <Link
                 to="/register"
                 className="rounded bg-stone-900 px-3 py-1.5 text-sm text-white hover:bg-stone-700"
               >
-                Registrieren
+                {t("nav.signUp")}
               </Link>
             </>
           )}
         </div>
       </nav>
     </header>
+  );
+}
+
+function LanguageSwitcher() {
+  const { i18n, t } = useTranslation();
+  const current = i18n.resolvedLanguage ?? i18n.language;
+  return (
+    <label className="text-sm flex items-center gap-1">
+      <span className="sr-only">{t("language.label")}</span>
+      <select
+        value={current}
+        onChange={(e) => void i18n.changeLanguage(e.target.value)}
+        className="rounded border border-stone-300 px-2 py-1 text-sm bg-white"
+        aria-label={t("language.label")}
+      >
+        <option value="de-vlbg">{t("language.de-vlbg")}</option>
+        <option value="en">{t("language.en")}</option>
+      </select>
+    </label>
   );
 }

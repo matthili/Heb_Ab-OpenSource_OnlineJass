@@ -1,9 +1,5 @@
-/**
- * „Bitte E-Mail bestätigen"-Seite nach Registrierung. Erinnert den User,
- * dass er den Link in der Verify-Mail klicken soll. Eigentliche Verify-
- * Logik macht der Server (Better Auth) beim Klick auf den Link.
- */
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { Trans, useTranslation } from "react-i18next";
 import { z } from "zod";
 
 const CheckEmailSearch = z.object({
@@ -16,31 +12,32 @@ export const Route = createFileRoute("/_public/check-email")({
 });
 
 function CheckEmailPage() {
+  const { t } = useTranslation();
   const { email } = Route.useSearch();
   return (
     <section className="space-y-4 text-center py-8">
       <div className="text-5xl" aria-hidden="true">
         ✉️
       </div>
-      <h1 className="text-2xl font-bold">Bitte E-Mail bestätigen</h1>
+      <h1 className="text-2xl font-bold">{t("auth.checkEmail.title")}</h1>
       <p className="text-stone-600">
-        Wir haben dir
         {email ? (
-          <>
-            {" "}
-            einen Link an <strong>{email}</strong>
-          </>
+          // Trans rendert die {{email}}-Adresse als <strong>; der i18n-Key
+          // enthält den HTML-Marker "<strong>", den wir hier mit dem
+          // components-Prop einer echten React-Komponente zuweisen.
+          <Trans
+            i18nKey="auth.checkEmail.introWithAddress"
+            values={{ email }}
+            components={{ strong: <strong /> }}
+          />
         ) : (
-          " einen Link"
-        )}{" "}
-        geschickt. Klick drauf, und dann kannst du mitspielen.
+          t("auth.checkEmail.intro")
+        )}
       </p>
-      <p className="text-sm text-stone-500">
-        Der Link ist 24 Stunden gültig. Schau auch im Spam-Ordner nach.
-      </p>
+      <p className="text-sm text-stone-500">{t("auth.checkEmail.validity")}</p>
       <p className="text-sm">
         <Link to="/login" className="text-stone-900 underline">
-          Zurück zur Anmeldung
+          {t("auth.checkEmail.back")}
         </Link>
       </p>
     </section>

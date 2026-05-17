@@ -7,6 +7,7 @@
  * was bewirkt hat.
  */
 import { createFileRoute, Link, redirect } from "@tanstack/react-router";
+import { useTranslation } from "react-i18next";
 import { z } from "zod";
 
 import { authClient } from "~/lib/auth-client";
@@ -27,6 +28,7 @@ export const Route = createFileRoute("/")({
 });
 
 function HomePage() {
+  const { t } = useTranslation();
   const { verified } = Route.useSearch();
   return (
     <section className="space-y-6">
@@ -35,26 +37,23 @@ function HomePage() {
           role="status"
           className="rounded border border-emerald-300 bg-emerald-50 px-4 py-3 text-sm text-emerald-800"
         >
-          E-Mail bestätigt. Du kannst dich jetzt anmelden.
+          {t("home.verified")}
         </div>
       )}
       <div className="space-y-2">
-        <h1 className="text-3xl font-bold">Heb ab!</h1>
-        <p className="text-stone-600">Der OpenSource-Jass nach vorarlberger Spielart.</p>
+        <h1 className="text-3xl font-bold">{t("appName")}</h1>
+        <p className="text-stone-600">{t("appTagline")}</p>
       </div>
-      <p>
-        Spiel Vorarlberger Kreuz-Jass gegen echte Menschen oder KI-Gegner — auf deinem eigenen
-        Server, ohne Werbung, ohne Tracking.
-      </p>
+      <p>{t("home.body")}</p>
       <div className="flex gap-3">
         <Link to="/login" className="rounded bg-stone-900 px-4 py-2 text-white hover:bg-stone-700">
-          Anmelden
+          {t("home.ctaSignIn")}
         </Link>
         <Link
           to="/register"
           className="rounded border border-stone-300 px-4 py-2 text-stone-900 hover:bg-stone-100"
         >
-          Konto anlegen
+          {t("home.ctaSignUp")}
         </Link>
       </div>
     </section>

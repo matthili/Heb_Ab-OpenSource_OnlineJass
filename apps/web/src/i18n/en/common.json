@@ -1,0 +1,128 @@
+{
+  "appName": "Heb ab!",
+  "appTagline": "The open-source Jass in the Vorarlberg tradition.",
+
+  "nav": {
+    "signIn": "Sign in",
+    "signUp": "Register",
+    "signOut": "Sign out",
+    "greeting": "Hi, {{name}}"
+  },
+
+  "auth": {
+    "register": {
+      "title": "Create an account",
+      "intro": "Register with a player name and a password. You will receive a confirmation e-mail.",
+      "nameLabel": "Player name",
+      "emailLabel": "E-mail",
+      "passwordLabel": "Password (≥ 12 characters)",
+      "submit": "Create account",
+      "submitting": "Creating…",
+      "alreadyHave": "Already have an account?",
+      "passwordTooShort": "Password must be at least 12 characters.",
+      "failed": "Registration failed."
+    },
+    "login": {
+      "title": "Sign in",
+      "emailLabel": "E-mail",
+      "passwordLabel": "Password",
+      "submit": "Sign in",
+      "submitting": "Signing in…",
+      "noAccount": "Don't have an account yet?",
+      "forgotPassword": "Forgot your password?",
+      "failed": "Sign-in failed.",
+      "redirectHint": "After sign-in we'll send you back to {{target}}."
+    },
+    "checkEmail": {
+      "title": "Please confirm your e-mail",
+      "intro": "We've sent you a link. Click it to start playing.",
+      "introWithAddress": "We've sent a link to <strong>{{email}}</strong>. Click it to start playing.",
+      "validity": "The link is valid for 24 hours. Check the spam folder if needed.",
+      "back": "Back to sign-in"
+    },
+    "forgot": {
+      "title": "Reset your password",
+      "intro": "Enter your e-mail address — we'll send you a reset link.",
+      "emailLabel": "E-mail",
+      "submit": "Send reset link",
+      "submitting": "Sending…",
+      "sent": "If that e-mail is registered, the link is on its way."
+    },
+    "reset": {
+      "title": "Set a new password",
+      "passwordLabel": "New password (≥ 12 characters)",
+      "submit": "Save password",
+      "submitting": "Saving…",
+      "success": "Password changed. You can sign in now.",
+      "invalidToken": "Reset link is expired or invalid. Please request a new one."
+    }
+  },
+
+  "home": {
+    "verified": "E-mail confirmed. You can sign in now.",
+    "body": "Play Vorarlberger Kreuz-Jass against real people or AI opponents — on your own server, ad-free, tracker-free.",
+    "ctaSignIn": "Sign in",
+    "ctaSignUp": "Create account"
+  },
+
+  "lobby": {
+    "title": "Lobby",
+    "openTable": "Open table",
+    "loading": "Loading tables …",
+    "empty": "No open tables. Open the first one with “Open table” up top.",
+    "loadError": "Couldn't load the lobby: {{message}}",
+    "mode": {
+      "OPEN": "open",
+      "REQUEST": "by request",
+      "INVITE": "invite only"
+    },
+    "status": {
+      "WAITING": "waiting",
+      "IN_GAME": "playing",
+      "POST_GAME": "rematch vote",
+      "CLOSED": "closed"
+    },
+    "seatsTaken": "Seats: {{taken}}/4",
+    "ai": "AI: {{type}}",
+    "autoFill": "Auto-fill {{seconds}}s",
+    "autoFillNone": "no auto-fill",
+    "restartWeli": "Welli",
+    "restartSiegerGibt": "Winner deals",
+    "join": {
+      "join": "Join",
+      "request": "Request to join",
+      "inviteOnly": "Invite only",
+      "myTable": "My table",
+      "pending": "Request pending",
+      "inGame": "Playing",
+      "closed": "Closed"
+    }
+  },
+
+  "game": {
+    "yourTurn": "Your turn.",
+    "otherTurn": "<strong>{{name}}</strong> is up.",
+    "finished": "Game over — see final score below.",
+    "trick": "Trick {{n}} / 9",
+    "scoreOwn": "Your team: <strong>{{score}}</strong>",
+    "scoreOpp": "Opponents: <strong>{{score}}</strong>",
+    "emptyHand": "No more cards in hand."
+  },
+
+  "rematch": {
+    "title": "Game over",
+    "ask": "Another round?",
+    "yes": "Yes, again!",
+    "no": "No, out",
+    "waitingFor_one": "Waiting for {{count}} more player…",
+    "waitingFor_other": "Waiting for {{count}} more players…",
+    "started": "Everyone in — new round starts. (Table switches automatically to the new game.)",
+    "declined": "Not everyone wants to continue. The table goes back to the waiting phase."
+  },
+
+  "language": {
+    "label": "Language",
+    "de-vlbg": "Vorarlberg",
+    "en": "English"
+  }
+}

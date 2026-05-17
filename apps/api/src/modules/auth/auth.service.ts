@@ -78,6 +78,17 @@ export class AuthService implements OnModuleInit {
           hash: hashPassword,
           verify: ({ hash, password }) => verifyPassword(hash, password),
         },
+        // M7-F: Reset-Mail via MailService. URL wird von Better Auth gebaut
+        // (basierend auf `redirectTo` aus dem forget-password-Request).
+        sendResetPassword: async ({ user, url }) => {
+          await this.mail.sendResetPasswordMail({
+            to: user.email,
+            displayName: user.name,
+            resetUrl: url,
+          });
+          this.log.debug({ userId: user.id }, "reset-password mail dispatched");
+        },
+        resetPasswordTokenExpiresIn: 60 * 60, // 1 Stunde
       },
       emailVerification: {
         sendOnSignUp: true,

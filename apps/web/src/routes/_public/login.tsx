@@ -7,6 +7,7 @@
  */
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { type FormEvent, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { z } from "zod";
 
 import { signIn } from "~/lib/auth-client";
@@ -24,6 +25,7 @@ function LoginPage() {
   // navigate aus useNavigate ist hier nicht nötig — wir benutzen direkt
   // window.location.href, weil der `redirect`-Wert auch eine vollständige
   // URL sein kann (kommt vom `_auth`-Guard via location.href).
+  const { t } = useTranslation();
   const search = Route.useSearch();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -37,19 +39,13 @@ function LoginPage() {
     try {
       const res = await signIn.email({ email, password });
       if (res.error) {
-        // Better Auth liefert je nach Fall andere Codes. Wir zeigen die
-        // Server-Message direkt — sie ist generisch genug („Invalid email
-        // or password" / „Please verify your email first").
-        setError(res.error.message ?? "Anmeldung fehlgeschlagen.");
+        setError(res.error.message ?? t("auth.login.failed"));
         return;
       }
-      // Erfolg → entweder zurück zur ursprünglichen URL oder in die Lobby.
       const target = search.redirect ?? "/lobby";
-      // `navigate` mit dynamischem to-Wert braucht die `unsafeRelative`-
-      // Option in TanStack Router; einfacher: window.location.href.
       window.location.href = target;
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unbekannter Fehler.");
+      setError(err instanceof Error ? err.message : t("auth.login.failed"));
     } finally {
       setLoading(false);
     }
@@ -57,9 +53,9 @@ function LoginPage() {
 
   return (
     <section className="space-y-4">
-      <h1 className="text-2xl font-bold">Anmelden</h1>
+      <h1 className="text-2xl font-bold">{t("auth.login.title")}</h1>
       <form onSubmit={onSubmit} className="space-y-3" noValidate>
-        <Field label="E-Mail" htmlFor="email">
+        <Field label={t("auth.login.emailLabel")} htmlFor="email">
           <input
             id="email"
             type="email"
@@ -70,7 +66,7 @@ function LoginPage() {
             autoComplete="email"
           />
         </Field>
-        <Field label="Passwort" htmlFor="password">
+        <Field label={t("auth.login.passwordLabel")} htmlFor="password">
           <input
             id="password"
             type="password"
@@ -96,23 +92,23 @@ function LoginPage() {
           disabled={loading}
           className="w-full rounded bg-stone-900 px-4 py-2 text-white hover:bg-stone-700 disabled:opacity-50"
         >
-          {loading ? "Wird angemeldet…" : "Anmelden"}
+          {loading ? t("auth.login.submitting") : t("auth.login.submit")}
         </button>
       </form>
       <p className="text-sm text-stone-600">
-        Noch kein Konto?{" "}
+        {t("auth.login.noAccount")}{" "}
         <Link to="/register" className="text-stone-900 underline">
-          Registrieren
+          {t("nav.signUp")}
         </Link>
       </p>
-      <p className="text-xs text-stone-400">
-        {/* Reset-Flow gibt's in der API schon (POST /api/auth/forget-password) — der UI-Knopf
-           kommt mit M7-F, weil M7-B noch keine Mail-Template-Polish hat. */}
-        Passwort vergessen? (Reset-Flow folgt mit M7-F)
+      <p className="text-sm">
+        <Link to="/forgot-password" className="text-stone-700 underline">
+          {t("auth.login.forgotPassword")}
+        </Link>
       </p>
       {search.redirect && (
         <p className="text-xs text-stone-500">
-          Nach der Anmeldung geht's zurück zu <code>{search.redirect}</code>.
+          {t("auth.login.redirectHint", { target: search.redirect })}
         </p>
       )}
     </section>
