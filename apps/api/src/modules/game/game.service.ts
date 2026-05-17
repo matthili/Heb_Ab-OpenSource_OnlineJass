@@ -89,6 +89,12 @@ export interface CreateGameInput {
   seats: readonly SeatAssignment[];
   /** Optionaler Seed für deterministisches Mischen (Tests). */
   rngSeed?: number;
+  /**
+   * Optional: zugeordneter LobbyTable. Wird seit M6-C bei jedem normalen
+   * Game-Start gesetzt; Tests, die das Game direkt am GameService anlegen,
+   * können den Parameter weglassen (Pre-M6-Modus).
+   */
+  tableId?: string;
 }
 
 /**
@@ -156,8 +162,19 @@ export class GameService {
         data: {
           variant: variantToEnum(input.variant),
           ruleVersion: SPEC_VERSION,
+          ...(input.tableId !== undefined ? { tableId: input.tableId } : {}),
         },
       });
+      // M6-C: wenn das Game zu einem LobbyTable gehört, geht der Tisch auf
+      // IN_GAME, und currentGameId zeigt auf das neu erstellte Game. Wir
+      // machen das hier in derselben Transaktion, damit niemals ein „Tisch
+      // ohne aktives Game"-Halbzustand sichtbar wird.
+      if (input.tableId !== undefined) {
+        await tx.lobbyTable.update({
+          where: { id: input.tableId },
+          data: { status: "IN_GAME", currentGameId: created.id },
+        });
+      }
       for (const s of input.seats) {
         await tx.gameSeat.create({
           data: {
@@ -291,10 +308,11 @@ export class GameService {
 
     await this.writeRoundStateToRedis(gameId, nextState);
 
-    // Game-Ende behandeln: Score persistieren + Audit.
+    // Game-Ende behandeln: Score persistieren + Audit + ggf. LobbyTable
+    // auf POST_GAME (für Re-Match-Voting in M6-E).
     if (isRoundDone(nextState)) {
       const score = finalRoundScore(nextState);
-      await this.prisma.game.update({
+      const updated = await this.prisma.game.update({
         where: { id: gameId },
         data: {
           endedAt: new Date(),
@@ -304,7 +322,17 @@ export class GameService {
             trick_winners: [...score.trick_winners],
           }),
         },
+        select: { tableId: true },
       });
+      // M6-C: wenn das Game zu einem LobbyTable gehört, Tisch in
+      // POST_GAME setzen. `currentGameId` bleibt auf diesem Game stehen,
+      // bis das Re-Match-Voting (M6-E) den nächsten Übergang macht.
+      if (updated.tableId) {
+        await this.prisma.lobbyTable.update({
+          where: { id: updated.tableId },
+          data: { status: "POST_GAME" },
+        });
+      }
       await this.audit.record({
         action: "game.finished",
         target: gameId,

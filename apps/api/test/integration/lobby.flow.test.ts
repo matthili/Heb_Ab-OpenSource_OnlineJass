@@ -67,13 +67,26 @@ describe("M6-B lobby flow", () => {
       expect(join.body.kind).toBe("seated");
     }
 
-    // Listing zeigt 4/4
-    const list = await owner!.http.request<{ tables: { id: string; seatsTaken: number }[] }>(
-      "/api/lobby/tables?status=WAITING",
-      { method: "GET" }
-    );
-    const me = list.body.tables.find((t) => t.id === tableId);
+    // Ab M6-C startet das Spiel automatisch beim 4. Sitz → Tisch ist
+    // jetzt IN_GAME, nicht mehr in der WAITING-Liste.
+    const waitingList = await owner!.http.request<{
+      tables: { id: string }[];
+    }>("/api/lobby/tables?status=WAITING", { method: "GET" });
+    expect(waitingList.body.tables.find((t) => t.id === tableId)).toBeUndefined();
+
+    // In IN_GAME-Liste taucht er auf, mit currentGameId gesetzt.
+    const inGameList = await owner!.http.request<{
+      tables: { id: string; seatsTaken: number }[];
+    }>("/api/lobby/tables?status=IN_GAME", { method: "GET" });
+    const me = inGameList.body.tables.find((t) => t.id === tableId);
     expect(me?.seatsTaken).toBe(4);
+
+    const dbTable = await app.prisma.lobbyTable.findUnique({
+      where: { id: tableId },
+      select: { status: true, currentGameId: true },
+    });
+    expect(dbTable?.status).toBe("IN_GAME");
+    expect(dbTable?.currentGameId).not.toBeNull();
   });
 
   it("OPEN: voller Tisch lehnt 5. Join mit 409 ab", async () => {
@@ -212,7 +225,7 @@ describe("M6-B lobby flow", () => {
     expect(dbTable?.closedAt).not.toBeNull();
   });
 
-  it("Owner kann mit KI-Sitzen direkt 4-voll öffnen", async () => {
+  it("Owner kann mit KI-Sitzen direkt 4-voll öffnen → Auto-Start triggert", async () => {
     const [owner] = await makeUsers(1);
     const created = await owner!.http.request<{ tableId: string }>("/api/lobby/tables", {
       method: "POST",
@@ -223,11 +236,25 @@ describe("M6-B lobby flow", () => {
       }),
     });
     const tableId = created.body.tableId;
-    const detail = await owner!.http.request<{ seatsTaken: number; seats: { isEmpty: boolean }[] }>(
-      `/api/lobby/tables/${tableId}`,
-      { method: "GET" }
-    );
+
+    // 4-voll beim Öffnen → Spiel startet automatisch (M6-C).
+    const detail = await owner!.http.request<{
+      seatsTaken: number;
+      seats: { isEmpty: boolean }[];
+      status: string;
+      currentGameId: string | null;
+    }>(`/api/lobby/tables/${tableId}`, { method: "GET" });
     expect(detail.body.seatsTaken).toBe(4);
     expect(detail.body.seats.every((s) => !s.isEmpty)).toBe(true);
+    expect(detail.body.status).toBe("IN_GAME");
+    expect(detail.body.currentGameId).not.toBeNull();
+
+    // Game existiert in der DB mit korrekter tableId.
+    const game = await app.prisma.game.findUnique({
+      where: { id: detail.body.currentGameId! },
+      select: { tableId: true, seats: { select: { seat: true, userId: true } } },
+    });
+    expect(game?.tableId).toBe(tableId);
+    expect(game?.seats).toHaveLength(4);
   });
 });

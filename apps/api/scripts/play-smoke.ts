@@ -69,8 +69,9 @@ async function main(): Promise<void> {
     .map((c) => c.split(";")[0])
     .join("; ");
 
-  // 2) POST /api/games
-  const createRes = await fetch(`${API_URL}/api/games`, {
+  // 2) Tisch öffnen — Spielstart erfolgt automatisch, weil wir direkt mit
+  //    3 KI-Sitzen aufmachen (4-voll-Trigger seit M6-C).
+  const createRes = await fetch(`${API_URL}/api/lobby/tables`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -78,17 +79,29 @@ async function main(): Promise<void> {
       Cookie: cookieHeader,
     },
     body: JSON.stringify({
-      variant: { mode: "TRUMPF", trump_suit: "EICHEL" },
-      starter: 0,
-      coplayers: [{ aiSeatType: AI_TYPE }, { aiSeatType: AI_TYPE }, { aiSeatType: AI_TYPE }],
-      rngSeed: 4242,
+      joinMode: "OPEN",
+      aiSeatType: AI_TYPE,
+      initialAiSeats: [{ seat: 1 }, { seat: 2 }, { seat: 3 }],
     }),
   });
   if (!createRes.ok) {
-    throw new Error(`create-game failed: ${createRes.status} ${await createRes.text()}`);
+    throw new Error(`open-table failed: ${createRes.status} ${await createRes.text()}`);
   }
-  const { gameId } = (await createRes.json()) as { gameId: string };
-  console.info(`  Game angelegt: ${gameId}`);
+  const { tableId } = (await createRes.json()) as { tableId: string };
+
+  // currentGameId aus der Tisch-Detail-View ziehen.
+  const detailRes = await fetch(`${API_URL}/api/lobby/tables/${tableId}`, {
+    headers: { Cookie: cookieHeader },
+  });
+  if (!detailRes.ok) {
+    throw new Error(`table-detail failed: ${detailRes.status} ${await detailRes.text()}`);
+  }
+  const detail = (await detailRes.json()) as { currentGameId: string | null };
+  if (!detail.currentGameId) {
+    throw new Error("Tisch hat keine currentGameId — Auto-Start hat nicht gefeuert?");
+  }
+  const gameId = detail.currentGameId;
+  console.info(`  Tisch ${tableId} → Game ${gameId}`);
 
   // 3) WS connect + join
   const socket: Socket = io(API_URL, {

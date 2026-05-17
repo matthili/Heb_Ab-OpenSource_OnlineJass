@@ -29,6 +29,7 @@ import {
 } from "@prisma/client";
 
 import { AuditService } from "../audit/audit.service.js";
+import { GameService, type SeatAssignment } from "../game/game.service.js";
 import { PrismaService } from "../prisma/prisma.service.js";
 import type {
   InviteUserDto,
@@ -75,7 +76,8 @@ export class LobbyService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly audit: AuditService
+    private readonly audit: AuditService,
+    private readonly games: GameService
   ) {}
 
   // ───────────────────────────────────────────────────────────────────
@@ -153,6 +155,10 @@ export class LobbyService {
       },
     });
     this.log.log({ tableId: table.id, ownerId }, "Tisch geöffnet");
+
+    // Wenn der Owner direkt mit 3 KIs öffnet, ist der Tisch sofort voll
+    // und startet automatisch.
+    await this.tryAutoStartGame(table.id);
     return { tableId: table.id };
   }
 
@@ -323,6 +329,7 @@ export class LobbyService {
         target: table.id,
         meta: { seat, inviteId: invite.id },
       });
+      await this.tryAutoStartGame(table.id);
       return { kind: "invite-used", seat };
     }
 
@@ -337,6 +344,7 @@ export class LobbyService {
         const seat = await this.prisma.$transaction((tx) =>
           this.assignSeatAndCloseInvite(tx, table.id, userId, invite.id)
         );
+        await this.tryAutoStartGame(table.id);
         return { kind: "invite-used", seat };
       }
       const request = await this.prisma.gameJoinRequest.create({
@@ -359,6 +367,7 @@ export class LobbyService {
       target: table.id,
       meta: { seat },
     });
+    await this.tryAutoStartGame(table.id);
     return { kind: "seated", seat };
   }
 
@@ -388,28 +397,35 @@ export class LobbyService {
       throw new ConflictException("Tisch nimmt aktuell keine neuen Spieler an.");
     }
 
-    return this.prisma.$transaction(async (tx) => {
-      const request = await tx.gameJoinRequest.findUnique({ where: { id: requestId } });
-      if (!request || request.tableId !== tableId) {
-        throw new NotFoundException("Anfrage nicht gefunden.");
-      }
-      if (request.status !== JoinRequestStatus.PENDING) {
-        throw new ConflictException(`Anfrage hat bereits Status ${request.status}.`);
-      }
-      // Sitz für den Anfragenden vergeben.
-      const seat = await this.assignNextSeat(tx, tableId, request.userId);
-      await tx.gameJoinRequest.update({
-        where: { id: requestId },
-        data: { status: JoinRequestStatus.APPROVED, decidedAt: new Date() },
+    return this.prisma
+      .$transaction(async (tx) => {
+        const request = await tx.gameJoinRequest.findUnique({ where: { id: requestId } });
+        if (!request || request.tableId !== tableId) {
+          throw new NotFoundException("Anfrage nicht gefunden.");
+        }
+        if (request.status !== JoinRequestStatus.PENDING) {
+          throw new ConflictException(`Anfrage hat bereits Status ${request.status}.`);
+        }
+        // Sitz für den Anfragenden vergeben.
+        const seat = await this.assignNextSeat(tx, tableId, request.userId);
+        await tx.gameJoinRequest.update({
+          where: { id: requestId },
+          data: { status: JoinRequestStatus.APPROVED, decidedAt: new Date() },
+        });
+        await this.audit.record({
+          action: "lobby.join.request.approve",
+          actorId: ownerId,
+          target: tableId,
+          meta: { requestId, userId: request.userId, seat },
+        });
+        return { seat };
+      })
+      .then(async (result) => {
+        // Auto-Start außerhalb der Transaktion: der GameService öffnet seine
+        // eigene Transaktion und das nesten würde unnötig blockieren.
+        await this.tryAutoStartGame(tableId);
+        return result;
       });
-      await this.audit.record({
-        action: "lobby.join.request.approve",
-        actorId: ownerId,
-        target: tableId,
-        meta: { requestId, userId: request.userId, seat },
-      });
-      return { seat };
-    });
   }
 
   async denyJoinRequest(tableId: string, requestId: string, ownerId: string): Promise<void> {
@@ -510,6 +526,7 @@ export class LobbyService {
       target: invite.tableId,
       meta: { inviteId, seat },
     });
+    await this.tryAutoStartGame(table.id);
     return { seat };
   }
 
@@ -804,5 +821,124 @@ export class LobbyService {
     });
     if (!u) throw new NotFoundException(`User '${dto.inviteeName}' nicht gefunden`);
     return u;
+  }
+
+  // ───────────────────────────────────────────────────────────────────
+  // Spiel-Start aus dem Tisch (M6-C)
+  // ───────────────────────────────────────────────────────────────────
+
+  /**
+   * Prüft, ob der Tisch jetzt voll und start-bereit ist; wenn ja, erzeugt
+   * sofort ein Game über den GameService. Returnt die `gameId`, falls
+   * gestartet, sonst `null`.
+   *
+   * Wird nach jedem Sitz-Assign (Open, Join, Approve, Accept-Invite,
+   * Auto-Fill) aufgerufen. Idempotent — wenn der Tisch schon IN_GAME ist,
+   * passiert nichts.
+   */
+  async tryAutoStartGame(tableId: string): Promise<string | null> {
+    const table = await this.prisma.lobbyTable.findUnique({
+      where: { id: tableId },
+      include: {
+        seats: { orderBy: { seat: "asc" } },
+      },
+    });
+    if (!table) return null;
+    if (table.status !== LobbyTableStatus.WAITING) return null;
+    if (table.seats.length < 4) return null;
+
+    return this.startGameFromTable(table.id);
+  }
+
+  /**
+   * Manueller Spielstart durch den Owner. Erzwingt das Auffüllen leerer
+   * Sitze mit dem Default-KI-Typ des Tischs — der Owner überspringt damit
+   * den Auto-Fill-Timer.
+   */
+  async startManually(tableId: string, ownerId: string): Promise<{ gameId: string }> {
+    const table = await this.requireOwner(tableId, ownerId);
+    if (table.status !== LobbyTableStatus.WAITING) {
+      throw new ConflictException(
+        `Tisch hat Status ${table.status} — manueller Start nur in WAITING möglich.`
+      );
+    }
+    await this.prisma.$transaction(async (tx) => this.fillEmptySeatsWithAi(tx, tableId));
+    const gameId = await this.startGameFromTable(tableId);
+    if (!gameId) {
+      // Sollte nie passieren — nach Fill-Up sind genau 4 Sitze belegt.
+      throw new ConflictException("Tisch konnte nicht gestartet werden.");
+    }
+    await this.audit.record({
+      action: "lobby.table.start.manual",
+      actorId: ownerId,
+      target: tableId,
+      meta: { gameId },
+    });
+    return { gameId };
+  }
+
+  /**
+   * Eigentlicher Spiel-Start: lädt Tisch + Sitze, mappt auf SeatAssignment,
+   * ruft GameService.createGame() — der setzt LobbyTable.status auf IN_GAME
+   * und schreibt currentGameId in der gleichen Transaktion.
+   *
+   * Vorbedingung: Tisch ist 4 voll und in WAITING. Caller hat das geprüft.
+   *
+   * **M6-Vereinfachung**: Trumpf ist hard-coded `EICHEL`, Starter = 0
+   * (Owner). Re-Match (M6-E) berechnet den Starter dynamisch nach Welli /
+   * Sieger-Gibt; die Trumpf-Ansage-UI kommt mit M7 (Frontend).
+   */
+  private async startGameFromTable(tableId: string): Promise<string | null> {
+    const table = await this.prisma.lobbyTable.findUnique({
+      where: { id: tableId },
+      include: { seats: { orderBy: { seat: "asc" } } },
+    });
+    if (!table || table.seats.length < 4) return null;
+
+    const seats: SeatAssignment[] = table.seats.map((s) => ({
+      seat: s.seat,
+      userId: s.userId,
+      aiSeatType: s.aiSeatType,
+    }));
+
+    const variant = { mode: "TRUMPF" as const, trump_suit: "EICHEL" as const };
+    const { gameId } = await this.games.createGame({
+      tableId,
+      variant,
+      announcement: { variant, slalom: false },
+      starter: 0,
+      seats,
+    });
+    this.log.log({ tableId, gameId }, "Game aus Tisch gestartet");
+    return gameId;
+  }
+
+  /**
+   * Befüllt alle noch leeren Sitze (0..3 \ existierende) mit KI vom
+   * Tisch-Default-Typ. Wird vom manuellen Start sowie vom Auto-Fill-
+   * Sweeper (M6-D) genutzt.
+   */
+  private async fillEmptySeatsWithAi(tx: Prisma.TransactionClient, tableId: string): Promise<void> {
+    const table = await tx.lobbyTable.findUnique({
+      where: { id: tableId },
+      include: { seats: { select: { seat: true, joinOrder: true } } },
+    });
+    if (!table) return;
+    const taken = new Set(table.seats.map((s) => s.seat));
+    if (taken.size >= 4) return;
+    const maxOrder = table.seats.reduce((m, s) => Math.max(m, s.joinOrder), -1);
+    let order = maxOrder + 1;
+    for (let i = 0; i < 4; i++) {
+      if (taken.has(i)) continue;
+      await tx.lobbyTableSeat.create({
+        data: {
+          tableId,
+          seat: i,
+          aiSeatType: table.aiSeatType,
+          // KI-Sitze rücken nicht als Owner nach — hohe joinOrder.
+          joinOrder: 100 + order++,
+        },
+      });
+    }
   }
 }

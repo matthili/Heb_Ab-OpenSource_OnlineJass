@@ -77,19 +77,26 @@ describe("M4 game-ws — 1 User (via WS) + 3 Random-KIs spielen Runde durch", ()
       name: "ws_tester",
     });
 
-    // ─── 1. Game erstellen ──────────────────────────────────────────────
-    const create = await http.request<{ gameId: string }>("/api/games", {
+    // ─── 1. Tisch öffnen mit 3 KIs → Auto-Start (M6-C) ─────────────────
+    // Seit M6-C gibt es keinen direkten Game-Endpoint mehr. Wir öffnen einen
+    // Tisch mit drei initialAiSeats; weil damit 4 Sitze sofort voll sind,
+    // startet das Spiel beim openTable-Aufruf automatisch.
+    const create = await http.request<{ tableId: string }>("/api/lobby/tables", {
       method: "POST",
       body: JSON.stringify({
-        variant: { mode: "TRUMPF", trump_suit: "EICHEL" },
-        starter: 0,
-        coplayers: [{ aiSeatType: "random" }, { aiSeatType: "random" }, { aiSeatType: "random" }],
-        rngSeed: 4242,
+        joinMode: "OPEN",
+        aiSeatType: "random",
+        initialAiSeats: [{ seat: 1 }, { seat: 2 }, { seat: 3 }],
       }),
     });
-    // NestJS default für POST mit return-value ist 201 (Created)
     expect(create.status, JSON.stringify(create.body)).toBe(201);
-    const gameId = create.body.gameId;
+    const tableId = create.body.tableId;
+    const tableDetail = await http.request<{ currentGameId: string | null }>(
+      `/api/lobby/tables/${tableId}`,
+      { method: "GET" }
+    );
+    expect(tableDetail.body.currentGameId).not.toBeNull();
+    const gameId = tableDetail.body.currentGameId!;
 
     // ─── 2. WS connect + join ───────────────────────────────────────────
     const socket: Socket = io(app.baseUrl, {

@@ -100,6 +100,19 @@ export class LobbyController {
     return this.lobby.leaveTable(tableId, req.user!.id);
   }
 
+  /**
+   * Owner startet das Spiel manuell — überspringt den Auto-Fill-Timer.
+   * Wenn der Tisch noch leere Sitze hat, werden sie mit dem Tisch-
+   * Default-KI-Typ gefüllt, dann startet das Game.
+   */
+  @Post("tables/:id/start")
+  async start(
+    @Req() req: FastifyRequest,
+    @Param("id") tableId: string
+  ): Promise<{ gameId: string }> {
+    return this.lobby.startManually(tableId, req.user!.id);
+  }
+
   // ─── Beitritts-Anfragen (REQUEST-Modus) ───────────────────────────
 
   @Delete("tables/:id/join-requests/me")
