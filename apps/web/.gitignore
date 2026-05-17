@@ -2,6 +2,9 @@ node_modules/
 dist/
 .vite/
 
+# TanStack Router temporäre Files (vom router-plugin angelegt)
+.tanstack/
+
 # Playwright-Artefakte
 playwright-report/
 test-results/
