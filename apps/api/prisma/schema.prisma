@@ -283,6 +283,14 @@ model LobbyTable {
   createdAt DateTime  @default(now())
   closedAt  DateTime?
 
+  /// Zeitstempel der letzten Sitz-Mutation (open mit initial seats, join,
+  /// approve, accept-invite, leave). Der Auto-Fill-Sweeper (M6-D) berechnet
+  /// daraus die Fälligkeit: wenn `lastSeatChangeAt + autoFillSeconds <= now()`
+  /// und der Tisch noch nicht voll ist, werden leere Sitze mit KI gefüllt
+  /// und das Spiel startet. Spieler-Beitritte „resetten" den Timer auf
+  /// neue 30 s (User-Entscheidung 1 in der M6-Vorschau).
+  lastSeatChangeAt DateTime @default(now())
+
   owner        User              @relation("TableOwner", fields: [ownerId], references: [id], onDelete: Restrict)
   seats        LobbyTableSeat[]
   games        Game[]            @relation("TableGames")

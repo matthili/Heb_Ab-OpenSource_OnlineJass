@@ -39,6 +39,7 @@ import Fastify, { type FastifyInstance } from "fastify";
 
 import { AppModule } from "../../src/app.module.js";
 import { GameService } from "../../src/modules/game/game.service.js";
+import { AutoFillService } from "../../src/modules/lobby/auto-fill.service.js";
 import { MailService } from "../../src/modules/mail/mail.service.js";
 import { PrismaService } from "../../src/modules/prisma/prisma.service.js";
 import { RedisService } from "../../src/modules/redis/redis.service.js";
@@ -90,6 +91,8 @@ export interface TestAppHandle {
   redis: RedisService;
   /** GameService aus dem DI-Container — für Service-direkte Game-Tests. */
   games: GameService;
+  /** Auto-Fill-Sweeper. In Tests stoßen wir `.tick()` manuell an. */
+  autoFill: AutoFillService;
   /** Capture-Sink des Mail-Services. */
   capturedMails: CapturedMail[];
   /** Steuerung des Inferenz-Stubs. */
@@ -138,6 +141,10 @@ export async function setupTestApp(): Promise<TestAppHandle> {
   // Better-Auth Rate-Limit für Tests entschärfen — sonst hauen
   // Multi-User-Setups in 429 raus (3 Sign-Ups pro Stunde pro IP ist scharf).
   process.env["DISABLE_AUTH_RATE_LIMIT"] = "1";
+  // Auto-Fill-Sweeper-Intervall in Tests deaktivieren — Tests stoßen
+  // `AutoFillService.tick()` deterministisch manuell an, damit das nicht
+  // zur Race-Condition zwischen Test und Sweeper-Tick wird.
+  process.env["DISABLE_AUTO_FILL_SWEEPER"] = "1";
 
   // ─── 3. Prisma-Migrate gegen Test-DB ──────────────────────────────────
   // `prisma migrate deploy` aus apps/api/. Wir spawn'en den CLI-Subprocess statt
@@ -226,6 +233,7 @@ export async function setupTestApp(): Promise<TestAppHandle> {
   const prisma = app.get(PrismaService);
   const redisSvc = app.get(RedisService);
   const gamesSvc = app.get(GameService);
+  const autoFillSvc = app.get(AutoFillService);
 
   // ─── 7. Reset-Funktion ────────────────────────────────────────────────
   // TRUNCATE löscht Daten ohne Schema anzufassen. CASCADE räumt FK-Tabellen
@@ -236,6 +244,11 @@ export async function setupTestApp(): Promise<TestAppHandle> {
   // `TRUNCATE Move` zu `relation "move" does not exist`. Alle Namen daher
   // explizit gequotet.
   const truncatableTables = [
+    `"RematchVote"`,
+    `"TableInvite"`,
+    `"GameJoinRequest"`,
+    `"LobbyTableSeat"`,
+    `"LobbyTable"`,
     `"Move"`,
     `"RoundDecision"`,
     `"GameSeat"`,
@@ -283,6 +296,7 @@ export async function setupTestApp(): Promise<TestAppHandle> {
     prisma,
     redis: redisSvc,
     games: gamesSvc,
+    autoFill: autoFillSvc,
     capturedMails,
     inference: stub.control,
     resetData,

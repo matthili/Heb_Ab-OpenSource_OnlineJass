@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "LobbyTable" ADD COLUMN     "lastSeatChangeAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP;

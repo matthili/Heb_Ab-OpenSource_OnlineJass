@@ -3,6 +3,7 @@ import { Module } from "@nestjs/common";
 import { SessionGuard } from "../../common/guards/session.guard.js";
 import { AuthModule } from "../auth/auth.module.js";
 import { GameModule } from "../game/game.module.js";
+import { AutoFillService } from "./auto-fill.service.js";
 import { LobbyController } from "./lobby.controller.js";
 import { LobbyService } from "./lobby.service.js";
 
@@ -11,7 +12,11 @@ import { LobbyService } from "./lobby.service.js";
   // Spielstart aus einem vollen Tisch braucht (M6-C).
   imports: [AuthModule, GameModule],
   controllers: [LobbyController],
-  providers: [LobbyService, SessionGuard],
-  exports: [LobbyService],
+  // AutoFillService nach LobbyService listen — Nest auflöst die forwardRef
+  // dann ohne Boot-Probleme. AutoFillService ist NICHT exportiert; nur als
+  // Modul-intern aktiv (OnModuleInit startet den Sweeper, tick() ist nur
+  // für Integration-Tests via app.get(AutoFillService) erreichbar).
+  providers: [LobbyService, AutoFillService, SessionGuard],
+  exports: [LobbyService, AutoFillService],
 })
 export class LobbyModule {}

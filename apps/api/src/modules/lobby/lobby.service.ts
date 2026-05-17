@@ -650,9 +650,13 @@ export class LobbyService {
       const mySeat = table.seats.find((s) => s.userId === userId);
       if (!mySeat) throw new NotFoundException("Du sitzt nicht an diesem Tisch.");
 
-      // Sitz freigeben (LobbyTableSeat löschen).
+      // Sitz freigeben (LobbyTableSeat löschen) + Timer-Reset (M6-D).
       await tx.lobbyTableSeat.delete({
         where: { tableId_seat: { tableId, seat: mySeat.seat } },
+      });
+      await tx.lobbyTable.update({
+        where: { id: tableId },
+        data: { lastSeatChangeAt: new Date() },
       });
 
       // Verbleibende menschliche Sitze (KI-Sitze rücken nicht als Owner nach).
@@ -788,6 +792,13 @@ export class LobbyService {
     const maxOrder = occupied.reduce((m, s) => Math.max(m, s.joinOrder), -1);
     await tx.lobbyTableSeat.create({
       data: { tableId, seat, userId, joinOrder: maxOrder + 1 },
+    });
+    // M6-D: Timer-Reset bei jeder Sitz-Mutation. Der Auto-Fill-Sweeper liest
+    // `lastSeatChangeAt + autoFillSeconds`, also gibt jeder Join neue 30 s
+    // Wartezeit.
+    await tx.lobbyTable.update({
+      where: { id: tableId },
+      data: { lastSeatChangeAt: new Date() },
     });
     return seat;
   }
@@ -928,6 +939,7 @@ export class LobbyService {
     if (taken.size >= 4) return;
     const maxOrder = table.seats.reduce((m, s) => Math.max(m, s.joinOrder), -1);
     let order = maxOrder + 1;
+    let inserted = 0;
     for (let i = 0; i < 4; i++) {
       if (taken.has(i)) continue;
       await tx.lobbyTableSeat.create({
@@ -939,6 +951,51 @@ export class LobbyService {
           joinOrder: 100 + order++,
         },
       });
+      inserted++;
     }
+    if (inserted > 0) {
+      // Timer-Reset auch beim Auto-Fill — auch wenn der Sweeper das Ding
+      // ohnehin gleich auf IN_GAME schiebt, halten wir den Zeitstempel
+      // konsistent.
+      await tx.lobbyTable.update({
+        where: { id: tableId },
+        data: { lastSeatChangeAt: new Date() },
+      });
+    }
+  }
+
+  // ───────────────────────────────────────────────────────────────────
+  // Auto-Fill öffentliche API (für AutoFillService)
+  // ───────────────────────────────────────────────────────────────────
+
+  /**
+   * Vom `AutoFillService.tick()` aufgerufen, wenn ein Tisch fällig ist.
+   * Befüllt die leeren Sitze mit dem Tisch-Default-KI-Typ und startet
+   * das Spiel sofort. Idempotent — wenn der Tisch zwischenzeitlich
+   * gestartet, voll oder geschlossen wurde, ist das ein no-op.
+   *
+   * **Audit**: Wir loggen `lobby.table.start.auto` (im Unterschied zum
+   * `start.manual` aus `startManually`), damit Ops sehen kann, wie oft
+   * Auto-Fill greift.
+   */
+  async autoFillAndStart(tableId: string): Promise<{ gameId: string | null }> {
+    const table = await this.prisma.lobbyTable.findUnique({
+      where: { id: tableId },
+      select: { status: true, ownerId: true },
+    });
+    if (!table || table.status !== LobbyTableStatus.WAITING) {
+      return { gameId: null };
+    }
+    await this.prisma.$transaction(async (tx) => this.fillEmptySeatsWithAi(tx, tableId));
+    const gameId = await this.startGameFromTable(tableId);
+    if (gameId) {
+      await this.audit.record({
+        action: "lobby.table.start.auto",
+        actorId: table.ownerId, // System triggert, aber zugeordnet auf Owner
+        target: tableId,
+        meta: { gameId },
+      });
+    }
+    return { gameId };
   }
 }
