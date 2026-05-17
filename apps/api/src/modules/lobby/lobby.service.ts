@@ -28,6 +28,10 @@ import {
   type Prisma,
 } from "@prisma/client";
 
+import { randomBytes } from "node:crypto";
+
+import { dealCards, isWeli, type Card, type RandomFn } from "@jass/engine";
+
 import { AuditService } from "../audit/audit.service.js";
 import { GameService, type SeatAssignment } from "../game/game.service.js";
 import { PrismaService } from "../prisma/prisma.service.js";
@@ -35,6 +39,7 @@ import type {
   InviteUserDto,
   ListTablesQuery,
   OpenTableDto,
+  RematchVoteDto,
   UpdateTableSettingsDto,
 } from "./lobby.dto.js";
 
@@ -719,6 +724,290 @@ export class LobbyService {
   }
 
   // ───────────────────────────────────────────────────────────────────
+  // Re-Match (M6-E)
+  // ───────────────────────────────────────────────────────────────────
+
+  /**
+   * Ergebnis-Tipps für einen Vote.
+   *   - `pending`: noch nicht alle Menschen haben gevotet
+   *   - `rematch-started`: alle YES → neues Game läuft, `gameId` neu gesetzt
+   *   - `back-to-waiting`: mind. 1 NO → Tisch in WAITING, NO-Voter entfernt
+   */
+  async voteRematch(
+    gameId: string,
+    userId: string,
+    dto: RematchVoteDto
+  ): Promise<
+    | { kind: "pending"; remainingVotes: number }
+    | { kind: "rematch-started"; gameId: string; starter: number }
+    | { kind: "back-to-waiting"; removedUserIds: string[] }
+  > {
+    // 1. Game + Tisch laden, Status prüfen, Caller-Sitz prüfen.
+    const game = await this.prisma.game.findUnique({
+      where: { id: gameId },
+      include: {
+        table: { include: { seats: { orderBy: { seat: "asc" } } } },
+        rematchVotes: true,
+      },
+    });
+    if (!game) throw new NotFoundException(`Game ${gameId} nicht gefunden`);
+    if (!game.table) {
+      throw new ConflictException("Game gehört zu keinem Tisch — kein Re-Match möglich.");
+    }
+    if (game.table.status !== LobbyTableStatus.POST_GAME) {
+      throw new ConflictException(
+        `Re-Match nur in POST_GAME möglich (aktuell ${game.table.status}).`
+      );
+    }
+    // currentGameId muss auf dieses Game zeigen — sonst votet jemand für ein
+    // alteres, längst abgeschlossenes Game.
+    if (game.table.currentGameId !== gameId) {
+      throw new ConflictException("Voting ist nur für das jüngste Game gültig.");
+    }
+    const mySeat = game.table.seats.find((s) => s.userId === userId);
+    if (!mySeat) {
+      throw new ForbiddenException("Du sitzt nicht an diesem Tisch.");
+    }
+    // Schon gevotet? Idempotent gestaltet: gleicher Vote = ok, anderer Vote
+    // = Conflict (kein Umentscheiden).
+    const existingVote = game.rematchVotes.find((v) => v.userId === userId);
+    if (existingVote) {
+      if (existingVote.vote === dto.vote) {
+        // Re-Submit — wir behandeln das wie „Vote schon vorhanden" und melden
+        // die aktuelle Lage.
+        return this.evaluateRematchVotes(gameId);
+      }
+      throw new ConflictException("Du hast bereits abgestimmt; das ist endgültig.");
+    }
+
+    // 2. Vote eintragen.
+    await this.prisma.rematchVote.create({
+      data: { gameId, userId, vote: dto.vote },
+    });
+    await this.audit.record({
+      action: "game.rematch.vote",
+      actorId: userId,
+      target: gameId,
+      meta: { vote: dto.vote },
+    });
+
+    // 3. Auswerten: alle Menschen-Sitze müssen gevotet haben.
+    return this.evaluateRematchVotes(gameId);
+  }
+
+  /**
+   * Prüft, ob alle menschlichen Sitze des Tischs für `gameId` abgestimmt
+   * haben, und führt das Outcome aus (neuer Game oder Tisch-zurück).
+   */
+  private async evaluateRematchVotes(
+    gameId: string
+  ): Promise<
+    | { kind: "pending"; remainingVotes: number }
+    | { kind: "rematch-started"; gameId: string; starter: number }
+    | { kind: "back-to-waiting"; removedUserIds: string[] }
+  > {
+    const game = await this.prisma.game.findUnique({
+      where: { id: gameId },
+      include: {
+        table: { include: { seats: { orderBy: { seat: "asc" } } } },
+        rematchVotes: true,
+        rounds: { orderBy: { roundIdx: "asc" } },
+      },
+    });
+    if (!game || !game.table) {
+      throw new ConflictException("Game oder Tisch verschwunden.");
+    }
+    const humanSeats = game.table.seats.filter((s) => s.userId !== null);
+    const votes = game.rematchVotes;
+    const remaining = humanSeats.length - votes.length;
+    if (remaining > 0) {
+      return { kind: "pending", remainingVotes: remaining };
+    }
+
+    // Alle haben gevotet — auswerten.
+    const noVoters = votes.filter((v) => v.vote === "NO").map((v) => v.userId);
+    if (noVoters.length > 0) {
+      // Mindestens ein NO → Tisch zurück nach WAITING, NO-Voter entfernen.
+      await this.declineRematch(game.table.id, noVoters);
+      return { kind: "back-to-waiting", removedUserIds: noVoters };
+    }
+
+    // Alle YES → neues Game starten.
+    const lastStarter = game.rounds[game.rounds.length - 1]?.starter ?? 0;
+    const finalScore = (game.finalScore ?? null) as {
+      team_card_points: number[];
+    } | null;
+    const { newStarter, newHands } = this.computeRematchStartAndHands(
+      game.table.restartMode as "WELI" | "SIEGER_GIBT",
+      lastStarter,
+      finalScore
+    );
+    const newGameId = await this.startRematchGame(
+      game.table.id,
+      game.table.seats.map((s) => ({
+        seat: s.seat,
+        userId: s.userId,
+        aiSeatType: s.aiSeatType,
+      })),
+      newStarter,
+      newHands
+    );
+    await this.audit.record({
+      action: "game.rematch.started",
+      target: game.table.id,
+      meta: {
+        previousGameId: gameId,
+        newGameId,
+        restartMode: game.table.restartMode,
+        starter: newStarter,
+      },
+    });
+    return { kind: "rematch-started", gameId: newGameId, starter: newStarter };
+  }
+
+  /**
+   * Tisch zurück nach WAITING; entferne alle Sitze der NO-Voter, setze
+   * `lastSeatChangeAt` neu (= Auto-Fill-Timer-Reset). Wenn nach dem
+   * Entfernen kein Mensch mehr da ist, wird der Tisch geschlossen
+   * (analog zur leaveTable-Logik).
+   */
+  private async declineRematch(tableId: string, noVoterIds: string[]): Promise<void> {
+    await this.prisma.$transaction(async (tx) => {
+      // NO-Voter-Sitze entfernen.
+      for (const uid of noVoterIds) {
+        await tx.lobbyTableSeat.deleteMany({ where: { tableId, userId: uid } });
+      }
+
+      // Was bleibt menschlich?
+      const remaining = await tx.lobbyTableSeat.findMany({
+        where: { tableId },
+        orderBy: { joinOrder: "asc" },
+      });
+      const remainingHumans = remaining.filter((s) => s.userId !== null);
+
+      if (remainingHumans.length === 0) {
+        // Tisch schließen — analog leaveTable-Fall C.
+        await tx.lobbyTable.update({
+          where: { id: tableId },
+          data: {
+            status: LobbyTableStatus.CLOSED,
+            closedAt: new Date(),
+            currentGameId: null,
+          },
+        });
+        await tx.gameJoinRequest.updateMany({
+          where: { tableId, status: JoinRequestStatus.PENDING },
+          data: { status: JoinRequestStatus.CANCELLED, decidedAt: new Date() },
+        });
+        await tx.tableInvite.updateMany({
+          where: { tableId, status: InviteStatus.PENDING },
+          data: { status: InviteStatus.EXPIRED, respondedAt: new Date() },
+        });
+        return;
+      }
+
+      // Owner-Wechsel, falls der Owner unter den NO-Voter war.
+      const currentOwnerId = (
+        await tx.lobbyTable.findUnique({
+          where: { id: tableId },
+          select: { ownerId: true },
+        })
+      )?.ownerId;
+      const ownerLeft = currentOwnerId && noVoterIds.includes(currentOwnerId);
+      const newOwnerId = ownerLeft ? remainingHumans[0]!.userId! : currentOwnerId!;
+
+      await tx.lobbyTable.update({
+        where: { id: tableId },
+        data: {
+          status: LobbyTableStatus.WAITING,
+          currentGameId: null,
+          lastSeatChangeAt: new Date(),
+          ownerId: newOwnerId,
+        },
+      });
+    });
+
+    await this.audit.record({
+      action: "game.rematch.declined",
+      target: tableId,
+      meta: { removedUserIds: noVoterIds },
+    });
+  }
+
+  /**
+   * Startet das neue Game am Tisch nach einem erfolgreichen YES-Vote.
+   * Die Sitz-Konfiguration ist identisch (User-Entscheidung 3), Karten
+   * sind frisch, Starter ist nach `restartMode` bestimmt.
+   */
+  private async startRematchGame(
+    tableId: string,
+    seats: SeatAssignment[],
+    starter: number,
+    hands: Card[][]
+  ): Promise<string> {
+    const variant = { mode: "TRUMPF" as const, trump_suit: "EICHEL" as const };
+    const { gameId } = await this.games.createGame({
+      tableId,
+      variant,
+      announcement: { variant, slalom: false },
+      starter,
+      seats,
+      hands,
+    });
+    return gameId;
+  }
+
+  /**
+   * Berechnet Starter und neue Hände nach `restartMode`.
+   *
+   * **WELI**: Karten werden gemischt; wer das Welli (Schelle-6) bekommt,
+   * ist Starter. Das ist effektiv eine zufällige Wahl mit
+   * Welli-Inhaber-Probability, deterministisch aus dem Mischen ableitbar.
+   *
+   * **SIEGER_GIBT**: Hände werden ebenfalls gemischt, aber der Starter wird
+   * nicht aus den Karten gelesen, sondern aus dem letzten Game-Ergebnis:
+   *   - Geber des letzten Spiels: `(lastStarter - 1 + 4) % 4`
+   *   - Neuer Geber: der nächste im Uhrzeigersinn nach lastDealer, der zum
+   *     Sieger-Team gehört
+   *   - Starter: `(newDealer + 1) % 4`
+   *
+   * Bei Gleichstand der Teams (unwahrscheinlich, weil Punktesumme 157
+   * ungerade ist) gewinnt Team 0 — pragma, deterministisch.
+   */
+  private computeRematchStartAndHands(
+    mode: "WELI" | "SIEGER_GIBT",
+    lastStarter: number,
+    finalScore: { team_card_points: number[] } | null
+  ): { newStarter: number; newHands: Card[][] } {
+    // Standard-Kreuz-Jass-Teams: Sitz 0+2 = Team 0, Sitz 1+3 = Team 1.
+    const TEAMS = [0, 1, 0, 1];
+    const hands = dealCards(rematchRng());
+    if (mode === "WELI") {
+      for (let seat = 0; seat < 4; seat++) {
+        if (hands[seat]!.some((c) => isWeli(c))) {
+          return { newStarter: seat, newHands: hands };
+        }
+      }
+      // Welli muss irgendwo sein (es ist im Deck) — defensiv.
+      throw new Error("WELI-Modus: Welli-Karte nicht in den Händen gefunden");
+    }
+    // SIEGER_GIBT
+    const points = finalScore?.team_card_points ?? [0, 0];
+    const winningTeam = (points[0] ?? 0) >= (points[1] ?? 0) ? 0 : 1;
+    const lastDealer = (lastStarter - 1 + 4) % 4;
+    let newDealer = lastDealer;
+    for (let i = 1; i <= 4; i++) {
+      const candidate = (lastDealer + i) % 4;
+      if (TEAMS[candidate] === winningTeam) {
+        newDealer = candidate;
+        break;
+      }
+    }
+    const newStarter = (newDealer + 1) % 4;
+    return { newStarter, newHands: hands };
+  }
+
+  // ───────────────────────────────────────────────────────────────────
   // Helfer
   // ───────────────────────────────────────────────────────────────────
 
@@ -998,4 +1287,16 @@ export class LobbyService {
     }
     return { gameId };
   }
+}
+
+/**
+ * Crypto-RNG für Re-Match-Karten-Mischen. Wir nutzen Node-natives
+ * `randomBytes` statt `Math.random`, damit Welli-Inhaber bzw. neue Hände
+ * nicht aus dem `Math.random`-Seed vorhersagbar sind.
+ */
+function rematchRng(): RandomFn {
+  return () => {
+    const b = randomBytes(4).readUInt32BE(0);
+    return b / 0x1_0000_0000;
+  };
 }

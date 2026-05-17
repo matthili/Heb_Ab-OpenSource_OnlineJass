@@ -6,12 +6,15 @@ import { GameModule } from "../game/game.module.js";
 import { AutoFillService } from "./auto-fill.service.js";
 import { LobbyController } from "./lobby.controller.js";
 import { LobbyService } from "./lobby.service.js";
+import { RematchController } from "./rematch.controller.js";
 
 @Module({
   // GameModule exportiert GameService, den LobbyService für den Auto-
   // Spielstart aus einem vollen Tisch braucht (M6-C).
   imports: [AuthModule, GameModule],
-  controllers: [LobbyController],
+  // RematchController liegt bewusst unter /api/games (semantisch
+  // Game-bezogen), wird aber vom LobbyService gehandhabt (M6-E).
+  controllers: [LobbyController, RematchController],
   // AutoFillService nach LobbyService listen — Nest auflöst die forwardRef
   // dann ohne Boot-Probleme. AutoFillService ist NICHT exportiert; nur als
   // Modul-intern aktiv (OnModuleInit startet den Sweeper, tick() ist nur

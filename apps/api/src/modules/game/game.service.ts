@@ -95,6 +95,13 @@ export interface CreateGameInput {
    * können den Parameter weglassen (Pre-M6-Modus).
    */
   tableId?: string;
+  /**
+   * Optional: vorab gemischte Hände (z.B. wenn die Lobby für den WELI-
+   * Re-Match-Modus den Welli-Inhaber bestimmen muss, bevor das Game
+   * angelegt wird). Wenn nicht gesetzt, mischt `createGame` selbst per
+   * `dealCards(rng)`.
+   */
+  hands?: readonly (readonly Card[])[];
 }
 
 /**
@@ -145,13 +152,19 @@ export class GameService {
       throw new BadRequestException("Same user cannot occupy multiple seats");
     }
 
-    const rng: RandomFn = input.rngSeed !== undefined ? seededRng(input.rngSeed) : cryptoRng();
-    const hands = dealCards(rng);
+    // Hände entweder vom Caller mitgebracht (Re-Match-WELI-Pfad, M6-E) oder
+    // hier frisch gemischt. Validierung: genau 4 Hände à 9 Karten.
+    const hands =
+      input.hands ??
+      dealCards(input.rngSeed !== undefined ? seededRng(input.rngSeed) : cryptoRng());
+    if (hands.length !== 4 || hands.some((h) => h.length !== 9)) {
+      throw new BadRequestException("hands müssen genau 4 Sitze × 9 Karten enthalten");
+    }
 
     const state = newRound({
       variant: input.variant,
       announcement: input.announcement,
-      hands,
+      hands: hands as Card[][],
       starter: input.starter,
     });
 

@@ -91,6 +91,18 @@ export const InviteUserDtoSchema = z
 export type InviteUserDto = z.infer<typeof InviteUserDtoSchema>;
 
 /**
+ * Re-Match-Vote nach einem beendeten Game. Jeder menschliche Sitz votet
+ * einmal. Alle YES → neues Game wird gestartet. Mind. 1 NO → Tisch zurück
+ * nach WAITING, NO-Voter werden vom Tisch entfernt.
+ */
+export const RematchVoteDtoSchema = z
+  .object({
+    vote: z.enum(["YES", "NO"]),
+  })
+  .strict();
+export type RematchVoteDto = z.infer<typeof RematchVoteDtoSchema>;
+
+/**
  * Lobby-Listen-Filter. Default: alle WAITING + POST_GAME (= „beitretbare").
  * `mine: true` schränkt auf Tische ein, in denen der Caller selbst sitzt
  * oder die er besitzt — nützlich für die „Meine Tische"-Übersicht.
