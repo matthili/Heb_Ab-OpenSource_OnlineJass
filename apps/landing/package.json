@@ -1,0 +1,26 @@
+{
+  "name": "@jass/landing",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Statische Marketing-Site für Heb ab! — Astro 6 mit React-Islands. Index, Rules, About, Privacy, Imprint. Wird von Caddy unter `/` serviert; die Spiel-SPA hängt unter `/app/`.",
+  "type": "module",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "typecheck": "astro check",
+    "lint": "echo 'astro check deckt Lint mit ab'"
+  },
+  "dependencies": {
+    "@astrojs/react": "^4.4.0",
+    "astro": "^6.3.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
+  },
+  "devDependencies": {
+    "@astrojs/check": "^0.9.9",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "typescript": "^5.7.0"
+  }
+}

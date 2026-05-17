@@ -1,0 +1,57 @@
+/**
+ * Bootstrap der Spiel-SPA.
+ *
+ * Was hier passiert:
+ *   - QueryClient für TanStack Query (REST + WS-State-Caching)
+ *   - Router-Provider für TanStack Router
+ *   - `routeTree` ist autogeneriert (siehe vite.config + TanStackRouterVite-
+ *     Plugin); die `routeTree.gen.ts` entsteht beim ersten `pnpm dev`.
+ *
+ * `routeTree.gen.ts` ist `.gitignore`d (in `src/routeTree.gen.ts`) — wir
+ * checken den generierten Code nicht ein, weil er sich bei jedem
+ * Route-File-Change ändert.
+ */
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { createRouter, RouterProvider } from "@tanstack/react-router";
+import { StrictMode } from "react";
+import { createRoot } from "react-dom/client";
+
+import { routeTree } from "./routeTree.gen.js";
+import "./styles.css";
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      // Lobby-/Tisch-Daten werden über WS push-aktualisiert, REST ist
+      // nur Initial-Load + Fallback. 60 s Stale-Time reduziert
+      // redundante Fetches im UI.
+      staleTime: 60_000,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
+
+const router = createRouter({
+  routeTree,
+  defaultPreload: "intent",
+  context: { queryClient },
+});
+
+// Type-Augmentation für TanStack Router — sonst meckert TS über
+// `useRouteContext` ohne queryClient-Wissen.
+declare module "@tanstack/react-router" {
+  interface Register {
+    router: typeof router;
+  }
+}
+
+const rootEl = document.getElementById("root");
+if (!rootEl) throw new Error("#root nicht im DOM gefunden");
+
+createRoot(rootEl).render(
+  <StrictMode>
+    <QueryClientProvider client={queryClient}>
+      <RouterProvider router={router} />
+    </QueryClientProvider>
+  </StrictMode>
+);

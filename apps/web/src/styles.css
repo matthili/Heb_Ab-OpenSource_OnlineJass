@@ -1,0 +1,12 @@
+/**
+ * Globale Styles + Tailwind 4 Entry. Tailwind 4 wird nicht mehr via
+ * PostCSS-Plugin angezogen, sondern direkt via `@import "tailwindcss"`.
+ */
+@import "tailwindcss";
+
+/* High-Contrast-Toggle-Stub (M11 macht das ausführlich; hier reichen
+ * Custom-Properties als Anker). */
+:root {
+  --jass-bg: #fafaf9;
+  --jass-fg: #1c1917;
+}

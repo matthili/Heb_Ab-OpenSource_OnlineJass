@@ -1,0 +1,45 @@
+---
+/**
+ * Basis-Layout für alle Marketing-Seiten. Enthält Header, Footer und das
+ * vanilla-CSS-Stylesheet. Inhalts-Seiten füllen den `<slot />`.
+ */
+import "../styles.css";
+
+interface Props {
+  title: string;
+  description?: string;
+}
+const { title, description } = Astro.props;
+---
+
+<!doctype html>
+<html lang="de-vlbg">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#1f2937" />
+    <title>{title}</title>
+    {description && <meta name="description" content={description} />}
+  </head>
+  <body>
+    <div class="page">
+      <header class="nav">
+        <nav class="nav-inner">
+          <a href="/" class="nav-brand">Heb ab!</a>
+          <a href="/rules" class="nav-link">Regeln</a>
+          <a href="/about" class="nav-link">Über</a>
+          <a href="/app/" class="nav-cta">Zum Spiel</a>
+        </nav>
+      </header>
+      <main class="main">
+        <slot />
+      </main>
+      <footer class="footer">
+        <div class="footer-inner">
+          <a href="/privacy" class="nav-link">Datenschutz</a>
+          <a href="/imprint" class="nav-link">Impressum</a>
+        </div>
+      </footer>
+    </div>
+  </body>
+</html>
