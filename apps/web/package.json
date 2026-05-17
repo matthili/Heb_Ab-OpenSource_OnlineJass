@@ -5,7 +5,9 @@
   "description": "Spiel-SPA für Heb ab! — React 19 + Vite 8 + TanStack Router/Query. Lobby, Tisch, Auth-Flows. PWA-Polish kommt mit M11.",
   "type": "module",
   "scripts": {
+    "predev": "node ../../scripts/sync-web-cards.mjs",
     "dev": "vite",
+    "prebuild": "node ../../scripts/sync-web-cards.mjs",
     "build": "tsc -b --noEmit && vite build",
     "preview": "vite preview",
     "typecheck": "tsc -b --noEmit",

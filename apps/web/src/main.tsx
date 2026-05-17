@@ -16,6 +16,7 @@ import { createRouter, RouterProvider } from "@tanstack/react-router";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
+import { ToastProvider } from "./lib/toast.js";
 import { routeTree } from "./routeTree.gen.js";
 import "./styles.css";
 
@@ -51,7 +52,9 @@ if (!rootEl) throw new Error("#root nicht im DOM gefunden");
 createRoot(rootEl).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
-      <RouterProvider router={router} />
+      <ToastProvider>
+        <RouterProvider router={router} />
+      </ToastProvider>
     </QueryClientProvider>
   </StrictMode>
 );

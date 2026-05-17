@@ -6,5 +6,8 @@ dist/
 # sie nicht ein, sonst gibt es Merge-Konflikte bei jedem Route-File-Change.
 src/routeTree.gen.ts
 
+# Karten-Assets werden bei predev/prebuild aus assets/cards/ gesynct.
+public/cards/
+
 # Lokale .env (Frontend-Env, falls je gebraucht)
 .env.local

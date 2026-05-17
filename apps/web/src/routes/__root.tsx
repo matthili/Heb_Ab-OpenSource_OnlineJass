@@ -8,8 +8,11 @@
  */
 import { createRootRouteWithContext, Link, Outlet, useNavigate } from "@tanstack/react-router";
 import type { QueryClient } from "@tanstack/react-query";
+import { useCallback } from "react";
 
 import { signOut, useSession } from "~/lib/auth-client";
+import { useToast } from "~/lib/toast";
+import { useUserEvents } from "~/lib/ws";
 
 export interface RouterContext {
   queryClient: QueryClient;
@@ -22,12 +25,81 @@ export const Route = createRootRouteWithContext<RouterContext>()({
 function RootLayout() {
   return (
     <div className="min-h-screen flex flex-col">
+      <UserEventToasts />
       <Header />
       <main className="flex-1 mx-auto max-w-5xl w-full px-4 py-6">
         <Outlet />
       </main>
     </div>
   );
+}
+
+/**
+ * Subscribed nach User-Channel-Events (Invites, Anfrage-Entscheidungen,
+ * Owner-Wechsel) und zeigt sie als Toasts. Nur als eingeloggter User
+ * aktiv — sonst gibts keinen User-Channel.
+ */
+function UserEventToasts() {
+  const { data } = useSession();
+  const { showToast } = useToast();
+
+  const onInvite = useCallback(
+    (payload: unknown) => {
+      const p = payload as { tableId?: string; inviteId?: string };
+      if (!p?.tableId) return;
+      showToast(
+        <span>
+          Neue Einladung zum Tisch.{" "}
+          <a href={`/table/${p.tableId}`} className="underline">
+            Zum Tisch
+          </a>
+        </span>,
+        { variant: "info", duration: 8_000 }
+      );
+    },
+    [showToast]
+  );
+
+  const onRequestDecided = useCallback(
+    (payload: unknown) => {
+      const p = payload as { approved?: boolean; tableId?: string };
+      if (p?.approved) {
+        showToast(
+          <span>
+            Deine Anfrage wurde angenommen.{" "}
+            {p.tableId && (
+              <a href={`/table/${p.tableId}`} className="underline">
+                Zum Tisch
+              </a>
+            )}
+          </span>,
+          { variant: "success", duration: 8_000 }
+        );
+      } else {
+        showToast("Deine Anfrage wurde abgelehnt.", { variant: "warning" });
+      }
+    },
+    [showToast]
+  );
+
+  const onOwnerChanged = useCallback(
+    (payload: unknown) => {
+      const p = payload as { newOwnerName?: string };
+      showToast(
+        `Tisch-Verwalter hat gewechselt zu ${p?.newOwnerName ?? "einem anderen Spieler"}.`,
+        { variant: "info" }
+      );
+    },
+    [showToast]
+  );
+
+  // Wir registrieren die Listener immer; sie feuern nur, wenn man
+  // eingeloggt ist (lobby:user:<id>-Room ist sonst nicht gejoint).
+  useUserEvents("lobby:invite-received", onInvite);
+  useUserEvents("lobby:request-decided", onRequestDecided);
+  useUserEvents("lobby:owner-changed", onOwnerChanged);
+
+  return data?.user ? null : null;
 }
 
 function Header() {

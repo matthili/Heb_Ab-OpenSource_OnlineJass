@@ -16,6 +16,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { useCallback } from "react";
 
+import { GameBoard } from "~/features/game/GameBoard";
+import { RematchPanel } from "~/features/game/RematchPanel";
+import { useGameView } from "~/features/game/useGameView";
 import { api, ApiError } from "~/lib/api";
 import { useSession } from "~/lib/auth-client";
 import { useTableStateEvents } from "~/lib/ws";
@@ -78,22 +81,13 @@ export function TableDetail({ tableId }: Props) {
 
       <SeatRow seats={data.seats} />
 
-      {data.status === "IN_GAME" && data.currentGameId && (
-        <div className="rounded border border-amber-300 bg-amber-50 px-4 py-3 space-y-2">
-          <p className="text-amber-900 font-medium">Spiel läuft.</p>
-          <p className="text-sm text-amber-800">
-            Spielfläche kommt mit M7-D. Aktive Game-ID:{" "}
-            <code className="rounded bg-white px-1.5">{data.currentGameId}</code>
-          </p>
-        </div>
-      )}
-
-      {data.status === "POST_GAME" && (
-        <div className="rounded border border-violet-300 bg-violet-50 px-4 py-3">
-          <p className="text-violet-900">
-            Spiel vorbei — Re-Match-Vote läuft. UI dafür kommt mit M7-D.
-          </p>
-        </div>
+      {data.currentGameId && (data.status === "IN_GAME" || data.status === "POST_GAME") && (
+        <GameSection
+          gameId={data.currentGameId}
+          tableSeats={data.seats}
+          isAtTable={amIAtTable}
+          tableStatus={data.status}
+        />
       )}
 
       {isOwner ? (
@@ -274,5 +268,55 @@ function PlayerPanel({ tableId, queryKey }: { tableId: string; queryKey: readonl
         Tisch verlassen
       </button>
     </div>
+  );
+}
+
+/**
+ * Game-Section: Spielfläche + Re-Match-Panel je nach Tisch-Status.
+ *
+ * Nur wer am Tisch sitzt (`isAtTable`), darf das Spiel sehen; Beobachter
+ * würden sonst eine 404 von /api/games/:id bekommen. Falls Spectator-
+ * Modus in M11 kommt, machen wir das hier locker.
+ */
+function GameSection({
+  gameId,
+  tableSeats,
+  isAtTable,
+  tableStatus,
+}: {
+  gameId: string;
+  tableSeats: TableDetailView["seats"];
+  isAtTable: boolean;
+  tableStatus: TableDetailView["status"];
+}) {
+  const { view, error, movePending, playCard } = useGameView(isAtTable ? gameId : null);
+
+  if (!isAtTable) {
+    return (
+      <div className="rounded border border-stone-200 bg-stone-50 px-4 py-3 text-sm text-stone-600">
+        Spiel läuft — du sitzt aber nicht am Tisch.
+      </div>
+    );
+  }
+
+  if (!view) {
+    return <p className="text-stone-500">Lade Spiel …</p>;
+  }
+
+  const mySeat = view.state.player_idx;
+  return (
+    <section className="space-y-4">
+      <GameBoard
+        view={view}
+        seats={tableSeats}
+        mySeat={mySeat}
+        movePending={movePending}
+        error={error}
+        onPlayCard={playCard}
+      />
+      {tableStatus === "POST_GAME" && view.status === "finished" && (
+        <RematchPanel gameId={gameId} finalScore={view.finalScore} />
+      )}
+    </section>
   );
 }
