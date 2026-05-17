@@ -1,16 +1,26 @@
 /**
  * SMTP-Mail-Versand via Nodemailer.
  *
- * Dev: Mailhog auf localhost:1025 (keine Auth, keine TLS).
- * Prod: SMTP-Konfiguration kommt in M9 aus dem AdminSetting-Table — bis dahin
- *       reicht ein env-konfiguriertes Setup. Sobald M9 da ist, lädt
- *       `loadSmtpSettings()` die DB-Werte und entschlüsselt sensible Felder.
+ * **Konfig-Quellen** (in dieser Priorität):
+ *   1. AdminSetting-Table (siehe `SmtpSettingsService`) — überschreibt Env.
+ *   2. Env-Vars `SMTP_HOST`/`SMTP_PORT`/`SMTP_USER`/`SMTP_PASSWORD`/`SMTP_FROM`
+ *      — Bootstrap-Default (Dev: Mailhog `:1025`).
  *
- * Templates sind absichtlich Inline-HTML (kein MJML noch) — M3 hat genau eine
- * Mail-Art (Verify), Template-Volumen kommt mit Reset + DM-Notifications + … .
+ * **Reload-Strategie**: Wir cachen den Transporter zusammen mit einem
+ * Hash der effektiven Config. Bei jedem `send()` laden wir die aktuellen
+ * Settings + bauen den Hash; wenn er sich gegen den letzten Lauf
+ * unterscheidet, erzeugen wir einen neuen Transporter. So sieht
+ * Settings-Change SOFORT ohne API-Restart.
+ *
+ * Templates sind absichtlich Inline-HTML (kein MJML) — M3 hatte genau
+ * eine Mail-Art (Verify), inzwischen sind's drei. Bei mehr Templates
+ * können wir auf eine Template-Lib umsteigen.
  */
 import { Injectable, Logger } from "@nestjs/common";
+import { createHash } from "node:crypto";
 import nodemailer, { type Transporter } from "nodemailer";
+
+import { SmtpSettingsService } from "./smtp-settings.service.js";
 
 interface SmtpConfig {
   host: string;
@@ -30,33 +40,54 @@ interface MailEnvelope {
 @Injectable()
 export class MailService {
   private readonly log = new Logger(MailService.name);
-  private readonly transporter: Transporter;
-  private readonly from: string;
+  private cachedTransporter: Transporter | null = null;
+  private cachedConfigHash = "";
 
-  constructor() {
-    const cfg = this.loadConfig();
-    this.from = cfg.from;
-    this.transporter = nodemailer.createTransport({
+  constructor(private readonly settings: SmtpSettingsService) {}
+
+  /**
+   * Effektive Config laden: erst Env-Default, dann DB-Werte drüber.
+   * Beide können separat gesetzt sein — wenn DB nur „host" setzt, kommt
+   * Port/User/Password trotzdem vom Env.
+   */
+  private async resolveConfig(): Promise<SmtpConfig> {
+    const fromDb = await this.settings.get();
+    return {
+      host: fromDb.host ?? process.env["SMTP_HOST"] ?? "localhost",
+      port: fromDb.port ?? Number.parseInt(process.env["SMTP_PORT"] ?? "1025", 10),
+      user: fromDb.user ?? (process.env["SMTP_USER"] || undefined),
+      password: fromDb.password ?? (process.env["SMTP_PASSWORD"] || undefined),
+      from: fromDb.from ?? process.env["SMTP_FROM"] ?? "noreply@jass.local",
+    };
+  }
+
+  private hashConfig(cfg: SmtpConfig): string {
+    return createHash("sha256")
+      .update(`${cfg.host}|${cfg.port}|${cfg.user ?? ""}|${cfg.password ?? ""}`)
+      .digest("hex");
+  }
+
+  private async getTransporter(): Promise<{ transporter: Transporter; from: string }> {
+    const cfg = await this.resolveConfig();
+    const hash = this.hashConfig(cfg);
+    if (this.cachedTransporter && this.cachedConfigHash === hash) {
+      return { transporter: this.cachedTransporter, from: cfg.from };
+    }
+    this.log.log({ host: cfg.host, port: cfg.port, user: cfg.user }, "SMTP-Transporter (re-)build");
+    this.cachedTransporter = nodemailer.createTransport({
       host: cfg.host,
       port: cfg.port,
       secure: cfg.port === 465,
       auth: cfg.user ? { user: cfg.user, pass: cfg.password ?? "" } : undefined,
     });
-  }
-
-  private loadConfig(): SmtpConfig {
-    return {
-      host: process.env["SMTP_HOST"] ?? "localhost",
-      port: Number.parseInt(process.env["SMTP_PORT"] ?? "1025", 10),
-      user: process.env["SMTP_USER"] || undefined,
-      password: process.env["SMTP_PASSWORD"] || undefined,
-      from: process.env["SMTP_FROM"] ?? "noreply@jass.local",
-    };
+    this.cachedConfigHash = hash;
+    return { transporter: this.cachedTransporter, from: cfg.from };
   }
 
   async send(envelope: MailEnvelope): Promise<void> {
-    await this.transporter.sendMail({
-      from: this.from,
+    const { transporter, from } = await this.getTransporter();
+    await transporter.sendMail({
+      from,
       to: envelope.to,
       subject: envelope.subject,
       text: envelope.text,

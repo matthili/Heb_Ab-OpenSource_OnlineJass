@@ -8,6 +8,7 @@ import type { IncomingMessage } from "node:http";
 import { Module } from "@nestjs/common";
 import { LoggerModule } from "nestjs-pino";
 
+import { AdminModule } from "./modules/admin/admin.module.js";
 import { AuditModule } from "./modules/audit/audit.module.js";
 import { AuthModule } from "./modules/auth/auth.module.js";
 import { BlocklistModule } from "./modules/blocklist/blocklist.module.js";
@@ -66,6 +67,7 @@ const pinoHttp = isDev
     LobbyModule,
     GameModule,
     ChatModule,
+    AdminModule,
     HealthModule,
   ],
 })

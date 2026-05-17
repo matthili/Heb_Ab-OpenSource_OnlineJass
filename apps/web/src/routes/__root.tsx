@@ -6,11 +6,13 @@
  * Auth-Status fragen wir hier direkt über `useSession()` ab; im
  * Sub-Layout `_auth.tsx` wird er als Guard verwendet.
  */
+import { useQuery, type QueryClient } from "@tanstack/react-query";
 import { createRootRouteWithContext, Link, Outlet, useNavigate } from "@tanstack/react-router";
-import type { QueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
 import { useTranslation } from "react-i18next";
 
+import type { MeProfileResponse } from "~/features/admin/types";
+import { api } from "~/lib/api";
 import { signOut, useSession } from "~/lib/auth-client";
 import { useToast } from "~/lib/toast";
 import { useUserEvents } from "~/lib/ws";
@@ -107,6 +109,14 @@ function Header() {
   const { t } = useTranslation();
   const { data, isPending } = useSession();
   const navigate = useNavigate();
+  // DB-Rolle lädt nur, wenn eingeloggt — für den optionalen "Admin"-
+  // Nav-Link. 401 (anonym) wird stillschweigend geschluckt.
+  const { data: me } = useQuery<MeProfileResponse>({
+    queryKey: ["users", "me"],
+    queryFn: () => api<MeProfileResponse>("/api/users/me"),
+    enabled: Boolean(data?.user),
+    retry: false,
+  });
 
   return (
     <header className="border-b border-stone-200 bg-white">
@@ -120,6 +130,14 @@ function Header() {
             <span className="text-sm text-stone-400">…</span>
           ) : data?.user ? (
             <>
+              {me?.role === "ADMIN" && (
+                <Link
+                  to="/admin"
+                  className="rounded bg-amber-100 px-2 py-1 text-xs font-medium text-amber-900 hover:bg-amber-200"
+                >
+                  Admin
+                </Link>
+              )}
               <span className="text-sm text-stone-600">
                 {/* "Servus, " — fester Präfix; Name als <strong>. Zweisprachig
                     via i18n: t("nav.greeting") liefert die Variante mit

@@ -23,7 +23,7 @@ export class ApiError extends Error {
 }
 
 export interface ApiOptions<TBody = unknown> {
-  method?: "GET" | "POST" | "PATCH" | "DELETE";
+  method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   body?: TBody;
   signal?: AbortSignal;
   /** Wenn true, parsen wir die Response nicht (für Endpoints, die 204 No-Content liefern). */
