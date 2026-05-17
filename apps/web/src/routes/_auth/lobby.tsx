@@ -1,30 +1,32 @@
 /**
- * Lobby-Stub für M7-B. Die echte Lobby-View mit Tisch-Liste, Beitritt
- * und WS-Live-Updates entsteht in M7-C.
+ * Lobby — Tisch-Übersicht mit Live-Updates und „Tisch öffnen"-Dialog.
  */
 import { createFileRoute } from "@tanstack/react-router";
+import { useState } from "react";
 
-import { useSession } from "~/lib/auth-client";
+import { LobbyList } from "~/features/lobby/LobbyList";
+import { OpenTableDialog } from "~/features/lobby/OpenTableDialog";
 
 export const Route = createFileRoute("/_auth/lobby")({
   component: LobbyPage,
 });
 
 function LobbyPage() {
-  const { data } = useSession();
+  const [openDialog, setOpenDialog] = useState(false);
   return (
     <section className="space-y-4">
-      <h1 className="text-2xl font-bold">Lobby</h1>
-      <p className="text-stone-600">
-        Servus <strong>{data?.user?.name}</strong> — die richtige Lobby-Übersicht mit Tisch- Liste
-        und Live-Updates kommt mit M7-C.
-      </p>
-      <p className="text-sm text-stone-500">
-        Backend ist schon da:{" "}
-        <code className="rounded bg-stone-100 px-1.5">GET /api/lobby/tables</code>,{" "}
-        <code className="rounded bg-stone-100 px-1.5">POST /api/lobby/tables</code>, WS-Pushes via{" "}
-        <code className="rounded bg-stone-100 px-1.5">lobby:tables-updated</code>.
-      </p>
+      <header className="flex items-center gap-3">
+        <h1 className="text-2xl font-bold">Lobby</h1>
+        <button
+          type="button"
+          onClick={() => setOpenDialog(true)}
+          className="ml-auto rounded bg-stone-900 px-4 py-2 text-white hover:bg-stone-700"
+        >
+          Tisch öffnen
+        </button>
+      </header>
+      <LobbyList />
+      <OpenTableDialog open={openDialog} onClose={() => setOpenDialog(false)} />
     </section>
   );
 }
