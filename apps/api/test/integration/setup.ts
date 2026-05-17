@@ -135,6 +135,9 @@ export async function setupTestApp(): Promise<TestAppHandle> {
   // Zeilen in den Test-Output. `silent` schaltet ihn komplett ab; via
   // TEST_LOG_LEVEL kann man bei Bedarf temporär hochdrehen.
   process.env["LOG_LEVEL"] = process.env["TEST_LOG_LEVEL"] ?? "silent";
+  // Better-Auth Rate-Limit für Tests entschärfen — sonst hauen
+  // Multi-User-Setups in 429 raus (3 Sign-Ups pro Stunde pro IP ist scharf).
+  process.env["DISABLE_AUTH_RATE_LIMIT"] = "1";
 
   // ─── 3. Prisma-Migrate gegen Test-DB ──────────────────────────────────
   // `prisma migrate deploy` aus apps/api/. Wir spawn'en den CLI-Subprocess statt

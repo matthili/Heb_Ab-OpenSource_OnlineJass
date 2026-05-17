@@ -104,8 +104,12 @@ export class AuthService implements OnModuleInit {
       // Rate-Limit: globaler Fallback + strengere Regeln pro Auth-Pfad.
       // Storage in-memory ist ok solange wir Single-Instance laufen; in M11
       // wechseln wir auf `storage: "secondary-storage"` mit Redis-Adapter.
+      //
+      // In Tests setzen wir `DISABLE_AUTH_RATE_LIMIT=1`, damit Tests, die
+      // viele User registrieren, nicht in 429 laufen. Production verlässt
+      // sich auf den Default.
       rateLimit: {
-        enabled: true,
+        enabled: process.env["DISABLE_AUTH_RATE_LIMIT"] !== "1",
         window: 60, // Sekunden für den globalen Default
         max: 60,
         customRules: {
