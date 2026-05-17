@@ -2,6 +2,11 @@ node_modules/
 dist/
 .vite/
 
+# Playwright-Artefakte
+playwright-report/
+test-results/
+playwright/.cache/
+
 # TanStack Router generiert die routeTree pro Build/Dev neu — wir checken
 # sie nicht ein, sonst gibt es Merge-Konflikte bei jedem Route-File-Change.
 src/routeTree.gen.ts
