@@ -1,20 +1,16 @@
 /**
- * Spielfläche. Layout (3×3-Grid, eigener Sitz ist „unten"):
- *
- *     [top]
- * [left]  [trick]  [right]
- *     [bottom = ich]
- *     [hand]
- *
- * Trick wird mittig in 4 Positionen ausgespielt, jeder Spieler an
- * seinem Slot. Eigene Hand am unteren Rand, klickbar wenn myTurn + legal.
+ * Spielfläche. Setzt jetzt (seit M7-E) auf die `@jass/ui`-Komponenten
+ * Scoreboard / Trick / Hand. Eigene Logik hier:
+ *   - Sitz-Slots der Mitspieler (Avatar/Name) am Rand der Spielfläche
+ *   - Status-Banner (Du bist dran / Spieler X / fertig)
+ *   - Trick-Winner-Berechnung über die Engine
  */
-import { Card as CardComponent } from "@jass/ui";
+import { Hand, Scoreboard, Trick } from "@jass/ui";
 import type { Card } from "@jass/engine";
-import { RANK_ID, SUIT_ID } from "@jass/engine";
+import { trickWinner } from "@jass/engine";
 
 import type { SeatView } from "~/features/lobby/types";
-import { relativeSlot, SEAT_LABEL_POS, TRICK_SLOT_POS } from "./seat-layout";
+import { relativeSlot, SEAT_LABEL_POS } from "./seat-layout";
 import type { PlayerView } from "./types";
 
 interface Props {
@@ -27,9 +23,16 @@ interface Props {
 }
 
 export function GameBoard({ view, seats, mySeat, movePending, error, onPlayCard }: Props) {
+  const variant = view.state.variant;
   return (
     <div className="space-y-4">
-      <ScorePanel view={view} />
+      <Scoreboard
+        ownTeamScore={view.state.own_team_score}
+        oppTeamScore={view.state.opp_team_score}
+        trickIdx={view.state.trick_idx}
+        mode={variant.mode}
+        {...(variant.trump_suit !== undefined ? { trumpSuit: variant.trump_suit } : {})}
+      />
       <StatusBanner view={view} seats={seats} />
       {error && (
         <div
@@ -39,29 +42,13 @@ export function GameBoard({ view, seats, mySeat, movePending, error, onPlayCard 
           {error}
         </div>
       )}
-      <BoardGrid view={view} seats={seats} mySeat={mySeat} />
-      <HandRow
-        hand={view.hand}
+      <PlayingArea view={view} seats={seats} mySeat={mySeat} />
+      <Hand
+        cards={view.hand}
         legalMask={view.legalActionMask}
         canPlay={view.myTurn && !movePending}
         onPlay={onPlayCard}
       />
-    </div>
-  );
-}
-
-function ScorePanel({ view }: { view: PlayerView }) {
-  const own = view.state.own_team_score;
-  const opp = view.state.opp_team_score;
-  return (
-    <div className="flex gap-4 text-sm border-b border-stone-200 pb-2">
-      <span>
-        Eigenes Team: <strong>{own}</strong>
-      </span>
-      <span>
-        Gegner: <strong>{opp}</strong>
-      </span>
-      <span className="ml-auto text-stone-500">Stich {view.state.trick_idx + 1} / 9</span>
     </div>
   );
 }
@@ -90,7 +77,12 @@ function StatusBanner({ view, seats }: { view: PlayerView; seats: readonly SeatV
   );
 }
 
-function BoardGrid({
+/**
+ * Die zentrale Spielfläche: Sitz-Labels an den 4 Rand-Slots + Trick in
+ * der Mitte. Der Trick-Slot ist eine eigene 3×3-Sub-Grid (über die
+ * `Trick`-Komponente), die wir mittig auf das große 3×3-Grid setzen.
+ */
+function PlayingArea({
   view,
   seats,
   mySeat,
@@ -99,25 +91,32 @@ function BoardGrid({
   seats: readonly SeatView[];
   mySeat: number;
 }) {
+  // Trick-Winner-Highlight: wenn alle 4 Karten liegen, berechnen wir den
+  // Sieger über die Engine. Bei < 4 Karten ist noch kein Winner.
   const trickCards = view.state.current_trick_cards;
   const trickStarter = view.state.current_trick_starter;
+  let winnerSeat: number | undefined;
+  if (trickCards.length === 4) {
+    const winnerIdx = trickWinner(trickCards, view.state.variant);
+    winnerSeat = (trickStarter + winnerIdx) % 4;
+  }
 
   return (
     <div
-      className="grid grid-cols-3 grid-rows-4 gap-2 min-h-[26rem] bg-emerald-50 border border-emerald-200 rounded-lg p-4"
+      className="grid grid-cols-3 grid-rows-3 gap-2 min-h-[18rem] bg-emerald-50 border border-emerald-200 rounded-lg p-4 relative"
       role="region"
       aria-label="Spielfläche"
     >
-      {/* Sitz-Labels in den vier Slots */}
+      {/* Sitz-Labels in den drei Mitspieler-Slots */}
       {seats.map((s) => {
-        if (s.seat === mySeat) return null; // eigener Sitz braucht keinen Label-Block
+        if (s.seat === mySeat) return null;
         const slot = relativeSlot(s.seat, mySeat);
         const label = s.user?.name ?? (s.aiSeatType ? `KI · ${s.aiSeatType}` : "—");
         const active = view.whoseTurnSeat === s.seat && view.status === "playing";
         return (
           <div
             key={s.seat}
-            className={`${SEAT_LABEL_POS[slot]} text-sm rounded px-2 py-1 ${
+            className={`${SEAT_LABEL_POS[slot]} text-sm rounded px-2 py-1 z-10 ${
               active ? "bg-amber-200 text-amber-900 font-medium" : "bg-white text-stone-700"
             }`}
           >
@@ -126,50 +125,18 @@ function BoardGrid({
         );
       })}
 
-      {/* Trick-Karten je nach Slot */}
-      {trickCards.map((c, i) => {
-        const absoluteSeat = (trickStarter + i) % 4;
-        const slot = relativeSlot(absoluteSeat, mySeat);
-        return (
-          <div key={`${c.suit}-${c.rank}-${i}`} className={TRICK_SLOT_POS[slot]}>
-            <CardComponent card={c} size="sm" />
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-function HandRow({
-  hand,
-  legalMask,
-  canPlay,
-  onPlay,
-}: {
-  hand: readonly Card[];
-  legalMask: readonly number[];
-  canPlay: boolean;
-  onPlay: (card: Card) => void;
-}) {
-  if (hand.length === 0) {
-    return <p className="text-sm text-stone-500 text-center">Keine Karten mehr in der Hand.</p>;
-  }
-  return (
-    <div className="flex justify-center gap-1 flex-wrap" role="group" aria-label="Meine Karten">
-      {hand.map((card, i) => {
-        const idx = SUIT_ID[card.suit] * 9 + RANK_ID[card.rank];
-        const legal = legalMask[idx] === 1;
-        const clickable = canPlay && legal;
-        return (
-          <CardComponent
-            key={`${card.suit}-${card.rank}-${i}`}
-            card={card}
-            size="md"
-            disabled={canPlay && !legal}
-            {...(clickable ? { onClick: onPlay } : {})}
-          />
-        );
-      })}
+      {/* Trick in der Mitte — eigener Container mit Trick-Komponente,
+          die ein 3×3-Sub-Grid füllt. Wir lassen es über die ganze
+          Spielfläche spannen, damit die vier Slots zu den
+          Sitz-Labels am Rand passen. */}
+      <div className="row-start-1 row-end-4 col-start-1 col-end-4 pointer-events-none">
+        <Trick
+          cards={trickCards}
+          starter={trickStarter}
+          mySeat={mySeat}
+          {...(winnerSeat !== undefined ? { winnerSeat } : {})}
+        />
+      </div>
     </div>
   );
 }

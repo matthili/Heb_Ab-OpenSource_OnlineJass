@@ -14,7 +14,7 @@
  */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
-import { useCallback } from "react";
+import { type FormEvent, useCallback, useState } from "react";
 
 import { GameBoard } from "~/features/game/GameBoard";
 import { RematchPanel } from "~/features/game/RematchPanel";
@@ -231,19 +231,142 @@ function OwnerPanel(props: { table: TableDetailView; queryKey: readonly unknown[
         </section>
       )}
 
+      {table.status !== "CLOSED" && <InviteForm tableId={table.id} queryKey={queryKey} />}
+
       {table.invites && table.invites.length > 0 && (
         <section className="space-y-2">
           <h3 className="text-sm font-medium text-stone-700">
             Offene Einladungen ({table.invites.length})
           </h3>
-          <ul className="text-sm text-stone-600">
+          <ul className="space-y-1">
             {table.invites.map((i) => (
-              <li key={i.id}>{i.inviteeName}</li>
+              <InviteRow
+                key={i.id}
+                inviteId={i.id}
+                tableId={table.id}
+                inviteeName={i.inviteeName}
+                queryKey={queryKey}
+              />
             ))}
           </ul>
         </section>
       )}
     </div>
+  );
+}
+
+/**
+ * Eingabe-Formular zum Einladen eines bestehenden Users per
+ * `displayName`. Backend resolved den Namen zu User-ID. Bei
+ * Erfolg → Tisch-View invalidaten, die neue Invite taucht in der Liste auf.
+ */
+function InviteForm({ tableId, queryKey }: { tableId: string; queryKey: readonly unknown[] }) {
+  const [name, setName] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+
+  const inviteMut = useMutation({
+    mutationFn: (inviteeName: string) =>
+      api<{ inviteId: string; inviteeUserId: string }>(`/api/lobby/tables/${tableId}/invites`, {
+        method: "POST",
+        body: { inviteeName },
+      }),
+    onSuccess: (_data, inviteeName) => {
+      setSuccess(`Einladung an ${inviteeName} verschickt.`);
+      setName("");
+      queryClient.invalidateQueries({ queryKey });
+      // Erfolgs-Meldung auto-versteckt nach 4 s.
+      setTimeout(() => setSuccess(null), 4_000);
+    },
+    onError: (err: unknown) => {
+      setError(err instanceof ApiError ? err.message : "Einladung fehlgeschlagen.");
+    },
+  });
+
+  function onSubmit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setError(null);
+    setSuccess(null);
+    const trimmed = name.trim();
+    if (!trimmed) {
+      setError("Bitte einen Spielernamen eingeben.");
+      return;
+    }
+    inviteMut.mutate(trimmed);
+  }
+
+  return (
+    <form
+      onSubmit={onSubmit}
+      className="space-y-2 border-t border-stone-200 pt-3"
+      aria-label="Spieler einladen"
+    >
+      <label className="block">
+        <span className="block text-sm font-medium text-stone-700 mb-1">Spieler einladen</span>
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Spielername"
+            className="flex-1 rounded border border-stone-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500"
+          />
+          <button
+            type="submit"
+            disabled={inviteMut.isPending}
+            className="rounded bg-stone-900 px-4 py-2 text-sm text-white hover:bg-stone-700 disabled:opacity-50"
+          >
+            {inviteMut.isPending ? "…" : "Einladen"}
+          </button>
+        </div>
+      </label>
+      {error && (
+        <p role="alert" className="text-sm text-rose-700">
+          {error}
+        </p>
+      )}
+      {success && (
+        <p role="status" className="text-sm text-emerald-700">
+          {success}
+        </p>
+      )}
+    </form>
+  );
+}
+
+/**
+ * Eine offene Einladung in der Liste — mit Zurückziehen-Button.
+ */
+function InviteRow({
+  inviteId,
+  tableId,
+  inviteeName,
+  queryKey,
+}: {
+  inviteId: string;
+  tableId: string;
+  inviteeName: string;
+  queryKey: readonly unknown[];
+}) {
+  const queryClient = useQueryClient();
+  const cancelMut = useMutation({
+    mutationFn: () =>
+      api(`/api/lobby/tables/${tableId}/invites/${inviteId}/cancel`, { method: "POST" }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey }),
+  });
+  return (
+    <li className="flex items-center gap-3 rounded border border-stone-200 px-3 py-2">
+      <span className="flex-1 text-sm">{inviteeName}</span>
+      <button
+        type="button"
+        onClick={() => cancelMut.mutate()}
+        disabled={cancelMut.isPending}
+        className="rounded border border-stone-300 px-3 py-1 text-sm hover:bg-stone-100"
+      >
+        Zurückziehen
+      </button>
+    </li>
   );
 }
 
