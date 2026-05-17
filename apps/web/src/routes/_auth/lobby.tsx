@@ -5,6 +5,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import { ChatPanel } from "~/features/chat/ChatPanel";
 import { LobbyList } from "~/features/lobby/LobbyList";
 import { OpenTableDialog } from "~/features/lobby/OpenTableDialog";
 
@@ -27,7 +28,10 @@ function LobbyPage() {
           {t("lobby.openTable")}
         </button>
       </header>
-      <LobbyList />
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_20rem] gap-4">
+        <LobbyList />
+        <ChatPanel channelKey="lobby:global" title={t("lobby.title")} />
+      </div>
       <OpenTableDialog open={openDialog} onClose={() => setOpenDialog(false)} />
     </section>
   );

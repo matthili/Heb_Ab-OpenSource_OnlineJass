@@ -16,6 +16,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { type FormEvent, useCallback, useState } from "react";
 
+import { ChatPanel } from "~/features/chat/ChatPanel";
 import { GameBoard } from "~/features/game/GameBoard";
 import { RematchPanel } from "~/features/game/RematchPanel";
 import { useGameView } from "~/features/game/useGameView";
@@ -428,18 +429,21 @@ function GameSection({
 
   const mySeat = view.state.player_idx;
   return (
-    <section className="space-y-4">
-      <GameBoard
-        view={view}
-        seats={tableSeats}
-        mySeat={mySeat}
-        movePending={movePending}
-        error={error}
-        onPlayCard={playCard}
-      />
-      {tableStatus === "POST_GAME" && view.status === "finished" && (
-        <RematchPanel gameId={gameId} finalScore={view.finalScore} />
-      )}
+    <section className="grid grid-cols-1 lg:grid-cols-[1fr_20rem] gap-4">
+      <div className="space-y-4">
+        <GameBoard
+          view={view}
+          seats={tableSeats}
+          mySeat={mySeat}
+          movePending={movePending}
+          error={error}
+          onPlayCard={playCard}
+        />
+        {tableStatus === "POST_GAME" && view.status === "finished" && (
+          <RematchPanel gameId={gameId} finalScore={view.finalScore} />
+        )}
+      </div>
+      <ChatPanel channelKey={`game:${gameId}`} title="Tisch-Chat" />
     </section>
   );
 }

@@ -24,6 +24,7 @@
     "@tanstack/react-query": "^5.100.0",
     "@tanstack/react-router": "^1.170.0",
     "better-auth": "^1.6.11",
+    "dompurify": "^3.4.4",
     "i18next": "^26.2.0",
     "i18next-browser-languagedetector": "^8.2.0",
     "react": "^19.2.0",
