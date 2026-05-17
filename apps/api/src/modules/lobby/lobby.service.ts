@@ -42,6 +42,7 @@ import type {
   RematchVoteDto,
   UpdateTableSettingsDto,
 } from "./lobby.dto.js";
+import { LobbyGateway } from "./lobby.gateway.js";
 
 /** Sitz-Zusammenfassung für die View. */
 export interface SeatView {
@@ -82,8 +83,32 @@ export class LobbyService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
-    private readonly games: GameService
+    private readonly games: GameService,
+    private readonly gateway: LobbyGateway
   ) {}
+
+  /**
+   * Pusht den aktuellen Tisch-State über das Gateway. Wird nach jeder
+   * Mutation aufgerufen. Bei nicht-existierendem Tisch ist das ein no-op.
+   *
+   * Wir laden die Detail-View mit `system` als Caller — der Push geht an
+   * alle Tisch-Abonnenten, und die Detail-View ist genau so granular, wie
+   * die Subscriber das brauchen. (Owner-spezifische Felder wie
+   * `joinRequests`/`invites` sind in der View enthalten, weil die View
+   * `callerId === ownerId` prüft. Hier liefern wir die *generische* View
+   * ohne Owner-Felder; Owner refetchen explizit per REST, wenn sie diese
+   * Detail-Daten brauchen.)
+   */
+  private async pushTableState(tableId: string): Promise<void> {
+    try {
+      // `__system__` als callerId → kein Match auf ownerId, also Owner-
+      // Felder nicht im Payload. Das ist der sichere Default für Broadcasts.
+      const view = await this.getTableView(tableId, "__system__");
+      this.gateway.broadcastTableState(tableId, view);
+    } catch {
+      // Tisch existiert nicht mehr oder anderer Fehler — Push schweigt.
+    }
+  }
 
   // ───────────────────────────────────────────────────────────────────
   // Tisch öffnen
@@ -164,6 +189,10 @@ export class LobbyService {
     // Wenn der Owner direkt mit 3 KIs öffnet, ist der Tisch sofort voll
     // und startet automatisch.
     await this.tryAutoStartGame(table.id);
+
+    // M6-F: Lobby-Liste-Abonnenten informieren, Tisch-State pushen.
+    this.gateway.broadcastLobbyListUpdate("table-opened", table.id);
+    await this.pushTableState(table.id);
     return { tableId: table.id };
   }
 
@@ -335,6 +364,8 @@ export class LobbyService {
         meta: { seat, inviteId: invite.id },
       });
       await this.tryAutoStartGame(table.id);
+      this.gateway.broadcastLobbyListUpdate("seat-changed", table.id);
+      await this.pushTableState(table.id);
       return { kind: "invite-used", seat };
     }
 
@@ -350,6 +381,8 @@ export class LobbyService {
           this.assignSeatAndCloseInvite(tx, table.id, userId, invite.id)
         );
         await this.tryAutoStartGame(table.id);
+        this.gateway.broadcastLobbyListUpdate("seat-changed", table.id);
+        await this.pushTableState(table.id);
         return { kind: "invite-used", seat };
       }
       const request = await this.prisma.gameJoinRequest.create({
@@ -361,6 +394,23 @@ export class LobbyService {
         target: table.id,
         meta: { requestId: request.id },
       });
+      // Owner-Push: neuer Beitritts-Wunsch landet im Owner's UI.
+      const tableOwner = await this.prisma.lobbyTable.findUnique({
+        where: { id: tableId },
+        select: { ownerId: true },
+      });
+      if (tableOwner) {
+        const requesterName = await this.prisma.user
+          .findUnique({ where: { id: userId }, select: { name: true } })
+          .then((u) => u?.name ?? "?");
+        this.gateway.pushToUser(tableOwner.ownerId, "lobby:join-request-incoming", {
+          tableId,
+          requestId: request.id,
+          userId,
+          userName: requesterName,
+        });
+      }
+      await this.pushTableState(table.id);
       return { kind: "request-pending", requestId: request.id };
     }
 
@@ -373,6 +423,8 @@ export class LobbyService {
       meta: { seat },
     });
     await this.tryAutoStartGame(table.id);
+    this.gateway.broadcastLobbyListUpdate("seat-changed", table.id);
+    await this.pushTableState(table.id);
     return { kind: "seated", seat };
   }
 
@@ -390,6 +442,7 @@ export class LobbyService {
       actorId: userId,
       target: tableId,
     });
+    await this.pushTableState(tableId);
   }
 
   async approveJoinRequest(
@@ -423,13 +476,22 @@ export class LobbyService {
           target: tableId,
           meta: { requestId, userId: request.userId, seat },
         });
-        return { seat };
+        return { seat, requesterId: request.userId };
       })
-      .then(async (result) => {
+      .then(async ({ seat, requesterId }) => {
         // Auto-Start außerhalb der Transaktion: der GameService öffnet seine
         // eigene Transaktion und das nesten würde unnötig blockieren.
         await this.tryAutoStartGame(tableId);
-        return result;
+        // M6-F: Requester wird benachrichtigt, Tisch-State broadcasten.
+        this.gateway.pushToUser(requesterId, "lobby:request-decided", {
+          tableId,
+          requestId,
+          approved: true,
+          seat,
+        });
+        this.gateway.broadcastLobbyListUpdate("seat-changed", tableId);
+        await this.pushTableState(tableId);
+        return { seat };
       });
   }
 
@@ -452,6 +514,14 @@ export class LobbyService {
       target: tableId,
       meta: { requestId, userId: request.userId },
     });
+    // Requester benachrichtigen, Tisch-State (Owner sieht in seinem View
+    // weniger pending Requests).
+    this.gateway.pushToUser(request.userId, "lobby:request-decided", {
+      tableId,
+      requestId,
+      approved: false,
+    });
+    await this.pushTableState(tableId);
   }
 
   // ───────────────────────────────────────────────────────────────────
@@ -508,6 +578,13 @@ export class LobbyService {
       target: tableId,
       meta: { inviteId: invite.id, inviteeUserId: invitee.id },
     });
+    // Einladung an den Eingeladenen pushen.
+    this.gateway.pushToUser(invitee.id, "lobby:invite-received", {
+      inviteId: invite.id,
+      tableId,
+      inviterId: ownerId,
+    });
+    await this.pushTableState(tableId);
     return { inviteId: invite.id, inviteeUserId: invitee.id };
   }
 
@@ -532,6 +609,8 @@ export class LobbyService {
       meta: { inviteId, seat },
     });
     await this.tryAutoStartGame(table.id);
+    this.gateway.broadcastLobbyListUpdate("seat-changed", table.id);
+    await this.pushTableState(table.id);
     return { seat };
   }
 
@@ -553,6 +632,7 @@ export class LobbyService {
       target: invite.tableId,
       meta: { inviteId },
     });
+    await this.pushTableState(invite.tableId);
   }
 
   async cancelInvite(tableId: string, inviteId: string, ownerId: string): Promise<void> {
@@ -574,6 +654,12 @@ export class LobbyService {
       target: tableId,
       meta: { inviteId },
     });
+    // Eingeladenen informieren, falls er gerade die Einladung im UI sieht.
+    this.gateway.pushToUser(invite.inviteeUserId, "lobby:invite-cancelled", {
+      inviteId,
+      tableId,
+    });
+    await this.pushTableState(tableId);
   }
 
   // ───────────────────────────────────────────────────────────────────
@@ -608,6 +694,8 @@ export class LobbyService {
         ...(dto.restartMode !== undefined ? { restartMode: dto.restartMode } : {}),
       },
     });
+    this.gateway.broadcastLobbyListUpdate("settings-changed", tableId);
+    await this.pushTableState(tableId);
   }
 
   // ───────────────────────────────────────────────────────────────────
@@ -634,7 +722,17 @@ export class LobbyService {
     newOwnerId: string | null;
     tableClosed: boolean;
   }> {
-    return this.prisma.$transaction(async (tx) => {
+    // Pending-Requesters VOR der Transaktion einsammeln — die brauchen wir
+    // nur für den Owner-Wechsel-Push (User-Entscheidung 2 aus der
+    // M6-Vorschau: bei Owner-Wechsel kriegen alle pending-Requesters einen
+    // Hinweis). Die Liste kann zwischen Snapshot und Transaktion theoretisch
+    // veralten — das ist eine reine UI-Notifikation und tolerierbar.
+    const pendingRequesters = await this.prisma.gameJoinRequest.findMany({
+      where: { tableId, status: JoinRequestStatus.PENDING },
+      select: { userId: true },
+    });
+
+    const result = await this.prisma.$transaction(async (tx) => {
       const table = await tx.lobbyTable.findUnique({
         where: { id: tableId },
         include: { seats: { orderBy: { joinOrder: "asc" } } },
@@ -721,6 +819,39 @@ export class LobbyService {
       });
       return { seatFreed: mySeat.seat, newOwnerId: null, tableClosed: true };
     });
+
+    // ─── M6-F: Pushes nach erfolgreicher Mutation ────────────────────
+    if (result.tableClosed) {
+      this.gateway.broadcastTableClosed(tableId);
+      this.gateway.broadcastLobbyListUpdate("table-closed", tableId);
+      // Pending-Requesters: ihr Request ist jetzt ungültig.
+      for (const req of pendingRequesters) {
+        this.gateway.pushToUser(req.userId, "lobby:request-decided", {
+          tableId,
+          approved: false,
+          reason: "table-closed",
+        });
+      }
+    } else {
+      if (result.newOwnerId) {
+        // Owner-Wechsel — pending Requesters informieren, dass jetzt ein
+        // anderer User entscheidet (User-Entscheidung 2 aus der Vorschau).
+        const newOwnerName = await this.prisma.user
+          .findUnique({ where: { id: result.newOwnerId }, select: { name: true } })
+          .then((u) => u?.name ?? "?");
+        for (const req of pendingRequesters) {
+          this.gateway.pushToUser(req.userId, "lobby:owner-changed", {
+            tableId,
+            previousOwnerId: userId,
+            newOwnerId: result.newOwnerId,
+            newOwnerName,
+          });
+        }
+      }
+      this.gateway.broadcastLobbyListUpdate("seat-changed", tableId);
+      await this.pushTableState(tableId);
+    }
+    return result;
   }
 
   // ───────────────────────────────────────────────────────────────────
@@ -792,7 +923,34 @@ export class LobbyService {
     });
 
     // 3. Auswerten: alle Menschen-Sitze müssen gevotet haben.
-    return this.evaluateRematchVotes(gameId);
+    const outcome = await this.evaluateRematchVotes(gameId);
+
+    // M6-F: Vote broadcasten + Outcome-Event, falls finalisiert.
+    if (outcome.kind === "pending") {
+      this.gateway.broadcastRematchVoteCast(game.table.id, {
+        gameId,
+        userId,
+        vote: dto.vote,
+        remainingVotes: outcome.remainingVotes,
+      });
+    } else if (outcome.kind === "rematch-started") {
+      this.gateway.broadcastRematchDecided(game.table.id, {
+        kind: "rematch-started",
+        gameId: outcome.gameId,
+        starter: outcome.starter,
+      });
+      this.gateway.broadcastLobbyListUpdate("game-started", game.table.id);
+      await this.pushTableState(game.table.id);
+    } else {
+      // back-to-waiting
+      this.gateway.broadcastRematchDecided(game.table.id, {
+        kind: "back-to-waiting",
+        removedUserIds: outcome.removedUserIds,
+      });
+      this.gateway.broadcastLobbyListUpdate("rematch-declined", game.table.id);
+      await this.pushTableState(game.table.id);
+    }
+    return outcome;
   }
 
   /**
@@ -1174,6 +1332,8 @@ export class LobbyService {
       target: tableId,
       meta: { gameId },
     });
+    this.gateway.broadcastLobbyListUpdate("game-started", tableId);
+    await this.pushTableState(tableId);
     return { gameId };
   }
 
@@ -1284,6 +1444,8 @@ export class LobbyService {
         target: tableId,
         meta: { gameId },
       });
+      this.gateway.broadcastLobbyListUpdate("game-started", tableId);
+      await this.pushTableState(tableId);
     }
     return { gameId };
   }
