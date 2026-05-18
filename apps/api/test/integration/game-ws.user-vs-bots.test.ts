@@ -38,7 +38,7 @@ const RANKS = [
 ] as const;
 
 interface StateUpdate {
-  status: "playing" | "finished";
+  status: "announcing" | "playing" | "finished";
   myTurn: boolean;
   whoseTurnSeat: number;
   hand: { suit: string; rank: string }[];
@@ -47,6 +47,12 @@ interface StateUpdate {
     trick_idx: number;
     completed_tricks: unknown[];
     hands?: unknown[]; // sollte hier NICHT vorhanden sein (server filtert)
+  } | null;
+  announcement?: {
+    announcerSeat: number;
+    iAmAnnouncer: boolean;
+    canPush: boolean;
+    pushedFromSeat: number | null;
   };
   finalScore?: {
     team_card_points: number[];
@@ -120,13 +126,22 @@ describe("M4 game-ws — 1 User (via WS) + 3 Random-KIs spielen Runde durch", ()
       // Filter-Check: der Server darf NICHT die fremden Hände schicken.
       // `state.hands` ist eine Server-interne Eigenschaft, die in der View
       // weggefiltert sein muss.
-      if (s.state.hands !== undefined) {
+      if (s.state?.hands !== undefined) {
         // Sammeln statt sofortiges expect, damit der Test ein lesbares
         // Profil produziert, wenn das später mal regrediert.
         wsErrors.push("state.hands ist im WS-Payload sichtbar");
       }
       if (s.status === "finished") {
         finished = true;
+        return;
+      }
+      // Sprint C: Wenn ich der Ansager bin, sage pragmatisch TRUMPF/EICHEL
+      // an (der Test verifiziert das Move-Verhalten, nicht die Strategie).
+      if (s.status === "announcing" && s.announcement?.iAmAnnouncer) {
+        socket.emit("game:announce", {
+          gameId,
+          decision: { kind: "announce", mode: "TRUMPF", trumpSuit: "EICHEL" },
+        });
         return;
       }
       if (s.myTurn) {
@@ -165,8 +180,9 @@ describe("M4 game-ws — 1 User (via WS) + 3 Random-KIs spielen Runde durch", ()
 
     const u = lastUpdate!;
     expect(u.status).toBe("finished");
-    expect(u.state.completed_tricks).toHaveLength(9);
-    expect(u.state.trick_idx).toBe(9);
+    expect(u.state).not.toBeNull();
+    expect(u.state!.completed_tricks).toHaveLength(9);
+    expect(u.state!.trick_idx).toBe(9);
     expect(u.hand).toHaveLength(0);
     expect(u.finalScore).toBeDefined();
     const sum = u.finalScore!.team_card_points.reduce((a, b) => a + b, 0);

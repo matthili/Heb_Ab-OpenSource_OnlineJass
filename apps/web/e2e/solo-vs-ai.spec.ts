@@ -38,7 +38,19 @@ test("Solo + 3 KI: Register → Verify → Tisch öffnen → komplette Runde dur
   await dialog.getByLabel(/allein gegen 3 KI/i).check();
   await dialog.getByRole("button", { name: /Tisch öffnen|Open table/ }).click();
 
-  // ─── 3. Spielfläche erscheint ────────────────────────────────────────
+  // ─── 3. Ansage-Phase (Sprint C) ──────────────────────────────────────
+  // Wenn der User WELI-Inhaber ist, zeigt der Server den Ansage-Dialog.
+  // Wir wählen pragmatisch TRUMPF + Eichel. Andernfalls sagt eine KI an,
+  // und wir warten direkt auf die Spielfläche.
+  const announceConfirm = page.getByRole("button", { name: /Ansage bestätigen/i });
+  const trumpfButton = page.getByRole("button", { name: /^Trumpf$/i });
+  if (await trumpfButton.isVisible({ timeout: 4_000 }).catch(() => false)) {
+    await trumpfButton.click();
+    await page.getByRole("button", { name: /^Eichel$/i }).click();
+    await announceConfirm.click();
+  }
+
+  // ─── 4. Spielfläche erscheint ────────────────────────────────────────
   await expect(page.getByRole("region", { name: /Spielfläche|Playing area/i })).toBeVisible({
     timeout: 15_000,
   });

@@ -18,6 +18,7 @@
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
+import { settleAnnouncement } from "./announce-helper.js";
 import { signUpAndIn, type SignedInUser } from "./auth-helper.js";
 import { setupTestApp, type TestAppHandle } from "./setup.js";
 
@@ -74,6 +75,10 @@ describe("M6-E rematch flow", () => {
       { method: "GET" }
     );
     const gameId = detail.body.currentGameId!;
+
+    // Sprint C: Game startet im Ansage-Modus. Wir wickeln die Ansage
+    // pragmatisch ab (KI-Sitze via Heuristik, User-Sitz TRUMPF/EICHEL).
+    await settleAnnouncement(app, gameId);
 
     // KI-Loop bis Game zu Ende. Wir müssen die User-Moves auch selber
     // spielen (Sitz 0 = Owner). Mit einer „erste legale Karte"-Strategie

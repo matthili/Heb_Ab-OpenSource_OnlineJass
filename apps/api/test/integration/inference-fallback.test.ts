@@ -75,7 +75,8 @@ describe("M5 inference-fallback — KI bleibt spielbar bei Inferenz-Ausfall", ()
     expect(movesPlayed).toBe(36);
     const view = await app.games.viewForSeat(gameId, 0);
     expect(view.status).toBe("finished");
-    expect(view.state.completed_tricks).toHaveLength(9);
+    expect(view.state).not.toBeNull();
+    expect(view.state!.completed_tricks).toHaveLength(9);
     const sum = view.finalScore!.team_card_points.reduce((a, b) => a + b, 0);
     expect(sum).toBe(157);
 

@@ -22,14 +22,18 @@ import type { Card } from "@jass/engine";
 import { useEffect, useRef, useState } from "react";
 
 import { getLobbySocket } from "~/lib/ws";
-import type { PlayerView } from "./types";
+import type { AnnouncementDecision, PlayerView } from "./types";
 
 export interface GameViewState {
   view: PlayerView | null;
   error: string | null;
   /** true, solange ein `game:move` unterwegs ist. */
   movePending: boolean;
+  /** true, solange ein `game:announce` unterwegs ist. */
+  announcePending: boolean;
   playCard: (card: Card) => void;
+  /** Trumpf-Ansage (oder Push) absenden. */
+  announce: (decision: AnnouncementDecision) => void;
   clearError: () => void;
 }
 
@@ -37,6 +41,7 @@ export function useGameView(gameId: string | null): GameViewState {
   const [view, setView] = useState<PlayerView | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [movePending, setMovePending] = useState(false);
+  const [announcePending, setAnnouncePending] = useState(false);
   // Ref zum letzten gameId, damit der play-Callback nicht stale wird.
   const gameIdRef = useRef<string | null>(gameId);
   gameIdRef.current = gameId;
@@ -48,6 +53,7 @@ export function useGameView(gameId: string | null): GameViewState {
     function onState(v: PlayerView) {
       setView(v);
       setMovePending(false);
+      setAnnouncePending(false);
       // State-Update räumt einen alten Move-Fehler auf, sobald ein
       // legitimer State eintrifft.
       setError(null);
@@ -55,6 +61,7 @@ export function useGameView(gameId: string | null): GameViewState {
     function onError(e: { message?: string }) {
       setError(e?.message ?? "Spielfehler");
       setMovePending(false);
+      setAnnouncePending(false);
     }
 
     socket.on("game:state", onState);
@@ -76,9 +83,17 @@ export function useGameView(gameId: string | null): GameViewState {
     socket.emit("game:move", { gameId: id, card });
   }
 
+  function announce(decision: AnnouncementDecision) {
+    const id = gameIdRef.current;
+    if (!id) return;
+    const socket = getLobbySocket();
+    setAnnouncePending(true);
+    socket.emit("game:announce", { gameId: id, decision });
+  }
+
   function clearError() {
     setError(null);
   }
 
-  return { view, error, movePending, playCard, clearError };
+  return { view, error, movePending, announcePending, playCard, announce, clearError };
 }

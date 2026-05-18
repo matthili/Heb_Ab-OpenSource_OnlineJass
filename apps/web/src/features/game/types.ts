@@ -2,7 +2,7 @@
  * Game-Frontend-Types — Spiegel von `apps/api/src/modules/game/game.service.ts`
  * (PlayerView). M11 ersetzt das durch generierte OpenAPI-Types.
  */
-import type { Card, GameState } from "@jass/engine";
+import type { Card, GameState, PlayMode, Suit } from "@jass/engine";
 
 export interface FinalScore {
   team_card_points: readonly number[];
@@ -10,16 +10,43 @@ export interface FinalScore {
   trick_winners: readonly number[];
 }
 
+/**
+ * Drei Phasen:
+ *   - `announcing`: warten auf Trumpf-Ansage. `state` ist null, `announcement` ist gesetzt.
+ *   - `playing`: regulärer Spiel-Modus.
+ *   - `finished`: Spielende, mit `finalScore`.
+ */
 export interface PlayerView {
   gameId: string;
-  status: "playing" | "finished";
-  state: GameState;
+  status: "announcing" | "playing" | "finished";
+  /** Eigener Sitz im Game (0..3). In allen Phasen verfügbar. */
+  mySeat: number;
+  state: GameState | null;
   hand: readonly Card[];
   legalActionMask: readonly number[];
   whoseTurnSeat: number;
   myTurn: boolean;
+  announcement?: {
+    announcerSeat: number;
+    iAmAnnouncer: boolean;
+    canPush: boolean;
+    pushedFromSeat: number | null;
+  };
   finalScore?: FinalScore;
 }
+
+/**
+ * Wire-Format für das `game:announce`-WS-Event. Spiegel von
+ * `AnnouncementDecision` im Backend.
+ */
+export type AnnouncementDecision =
+  | { kind: "push" }
+  | {
+      kind: "announce";
+      mode: PlayMode;
+      trumpSuit?: Suit;
+      slalom?: boolean;
+    };
 
 export type RematchOutcome =
   | { kind: "pending"; remainingVotes: number }

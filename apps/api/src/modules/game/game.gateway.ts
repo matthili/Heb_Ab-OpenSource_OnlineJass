@@ -42,7 +42,7 @@ import type { Server, Socket } from "socket.io";
 import { AuthService } from "../auth/auth.service.js";
 import { RedisService } from "../redis/redis.service.js";
 import { GameLockService } from "./game-lock.service.js";
-import { GameService, type PlayerView } from "./game.service.js";
+import { GameService, type AnnouncementDecision, type PlayerView } from "./game.service.js";
 
 interface SocketData {
   userId?: string;
@@ -148,6 +148,15 @@ export class GameGateway
       const view = await this.games.viewForUser(gameId, userId);
       await socket.join(roomKey(gameId));
       socket.emit("game:state", view);
+      // Beim allerersten Join (z.B. solo-vs-3-KI: Mensch joint, Tisch
+      // ist gerade auf "announcing" mit einem KI-Announcer) muss die
+      // KI-Loop angestoßen werden. Lock-geschützt, damit das nicht mit
+      // parallelen `game:announce`-Events kollidiert.
+      if (view.status === "announcing" && view.announcement?.iAmAnnouncer !== true) {
+        await this.locks.withLock(gameId, async () => {
+          await this.driveAIsLoop(gameId);
+        });
+      }
     } catch (err) {
       this.fail(socket, this.errorMessage(err));
     }
@@ -187,28 +196,91 @@ export class GameGateway
   }
 
   /**
-   * Loop: solange der nächste Sitz eine KI ist (und die Runde nicht zu Ende),
-   * lass den Service eine Karte wählen und applyMove ausführen. Nach jedem
-   * KI-Move broadcasten wir den neuen Zustand, damit die Clients animieren
-   * können — zwischen den Schritten eine kleine Pause, damit das nicht als
-   * "ein Riesensprung" rüberkommt.
+   * Trumpf-Ansage durch einen menschlichen Spieler (Sprint C).
+   *
+   * Payload:
+   *   { gameId, decision: { kind: "push" } }
+   *   { gameId, decision: { kind: "announce", mode, trumpSuit?, slalom? } }
+   *
+   * Server validiert + speichert die RoundDecision, broadcastet den neuen
+   * State (= „playing"-Phase) und triggert ggf. die KI-Loop. Bei `push`
+   * bleibt das Spiel im announcing-State, aber mit dem Partner als
+   * Announcer — wenn der eine KI ist, springt die KI-Loop direkt in den
+   * KI-Ansage-Schritt.
+   */
+  @SubscribeMessage("game:announce")
+  async onAnnounce(
+    @ConnectedSocket() socket: AuthenticatedSocket,
+    @MessageBody() payload: { gameId?: string; decision?: AnnouncementDecision }
+  ): Promise<void> {
+    const userId = socket.data.userId;
+    if (!userId) return this.fail(socket, "Not authenticated");
+    const gameId = payload?.gameId;
+    const decision = payload?.decision;
+    if (typeof gameId !== "string" || !decision || !decision.kind) {
+      return this.fail(socket, "gameId + decision { kind } required");
+    }
+    try {
+      await this.locks.withLock(gameId, async () => {
+        await this.games.applyAnnouncementAsUser(gameId, userId, decision);
+        await this.broadcastState(gameId);
+        // Nach einer erfolgreichen Ansage kann es sein, dass der Starter
+        // direkt eine KI ist → KI-Loop dreht weiter. Nach einem `push`
+        // wartet das Spiel auf den Partner — wenn der eine KI ist,
+        // erledigt die Loop auch den Ansage-Schritt.
+        await this.driveAIsLoop(gameId);
+      });
+    } catch (err) {
+      this.fail(socket, this.errorMessage(err));
+    }
+  }
+
+  /**
+   * KI-Loop für **beide** Spielphasen:
+   *
+   *   - **announce**: wenn der aktuelle Announcer eine KI ist, lässt der
+   *     Service die HeuristicPlayer-Entscheidung berechnen (push oder
+   *     konkrete Ansage) und wendet sie an. Bei `push` wechselt der
+   *     Announcer zum Partner; ist der auch eine KI, dreht die Loop
+   *     direkt weiter. So endet eine reine KI-Tisch-Ansage immer in
+   *     einer konkreten Variante.
+   *   - **move**: wie bisher — KI wählt Karte, applyMove, broadcast.
+   *
+   * Sicherheitsnetz: maximal 36 Move-Schritte (= 4 × 9 Karten) plus
+   * separater Counter für maximal 2 Ansage-Schritte (Original + ein
+   * Push, danach muss Partner ansagen).
    */
   private async driveAIsLoop(gameId: string): Promise<void> {
-    // Sicherheitsnetz gegen Endlos-Schleifen: maximal 4 × 9 = 36 Karten pro Runde.
-    for (let i = 0; i < 36; i++) {
-      const next = await this.games.nextAISeat(gameId);
-      if (!next) return; // Mensch ist dran oder Runde vorbei
-      const card = await this.games.aiChooseMove(gameId, next.seat, next.aiSeatType);
-      const { view } = await this.games.playMoveAsSeat(gameId, next.seat, card);
+    let announceSteps = 0;
+    for (let i = 0; i < 40; i++) {
+      const action = await this.games.nextAIAction(gameId);
+      if (!action) return; // Mensch ist dran oder Spiel vorbei
+
+      if (action.kind === "announce") {
+        if (++announceSteps > 2) {
+          this.log.error({ gameId, seat: action.seat }, "Ansage-Loop > 2 Schritte — fail-safe");
+          return;
+        }
+        const decision = await this.games.aiChooseAnnouncement(gameId, action.seat);
+        await this.games.applyAnnouncementAsSeat(gameId, action.seat, decision);
+        await this.broadcastState(gameId);
+        // Zwischen Ansage-Schritten kurz Pause, damit das Frontend die
+        // Push-Animation zeigen kann.
+        await sleep(AI_STEP_DELAY_MS);
+        continue;
+      }
+
+      // Move-Schritt.
+      const card = await this.games.aiChooseMove(gameId, action.seat, action.aiSeatType);
+      const { view } = await this.games.playMoveAsSeat(gameId, action.seat, card);
       await this.broadcastState(gameId);
       if (view.status === "finished") {
         this.server.to(roomKey(gameId)).emit("game:ended", { finalScore: view.finalScore });
         return;
       }
-      // Soft-Throttle: Frontend hat Zeit für eine Karten-Animation.
       await sleep(AI_STEP_DELAY_MS);
     }
-    this.log.warn({ gameId }, "driveAIsLoop hat Sicherheitsgrenze von 36 erreicht");
+    this.log.warn({ gameId }, "driveAIsLoop hat Sicherheitsgrenze erreicht");
   }
 
   // ─── Helpers ──────────────────────────────────────────────────────

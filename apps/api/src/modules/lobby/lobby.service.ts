@@ -1136,7 +1136,17 @@ export class LobbyService {
   /**
    * Startet das neue Game am Tisch nach einem erfolgreichen YES-Vote.
    * Die Sitz-Konfiguration ist identisch (User-Entscheidung 3), Karten
-   * sind frisch, Starter ist nach `restartMode` bestimmt.
+   * sind frisch, der Ansager folgt dem `restartMode`:
+   *
+   *   - **WELI**: der Sitz mit dem WELI in der neuen Hand sagt an
+   *     (das hat der Caller bereits via `computeRematchStartAndHands`
+   *     ermittelt, und mit `starter` an uns geschickt).
+   *   - **SIEGER_GIBT**: `starter` wurde aus letztem Geber + Sieger-
+   *     Team berechnet — auch der wird zum Ansager.
+   *
+   * Wir übergeben dem GameService dann nur die Hände + den
+   * `announcerSeat`; die Variant bleibt offen, das Frontend zeigt
+   * dem Ansager den Dialog.
    */
   private async startRematchGame(
     tableId: string,
@@ -1144,12 +1154,9 @@ export class LobbyService {
     starter: number,
     hands: Card[][]
   ): Promise<string> {
-    const variant = { mode: "TRUMPF" as const, trump_suit: "EICHEL" as const };
     const { gameId } = await this.games.createGame({
       tableId,
-      variant,
-      announcement: { variant, slalom: false },
-      starter,
+      announcerSeat: starter,
       seats,
       hands,
     });
@@ -1385,9 +1392,11 @@ export class LobbyService {
    *
    * Vorbedingung: Tisch ist 4 voll und in WAITING. Caller hat das geprüft.
    *
-   * **M6-Vereinfachung**: Trumpf ist hard-coded `EICHEL`, Starter = 0
-   * (Owner). Re-Match (M6-E) berechnet den Starter dynamisch nach WELI /
-   * Sieger-Gibt; die Trumpf-Ansage-UI kommt mit M7 (Frontend).
+   * **Sprint C**: kein hard-coded Trumpf mehr. Das Game startet im
+   * Ansage-Modus; `createGame` ohne `variant` teilt die Karten aus und
+   * sucht selbst den WELI-Inhaber als Ansager (Vorarlberger Tradition
+   * Spiel 1). Das Frontend zeigt dem Announcer den Ansage-Dialog,
+   * KI-Sitze antworten via `HeuristicPlayer.chooseAnnouncement`.
    */
   private async startGameFromTable(tableId: string): Promise<string | null> {
     const table = await this.prisma.lobbyTable.findUnique({
@@ -1402,15 +1411,11 @@ export class LobbyService {
       aiSeatType: s.aiSeatType,
     }));
 
-    const variant = { mode: "TRUMPF" as const, trump_suit: "EICHEL" as const };
     const { gameId } = await this.games.createGame({
       tableId,
-      variant,
-      announcement: { variant, slalom: false },
-      starter: 0,
       seats,
     });
-    this.log.log({ tableId, gameId }, "Game aus Tisch gestartet");
+    this.log.log({ tableId, gameId }, "Game aus Tisch gestartet (Ansage-Modus)");
     return gameId;
   }
 

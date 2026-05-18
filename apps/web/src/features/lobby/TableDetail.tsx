@@ -442,7 +442,9 @@ function GameSection({
   isAtTable: boolean;
   tableStatus: TableDetailView["status"];
 }) {
-  const { view, error, movePending, playCard } = useGameView(isAtTable ? gameId : null);
+  const { view, error, movePending, announcePending, playCard, announce } = useGameView(
+    isAtTable ? gameId : null
+  );
 
   if (!isAtTable) {
     return (
@@ -456,17 +458,18 @@ function GameSection({
     return <p className="text-stone-500">Lade Spiel …</p>;
   }
 
-  const mySeat = view.state.player_idx;
   return (
     <section className="grid grid-cols-1 lg:grid-cols-[1fr_20rem] gap-4">
       <div className="space-y-4">
         <GameBoard
           view={view}
           seats={tableSeats}
-          mySeat={mySeat}
+          mySeat={view.mySeat}
           movePending={movePending}
+          announcePending={announcePending}
           error={error}
           onPlayCard={playCard}
+          onAnnounce={announce}
         />
         {tableStatus === "POST_GAME" && view.status === "finished" && (
           <RematchPanel gameId={gameId} finalScore={view.finalScore} />

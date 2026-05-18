@@ -74,8 +74,9 @@ describe("M4 game-loop — 4 Random-KIs spielen eine Runde durch", () => {
     // ─── Verifikation aus Sicht jedes Sitzes ────────────────────────────
     const finalView = await games.viewForSeat(gameId, 0);
     expect(finalView.status).toBe("finished");
-    expect(finalView.state.completed_tricks).toHaveLength(9);
-    expect(finalView.state.trick_idx).toBe(9);
+    expect(finalView.state).not.toBeNull();
+    expect(finalView.state!.completed_tricks).toHaveLength(9);
+    expect(finalView.state!.trick_idx).toBe(9);
     expect(finalView.hand).toHaveLength(0);
     expect(finalView.finalScore).toBeDefined();
 

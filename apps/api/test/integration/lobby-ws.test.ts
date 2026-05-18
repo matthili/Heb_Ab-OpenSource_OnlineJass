@@ -14,6 +14,7 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { io, type Socket } from "socket.io-client";
 
+import { settleAnnouncement } from "./announce-helper.js";
 import { signUpAndIn, type SignedInUser } from "./auth-helper.js";
 import { setupTestApp, type TestAppHandle } from "./setup.js";
 
@@ -169,6 +170,8 @@ describe("M6-F lobby WS pushes", () => {
       { method: "GET" }
     );
     const gameId = detail.body.currentGameId!;
+    // Sprint C: Ansage-Phase abwickeln, bevor Karten gespielt werden.
+    await settleAnnouncement(app, gameId);
     for (let i = 0; i < 50; i++) {
       const next = await app.games.nextAISeat(gameId);
       if (next) {

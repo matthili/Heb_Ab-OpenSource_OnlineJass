@@ -17,8 +17,9 @@ import { Hand, Scoreboard, Trick } from "@jass/ui";
 import type { Card } from "@jass/engine";
 
 import type { SeatView } from "~/features/lobby/types";
+import { AnnouncementDialog } from "./AnnouncementDialog";
 import { relativeSlot, SEAT_LABEL_POS } from "./seat-layout";
-import type { PlayerView } from "./types";
+import type { AnnouncementDecision, PlayerView } from "./types";
 import { useDisplayedTrick } from "./useDisplayedTrick";
 import { LastTrickMini } from "./LastTrickMini";
 
@@ -27,21 +28,64 @@ interface Props {
   seats: readonly SeatView[];
   mySeat: number;
   movePending: boolean;
+  announcePending: boolean;
   error: string | null;
   onPlayCard: (card: Card) => void;
+  onAnnounce: (decision: AnnouncementDecision) => void;
 }
 
-export function GameBoard({ view, seats, mySeat, movePending, error, onPlayCard }: Props) {
-  const variant = view.state.variant;
-  const displayed = useDisplayedTrick(view.state);
+export function GameBoard({
+  view,
+  seats,
+  mySeat,
+  movePending,
+  announcePending,
+  error,
+  onPlayCard,
+  onAnnounce,
+}: Props) {
   const seatNames = buildSeatNames(seats);
+  // Hook IMMER auf gleichem Render-Level aufrufen — auch im Ansage-Modus,
+  // damit React keine "different number of hooks"-Warnung wirft. Der Hook
+  // toleriert `undefined` als no-op.
+  const displayed = useDisplayedTrick(view.state ?? undefined);
+
+  // Ansage-Phase: nur die Hand + Dialog rendern, kein Scoreboard/Spielfeld.
+  // Die Variante steht ja noch gar nicht fest, das Scoreboard hätte nichts
+  // sinnvolles anzuzeigen.
+  if (view.status === "announcing") {
+    return (
+      <div className="space-y-4">
+        {error && (
+          <div
+            role="alert"
+            className="rounded border border-rose-300 bg-rose-50 px-3 py-2 text-sm text-rose-800"
+          >
+            {error}
+          </div>
+        )}
+        <AnnouncementDialog
+          view={view}
+          seatNames={seatNames}
+          pending={announcePending}
+          onAnnounce={onAnnounce}
+        />
+        {/* Hand zeigen, damit der Ansager beim Auswählen seine Karten sieht. */}
+        <Hand cards={view.hand} />
+      </div>
+    );
+  }
+
+  // ─── Playing / Finished: regulärer Game-Board-Render ────────────────
+  const state = view.state!; // status !== announcing → state ist garantiert da
+  const variant = state.variant;
 
   return (
     <div className="space-y-4">
       <Scoreboard
-        ownTeamScore={view.state.own_team_score}
-        oppTeamScore={view.state.opp_team_score}
-        trickIdx={view.state.trick_idx}
+        ownTeamScore={state.own_team_score}
+        oppTeamScore={state.opp_team_score}
+        trickIdx={state.trick_idx}
         mode={variant.mode}
         {...(variant.trump_suit !== undefined ? { trumpSuit: variant.trump_suit } : {})}
       />
@@ -56,6 +100,7 @@ export function GameBoard({ view, seats, mySeat, movePending, error, onPlayCard 
       )}
       <PlayingArea
         view={view}
+        state={state}
         seats={seats}
         mySeat={mySeat}
         displayedCards={displayed.cards}
@@ -105,6 +150,7 @@ function StatusBanner({ view, seats }: { view: PlayerView; seats: readonly SeatV
  */
 function PlayingArea({
   view,
+  state,
   seats,
   mySeat,
   displayedCards,
@@ -114,6 +160,7 @@ function PlayingArea({
   lingering,
 }: {
   view: PlayerView;
+  state: NonNullable<PlayerView["state"]>;
   seats: readonly SeatView[];
   mySeat: number;
   displayedCards: readonly Card[];
@@ -186,7 +233,7 @@ function PlayingArea({
           ist (sonst doppelt). */}
       <div className="row-start-3 col-start-3 self-end justify-self-end z-20 pointer-events-auto">
         <LastTrickMini
-          state={view.state}
+          state={state}
           mySeat={mySeat}
           seatNames={seatNames}
           hideBecauseLingering={lingering}
