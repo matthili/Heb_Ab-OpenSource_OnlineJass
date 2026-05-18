@@ -16,6 +16,7 @@
  */
 import { Hand, Scoreboard, Trick } from "@jass/ui";
 import type { Card } from "@jass/engine";
+import { Link } from "@tanstack/react-router";
 
 import type { SeatView } from "~/features/lobby/types";
 import { AnnouncementDialog } from "./AnnouncementDialog";
@@ -199,25 +200,42 @@ function PlayingArea({
         const label = s.user?.name ?? (s.aiSeatType ? `KI · ${s.aiSeatType}` : "—");
         const active = view.whoseTurnSeat === s.seat && view.status === "playing";
         const isLastWinner = s.seat === winnerSeat;
-        return (
-          <div
-            key={s.seat}
-            className={[
-              SEAT_LABEL_POS[slot],
-              "text-sm rounded px-2 py-1 z-10 shadow-sm",
-              active
-                ? "bg-jass-yellow text-jass-ink font-semibold ring-2 ring-jass-yellowDark jass-seat-active-pulse"
-                : isLastWinner
-                  ? "bg-jass-cream text-jass-ink border border-jass-yellowDark"
-                  : "bg-jass-paper text-jass-ink",
-            ].join(" ")}
-          >
+        const wrapperCls = [
+          SEAT_LABEL_POS[slot],
+          "text-sm rounded px-2 py-1 z-10 shadow-sm",
+          active
+            ? "bg-jass-yellow text-jass-ink font-semibold ring-2 ring-jass-yellowDark jass-seat-active-pulse"
+            : isLastWinner
+              ? "bg-jass-cream text-jass-ink border border-jass-yellowDark"
+              : "bg-jass-paper text-jass-ink",
+        ].join(" ");
+        const content = (
+          <>
             {label}
             {isLastWinner && (
               <span className="ml-1 text-jass-yellowDark" aria-hidden="true">
                 ★
               </span>
             )}
+          </>
+        );
+        // Menschliche Sitze sind klickbar → Public-Profile. KI-Sitze
+        // bleiben statische Labels (kein Profil zum Anzeigen).
+        if (s.user?.id) {
+          return (
+            <Link
+              key={s.seat}
+              to="/users/$id"
+              params={{ id: s.user.id }}
+              className={`${wrapperCls} hover:underline pointer-events-auto`}
+            >
+              {content}
+            </Link>
+          );
+        }
+        return (
+          <div key={s.seat} className={wrapperCls}>
+            {content}
           </div>
         );
       })}

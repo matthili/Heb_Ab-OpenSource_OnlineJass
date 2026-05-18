@@ -14,6 +14,7 @@ import {
   HttpCode,
   Param,
   Patch,
+  Post,
   Req,
   Res,
   UseGuards,
@@ -23,6 +24,7 @@ import type { FastifyReply, FastifyRequest } from "fastify";
 import { SessionGuard } from "../../common/guards/session.guard.js";
 import { OptionalSessionGuard } from "../../common/guards/optional-session.guard.js";
 import { ZodValidationPipe } from "../../common/pipes/zod.pipe.js";
+import { FriendsService, type FriendStatusOut, type FriendsList } from "./friends.service.js";
 import { GdprService } from "./gdpr.service.js";
 import { UpdateProfileDtoSchema, type UpdateProfileDto } from "./users.dto.js";
 import { UsersService, type MyProfileView, type PublicProfileView } from "./users.service.js";
@@ -31,7 +33,8 @@ import { UsersService, type MyProfileView, type PublicProfileView } from "./user
 export class UsersController {
   constructor(
     private readonly users: UsersService,
-    private readonly gdpr: GdprService
+    private readonly gdpr: GdprService,
+    private readonly friends: FriendsService
   ) {}
 
   @Get("me")
@@ -84,6 +87,51 @@ export class UsersController {
   @UseGuards(SessionGuard)
   async deleteMe(@Req() req: FastifyRequest): Promise<void> {
     await this.gdpr.softDelete(req.user!.id);
+  }
+
+  // ─── Freundschaften ──────────────────────────────────────────────
+
+  @Get("me/friends")
+  @UseGuards(SessionGuard)
+  async listFriends(@Req() req: FastifyRequest): Promise<FriendsList> {
+    return this.friends.listMine(req.user!.id);
+  }
+
+  @Get(":id/friend-status")
+  @UseGuards(SessionGuard)
+  async friendStatus(
+    @Req() req: FastifyRequest,
+    @Param("id") targetId: string
+  ): Promise<{ status: FriendStatusOut }> {
+    const status = await this.friends.getStatus(req.user!.id, targetId);
+    return { status };
+  }
+
+  @Post(":id/friend-request")
+  @UseGuards(SessionGuard)
+  async sendRequest(
+    @Req() req: FastifyRequest,
+    @Param("id") targetId: string
+  ): Promise<{ ok: true }> {
+    await this.friends.sendRequest(req.user!.id, targetId);
+    return { ok: true };
+  }
+
+  @Post(":id/friend-accept")
+  @UseGuards(SessionGuard)
+  async acceptRequest(
+    @Req() req: FastifyRequest,
+    @Param("id") targetId: string
+  ): Promise<{ ok: true }> {
+    await this.friends.accept(req.user!.id, targetId);
+    return { ok: true };
+  }
+
+  @Delete(":id/friend")
+  @HttpCode(204)
+  @UseGuards(SessionGuard)
+  async removeFriend(@Req() req: FastifyRequest, @Param("id") targetId: string): Promise<void> {
+    await this.friends.remove(req.user!.id, targetId);
   }
 
   @Get(":id")

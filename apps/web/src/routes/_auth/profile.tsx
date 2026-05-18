@@ -13,15 +13,16 @@ import { createFileRoute, Link, useSearch } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 
 import { GameHistoryList } from "~/features/replay/GameHistoryList";
+import { FriendsPanel } from "~/features/profile/FriendsPanel";
 import { ProfileDataPanel } from "~/features/profile/ProfileDataPanel";
 import { ProfileEditPanel } from "~/features/profile/ProfileEditPanel";
 
-type ProfileTab = "history" | "edit" | "data";
+type ProfileTab = "history" | "edit" | "friends" | "data";
 interface ProfileSearch {
   tab?: ProfileTab;
 }
 
-const VALID_TABS: readonly ProfileTab[] = ["history", "edit", "data"];
+const VALID_TABS: readonly ProfileTab[] = ["history", "edit", "friends", "data"];
 
 export const Route = createFileRoute("/_auth/profile")({
   validateSearch: (search: Record<string, unknown>): ProfileSearch => {
@@ -47,6 +48,9 @@ function ProfilePage() {
         <TabLink target="edit" active={activeTab === "edit"}>
           {t("profile.tabs.edit")}
         </TabLink>
+        <TabLink target="friends" active={activeTab === "friends"}>
+          {t("profile.tabs.friends")}
+        </TabLink>
         <TabLink target="data" active={activeTab === "data"}>
           {t("profile.tabs.data")}
         </TabLink>
@@ -58,6 +62,7 @@ function ProfilePage() {
         </>
       )}
       {activeTab === "edit" && <ProfileEditPanel />}
+      {activeTab === "friends" && <FriendsPanel />}
       {activeTab === "data" && <ProfileDataPanel />}
     </section>
   );
