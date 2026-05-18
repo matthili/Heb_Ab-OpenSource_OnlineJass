@@ -138,6 +138,10 @@ export async function setupTestApp(): Promise<TestAppHandle> {
   // setzen die URL gleich auf einen Platzhalter und überschreiben nach Stub-Boot.
   process.env["INFERENCE_URL"] = "http://127.0.0.1:0";
   process.env["INFERENCE_TIMEOUT_MS"] = "2000";
+  // KI-Schritt-Delay im WS-Gateway: Production-Default ist 1500ms, damit
+  // der menschliche Spieler die KI-Karten sieht. In Tests muss der Wert
+  // klein sein, sonst läuft die 36-Move-Loop in den 20s-Test-Timeout.
+  process.env["AI_STEP_DELAY_MS"] = "20";
   // Better Auth braucht ein Secret ≥ 32 Bytes. Bei Tests: deterministisch.
   process.env["BETTER_AUTH_SECRET"] = "test-secret-deterministic-32bytes-min-aaaa";
   process.env["BETTER_AUTH_URL"] = "http://127.0.0.1:3000"; // wird gleich überschrieben

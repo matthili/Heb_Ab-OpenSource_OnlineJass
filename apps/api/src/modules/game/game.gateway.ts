@@ -266,7 +266,7 @@ export class GameGateway
         await this.broadcastState(gameId);
         // Zwischen Ansage-Schritten kurz Pause, damit das Frontend die
         // Push-Animation zeigen kann.
-        await sleep(AI_STEP_DELAY_MS);
+        await sleep(aiStepDelayMs());
         continue;
       }
 
@@ -278,7 +278,7 @@ export class GameGateway
         this.server.to(roomKey(gameId)).emit("game:ended", { finalScore: view.finalScore });
         return;
       }
-      await sleep(AI_STEP_DELAY_MS);
+      await sleep(aiStepDelayMs());
     }
     this.log.warn({ gameId }, "driveAIsLoop hat Sicherheitsgrenze erreicht");
   }
@@ -339,7 +339,25 @@ function roomKey(gameId: string): string {
   return `game:${gameId}`;
 }
 
-const AI_STEP_DELAY_MS = 200;
+/**
+ * Pause zwischen zwei KI-Schritten. Bewusst lang gehalten (1,5 s), damit
+ * der menschliche Spieler nach seinem eigenen Move die Karten der
+ * KI-Gegner wirklich sehen kann — bei 200 ms hat die Loop alle drei
+ * KI-Karten in einer halben Sekunde durchgerattert, der Mensch hat nichts
+ * mitbekommen. Mit 1,5 s entsteht ein angenehmer „echter Spiel"-Rhythmus
+ * (vergleichbar mit einem realen Jass-Tisch).
+ *
+ * **Override via env**: `AI_STEP_DELAY_MS=20` in den Integration-Tests
+ * sorgt dafür, dass die WS-Test-Suite nicht in den 1,5-s-Sleep einläuft
+ * (sonst Test-Timeout). In Production unbedingt unverändert lassen.
+ *
+ * Wir lesen den Wert **bei jedem Aufruf** — sonst friert ihn das Modul-
+ * Caching schon beim Import ein, bevor der Test-Setup seinen Override
+ * setzt.
+ */
+function aiStepDelayMs(): number {
+  return Number(process.env["AI_STEP_DELAY_MS"] ?? "1500");
+}
 
 function sleep(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));

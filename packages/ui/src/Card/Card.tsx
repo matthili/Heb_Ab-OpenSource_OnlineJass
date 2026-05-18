@@ -83,10 +83,15 @@ const RANK_FILE: Record<Rank, string> = {
 // (≈ 0,67). Wir setzen Höhe explizit, damit die Breite über `w-auto` aus
 // dem Bild kommt und der Layout-Slot nicht eine eigene Aspect-Ratio
 // erzwingt (sonst sieht man weiße Streifen oben/unten).
+//
+// **md-Größe (User-Wunsch)**: Hand UND Trick nutzen `md`. Wir haben das
+// von h-36 auf h-32 reduziert, damit am Tisch liegende Karten kompakter
+// wirken und damit die eigene Hand auch bei nur einer verbleibenden
+// Karte nicht überdimensioniert auf dem Bildschirm steht.
 const SIZE_CLASSES = {
   xs: "h-14", // Mini-Trick-Historie
-  sm: "h-24", // Trick-Mitte
-  md: "h-36", // Hand
+  sm: "h-24", // Klein (Detail-Ansichten)
+  md: "h-32", // Hand + Trick — beide gleich groß
   lg: "h-48", // Großdarstellung (Replay-Detail)
 } as const;
 
