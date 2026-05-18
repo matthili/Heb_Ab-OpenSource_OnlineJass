@@ -14,22 +14,28 @@ import { useTranslation } from "react-i18next";
 
 import { GameHistoryList } from "~/features/replay/GameHistoryList";
 import { ProfileDataPanel } from "~/features/profile/ProfileDataPanel";
+import { ProfileEditPanel } from "~/features/profile/ProfileEditPanel";
 
+type ProfileTab = "history" | "edit" | "data";
 interface ProfileSearch {
-  tab?: "history" | "data";
+  tab?: ProfileTab;
 }
 
+const VALID_TABS: readonly ProfileTab[] = ["history", "edit", "data"];
+
 export const Route = createFileRoute("/_auth/profile")({
-  validateSearch: (search: Record<string, unknown>): ProfileSearch => ({
-    tab: search["tab"] === "data" ? "data" : "history",
-  }),
+  validateSearch: (search: Record<string, unknown>): ProfileSearch => {
+    const raw = search["tab"];
+    const tab = VALID_TABS.find((t) => t === raw);
+    return tab ? { tab } : { tab: "history" };
+  },
   component: ProfilePage,
 });
 
 function ProfilePage() {
   const { t } = useTranslation();
   const { tab } = useSearch({ from: "/_auth/profile" });
-  const activeTab = tab ?? "history";
+  const activeTab: ProfileTab = tab ?? "history";
 
   return (
     <section className="space-y-4">
@@ -38,18 +44,21 @@ function ProfilePage() {
         <TabLink target="history" active={activeTab === "history"}>
           {t("profile.tabs.history")}
         </TabLink>
+        <TabLink target="edit" active={activeTab === "edit"}>
+          {t("profile.tabs.edit")}
+        </TabLink>
         <TabLink target="data" active={activeTab === "data"}>
           {t("profile.tabs.data")}
         </TabLink>
       </nav>
-      {activeTab === "history" ? (
+      {activeTab === "history" && (
         <>
           <h2 className="text-lg font-semibold">{t("profile.history.title")}</h2>
           <GameHistoryList />
         </>
-      ) : (
-        <ProfileDataPanel />
       )}
+      {activeTab === "edit" && <ProfileEditPanel />}
+      {activeTab === "data" && <ProfileDataPanel />}
     </section>
   );
 }
@@ -59,7 +68,7 @@ function TabLink({
   active,
   children,
 }: {
-  target: "history" | "data";
+  target: ProfileTab;
   active: boolean;
   children: React.ReactNode;
 }) {

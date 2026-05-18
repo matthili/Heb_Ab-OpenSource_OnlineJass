@@ -9,6 +9,7 @@ import { ChatPanel } from "~/features/chat/ChatPanel";
 import { LobbyList } from "~/features/lobby/LobbyList";
 import { MyActiveTables } from "~/features/lobby/MyActiveTables";
 import { OpenTableDialog } from "~/features/lobby/OpenTableDialog";
+import { CompleteProfilePrompt } from "~/features/profile/CompleteProfilePrompt";
 
 export const Route = createFileRoute("/_auth/lobby")({
   component: LobbyPage,
@@ -29,6 +30,7 @@ function LobbyPage() {
           {t("lobby.openTable")}
         </button>
       </header>
+      <CompleteProfilePrompt />
       <MyActiveTables />
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_20rem] gap-4">
         <LobbyList />

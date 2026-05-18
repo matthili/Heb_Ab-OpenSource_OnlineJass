@@ -14,7 +14,37 @@
     "title": "My profile",
     "tabs": {
       "history": "Game history",
+      "edit": "Edit profile",
       "data": "My data"
+    },
+    "edit": {
+      "title": "Edit profile",
+      "intro": "All fields are optional. Use the dropdown next to each field to control who can see it.",
+      "realFirstName": "First name",
+      "realLastName": "Last name",
+      "birthDate": "Date of birth",
+      "city": "City",
+      "country": "Country",
+      "hobbies": "Hobbies",
+      "bio": "About me",
+      "avatarUrl": "Avatar URL",
+      "visibility": {
+        "label": "Visible to",
+        "PUBLIC": "Everyone (even signed out)",
+        "LOGGED_IN": "Signed-in players",
+        "FRIENDS": "Friends only",
+        "PRIVATE": "Only me"
+      },
+      "save": "Save",
+      "saving": "Saving…",
+      "saved": "Saved.",
+      "saveError": "Could not save: {{message}}"
+    },
+    "completePrompt": {
+      "title": "Complete your profile?",
+      "body": "You can optionally add your first and last name — others only see it if you allow it in your visibility settings.",
+      "cta": "Fill out profile",
+      "dismiss": "Later"
     },
     "history": {
       "title": "Past games",

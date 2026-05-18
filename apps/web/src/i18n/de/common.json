@@ -14,7 +14,37 @@
     "title": "Mein Profil",
     "tabs": {
       "history": "Spiel-History",
+      "edit": "Profil bearbeiten",
       "data": "Meine Daten"
+    },
+    "edit": {
+      "title": "Profil bearbeiten",
+      "intro": "Diese Felder sind alle optional. Pro Feld kannst du rechts einstellen, wer es sehen darf.",
+      "realFirstName": "Vorname",
+      "realLastName": "Nachname",
+      "birthDate": "Geburtsdatum",
+      "city": "Stadt",
+      "country": "Land",
+      "hobbies": "Hobbys",
+      "bio": "Über mich",
+      "avatarUrl": "Avatar-URL",
+      "visibility": {
+        "label": "Sichtbar für",
+        "PUBLIC": "Alle (auch nicht eingeloggt)",
+        "LOGGED_IN": "Eingeloggte Spieler",
+        "FRIENDS": "Nur Freunde",
+        "PRIVATE": "Nur ich"
+      },
+      "save": "Speichern",
+      "saving": "Speichere…",
+      "saved": "Gespeichert.",
+      "saveError": "Konnte nicht speichern: {{message}}"
+    },
+    "completePrompt": {
+      "title": "Profil vervollständigen?",
+      "body": "Du kannst freiwillig deinen Vor- und Nachnamen ergänzen — Mitspieler sehen ihn nur, wenn du das in deinen Sichtbarkeits-Einstellungen erlaubst.",
+      "cta": "Profil ausfüllen",
+      "dismiss": "Später"
     },
     "history": {
       "title": "Bisherige Partien",
