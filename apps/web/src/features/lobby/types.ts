@@ -8,7 +8,7 @@
  * mitwachsen.
  */
 
-export type LobbyStatus = "WAITING" | "IN_GAME" | "POST_GAME" | "CLOSED";
+export type LobbyStatus = "WAITING" | "IN_GAME" | "POST_GAME" | "MATCH_OVER" | "CLOSED";
 export type JoinMode = "OPEN" | "REQUEST" | "INVITE";
 export type RestartMode = "WELI" | "SIEGER_GIBT";
 
@@ -21,6 +21,12 @@ export interface TableListEntry {
   aiSeatType: string;
   autoFillSeconds: number | null;
   restartMode: RestartMode;
+  /** Punkteziel der Partie (kumulativ über alle Spiele). */
+  targetScore: number;
+  /** Kumulative Punkte Team 0 über alle bisher beendeten Spiele. */
+  cumulativeScoreTeam0: number;
+  /** Kumulative Punkte Team 1 über alle bisher beendeten Spiele. */
+  cumulativeScoreTeam1: number;
   seatsTaken: number;
   hasPendingRequest: boolean;
   createdAt: string; // ISO
@@ -47,6 +53,8 @@ export interface OpenTableDto {
   aiSeatType?: string;
   autoFillSeconds?: number | null;
   restartMode?: RestartMode;
+  /** Punkteziel (500..5000, Default 1000). */
+  targetScore?: number;
   initialAiSeats?: { seat: number; aiSeatType?: string }[];
 }
 

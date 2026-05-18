@@ -126,6 +126,18 @@ export class LobbyController {
     return this.lobby.startManually(tableId, req.user!.id);
   }
 
+  /**
+   * Neue Partie nach MATCH_OVER: kumulative Punkte zurücksetzen, Tisch
+   * wieder WAITING. Owner-only.
+   */
+  @Post("tables/:id/new-match")
+  async newMatch(
+    @Req() req: FastifyRequest,
+    @Param("id") tableId: string
+  ): Promise<{ tableId: string }> {
+    return this.lobby.startNewMatch(tableId, req.user!.id);
+  }
+
   // ─── Beitritts-Anfragen (REQUEST-Modus) ───────────────────────────
 
   @Delete("tables/:id/join-requests/me")

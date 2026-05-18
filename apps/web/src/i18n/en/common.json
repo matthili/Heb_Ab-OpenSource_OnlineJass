@@ -104,6 +104,7 @@
       "WAITING": "waiting",
       "IN_GAME": "playing",
       "POST_GAME": "rematch vote",
+      "MATCH_OVER": "match won",
       "CLOSED": "closed"
     },
     "seatsTaken": "Seats: {{taken}}/4",

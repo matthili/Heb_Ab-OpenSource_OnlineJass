@@ -77,20 +77,25 @@ export function TableDetail({ tableId }: Props) {
         </div>
         <p className="text-sm text-stone-500">
           Modus: {data.joinMode} · KI: {data.aiSeatType} · Re-Match:{" "}
-          {data.restartMode === "WELI" ? "WELI" : "Sieger gibt"}
+          {data.restartMode === "WELI" ? "WELI" : "Sieger gibt"} · Ziel: {data.targetScore}
         </p>
       </header>
 
+      <CumulativeScoreBar table={data} />
+
       <SeatRow seats={data.seats} />
 
-      {data.currentGameId && (data.status === "IN_GAME" || data.status === "POST_GAME") && (
-        <GameSection
-          gameId={data.currentGameId}
-          tableSeats={data.seats}
-          isAtTable={amIAtTable}
-          tableStatus={data.status}
-        />
-      )}
+      {data.currentGameId &&
+        (data.status === "IN_GAME" ||
+          data.status === "POST_GAME" ||
+          data.status === "MATCH_OVER") && (
+          <GameSection
+            gameId={data.currentGameId}
+            tableSeats={data.seats}
+            isAtTable={amIAtTable}
+            tableStatus={data.status}
+          />
+        )}
 
       {isOwner ? (
         <OwnerPanel table={data} queryKey={queryKey} />
@@ -126,16 +131,83 @@ function SeatRow({ seats }: { seats: TableDetailView["seats"] }) {
 }
 
 function StatusBadge({ status }: { status: TableDetailView["status"] }) {
-  const labels = {
+  const labels: Record<TableDetailView["status"], string> = {
     WAITING: "wartet",
     IN_GAME: "läuft",
     POST_GAME: "Re-Match-Vote",
+    MATCH_OVER: "Partie gewonnen",
     CLOSED: "geschlossen",
   };
+  const colorClass =
+    status === "MATCH_OVER"
+      ? "bg-jass-yellow text-jass-ink border border-jass-yellowDark"
+      : "bg-stone-100 text-stone-600";
+  return <span className={`rounded px-2 py-0.5 text-xs ${colorClass}`}>{labels[status]}</span>;
+}
+
+/**
+ * Kumulativer Score-Balken: zeigt T0/T1 mit Fortschritt zum Punkteziel.
+ * Wenn ein Team das Ziel erreicht/überschritten hat, wird der Balken
+ * goldgelb hervorgehoben — die Partie ist offiziell entschieden.
+ */
+function CumulativeScoreBar({ table }: { table: TableDetailView }) {
+  const t0 = table.cumulativeScoreTeam0;
+  const t1 = table.cumulativeScoreTeam1;
+  const target = table.targetScore;
+  // Falls noch kein Game gespielt wurde, zeigen wir den Balken nicht
+  // (verwirrt mehr als er hilft).
+  if (t0 === 0 && t1 === 0) return null;
+  const t0Pct = Math.min(100, Math.round((t0 / target) * 100));
+  const t1Pct = Math.min(100, Math.round((t1 / target) * 100));
+  const winner = t0 >= target ? 0 : t1 >= target ? 1 : null;
   return (
-    <span className="rounded bg-stone-100 px-2 py-0.5 text-xs text-stone-600">
-      {labels[status]}
-    </span>
+    <section
+      className="rounded-lg border border-jass-paperEdge bg-jass-paper p-3 space-y-2"
+      aria-label="Kumulativer Punktestand"
+    >
+      <div className="flex items-baseline justify-between text-sm text-jass-inkSoft">
+        <span>
+          Partie-Stand (Ziel: <strong className="text-jass-ink">{target}</strong>)
+        </span>
+        {winner !== null && (
+          <span className="text-jass-yellowDark font-semibold">
+            Team {winner} hat die Partie gewonnen!
+          </span>
+        )}
+      </div>
+      <ScoreRow label={`Team 0 (Sitz 0 + 2)`} score={t0} pct={t0Pct} highlight={winner === 0} />
+      <ScoreRow label={`Team 1 (Sitz 1 + 3)`} score={t1} pct={t1Pct} highlight={winner === 1} />
+    </section>
+  );
+}
+
+function ScoreRow({
+  label,
+  score,
+  pct,
+  highlight,
+}: {
+  label: string;
+  score: number;
+  pct: number;
+  highlight: boolean;
+}) {
+  return (
+    <div>
+      <div className="flex justify-between text-sm">
+        <span className="text-jass-ink">{label}</span>
+        <span className={highlight ? "font-bold text-jass-yellowDark" : "text-jass-ink"}>
+          {score}
+        </span>
+      </div>
+      <div className="h-2 rounded-full bg-jass-cream overflow-hidden">
+        <div
+          className={highlight ? "h-full bg-jass-yellow" : "h-full bg-jass-brownDark"}
+          style={{ width: `${pct}%` }}
+          aria-hidden="true"
+        />
+      </div>
+    </div>
   );
 }
 
@@ -150,6 +222,11 @@ function OwnerPanel(props: { table: TableDetailView; queryKey: readonly unknown[
   const startMut = useMutation({
     mutationFn: () =>
       api<{ gameId: string }>(`/api/lobby/tables/${table.id}/start`, { method: "POST" }),
+    onSuccess: invalidate,
+  });
+  const newMatchMut = useMutation({
+    mutationFn: () =>
+      api<{ tableId: string }>(`/api/lobby/tables/${table.id}/new-match`, { method: "POST" }),
     onSuccess: invalidate,
   });
   const leaveMut = useMutation({
@@ -186,6 +263,16 @@ function OwnerPanel(props: { table: TableDetailView; queryKey: readonly unknown[
             className="rounded bg-stone-900 px-4 py-2 text-white hover:bg-stone-700 disabled:opacity-50"
           >
             {startMut.isPending ? "Starte…" : "Jetzt starten (mit KI auffüllen)"}
+          </button>
+        )}
+        {table.status === "MATCH_OVER" && (
+          <button
+            type="button"
+            onClick={() => newMatchMut.mutate()}
+            disabled={newMatchMut.isPending}
+            className="btn-jass-primary disabled:opacity-50"
+          >
+            {newMatchMut.isPending ? "Starte …" : "Neue Partie starten"}
           </button>
         )}
         <button

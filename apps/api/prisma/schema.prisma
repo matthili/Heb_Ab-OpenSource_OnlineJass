@@ -280,6 +280,19 @@ model LobbyTable {
   // Starter-Bestimmung bei Re-Match (Vorarlberger Tradition). Default ist
   // `SIEGER_GIBT` — Owner kann beim Tisch-Erstellen umstellen.
   restartMode     RestartMode      @default(SIEGER_GIBT)
+
+  // **Punkteziel**: Die Partie ist gewonnen, sobald ein Team diese Punkte
+  // kumulativ über mehrere Spiele erreicht. Vorarlberger Standard: 1000
+  // oder 1200. Wird beim Tisch-Erstellen festgelegt.
+  targetScore     Int              @default(1000)
+
+  // **Kumulative Scores** über alle bisher beendeten Spiele am Tisch.
+  // Wird nach jedem Game-Ende um `finalScore.team_card_points` (inkl.
+  // Matsch-Bonus) erweitert. Sobald einer der beiden Werte >= targetScore,
+  // ist die Partie gewonnen und der Tisch landet in MATCH_OVER.
+  cumulativeScoreTeam0 Int          @default(0)
+  cumulativeScoreTeam1 Int          @default(0)
+
   status          LobbyTableStatus @default(WAITING)
 
   // Aktuelles oder zuletzt-aktives Game am Tisch. In WAITING = null.
@@ -481,6 +494,7 @@ enum LobbyTableStatus {
   WAITING // wartet auf Mitspieler
   IN_GAME // Spiel läuft (currentGameId ist gesetzt und nicht finished)
   POST_GAME // letztes Game abgeschlossen, Re-Match-Voting läuft
+  MATCH_OVER // kumulative Punkte haben targetScore erreicht — Partie gewonnen
   CLOSED // alle Spieler weg; Tisch verschwindet aus der Lobby-Liste
 }
 

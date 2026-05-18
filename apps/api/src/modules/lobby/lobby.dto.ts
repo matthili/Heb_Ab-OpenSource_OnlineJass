@@ -38,6 +38,14 @@ export const OpenTableDtoSchema = z
     autoFillSeconds: z.number().int().min(5).max(600).nullable().default(30),
     restartMode: RestartModeSchema.default("SIEGER_GIBT"),
     /**
+     * **Punkteziel** für die Partie. Sobald ein Team kumulativ über alle
+     * Spiele am Tisch diese Punkte erreicht, ist die Partie gewonnen
+     * (LobbyTableStatus.MATCH_OVER). Vorarlberger Kreuz-Jass spielt
+     * typischerweise auf 1000 oder 1200; wir lassen freie Wahl zwischen 500
+     * und 5000.
+     */
+    targetScore: z.number().int().min(500).max(5000).default(1000),
+    /**
      * Optional vorbelegte KI-Sitze (für „Ich + 3 KIs"-Szenario). Sitz 0 darf
      * nicht enthalten sein — der gehört dem Owner. Doppelte Sitz-Nummern
      * lehnen wir mit einer Refine-Regel ab.
@@ -71,6 +79,7 @@ export const UpdateTableSettingsDtoSchema = z
     aiSeatType: AiSeatTypeSchema.optional(),
     autoFillSeconds: z.number().int().min(5).max(600).nullable().optional(),
     restartMode: RestartModeSchema.optional(),
+    targetScore: z.number().int().min(500).max(5000).optional(),
   })
   .strict()
   .refine((v) => Object.keys(v).length > 0, "Mindestens ein Settings-Feld muss angegeben sein");
@@ -114,8 +123,8 @@ export const ListTablesQuerySchema = z
   .object({
     status: z
       .union([
-        z.enum(["WAITING", "IN_GAME", "POST_GAME", "CLOSED"]),
-        z.array(z.enum(["WAITING", "IN_GAME", "POST_GAME", "CLOSED"])),
+        z.enum(["WAITING", "IN_GAME", "POST_GAME", "MATCH_OVER", "CLOSED"]),
+        z.array(z.enum(["WAITING", "IN_GAME", "POST_GAME", "MATCH_OVER", "CLOSED"])),
       ])
       .optional(),
     joinMode: JoinModeSchema.optional(),

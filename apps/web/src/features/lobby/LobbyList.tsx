@@ -178,7 +178,11 @@ function ModeBadge({ mode }: { mode: "OPEN" | "REQUEST" | "INVITE" }) {
   );
 }
 
-function StatusBadge({ status }: { status: "WAITING" | "IN_GAME" | "POST_GAME" | "CLOSED" }) {
+function StatusBadge({
+  status,
+}: {
+  status: "WAITING" | "IN_GAME" | "POST_GAME" | "MATCH_OVER" | "CLOSED";
+}) {
   const { t } = useTranslation();
   if (status === "WAITING") return null;
   return (

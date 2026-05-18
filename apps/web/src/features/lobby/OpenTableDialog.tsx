@@ -33,6 +33,12 @@ export function OpenTableDialog({ open, onClose }: Props) {
   const [aiSeatType, setAiSeatType] = useState<"random" | "heuristic" | "nn">("heuristic");
   const [autoFill, setAutoFill] = useState<number | null>(30);
   const [restartMode, setRestartMode] = useState<RestartMode>("SIEGER_GIBT");
+  /**
+   * Punkteziel der Partie. Vorarlberger Standard: 1000 oder 1200. Wir
+   * bieten gängige Stufen als Presets + ein Eingabefeld als
+   * Sicherheits-Ausweg, falls jemand einen eigenen Wert braucht.
+   */
+  const [targetScore, setTargetScore] = useState<number>(1000);
   const [soloVsAi, setSoloVsAi] = useState(false);
   const [error, setError] = useState<string | null>(null);
   /**
@@ -91,6 +97,7 @@ export function OpenTableDialog({ open, onClose }: Props) {
       aiSeatType,
       autoFillSeconds: autoFill,
       restartMode,
+      targetScore,
       initialAiSeats: soloVsAi ? [{ seat: 1 }, { seat: 2 }, { seat: 3 }] : [],
     };
     openMut.mutate(dto);
@@ -187,6 +194,43 @@ export function OpenTableDialog({ open, onClose }: Props) {
               {label}
             </label>
           ))}
+        </fieldset>
+
+        <fieldset className="space-y-2">
+          <legend className="text-sm font-medium text-stone-700">Punkteziel der Partie</legend>
+          <div className="flex flex-wrap gap-2">
+            {[500, 1000, 1200, 2500].map((preset) => (
+              <button
+                key={preset}
+                type="button"
+                onClick={() => setTargetScore(preset)}
+                className={`px-3 py-1 rounded border text-sm ${
+                  targetScore === preset
+                    ? "bg-jass-yellow border-jass-yellowDark text-jass-ink font-semibold"
+                    : "bg-jass-paper border-jass-paperEdge text-jass-inkSoft hover:bg-jass-cream"
+                }`}
+              >
+                {preset}
+              </button>
+            ))}
+            <input
+              type="number"
+              min={500}
+              max={5000}
+              step={50}
+              value={targetScore}
+              onChange={(e) => {
+                const n = Number(e.target.value);
+                if (Number.isFinite(n)) setTargetScore(n);
+              }}
+              className="w-24 rounded border border-stone-300 px-2 py-1 text-sm"
+              aria-label="Eigenes Punkteziel"
+            />
+          </div>
+          <p className="text-xs text-stone-500">
+            Standard: 1000. Die Partie ist gewonnen, sobald ein Team kumulativ (über mehrere Spiele)
+            das Ziel erreicht.
+          </p>
         </fieldset>
 
         <label className="flex items-center gap-2 text-sm border-t border-stone-200 pt-3">

@@ -472,7 +472,8 @@ export class GameService {
     await this.writeRoundStateToRedis(gameId, nextState);
 
     // Game-Ende behandeln: Score persistieren + Audit + ggf. LobbyTable
-    // auf POST_GAME (für Re-Match-Voting in M6-E).
+    // auf POST_GAME (für Re-Match-Voting in M6-E) oder MATCH_OVER, falls
+    // das **Punkteziel** über die kumulativen Scores erreicht wurde.
     if (isRoundDone(nextState)) {
       const score = finalRoundScore(nextState);
       const updated = await this.prisma.game.update({
@@ -487,21 +488,44 @@ export class GameService {
         },
         select: { tableId: true },
       });
-      // M6-C: wenn das Game zu einem LobbyTable gehört, Tisch in
-      // POST_GAME setzen. `currentGameId` bleibt auf diesem Game stehen,
-      // bis das Re-Match-Voting (M6-E) den nächsten Übergang macht.
+      // M6-C / Punkteziel-Sprint:
+      //   - Wenn das Game zu einem LobbyTable gehört, kumulative Punkte
+      //     pro Team aktualisieren (Increment, damit parallele Updates
+      //     atomar zusammenpassen).
+      //   - Status-Übergang: erreicht/übersteigt ein Team das Punkteziel,
+      //     → MATCH_OVER (Partie ist gewonnen). Sonst → POST_GAME (Re-
+      //     Match-Voting möglich).
+      let matchOver = false;
       if (updated.tableId) {
+        const t0 = score.team_card_points[0] ?? 0;
+        const t1 = score.team_card_points[1] ?? 0;
+        const tableAfter = await this.prisma.lobbyTable.update({
+          where: { id: updated.tableId },
+          data: {
+            cumulativeScoreTeam0: { increment: t0 },
+            cumulativeScoreTeam1: { increment: t1 },
+          },
+          select: {
+            targetScore: true,
+            cumulativeScoreTeam0: true,
+            cumulativeScoreTeam1: true,
+          },
+        });
+        matchOver =
+          tableAfter.cumulativeScoreTeam0 >= tableAfter.targetScore ||
+          tableAfter.cumulativeScoreTeam1 >= tableAfter.targetScore;
         await this.prisma.lobbyTable.update({
           where: { id: updated.tableId },
-          data: { status: "POST_GAME" },
+          data: { status: matchOver ? "MATCH_OVER" : "POST_GAME" },
         });
       }
       await this.audit.record({
-        action: "game.finished",
+        action: matchOver ? "game.finished.match_over" : "game.finished",
         target: gameId,
         meta: asJson({
           team_card_points: [...score.team_card_points],
           matsch_team: score.matsch_team,
+          matchOver,
         }),
       });
     }

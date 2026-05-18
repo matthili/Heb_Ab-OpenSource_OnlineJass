@@ -65,6 +65,10 @@ function StatusPill({ status }: { status: TableListEntry["status"] }) {
     WAITING: { label: "wartet", cls: "bg-jass-paper text-jass-inkSoft" },
     IN_GAME: { label: "Spiel läuft", cls: "bg-jass-green text-jass-cream" },
     POST_GAME: { label: "Re-Match", cls: "bg-jass-yellow text-jass-ink" },
+    MATCH_OVER: {
+      label: "Partie gewonnen",
+      cls: "bg-jass-yellow text-jass-ink border border-jass-yellowDark",
+    },
     CLOSED: { label: "geschlossen", cls: "bg-jass-paperEdge text-jass-inkSoft" },
   };
   const { label, cls } = map[status];

@@ -62,6 +62,12 @@ export interface TableListEntry {
   aiSeatType: string;
   autoFillSeconds: number | null;
   restartMode: "WELI" | "SIEGER_GIBT";
+  /** Punkteziel der Partie (kumulativ über alle Spiele). */
+  targetScore: number;
+  /** Kumulative Punkte Team 0 über alle bisher beendeten Spiele. */
+  cumulativeScoreTeam0: number;
+  /** Kumulative Punkte Team 1 über alle bisher beendeten Spiele. */
+  cumulativeScoreTeam1: number;
   seatsTaken: number; // 1..4
   hasPendingRequest: boolean; // ist der Caller eingetragen?
   createdAt: Date;
@@ -142,6 +148,7 @@ export class LobbyService {
           aiSeatType: dto.aiSeatType,
           autoFillSeconds: dto.autoFillSeconds,
           restartMode: dto.restartMode,
+          targetScore: dto.targetScore,
           status: LobbyTableStatus.WAITING,
         },
       });
@@ -238,6 +245,9 @@ export class LobbyService {
       aiSeatType: t.aiSeatType,
       autoFillSeconds: t.autoFillSeconds,
       restartMode: t.restartMode as "WELI" | "SIEGER_GIBT",
+      targetScore: t.targetScore,
+      cumulativeScoreTeam0: t.cumulativeScoreTeam0,
+      cumulativeScoreTeam1: t.cumulativeScoreTeam1,
       seatsTaken: t.seats.length,
       hasPendingRequest: t.joinRequests.length > 0,
       createdAt: t.createdAt,
@@ -279,6 +289,9 @@ export class LobbyService {
       aiSeatType: t.aiSeatType,
       autoFillSeconds: t.autoFillSeconds,
       restartMode: t.restartMode as "WELI" | "SIEGER_GIBT",
+      targetScore: t.targetScore,
+      cumulativeScoreTeam0: t.cumulativeScoreTeam0,
+      cumulativeScoreTeam1: t.cumulativeScoreTeam1,
       seatsTaken: t.seats.length,
       hasPendingRequest: t.joinRequests.length > 0,
       createdAt: t.createdAt,
@@ -342,6 +355,9 @@ export class LobbyService {
       aiSeatType: table.aiSeatType,
       autoFillSeconds: table.autoFillSeconds,
       restartMode: table.restartMode as "WELI" | "SIEGER_GIBT",
+      targetScore: table.targetScore,
+      cumulativeScoreTeam0: table.cumulativeScoreTeam0,
+      cumulativeScoreTeam1: table.cumulativeScoreTeam1,
       seatsTaken: table.seats.length,
       hasPendingRequest: callerHasPendingRequest > 0,
       createdAt: table.createdAt,
@@ -721,6 +737,7 @@ export class LobbyService {
     if (dto.aiSeatType !== undefined) data.aiSeatType = dto.aiSeatType;
     if (dto.autoFillSeconds !== undefined) data.autoFillSeconds = dto.autoFillSeconds;
     if (dto.restartMode !== undefined) data.restartMode = dto.restartMode;
+    if (dto.targetScore !== undefined) data.targetScore = dto.targetScore;
     await this.prisma.lobbyTable.update({ where: { id: tableId }, data });
     await this.audit.record({
       action: "lobby.table.settings.update",
@@ -733,6 +750,7 @@ export class LobbyService {
         ...(dto.aiSeatType !== undefined ? { aiSeatType: dto.aiSeatType } : {}),
         ...(dto.autoFillSeconds !== undefined ? { autoFillSeconds: dto.autoFillSeconds } : {}),
         ...(dto.restartMode !== undefined ? { restartMode: dto.restartMode } : {}),
+        ...(dto.targetScore !== undefined ? { targetScore: dto.targetScore } : {}),
       },
     });
     this.gateway.broadcastLobbyListUpdate("settings-changed", tableId);
@@ -1084,6 +1102,48 @@ export class LobbyService {
       await this.pushTableState(game.table.id);
     }
     return outcome;
+  }
+
+  /**
+   * **Neue Partie** nach `MATCH_OVER`. Setzt die kumulativen Scores
+   * zurück und versetzt den Tisch wieder in WAITING — die Spieler bleiben
+   * an ihren Sitzen, das Spiel wird (sobald wieder 4 voll) frisch
+   * gestartet. Owner-only.
+   *
+   * Anders als `voteRematch` ist hier **kein Voting** nötig: die Partie
+   * ist offiziell beendet, der Owner entscheidet einseitig, ob eine neue
+   * Partie startet. Wer nicht weiterspielen will, kann den Tisch
+   * vorher/nachher per `leaveTable` verlassen.
+   */
+  async startNewMatch(tableId: string, ownerId: string): Promise<{ tableId: string }> {
+    const table = await this.requireOwner(tableId, ownerId);
+    if (table.status !== LobbyTableStatus.MATCH_OVER) {
+      throw new ConflictException(
+        `Neue Partie nur nach MATCH_OVER möglich (aktuell ${table.status}).`
+      );
+    }
+    await this.prisma.lobbyTable.update({
+      where: { id: tableId },
+      data: {
+        status: LobbyTableStatus.WAITING,
+        cumulativeScoreTeam0: 0,
+        cumulativeScoreTeam1: 0,
+        currentGameId: null,
+        lastSeatChangeAt: new Date(),
+      },
+    });
+    await this.audit.record({
+      action: "lobby.table.new_match",
+      actorId: ownerId,
+      target: tableId,
+    });
+    // Falls der Tisch noch 4-voll ist (alle Sitze besetzt), starten wir
+    // gleich das nächste Game. Sonst wartet der Tisch im normalen
+    // Auto-Fill-Flow.
+    await this.tryAutoStartGame(tableId);
+    this.gateway.broadcastLobbyListUpdate("new-match", tableId);
+    await this.pushTableState(tableId);
+    return { tableId };
   }
 
   /**
