@@ -78,10 +78,11 @@ export function Hand({ cards, legalMask, canPlay = false, onPlay }: HandProps) {
         return (
           <div
             key={`${card.suit}-${card.rank}-${i}`}
-            // `relative` ist nötig, damit `zIndex` überhaupt wirkt
-            // (z-index braucht einen positionierten Container).
-            className={`relative ${i === 0 ? "" : overlap} hover:z-30 focus-within:z-30`}
-            style={{ zIndex: i }}
+            // `relative` ist nötig, damit `zIndex` überhaupt wirkt.
+            // `jass-hand-deal` mit Stagger-Delay: jede Karte fliegt 60ms
+            // versetzt ein, wie beim Austeilen am echten Tisch.
+            className={`relative jass-hand-deal ${i === 0 ? "" : overlap} hover:z-30 focus-within:z-30`}
+            style={{ zIndex: i, animationDelay: `${i * 60}ms` }}
           >
             <Card
               card={card}

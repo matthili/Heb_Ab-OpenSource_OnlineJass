@@ -10,10 +10,13 @@
  * Mode. So weiß der Spieler immer, „wir spielen Eichel-Trumpf" /
  * „Oben-Abe" etc.
  *
- * **Animation**: Die Team-Punkte werden über `useAnimatedNumber` weich
- * hochgezählt, wenn ein Stich-Wert dazukommt — wirkt lebendiger als
- * ein hartes Springen.
+ * **Animation**:
+ *   - Team-Punkte werden über `useAnimatedNumber` weich hochgezählt.
+ *   - Bei einer Punkt-Steigerung schwebt zusätzlich ein „+X"-Bubble
+ *     kurz über dem Score auf (Score-Pop). Das ist subtil, gibt aber
+ *     ein klares „du hast den Stich gewonnen"-Feedback.
  */
+import { useEffect, useRef, useState } from "react";
 import type { PlayMode, Suit } from "@jass/engine";
 
 import { useAnimatedNumber } from "./useAnimatedNumber.js";
@@ -42,6 +45,32 @@ const MODE_LABEL: Record<PlayMode, string> = {
   UNTEN: "Unten",
 };
 
+/**
+ * Hook der einen „+X"-Pop-Trigger setzt, wenn der target-Wert steigt.
+ * Returnt das Delta + einen `seq`-Counter, damit jeder Anstieg eine
+ * neue Animation auslöst (React remountet das `key`-Element).
+ */
+function useScorePop(value: number): { delta: number; seq: number } | null {
+  const prevRef = useRef(value);
+  const [pop, setPop] = useState<{ delta: number; seq: number } | null>(null);
+  const seqRef = useRef(0);
+
+  useEffect(() => {
+    const prev = prevRef.current;
+    prevRef.current = value;
+    if (value > prev) {
+      seqRef.current += 1;
+      setPop({ delta: value - prev, seq: seqRef.current });
+      // Pop nach 1,4 s wieder zurücksetzen (passt zur CSS-Animation).
+      const id = setTimeout(() => setPop(null), 1400);
+      return () => clearTimeout(id);
+    }
+    return undefined;
+  }, [value]);
+
+  return pop;
+}
+
 export function Scoreboard({
   ownTeamScore,
   oppTeamScore,
@@ -55,17 +84,34 @@ export function Scoreboard({
       : MODE_LABEL[mode]
     : null;
 
-  // Punkte weich hochzählen statt schlagartig springen.
   const ownAnimated = useAnimatedNumber(ownTeamScore);
   const oppAnimated = useAnimatedNumber(oppTeamScore);
+  const ownPop = useScorePop(ownTeamScore);
+  const oppPop = useScorePop(oppTeamScore);
 
   return (
     <div className="flex gap-4 text-sm border-b border-jass-paperEdge pb-2 items-center">
-      <span className="text-jass-inkSoft">
+      <span className="text-jass-inkSoft relative">
         Eigenes Team: <strong className="text-jass-ink tabular-nums">{ownAnimated}</strong>
+        {ownPop && (
+          <span
+            key={ownPop.seq}
+            className="jass-score-pop absolute -top-1 left-1/2 -translate-x-1/2 text-jass-green font-semibold text-base"
+          >
+            +{ownPop.delta}
+          </span>
+        )}
       </span>
-      <span className="text-jass-inkSoft">
+      <span className="text-jass-inkSoft relative">
         Gegner: <strong className="text-jass-ink tabular-nums">{oppAnimated}</strong>
+        {oppPop && (
+          <span
+            key={oppPop.seq}
+            className="jass-score-pop absolute -top-1 left-1/2 -translate-x-1/2 text-jass-red font-semibold text-base"
+          >
+            +{oppPop.delta}
+          </span>
+        )}
       </span>
       {modeText && (
         <span className="rounded bg-jass-yellow px-2 py-0.5 text-xs text-jass-ink font-medium">

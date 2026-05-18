@@ -25,6 +25,7 @@
  * Gewinner-Karte bekommt zusätzlich `jass-trick-win-pulse` für ein
  * pulsierendes Glow-Highlight während des Linger.
  */
+import type * as React from "react";
 import type { Card as CardModel } from "@jass/engine";
 
 import { Card } from "../Card/Card.js";
@@ -72,12 +73,47 @@ export function Trick({ cards, starter, mySeat, winnerSeat }: TrickProps) {
         return (
           <div
             key={`${c.suit}-${c.rank}-${i}`}
-            className={`${SLOT_POS[slot]} jass-card-enter ${winnerCls}`}
+            className={`${SLOT_POS[slot]} jass-card-enter relative ${winnerCls}`}
           >
             <Card card={c} size="md" />
+            {isWinner && <Sparkles />}
           </div>
         );
       })}
     </div>
+  );
+}
+
+/**
+ * Vier goldene Funken die diagonal aus der Gewinner-Karte herausspringen.
+ * Reine CSS-Animation (siehe `.jass-sparkle` in styles.css), kein JS-Tick.
+ * Jeder Funken hat einen eigenen `--sp-x`/`--sp-y`-Vektor.
+ */
+function Sparkles() {
+  const positions: Array<{ x: number; y: number; delay: number }> = [
+    { x: -30, y: -30, delay: 0 },
+    { x: 30, y: -30, delay: 150 },
+    { x: -30, y: 30, delay: 300 },
+    { x: 30, y: 30, delay: 450 },
+  ];
+  return (
+    <>
+      {positions.map((p, i) => (
+        <span
+          key={i}
+          className="jass-sparkle"
+          style={
+            {
+              left: "50%",
+              top: "50%",
+              "--sp-x": `${p.x}px`,
+              "--sp-y": `${p.y}px`,
+              animationDelay: `${p.delay}ms`,
+            } as React.CSSProperties
+          }
+          aria-hidden="true"
+        />
+      ))}
+    </>
   );
 }

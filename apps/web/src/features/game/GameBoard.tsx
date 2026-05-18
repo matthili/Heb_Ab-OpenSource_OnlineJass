@@ -195,7 +195,7 @@ function PlayingArea({
               SEAT_LABEL_POS[slot],
               "text-sm rounded px-2 py-1 z-10 shadow-sm",
               active
-                ? "bg-jass-yellow text-jass-ink font-semibold ring-2 ring-jass-yellowDark"
+                ? "bg-jass-yellow text-jass-ink font-semibold ring-2 ring-jass-yellowDark jass-seat-active-pulse"
                 : isLastWinner
                   ? "bg-jass-cream text-jass-ink border border-jass-yellowDark"
                   : "bg-jass-paper text-jass-ink",

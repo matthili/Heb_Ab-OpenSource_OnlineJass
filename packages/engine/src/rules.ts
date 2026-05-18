@@ -12,11 +12,9 @@
  *   - Legal-Moves: identisch zu TRUMPF (Buur-Ausnahme, kein-Untertrumpfen).
  */
 
-import { cardsEqual } from "./cards.js";
 import {
   type Card,
   type PlayMode,
-  type Rank,
   type Suit,
   type Variant,
   POINT_VALUES_NORMAL,
@@ -103,11 +101,20 @@ function highestTrumpIn(cards: readonly Card[], trump: Suit): Card | null {
  *         eine andere Karte spielen ⇒ alle Karten erlaubt.
  *       * Hat man gar keine Trümpfe → alles erlaubt.
  *   - Nicht-Trumpf wurde angespielt:
- *       * Hat man die Lead-Farbe → bedienen; der Buur darf zusätzlich gespielt
- *         werden (Buur-Ausnahme), wenn er nicht in der Lead-Farbe steckt.
+ *       * Hat man die Lead-Farbe → bedienen ODER **mit beliebigem Trumpf
+ *         stechen** (Vorarlberger Tradition: „Mit Trumpf darf man immer
+ *         stechen"). Die Buur-Ausnahme ist ein Spezialfall davon.
  *       * Sonst → kein-Untertrumpfen: man darf nur höhere Trümpfe oder
  *         Nicht-Trümpfe spielen; ist das leer, ist Untertrumpfen erzwungen
  *         und alles erlaubt.
+ *
+ * **Abweichung von der NN-Spec 1.2.0**: Die Spec dokumentiert nur die
+ * Buur-Ausnahme (nur Trumpf-Unter darf trotz Farbzwang gespielt werden).
+ * In der Vorarlberger Praxis darf man jedoch mit **jedem** Trumpf
+ * stechen — diese Regel ist hier hart kodiert. Konsequenz für das
+ * NN-Modell: es ist auf der engeren Buur-Regel trainiert und nutzt
+ * deshalb keine niedrigen Trümpfe zum Stechen, obwohl es dürfte. Das ist
+ * eine kleine Spielstärke-Einschränkung der NN-KI, kein Spielbruch.
  *
  * **OBEN/UNTEN (Bock/Geiss/Slalom)**:
  *   - Einfacher Farbzwang; wer Lead-Farbe nicht bedienen kann, wirft frei ab.
@@ -130,8 +137,6 @@ export function legalMoves(
     throw new Error(`Variant.${variant.mode} benötigt eine trump_suit.`);
   }
   const trump: Suit = variant.trump_suit;
-  const buur: Card = { suit: trump, rank: "UNTER" as Rank };
-  const hasBuur = hand.some((c) => cardsEqual(c, buur));
 
   // Fall A: Trumpf wurde angespielt
   if (leadSuit === trump) {
@@ -142,13 +147,15 @@ export function legalMoves(
     return [...hand];
   }
 
-  // Fall B: Nicht-Trumpf wurde angespielt; man hat die Lead-Farbe
+  // Fall B: Nicht-Trumpf wurde angespielt; man hat die Lead-Farbe.
+  // Vorarlberger Regel: Lead-Farbe bedienen ODER mit BELIEBIGEM Trumpf
+  // stechen. Wir geben einfach Lead-Farben + alle Trümpfe zurück (ohne
+  // Duplikate, falls jemand Trumpf-Lead gleich Lead-Farbe hätte —
+  // unmöglich, weil leadSuit !== trump in diesem Branch).
   const same = hand.filter((c) => c.suit === leadSuit);
   if (same.length > 0) {
-    if (hasBuur && !same.some((c) => cardsEqual(c, buur))) {
-      return [...same, buur];
-    }
-    return same;
+    const trumpsInHand = hand.filter((c) => c.suit === trump);
+    return [...same, ...trumpsInHand];
   }
 
   // Fall C: Nicht-Trumpf angespielt, Lead-Farbe nicht in der Hand

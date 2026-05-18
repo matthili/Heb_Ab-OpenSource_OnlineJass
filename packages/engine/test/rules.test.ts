@@ -131,15 +131,44 @@ describe("legalMoves: TRUMPF — Buur-Ausnahme", () => {
   });
 
   it("Nicht-Trumpf-Lead, Lead-Farbe vorhanden, Buur ist innerhalb der Lead-Farbe → keine Sonderbehandlung", () => {
-    // Hier ist die "Lead-Farbe" gleichzeitig die Trumpf-Farbe nicht — der Buur
-    // gehört zur Trumpf-Farbe, das wird in der äußeren if-Branch behandelt
-    // (lead != trump). Wenn der "Buur" in den same-suit-Karten landen würde,
-    // wäre die Lead-Farbe selbst Trumpf — Widerspruch.
-    // Dieses Szenario testet stattdessen: Buur nicht in der Hand → kein Bonus.
+    // Buur nicht in der Hand → kein Bonus, nur Lead-Farbe.
     const hand: Card[] = [c("HERZ", "ASS"), c("HERZ", "SIEBEN")];
     const trick: Card[] = [c("HERZ", "OBER")];
     const v = TRUMPF("EICHEL");
     expect(legalMoves(hand, trick, v)).toEqual(hand);
+  });
+
+  it("Vorarlberg: Nicht-Trumpf-Lead, Lead-Farbe + mehrere Trümpfe → alle Trümpfe zum Stechen erlaubt", () => {
+    // Vorarlberger Regel: „Mit Trumpf darf man immer stechen", auch wenn
+    // man die Lead-Farbe bedienen könnte. Hier hat der Spieler 2 Herz-
+    // Karten (Lead) und 3 Eichel-Trümpfe (inkl. niedrigen, Nicht-Buur).
+    // Alle drei Trümpfe müssen legal sein, nicht nur der Buur.
+    const hand: Card[] = [
+      c("HERZ", "ASS"),
+      c("HERZ", "SIEBEN"),
+      c("EICHEL", "UNTER"), // Buur
+      c("EICHEL", "OBER"),
+      c("EICHEL", "SECHS"), // niedriger Trumpf — wäre nach reiner Buur-Regel ILLEGAL
+    ];
+    const trick: Card[] = [c("HERZ", "OBER")];
+    const v = TRUMPF("EICHEL");
+    const legal = legalMoves(hand, trick, v);
+    // Reihenfolge: erst Lead-Farben, dann Trümpfe — alle in der Hand
+    expect(legal).toEqual([
+      c("HERZ", "ASS"),
+      c("HERZ", "SIEBEN"),
+      c("EICHEL", "UNTER"),
+      c("EICHEL", "OBER"),
+      c("EICHEL", "SECHS"),
+    ]);
+  });
+
+  it("Vorarlberg: GUMPF folgt der gleichen Trumpf-Stech-Regel", () => {
+    const hand: Card[] = [c("HERZ", "ZEHN"), c("LAUB", "OBER"), c("LAUB", "SECHS")];
+    const trick: Card[] = [c("HERZ", "ASS")];
+    const v: Variant = { mode: "GUMPF", trump_suit: "LAUB" };
+    const legal = legalMoves(hand, trick, v);
+    expect(legal).toEqual([c("HERZ", "ZEHN"), c("LAUB", "OBER"), c("LAUB", "SECHS")]);
   });
 });
 
