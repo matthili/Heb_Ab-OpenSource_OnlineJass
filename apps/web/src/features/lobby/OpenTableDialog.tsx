@@ -30,7 +30,7 @@ export function OpenTableDialog({ open, onClose }: Props) {
   const queryClient = useQueryClient();
 
   const [joinMode, setJoinMode] = useState<JoinMode>("OPEN");
-  const [aiSeatType, setAiSeatType] = useState<"random" | "nn">("random");
+  const [aiSeatType, setAiSeatType] = useState<"random" | "heuristic" | "nn">("heuristic");
   const [autoFill, setAutoFill] = useState<number | null>(30);
   const [restartMode, setRestartMode] = useState<RestartMode>("SIEGER_GIBT");
   const [soloVsAi, setSoloVsAi] = useState(false);
@@ -115,10 +115,11 @@ export function OpenTableDialog({ open, onClose }: Props) {
           <span className="block text-sm font-medium text-stone-700 mb-1">KI-Typ (Default)</span>
           <select
             value={aiSeatType}
-            onChange={(e) => setAiSeatType(e.target.value as "random" | "nn")}
+            onChange={(e) => setAiSeatType(e.target.value as "random" | "heuristic" | "nn")}
             className="w-full rounded border border-stone-300 px-3 py-2"
           >
-            <option value="random">Zufall (schnell, Baseline)</option>
+            <option value="heuristic">Heuristik (Default — schnell und solide)</option>
+            <option value="random">Zufall (Baseline für Tests)</option>
             <option value="nn">Neuronales Netz (stärker, braucht Inferenz-Service)</option>
           </select>
         </label>

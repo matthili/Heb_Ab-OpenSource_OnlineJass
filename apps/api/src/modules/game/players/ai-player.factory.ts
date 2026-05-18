@@ -4,6 +4,8 @@
  *
  * Bekannte Typen:
  *   - `"random"`           — RandomLegalMovePlayer (Baseline, ohne externe Deps)
+ *   - `"heuristic"`        — HeuristicPlayer (Default-KI, deutlich stärker
+ *                            als random, ohne externe Deps)
  *   - `"nn"` / `"nn-vX.Y"` — NNInferencePlayer (HTTP zum Inferenz-Service)
  *
  * Weil `NNInferencePlayer` den injizierten `InferenceClient` braucht, kann
@@ -13,6 +15,7 @@
 import { Injectable } from "@nestjs/common";
 
 import { InferenceClient } from "../../inference/inference-client.service.js";
+import { HeuristicPlayer } from "./heuristic-player.js";
 import { NNInferencePlayer } from "./nn-player.js";
 import { RandomLegalMovePlayer, type AIPlayer } from "./random-player.js";
 
@@ -22,6 +25,7 @@ export class AIPlayerFactory {
 
   create(aiSeatType: string): AIPlayer {
     if (aiSeatType === "random") return new RandomLegalMovePlayer();
+    if (aiSeatType === "heuristic") return new HeuristicPlayer();
     if (aiSeatType === "nn" || aiSeatType.startsWith("nn-")) {
       return new NNInferencePlayer(this.inference);
     }

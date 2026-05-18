@@ -10,7 +10,10 @@ import { z } from "zod";
 
 const AiSeatTypeSchema = z
   .string()
-  .regex(/^(random|nn(-.+)?)$/, "aiSeatType must be 'random', 'nn' or 'nn-<version>'");
+  .regex(
+    /^(random|heuristic|nn(-.+)?)$/,
+    "aiSeatType must be 'random', 'heuristic', 'nn' or 'nn-<version>'"
+  );
 
 const JoinModeSchema = z.enum(["OPEN", "REQUEST", "INVITE"]);
 const RestartModeSchema = z.enum(["WELI", "SIEGER_GIBT"]);
@@ -27,7 +30,7 @@ export const OpenTableDtoSchema = z
     joinMode: JoinModeSchema.default("OPEN"),
     variant: VariantEnumSchema.default("KREUZ_4P"),
     /** Default-KI-Typ für Auto-Fill und initial besetzte KI-Sitze. */
-    aiSeatType: AiSeatTypeSchema.default("random"),
+    aiSeatType: AiSeatTypeSchema.default("heuristic"),
     /**
      * Auto-Fill-Frist in Sekunden. `null` = nie, Owner muss manuell starten.
      * Default 30s entspricht Plan-Doc §3.

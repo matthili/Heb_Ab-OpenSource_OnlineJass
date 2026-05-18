@@ -265,7 +265,7 @@ model LobbyTable {
   // Default-KI-Typ für Auto-Fill und manuell platzierte KI-Sitze. Owner
   // konfiguriert das beim Tisch-Erstellen; einzelne Sitze können per
   // `LobbyTableSeat.aiSeatType` davon abweichen.
-  aiSeatType      String           @default("random") // "random" | "nn" | "nn-vX.Y.Z"
+  aiSeatType      String           @default("heuristic") // "random" | "heuristic" | "nn" | "nn-vX.Y.Z"
   // Auto-Fill-Timer in Sekunden ab letzter Sitz-Änderung. `null` = nie
   // automatisch auffüllen, Owner muss manuell starten.
   autoFillSeconds Int?             @default(30)
