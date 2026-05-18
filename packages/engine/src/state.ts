@@ -34,6 +34,7 @@ import {
   type GameState,
   type Variant,
   MATCH_BONUS,
+  STOECK_BONUS,
   NUM_PLAYERS,
   TRICKS_PER_ROUND,
   DECK_SIZE,
@@ -72,6 +73,22 @@ export interface RoundState {
   // Gewinner pro abgeschlossenem Trick (Sitz-Index), für Matsch-Check und
   // Replay-Rekonstruktion.
   readonly trick_winners: readonly number[];
+
+  // ── Stöck (Vorarlberger Kreuz-Jass) ──────────────────────────────
+  // **Stöck**: Wenn ein Spieler in einem TRUMPF/GUMPF-Spiel beide Karten
+  // Trumpf-OBER + Trumpf-KOENIG auf der Hand hatte, darf er nach dem
+  // Ausspielen der zweiten der beiden Karten „Stöck" rufen — Team
+  // bekommt +20 Punkte. Nicht ansagen → keine Punkte.
+  //
+  // `stoeck_eligible_seat`: Sitz, der gerade jetzt rufen darf (= hat die
+  // zweite der beiden Karten zuletzt gespielt). Bleibt gesetzt bis er
+  // entweder ruft (→ `stoeck_announced_team` gesetzt, eligible-Feld
+  // zurück auf null) oder seine **nächste** Karte spielt (Frist verstrichen).
+  readonly stoeck_eligible_seat: number | null;
+  // Wenn nicht-null: Team-ID, das Stöck offiziell angesagt hat. +20
+  // werden in `finalRoundScore` addiert. Pro Runde nur einmal möglich
+  // (es kann maximal einen Stöck-Inhaber geben).
+  readonly stoeck_announced_team: number | null;
 }
 
 /** Eine Karten-Aktion eines bestimmten Sitzes. */
@@ -139,6 +156,8 @@ export function newRound(opts: NewRoundOptions): RoundState {
     completed_tricks: [],
     team_card_points: new Array<number>(numTeams).fill(0),
     trick_winners: [],
+    stoeck_eligible_seat: null,
+    stoeck_announced_team: null,
   };
 }
 
@@ -202,12 +221,52 @@ export function applyMove(state: RoundState, move: Move): RoundState {
   );
   const newTrickCards = [...state.current_trick_cards, move.card];
 
+  // 1a) Stöck-Lifecycle.
+  //
+  //   - Zuerst: Wenn der gerade ziehende Sitz `stoeck_eligible_seat`
+  //     **schon vorher** war, hat er die Frist verpasst (er zieht
+  //     ein nächstes Mal ohne Ansage) → eligible löschen.
+  //   - Dann: Wenn dieser Zug die **zweite** der beiden Stöck-Karten
+  //     ist (Spieler hat die andere bereits in einem früheren Trick
+  //     gespielt — denn Karten wechseln nicht den Besitzer), wird er
+  //     neu eligible — sofern Stöck noch nicht angesagt wurde.
+  let nextStoeckEligible: number | null =
+    state.stoeck_eligible_seat === move.seat ? null : state.stoeck_eligible_seat;
+  const mode = state.variant.mode;
+  const trumpSuit = state.variant.trump_suit;
+  if (
+    (mode === "TRUMPF" || mode === "GUMPF") &&
+    trumpSuit !== undefined &&
+    state.stoeck_announced_team === null &&
+    move.card.suit === trumpSuit &&
+    (move.card.rank === "OBER" || move.card.rank === "KOENIG")
+  ) {
+    const otherRank: "OBER" | "KOENIG" = move.card.rank === "OBER" ? "KOENIG" : "OBER";
+    // Hat dieser Sitz die andere Stöck-Karte bereits in einem früheren
+    // Trick gespielt? Karten wandern nicht — also impliziert „selber
+    // gespielt" auch „selber gehabt".
+    const playedOtherBefore = state.completed_tricks.some((tr) => {
+      // Spieler-Sitz bestimmen: starter + position-in-trick
+      return tr.cards.some((card, idxInTrick) => {
+        const playerSeat = (tr.starter + idxInTrick) % state.num_players;
+        return playerSeat === move.seat && card.suit === trumpSuit && card.rank === otherRank;
+      });
+    });
+    // Auch im laufenden Trick prüfen (falls eine Karte in 2 aufeinander-
+    // folgenden Stichen gehört — unmöglich, weil seat nur einmal pro
+    // Trick zieht; daher reicht completed_tricks).
+    if (playedOtherBefore) {
+      nextStoeckEligible = move.seat;
+    }
+  }
+
   // 2) Trick noch nicht voll? → einfach den neuen Zustand zurückgeben.
   if (newTrickCards.length < state.num_players) {
     return {
       ...state,
       hands: newHands,
       current_trick_cards: newTrickCards,
+      stoeck_eligible_seat: nextStoeckEligible,
     };
   }
 
@@ -235,6 +294,32 @@ export function applyMove(state: RoundState, move: Move): RoundState {
     completed_tricks: [...state.completed_tricks, completed],
     team_card_points: newTeamPoints,
     trick_winners: [...state.trick_winners, winnerSeat],
+    stoeck_eligible_seat: nextStoeckEligible,
+  };
+}
+
+/**
+ * Spieler sagt offiziell „Stöck" an. Nur erlaubt wenn `seat ===
+ * state.stoeck_eligible_seat`. Sets `stoeck_announced_team` auf das
+ * Team des Sitzes, clears `stoeck_eligible_seat`.
+ */
+export function announceStoeck(state: RoundState, seat: number): RoundState {
+  if (state.stoeck_announced_team !== null) {
+    throw new InvalidMoveError("Stöck wurde bereits angesagt");
+  }
+  if (state.stoeck_eligible_seat !== seat) {
+    throw new InvalidMoveError(
+      `Sitz ${seat} darf gerade keinen Stöck ansagen (eligible: ${state.stoeck_eligible_seat})`
+    );
+  }
+  const team = state.teams[seat];
+  if (team === undefined) {
+    throw new InvalidMoveError(`Sitz ${seat} hat kein gültiges Team`);
+  }
+  return {
+    ...state,
+    stoeck_eligible_seat: null,
+    stoeck_announced_team: team,
   };
 }
 
@@ -273,6 +358,14 @@ export function finalRoundScore(state: RoundState): RoundScore {
   const team_card_points = [...state.team_card_points];
   if (matsch_team !== null) {
     team_card_points[matsch_team] = (team_card_points[matsch_team] ?? 0) + MATCH_BONUS;
+  }
+  // Stöck-Bonus: +20 für das Team, das offiziell angesagt hat. Nicht
+  // ansagen → keine Punkte (das ist der Vorarlberger Brauch, kein
+  // Bug). `stoeck_announced_team` ist nur gesetzt, wenn jemand via
+  // `announceStoeck()` aktiv geklickt hat.
+  if (state.stoeck_announced_team !== null) {
+    const t = state.stoeck_announced_team;
+    team_card_points[t] = (team_card_points[t] ?? 0) + STOECK_BONUS;
   }
 
   return {

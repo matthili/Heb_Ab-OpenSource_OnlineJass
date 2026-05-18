@@ -205,6 +205,13 @@ export const SECTION_OFFSETS: Readonly<Record<SectionName, readonly [number, num
 
 export const LAST_TRICK_BONUS = 5;
 export const MATCH_BONUS = 100;
+/**
+ * **Stöck-Bonus**: +20 Punkte, wenn ein Spieler in einem Trumpf/Gumpf-
+ * Spiel beide Stöck-Karten (Trumpf-OBER + Trumpf-KOENIG) selbst hatte
+ * UND nach dem Ausspielen der zweiten der beiden Karten aktiv „Stöck"
+ * angesagt hat. Ohne Ansage: keine Punkte.
+ */
+export const STOECK_BONUS = 20;
 export const TOTAL_POINTS_PER_ROUND = 157; // 152 + 5 letzter Stich
 
 /** Punktewerte, wenn die Variante TRUMPF/GUMPF gewählt ist und die Karte NICHT Trumpf ist. */

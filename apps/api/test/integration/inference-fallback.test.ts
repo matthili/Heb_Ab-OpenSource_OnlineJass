@@ -78,7 +78,8 @@ describe("M5 inference-fallback — KI bleibt spielbar bei Inferenz-Ausfall", ()
     expect(view.state).not.toBeNull();
     expect(view.state!.completed_tricks).toHaveLength(9);
     const sum = view.finalScore!.team_card_points.reduce((a, b) => a + b, 0);
-    expect(sum).toBe(157);
+    // 157 Grundpunkte + optional 20 (Stöck) + optional 100 (Matsch).
+    expect([157, 177, 257, 277]).toContain(sum);
 
     // AuditLog: für jeden NN-Sitz-Move, der in den Fallback kippt, gibt es
     // einen Eintrag. Bei 4× `aiSeatType=nn` und 36 Moves müssten das 36

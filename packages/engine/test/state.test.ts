@@ -7,6 +7,7 @@ import { describe, expect, it } from "vitest";
 
 import type { RoundState } from "../src/state.js";
 import {
+  announceStoeck,
   applyMove,
   dealCards,
   DEFAULT_TEAMS,
@@ -337,6 +338,8 @@ describe("applyMove — Trick-Abschluss", () => {
       completed_tricks: fakePrevious,
       team_card_points: [0, 0],
       trick_winners: [0, 0, 0, 0, 0, 0, 0, 0],
+      stoeck_eligible_seat: null,
+      stoeck_announced_team: null,
     };
     let s = applyMove(state, { seat: 0, card: c("EICHEL", "SECHS") });
     s = applyMove(s, { seat: 1, card: c("LAUB", "SECHS") });
@@ -380,6 +383,8 @@ describe("finalRoundScore", () => {
       completed_tricks: new Array(9).fill({ starter: 0, cards: [c("EICHEL", "ASS")] }),
       team_card_points: [157, 0], // Team 0 hat alles
       trick_winners: [0, 2, 0, 2, 0, 2, 0, 2, 0], // alle aus Team 0
+      stoeck_eligible_seat: null,
+      stoeck_announced_team: null,
     };
     const score = finalRoundScore(s);
     expect(score.matsch_team).toBe(0);
@@ -402,8 +407,231 @@ describe("finalRoundScore", () => {
       completed_tricks: new Array(9).fill({ starter: 0, cards: [c("EICHEL", "ASS")] }),
       team_card_points: [80, 77],
       trick_winners: [0, 1, 0, 1, 0, 1, 0, 1, 0],
+      stoeck_eligible_seat: null,
+      stoeck_announced_team: null,
     };
     expect(finalRoundScore(s).matsch_team).toBeNull();
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────
+// Stöck
+// ─────────────────────────────────────────────────────────────────────
+
+describe("Stöck", () => {
+  /**
+   * Hand-Setup: Sitz 0 hat Trumpf-OBER + Trumpf-KOENIG (Eichel-Trumpf).
+   * Beim Ausspielen der zweiten der beiden Karten wird er
+   * `stoeck_eligible_seat`. Sagt er sofort an, bekommt sein Team
+   * +20 Punkte am Rundenende.
+   */
+  function setupStoeckRound(handsOverride?: Card[][]): RoundState {
+    // Hand 0 enthält OBER+KOENIG Eichel; Hände 1..3 mit Füllkarten.
+    const hands: Card[][] = handsOverride ?? [
+      [
+        c("EICHEL", "OBER"),
+        c("EICHEL", "KOENIG"),
+        c("EICHEL", "SECHS"),
+        c("EICHEL", "SIEBEN"),
+        c("EICHEL", "ACHT"),
+        c("EICHEL", "NEUN"),
+        c("EICHEL", "ZEHN"),
+        c("EICHEL", "UNTER"),
+        c("EICHEL", "ASS"),
+      ],
+      [
+        c("HERZ", "SECHS"),
+        c("HERZ", "SIEBEN"),
+        c("HERZ", "ACHT"),
+        c("HERZ", "NEUN"),
+        c("HERZ", "ZEHN"),
+        c("HERZ", "UNTER"),
+        c("HERZ", "OBER"),
+        c("HERZ", "KOENIG"),
+        c("HERZ", "ASS"),
+      ],
+      [
+        c("LAUB", "SECHS"),
+        c("LAUB", "SIEBEN"),
+        c("LAUB", "ACHT"),
+        c("LAUB", "NEUN"),
+        c("LAUB", "ZEHN"),
+        c("LAUB", "UNTER"),
+        c("LAUB", "OBER"),
+        c("LAUB", "KOENIG"),
+        c("LAUB", "ASS"),
+      ],
+      [
+        c("SCHELLE", "SIEBEN"),
+        c("SCHELLE", "ACHT"),
+        c("SCHELLE", "NEUN"),
+        c("SCHELLE", "ZEHN"),
+        c("SCHELLE", "UNTER"),
+        c("SCHELLE", "OBER"),
+        c("SCHELLE", "KOENIG"),
+        c("SCHELLE", "ASS"),
+        c("SCHELLE", "SECHS"), // WELI
+      ],
+    ];
+    return newRound({
+      variant: TRUMPF_EICHEL,
+      announcement: TRUMPF_EICHEL_ANN,
+      hands,
+      starter: 0,
+    });
+  }
+
+  it("setzt stoeck_eligible_seat, sobald Spieler die zweite Stöck-Karte spielt", () => {
+    let s = setupStoeckRound();
+    // Trick 1: Sitz 0 spielt OBER (1. Stöck-Karte) → eligible bleibt null.
+    s = applyMove(s, { seat: 0, card: c("EICHEL", "OBER") });
+    expect(s.stoeck_eligible_seat).toBeNull();
+    // Sitz 1,2,3 bedienen mit beliebigen Karten.
+    s = applyMove(s, { seat: 1, card: c("HERZ", "SECHS") });
+    s = applyMove(s, { seat: 2, card: c("LAUB", "SECHS") });
+    s = applyMove(s, { seat: 3, card: c("SCHELLE", "SIEBEN") });
+    // Trick 2 — Sitz 0 hat gewonnen (Eichel-Trumpf-OBER schlägt alle non-Trump)
+    // und spielt nun KOENIG (2. Stöck-Karte) → eligible = 0.
+    s = applyMove(s, { seat: 0, card: c("EICHEL", "KOENIG") });
+    expect(s.stoeck_eligible_seat).toBe(0);
+    expect(s.stoeck_announced_team).toBeNull();
+  });
+
+  it("addiert +20 ans Team, wenn Stöck angesagt wird", () => {
+    let s = setupStoeckRound();
+    s = applyMove(s, { seat: 0, card: c("EICHEL", "OBER") });
+    s = applyMove(s, { seat: 1, card: c("HERZ", "SECHS") });
+    s = applyMove(s, { seat: 2, card: c("LAUB", "SECHS") });
+    s = applyMove(s, { seat: 3, card: c("SCHELLE", "SIEBEN") });
+    s = applyMove(s, { seat: 0, card: c("EICHEL", "KOENIG") });
+    expect(s.stoeck_eligible_seat).toBe(0);
+
+    // Spieler sagt an.
+    s = announceStoeck(s, 0);
+    expect(s.stoeck_announced_team).toBe(0);
+    expect(s.stoeck_eligible_seat).toBeNull();
+  });
+
+  it("verfallt die Frist, wenn der eligible Sitz seinen NÄCHSTEN Zug macht ohne anzusagen", () => {
+    let s = setupStoeckRound();
+    s = applyMove(s, { seat: 0, card: c("EICHEL", "OBER") });
+    s = applyMove(s, { seat: 1, card: c("HERZ", "SECHS") });
+    s = applyMove(s, { seat: 2, card: c("LAUB", "SECHS") });
+    s = applyMove(s, { seat: 3, card: c("SCHELLE", "SIEBEN") });
+    s = applyMove(s, { seat: 0, card: c("EICHEL", "KOENIG") });
+    expect(s.stoeck_eligible_seat).toBe(0);
+    // Trick fortsetzen — Sitz 1/2/3 ziehen.
+    s = applyMove(s, { seat: 1, card: c("HERZ", "SIEBEN") });
+    s = applyMove(s, { seat: 2, card: c("LAUB", "SIEBEN") });
+    s = applyMove(s, { seat: 3, card: c("SCHELLE", "ACHT") });
+    // Sitz 0 ist wieder dran (Trick-Sieger). Eligibility besteht weiter.
+    expect(s.stoeck_eligible_seat).toBe(0);
+    // Sitz 0 spielt seinen nächsten Zug ohne Ansage → Frist verfallen.
+    s = applyMove(s, { seat: 0, card: c("EICHEL", "SECHS") });
+    expect(s.stoeck_eligible_seat).toBeNull();
+    expect(s.stoeck_announced_team).toBeNull();
+  });
+
+  it("verweigert announceStoeck, wenn nicht eligible", () => {
+    let s = setupStoeckRound();
+    s = applyMove(s, { seat: 0, card: c("EICHEL", "OBER") });
+    // Noch keine 2. Karte → niemand eligible.
+    expect(() => announceStoeck(s, 0)).toThrow(InvalidMoveError);
+  });
+
+  it("verweigert doppeltes Ansagen", () => {
+    let s = setupStoeckRound();
+    s = applyMove(s, { seat: 0, card: c("EICHEL", "OBER") });
+    s = applyMove(s, { seat: 1, card: c("HERZ", "SECHS") });
+    s = applyMove(s, { seat: 2, card: c("LAUB", "SECHS") });
+    s = applyMove(s, { seat: 3, card: c("SCHELLE", "SIEBEN") });
+    s = applyMove(s, { seat: 0, card: c("EICHEL", "KOENIG") });
+    s = announceStoeck(s, 0);
+    expect(() => announceStoeck(s, 0)).toThrow(/bereits/);
+  });
+
+  it("addiert +20 in finalRoundScore, wenn Stöck angesagt wurde", () => {
+    // Fertige Runde mit Stöck-Ansage simulieren.
+    const s: RoundState = {
+      variant: TRUMPF_EICHEL,
+      announcement: TRUMPF_EICHEL_ANN,
+      teams: DEFAULT_TEAMS,
+      num_players: 4,
+      round_idx: 0,
+      hands: [[], [], [], []],
+      trick_idx: 9,
+      current_trick_starter: 0,
+      current_trick_cards: [],
+      completed_tricks: new Array(9).fill({ starter: 0, cards: [c("EICHEL", "ASS")] }),
+      team_card_points: [80, 77],
+      trick_winners: [0, 1, 0, 1, 0, 1, 0, 1, 0],
+      stoeck_eligible_seat: null,
+      stoeck_announced_team: 0,
+    };
+    const score = finalRoundScore(s);
+    expect(score.team_card_points).toEqual([100, 77]); // 80 + 20 Stöck
+  });
+
+  it("greift NICHT in OBEN/UNTEN-Spielen", () => {
+    const obenHands: Card[][] = [
+      [
+        c("EICHEL", "OBER"),
+        c("EICHEL", "KOENIG"),
+        c("EICHEL", "SECHS"),
+        c("EICHEL", "SIEBEN"),
+        c("EICHEL", "ACHT"),
+        c("EICHEL", "NEUN"),
+        c("EICHEL", "ZEHN"),
+        c("EICHEL", "UNTER"),
+        c("EICHEL", "ASS"),
+      ],
+      [
+        c("HERZ", "SECHS"),
+        c("HERZ", "SIEBEN"),
+        c("HERZ", "ACHT"),
+        c("HERZ", "NEUN"),
+        c("HERZ", "ZEHN"),
+        c("HERZ", "UNTER"),
+        c("HERZ", "OBER"),
+        c("HERZ", "KOENIG"),
+        c("HERZ", "ASS"),
+      ],
+      [
+        c("LAUB", "SECHS"),
+        c("LAUB", "SIEBEN"),
+        c("LAUB", "ACHT"),
+        c("LAUB", "NEUN"),
+        c("LAUB", "ZEHN"),
+        c("LAUB", "UNTER"),
+        c("LAUB", "OBER"),
+        c("LAUB", "KOENIG"),
+        c("LAUB", "ASS"),
+      ],
+      [
+        c("SCHELLE", "SIEBEN"),
+        c("SCHELLE", "ACHT"),
+        c("SCHELLE", "NEUN"),
+        c("SCHELLE", "ZEHN"),
+        c("SCHELLE", "UNTER"),
+        c("SCHELLE", "OBER"),
+        c("SCHELLE", "KOENIG"),
+        c("SCHELLE", "ASS"),
+        c("SCHELLE", "SECHS"),
+      ],
+    ];
+    const obenVariant: Variant = { mode: "OBEN" };
+    let s = newRound({
+      variant: obenVariant,
+      announcement: { variant: obenVariant, slalom: false },
+      hands: obenHands,
+      starter: 0,
+    });
+    s = applyMove(s, { seat: 0, card: c("EICHEL", "OBER") });
+    s = applyMove(s, { seat: 1, card: c("HERZ", "SECHS") });
+    s = applyMove(s, { seat: 2, card: c("LAUB", "SECHS") });
+    s = applyMove(s, { seat: 3, card: c("SCHELLE", "SIEBEN") });
+    s = applyMove(s, { seat: 0, card: c("EICHEL", "KOENIG") });
+    expect(s.stoeck_eligible_seat).toBeNull();
   });
 });
 

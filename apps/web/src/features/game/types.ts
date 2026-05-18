@@ -33,6 +33,15 @@ export interface PlayerView {
     pushedFromSeat: number | null;
   };
   finalScore?: FinalScore;
+  /**
+   * **Stöck**: Ist mein eigener Sitz gerade berechtigt, „Stöck" zu rufen?
+   * (= ich habe soeben die zweite Trumpf-OBER/KOENIG-Karte gespielt und
+   *  noch nicht angesagt + noch nicht den nächsten Zug gemacht.) Der
+   *  Button bleibt sichtbar bis ich klicke oder meine nächste Karte spiele.
+   */
+  stoeckEligible: boolean;
+  /** Team, das offiziell Stöck angesagt hat (für UI-Anzeige). */
+  stoeckAnnouncedTeam?: number | null;
 }
 
 /**

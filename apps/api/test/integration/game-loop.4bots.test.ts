@@ -83,7 +83,8 @@ describe("M4 game-loop — 4 Random-KIs spielen eine Runde durch", () => {
     const score = finalView.finalScore!;
     expect(score.team_card_points).toHaveLength(2);
     const sum = score.team_card_points.reduce((a, b) => a + b, 0);
-    expect(sum).toBe(157);
+    // 157 Grundpunkte + optional 20 (Stöck) + optional 100 (Matsch).
+    expect([157, 177, 257, 277]).toContain(sum);
     expect(score.trick_winners).toHaveLength(9);
 
     // Auch von Sitz 2 (gegenüberliegendes Team) muss das fertig sein.

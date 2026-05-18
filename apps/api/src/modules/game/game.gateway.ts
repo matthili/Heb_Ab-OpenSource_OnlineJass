@@ -236,6 +236,32 @@ export class GameGateway
   }
 
   /**
+   * Stöck-Ansage durch einen menschlichen Spieler. Payload: `{ gameId }`.
+   * Server prüft Eligibility (engine `announceStoeck` wirft `InvalidMoveError`
+   * bei Missbrauch), broadcastet danach den neuen State.
+   */
+  @SubscribeMessage("game:announce-stoeck")
+  async onAnnounceStoeck(
+    @ConnectedSocket() socket: AuthenticatedSocket,
+    @MessageBody() payload: { gameId?: string }
+  ): Promise<void> {
+    const userId = socket.data.userId;
+    if (!userId) return this.fail(socket, "Not authenticated");
+    const gameId = payload?.gameId;
+    if (typeof gameId !== "string" || gameId.length === 0) {
+      return this.fail(socket, "gameId required");
+    }
+    try {
+      await this.locks.withLock(gameId, async () => {
+        await this.games.announceStoeckAsUser(gameId, userId);
+        await this.broadcastState(gameId);
+      });
+    } catch (err) {
+      this.fail(socket, this.errorMessage(err));
+    }
+  }
+
+  /**
    * KI-Loop für **beide** Spielphasen:
    *
    *   - **announce**: wenn der aktuelle Announcer eine KI ist, lässt der
@@ -274,6 +300,12 @@ export class GameGateway
       const card = await this.games.aiChooseMove(gameId, action.seat, action.aiSeatType);
       const { view } = await this.games.playMoveAsSeat(gameId, action.seat, card);
       await this.broadcastState(gameId);
+      // Stöck-Auto-Ansage: wenn die KI gerade die zweite Trumpf-O/K
+      // gespielt hat (= eligible), ruft sie sofort an. Heuristik: „immer".
+      if (view.stoeckEligible) {
+        await this.games.announceStoeckAsSeat(gameId, action.seat);
+        await this.broadcastState(gameId);
+      }
       if (view.status === "finished") {
         this.server.to(roomKey(gameId)).emit("game:ended", { finalScore: view.finalScore });
         return;

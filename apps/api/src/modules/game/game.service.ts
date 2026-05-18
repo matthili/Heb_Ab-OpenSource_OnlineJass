@@ -42,6 +42,7 @@ import {
   type RoundState,
   type Suit,
   type Variant,
+  announceStoeck,
   applyMove,
   cardIndex,
   dealCards,
@@ -194,6 +195,15 @@ export interface PlayerView {
     matsch_team: number | null;
     trick_winners: readonly number[];
   };
+  /**
+   * **Stöck**: ist der eigene Sitz gerade zum Stöck-Ansagen berechtigt?
+   * (= Spieler hat soeben die zweite Trumpf-OBER/KOENIG-Karte gespielt
+   *  und noch nicht angesagt + noch nicht den nächsten Zug gemacht.)
+   * Wird der Client nutzen, um den „Stöck rufen (+20)"-Button zu zeigen.
+   */
+  stoeckEligible: boolean;
+  /** Team, das offiziell Stöck angesagt hat — nur informativ (für UI-Anzeige). */
+  stoeckAnnouncedTeam?: number | null;
 }
 
 /**
@@ -392,6 +402,8 @@ export class GameService {
           canPush,
           pushedFromSeat: pending.pushedFromSeat,
         },
+        stoeckEligible: false,
+        stoeckAnnouncedTeam: null,
       };
     }
     const state = await this.loadRoundState(gameId);
@@ -408,6 +420,8 @@ export class GameService {
       legalActionMask: Array.from(mask),
       whoseTurnSeat: finished ? -1 : whoseTurn(state),
       myTurn: !finished && whoseTurn(state) === seat,
+      stoeckEligible: !finished && state.stoeck_eligible_seat === seat,
+      stoeckAnnouncedTeam: state.stoeck_announced_team,
     };
     if (finished) {
       view.finalScore = finalRoundScore(state);
@@ -530,6 +544,51 @@ export class GameService {
       });
     }
 
+    return { view: await this.viewForSeat(gameId, seat) };
+  }
+
+  // ───────────────────────────────────────────────────────────────────
+  // Stöck-Ansage
+  // ───────────────────────────────────────────────────────────────────
+
+  /**
+   * Spieler ruft „Stöck". Nur erlaubt, wenn der eigene Sitz gerade
+   * `stoeck_eligible_seat` ist (= zweite Trumpf-O/K wurde soeben
+   * gespielt). +20 Punkte am Rundenende.
+   */
+  async announceStoeckAsUser(gameId: string, userId: string): Promise<{ view: PlayerView }> {
+    const seat = await this.findSeatForUser(gameId, userId);
+    return this.announceStoeckAsSeat(gameId, seat, userId);
+  }
+
+  async announceStoeckAsSeat(
+    gameId: string,
+    seat: number,
+    userId: string | null = null
+  ): Promise<{ view: PlayerView }> {
+    const state = await this.loadRoundState(gameId);
+    let nextState: RoundState;
+    try {
+      nextState = announceStoeck(state, seat);
+    } catch (err) {
+      if (err instanceof InvalidMoveError) {
+        await this.audit.record({
+          action: "game.stoeck.invalid",
+          actorId: userId,
+          target: gameId,
+          meta: asJson({ seat, reason: err.message }),
+        });
+        throw new BadRequestException(err.message);
+      }
+      throw err;
+    }
+    await this.writeRoundStateToRedis(gameId, nextState);
+    await this.audit.record({
+      action: "game.stoeck.announced",
+      actorId: userId,
+      target: gameId,
+      meta: asJson({ seat, team: state.teams[seat] }),
+    });
     return { view: await this.viewForSeat(gameId, seat) };
   }
 

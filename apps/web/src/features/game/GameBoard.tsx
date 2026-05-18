@@ -33,6 +33,7 @@ interface Props {
   error: string | null;
   onPlayCard: (card: Card) => void;
   onAnnounce: (decision: AnnouncementDecision) => void;
+  onAnnounceStoeck: () => void;
 }
 
 export function GameBoard({
@@ -44,6 +45,7 @@ export function GameBoard({
   error,
   onPlayCard,
   onAnnounce,
+  onAnnounceStoeck,
 }: Props) {
   const seatNames = buildSeatNames(seats);
   // Hook IMMER auf gleichem Render-Level aufrufen — auch im Ansage-Modus,
@@ -91,6 +93,15 @@ export function GameBoard({
         {...(variant.trump_suit !== undefined ? { trumpSuit: variant.trump_suit } : {})}
       />
       <StatusBanner view={view} seats={seats} />
+      {view.stoeckEligible && (
+        <button
+          type="button"
+          onClick={onAnnounceStoeck}
+          className="w-full rounded-lg bg-jass-yellow border-2 border-jass-yellowDark px-4 py-3 text-jass-ink font-bold text-lg shadow-md hover:bg-jass-yellow/90 jass-your-turn-glow"
+        >
+          ★ Stöck rufen (+20)
+        </button>
+      )}
       {error && (
         <div
           role="alert"

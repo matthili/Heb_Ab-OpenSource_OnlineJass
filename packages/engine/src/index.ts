@@ -24,6 +24,7 @@ export {
   type RoundState,
   DEFAULT_TEAMS,
   InvalidMoveError,
+  announceStoeck,
   applyMove,
   dealCards,
   finalRoundScore,

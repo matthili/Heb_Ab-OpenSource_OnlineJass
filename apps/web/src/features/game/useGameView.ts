@@ -34,6 +34,8 @@ export interface GameViewState {
   playCard: (card: Card) => void;
   /** Trumpf-Ansage (oder Push) absenden. */
   announce: (decision: AnnouncementDecision) => void;
+  /** „Stöck" rufen — nur erlaubt, wenn `view.stoeckEligible`. */
+  announceStoeck: () => void;
   clearError: () => void;
 }
 
@@ -91,9 +93,25 @@ export function useGameView(gameId: string | null): GameViewState {
     socket.emit("game:announce", { gameId: id, decision });
   }
 
+  function announceStoeck() {
+    const id = gameIdRef.current;
+    if (!id) return;
+    const socket = getLobbySocket();
+    socket.emit("game:announce-stoeck", { gameId: id });
+  }
+
   function clearError() {
     setError(null);
   }
 
-  return { view, error, movePending, announcePending, playCard, announce, clearError };
+  return {
+    view,
+    error,
+    movePending,
+    announcePending,
+    playCard,
+    announce,
+    announceStoeck,
+    clearError,
+  };
 }
