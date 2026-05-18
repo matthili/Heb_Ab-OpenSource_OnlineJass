@@ -130,7 +130,7 @@ function StatusBanner({ view, seats }: { view: PlayerView; seats: readonly SeatV
   }
   if (view.myTurn) {
     return (
-      <div className="rounded bg-jass-yellow border border-jass-yellowDark px-3 py-2 text-jass-ink font-semibold">
+      <div className="jass-your-turn-glow rounded bg-jass-yellow border border-jass-yellowDark px-3 py-2 text-jass-ink font-semibold">
         Du bist dran.
       </div>
     );

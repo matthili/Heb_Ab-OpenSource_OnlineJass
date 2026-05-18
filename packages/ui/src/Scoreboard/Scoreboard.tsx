@@ -9,8 +9,14 @@
  * **Trumpf-Anzeige**: optional. Wenn gesetzt, zeigt sie Suit-Name +
  * Mode. So weiß der Spieler immer, „wir spielen Eichel-Trumpf" /
  * „Oben-Abe" etc.
+ *
+ * **Animation**: Die Team-Punkte werden über `useAnimatedNumber` weich
+ * hochgezählt, wenn ein Stich-Wert dazukommt — wirkt lebendiger als
+ * ein hartes Springen.
  */
 import type { PlayMode, Suit } from "@jass/engine";
+
+import { useAnimatedNumber } from "./useAnimatedNumber.js";
 
 export interface ScoreboardProps {
   ownTeamScore: number;
@@ -49,13 +55,17 @@ export function Scoreboard({
       : MODE_LABEL[mode]
     : null;
 
+  // Punkte weich hochzählen statt schlagartig springen.
+  const ownAnimated = useAnimatedNumber(ownTeamScore);
+  const oppAnimated = useAnimatedNumber(oppTeamScore);
+
   return (
     <div className="flex gap-4 text-sm border-b border-jass-paperEdge pb-2 items-center">
       <span className="text-jass-inkSoft">
-        Eigenes Team: <strong className="text-jass-ink tabular-nums">{ownTeamScore}</strong>
+        Eigenes Team: <strong className="text-jass-ink tabular-nums">{ownAnimated}</strong>
       </span>
       <span className="text-jass-inkSoft">
-        Gegner: <strong className="text-jass-ink tabular-nums">{oppTeamScore}</strong>
+        Gegner: <strong className="text-jass-ink tabular-nums">{oppAnimated}</strong>
       </span>
       {modeText && (
         <span className="rounded bg-jass-yellow px-2 py-0.5 text-xs text-jass-ink font-medium">

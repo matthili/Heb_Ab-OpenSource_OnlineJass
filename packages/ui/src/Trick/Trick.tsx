@@ -16,6 +16,14 @@
  * **Winner-Highlight**: optional — wenn `winnerSeat` gesetzt ist, wird
  * die Gewinner-Karte mit einem goldenen Ring markiert. Caller berechnet
  * den Winner via `trickWinner()` aus `@jass/engine`.
+ *
+ * **Animation**: Jede Karten-Wrapper bekommt die CSS-Klasse
+ * `jass-card-enter` — beim Mount läuft eine 400-ms-Slide-In-Animation
+ * (Fade + leichter Hoch-Slide + Settle-Bounce). Da React jede neue Karte
+ * im `cards`-Array als neues DOM-Element mountet (key beinhaltet den
+ * Index), feuert die Animation genau einmal pro gespielter Karte. Die
+ * Gewinner-Karte bekommt zusätzlich `jass-trick-win-pulse` für ein
+ * pulsierendes Glow-Highlight während des Linger.
  */
 import type { Card as CardModel } from "@jass/engine";
 
@@ -60,10 +68,11 @@ export function Trick({ cards, starter, mySeat, winnerSeat }: TrickProps) {
         const absoluteSeat = (starter + i) % 4;
         const slot = relativeSlot(absoluteSeat, mySeat);
         const isWinner = winnerSeat !== undefined && absoluteSeat === winnerSeat;
+        const winnerCls = isWinner ? "ring-4 ring-amber-400 rounded-md jass-trick-win-pulse" : "";
         return (
           <div
             key={`${c.suit}-${c.rank}-${i}`}
-            className={`${SLOT_POS[slot]} ${isWinner ? "ring-4 ring-amber-400 rounded-md" : ""}`}
+            className={`${SLOT_POS[slot]} jass-card-enter ${winnerCls}`}
           >
             <Card card={c} size="md" />
           </div>

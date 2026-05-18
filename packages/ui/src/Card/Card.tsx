@@ -111,15 +111,19 @@ export function Card(props: CardProps) {
   // Kein Hintergrund, kein Rahmen — nur ein Drop-Shadow auf das SVG/PNG.
   // `drop-shadow` (statt `shadow`) folgt der Alpha-Maske, sodass die
   // abgerundeten transparenten Ecken nicht im Rechteck-Schatten landen.
+  //
+  // Beim Hover wird die Karte angehoben **und leicht nach rechts**
+  // gekippt (rotate-2) — wirkt so, als würde man sie aus dem Fan
+  // einzeln aufnehmen. Sanfter cubic-bezier-Übergang.
   const baseCls = [
     "select-none w-auto",
     SIZE_CLASSES[size],
-    "transition-transform duration-150 ease-out",
+    "transition-transform duration-200 ease-[cubic-bezier(0.34,1.56,0.64,1)]",
     "drop-shadow-md",
     raised ? "-translate-y-2 drop-shadow-xl" : "",
     disabled ? "opacity-40 grayscale cursor-not-allowed" : "",
     interactive
-      ? "cursor-pointer hover:-translate-y-2 hover:drop-shadow-xl focus:outline-none focus-visible:drop-shadow-[0_0_0_3px_rgba(245,158,11,0.7)]"
+      ? "cursor-pointer hover:-translate-y-3 hover:rotate-2 hover:drop-shadow-xl focus:outline-none focus-visible:drop-shadow-[0_0_0_3px_rgba(245,158,11,0.7)]"
       : "",
     className,
   ]
