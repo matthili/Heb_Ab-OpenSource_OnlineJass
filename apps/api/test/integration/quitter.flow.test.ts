@@ -13,7 +13,6 @@ import type { AdminService } from "../../src/modules/admin/admin.service.js";
 import type { GameService, SeatAssignment } from "../../src/modules/game/game.service.js";
 import { setupTestApp, type TestAppHandle } from "./setup.js";
 import { signUpAndIn } from "./auth-helper.js";
-import { settleAnnouncement } from "./announce-helper.js";
 
 describe("Quitter-Sprint — Aussteig aus laufendem Spiel", () => {
   let app: TestAppHandle;
@@ -57,13 +56,14 @@ describe("Quitter-Sprint — Aussteig aus laufendem Spiel", () => {
     const gameId = detail.body.currentGameId!;
     expect(gameId).toBeTruthy();
 
-    // Aussteig
+    // Aussteig — Solo-Tisch: keine Menschen mehr → Tisch wird sofort
+    // geschlossen, Spiel server-seitig zu Ende getrieben (driveAIsToEnd).
     const res = await user.http.request<{ seatFreed: number | null; tableClosed: boolean }>(
       `/api/lobby/tables/${tableId}/leave`,
       { method: "POST" }
     );
     expect(res.status).toBe(201);
-    expect(res.body.tableClosed).toBe(false);
+    expect(res.body.tableClosed).toBe(true);
 
     // GameSeat.leftAt sollte gesetzt sein
     const seat = await app.prisma.gameSeat.findFirst({
@@ -87,22 +87,14 @@ describe("Quitter-Sprint — Aussteig aus laufendem Spiel", () => {
     const meta = audit!.meta as { hadHumanOpponents?: boolean };
     expect(meta.hadHumanOpponents).toBe(false);
 
-    // Spiel läuft mit allen 4 KIs weiter — die KI-Loop drives it.
-    // Wir treiben sie hier manuell.
-    await settleAnnouncement(app, gameId);
-    for (let i = 0; i < 50; i++) {
-      const action = await games.nextAIAction(gameId);
-      if (!action) break;
-      if (action.kind === "announce") {
-        const decision = await games.aiChooseAnnouncement(gameId, action.seat);
-        await games.applyAnnouncementAsSeat(gameId, action.seat, decision);
-      } else {
-        const card = await games.aiChooseMove(gameId, action.seat, action.aiSeatType);
-        await games.playMoveAsSeat(gameId, action.seat, card);
-      }
-    }
-    const finished = await games.viewForSeat(gameId, 0);
-    expect(finished.status).toBe("finished");
+    // Tisch ist CLOSED, Spiel zu Ende.
+    const tableAfter = await app.prisma.lobbyTable.findUnique({ where: { id: tableId } });
+    expect(tableAfter?.status).toBe("CLOSED");
+    expect(tableAfter?.closedAt).not.toBeNull();
+
+    const gameAfter = await app.prisma.game.findUnique({ where: { id: gameId } });
+    expect(gameAfter?.endedAt).not.toBeNull();
+    expect(gameAfter?.finalScore).not.toBeNull();
   });
 
   it("Aussteiger kann keinen Move mehr machen (findSeatForUser ignoriert leftAt)", async () => {

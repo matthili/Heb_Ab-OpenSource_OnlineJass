@@ -554,17 +554,38 @@ export class GameService {
     gameId: string,
     userId: string,
     replacementAiType: string = "heuristic"
-  ): Promise<{ seat: number; hadHumanOpponents: boolean; wasInAnnouncing: boolean }> {
+  ): Promise<{
+    seat: number | null;
+    hadHumanOpponents: boolean;
+    wasInAnnouncing: boolean;
+    alreadyLeft: boolean;
+  }> {
     const game = await this.prisma.game.findUnique({
       where: { id: gameId },
       include: { seats: true },
     });
     if (!game) throw new NotFoundException(`Game ${gameId} nicht gefunden`);
     if (game.endedAt !== null) {
-      throw new ConflictException("Spiel ist bereits beendet; kein Aussteig nötig.");
+      // Spiel ist schon vorbei — kein Aussteig mehr nötig, aber das ist
+      // kein harter Fehler. Caller (Lobby) braucht hier nur das Signal,
+      // dass nichts mehr zu tun ist.
+      return { seat: null, hadHumanOpponents: false, wasInAnnouncing: false, alreadyLeft: true };
     }
     const seatRow = game.seats.find((s) => s.userId === userId && s.leftAt === null);
     if (!seatRow) {
+      // User ist entweder nie an dem Tisch gewesen oder schon vorher
+      // ausgestiegen. Beides ist für den Caller (Lobby-leaveTable) kein
+      // Grund zum Crash — z.B. wenn der User nach einem ersten Aussteig
+      // nochmal „Verlassen" klickt, um seinen Owner-Status loszuwerden.
+      const earlierLeave = game.seats.find((s) => s.userId === userId && s.leftAt !== null);
+      if (earlierLeave) {
+        return {
+          seat: earlierLeave.seat,
+          hadHumanOpponents: false,
+          wasInAnnouncing: false,
+          alreadyLeft: true,
+        };
+      }
       throw new ConflictException("Du bist nicht (mehr) am Tisch.");
     }
 
@@ -599,7 +620,12 @@ export class GameService {
       { gameId, seat: seatRow.seat, userId, hadHumanOpponents },
       "User ist aus laufendem Spiel ausgestiegen — Sitz wird zur KI"
     );
-    return { seat: seatRow.seat, hadHumanOpponents, wasInAnnouncing };
+    return {
+      seat: seatRow.seat,
+      hadHumanOpponents,
+      wasInAnnouncing,
+      alreadyLeft: false,
+    };
   }
 
   async applyAnnouncementAsSeat(
@@ -724,6 +750,38 @@ export class GameService {
     const effective = await this.effectiveAiTypeForSeat(gameId, seat);
     if (effective === null) return null; // Mensch ist dran und nicht ausgestiegen
     return { seat, aiSeatType: effective };
+  }
+
+  /**
+   * Server-interne KI-Auto-Loop **ohne WS-Broadcast** — bei Bedarf wenn
+   * niemand mehr menschlich am Tisch ist, der die Loop sonst via
+   * `game:move`/`game:announce` antreiben würde (Quitter-Sprint:
+   * alle 4 Sitze sind nach Aussteig KI). Treibt das Spiel bis zum Ende
+   * oder bis ein menschlicher Sitz dran ist.
+   *
+   * Sicherheits-Limits: 50 Move-Schritte + 2 Ansage-Schritte. Bei realen
+   * Kreuz-Jass-Spielen sind das je 36 Karten + max. 1 Push pro Ansage,
+   * also genug Reserve.
+   */
+  async driveAIsToEnd(gameId: string): Promise<void> {
+    let announceSteps = 0;
+    for (let i = 0; i < 50; i++) {
+      const action = await this.nextAIAction(gameId);
+      if (!action) return; // Mensch dran oder Spiel beendet
+      if (action.kind === "announce") {
+        if (++announceSteps > 2) {
+          this.log.error({ gameId }, "driveAIsToEnd: Ansage-Loop > 2 Schritte — fail-safe");
+          return;
+        }
+        const decision = await this.aiChooseAnnouncement(gameId, action.seat);
+        await this.applyAnnouncementAsSeat(gameId, action.seat, decision);
+        continue;
+      }
+      const card = await this.aiChooseMove(gameId, action.seat, action.aiSeatType);
+      const { view } = await this.playMoveAsSeat(gameId, action.seat, card);
+      if (view.status === "finished") return;
+    }
+    this.log.warn({ gameId }, "driveAIsToEnd hat Sicherheitsgrenze erreicht");
   }
 
   /**

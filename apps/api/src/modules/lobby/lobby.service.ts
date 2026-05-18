@@ -780,7 +780,7 @@ export class LobbyService {
     // mit echten Mitspielern aufgegeben".
     const tablePre = await this.prisma.lobbyTable.findUnique({
       where: { id: tableId },
-      select: { status: true, currentGameId: true, aiSeatType: true },
+      select: { status: true, ownerId: true, currentGameId: true, aiSeatType: true },
     });
     if (!tablePre) throw new NotFoundException(`Tisch ${tableId} nicht gefunden`);
     if (tablePre.status === LobbyTableStatus.CLOSED) {
@@ -791,15 +791,12 @@ export class LobbyService {
         tablePre.status === LobbyTableStatus.POST_GAME) &&
       tablePre.currentGameId !== null
     ) {
-      // GameSeat als ausgestiegen markieren, Audit-Eintrag schreiben.
-      // Der LobbyTableSeat wird ebenfalls auf KI umgeschaltet, damit
-      // der Tisch konsistent „4 belegte Sitze, einer davon ist eine
-      // KI" zeigt. So bleibt das Spiel ohne Hänger spielbar.
       const aiType = tablePre.aiSeatType ?? "heuristic";
+
+      // GameSeat als ausgestiegen markieren + Audit „game.abandoned".
       await this.games.markUserLeft(tablePre.currentGameId, userId, aiType);
-      // Pretty-print Lobby-Sitz auf KI umschalten + Audit für das
-      // Lobby-Event (separat von game.abandoned, weil das den Lobby-
-      // Zustand betrifft).
+
+      // Lobby-Sitz auf KI umschalten.
       const seatRow = await this.prisma.lobbyTableSeat.findFirst({
         where: { tableId, userId },
       });
@@ -815,13 +812,59 @@ export class LobbyService {
         target: tableId,
         meta: { seat: seatRow?.seat ?? null },
       });
-      // Lobby-Broadcast, damit andere Spieler den neuen Sitz-Zustand sehen.
-      this.gateway.broadcastLobbyListUpdate("ingame-abandon", tableId);
+
+      // Owner-Wechsel, falls der ausgestiegene User Owner war und es
+      // noch andere menschliche Sitze gibt. „Erster nach joinOrder"
+      // unter den verbleibenden Menschen wird neuer Owner.
+      let newOwnerId: string | null = null;
+      if (tablePre.ownerId === userId) {
+        const otherHumans = await this.prisma.lobbyTableSeat.findMany({
+          where: { tableId, userId: { not: null } },
+          orderBy: { joinOrder: "asc" },
+        });
+        if (otherHumans.length > 0 && otherHumans[0]?.userId) {
+          newOwnerId = otherHumans[0].userId;
+          await this.prisma.lobbyTable.update({
+            where: { id: tableId },
+            data: { ownerId: newOwnerId },
+          });
+          await this.audit.record({
+            action: "lobby.table.owner.change",
+            actorId: userId,
+            target: tableId,
+            meta: { from: userId, to: newOwnerId, reason: "abandoned" },
+          });
+        }
+      }
+
+      // Wenn nach dem Aussteig kein Mensch mehr am Tisch ist: Spiel
+      // server-seitig zu Ende treiben (sonst hängt es endlos, weil kein
+      // game:move/game:announce vom Client triggert), dann Tisch CLOSED.
+      const remainingHumanCount = await this.prisma.lobbyTableSeat.count({
+        where: { tableId, userId: { not: null } },
+      });
+      let tableClosed = false;
+      if (remainingHumanCount === 0) {
+        if (tablePre.status === LobbyTableStatus.IN_GAME) {
+          await this.games.driveAIsToEnd(tablePre.currentGameId);
+        }
+        await this.prisma.lobbyTable.update({
+          where: { id: tableId },
+          data: { status: LobbyTableStatus.CLOSED, closedAt: new Date() },
+        });
+        tableClosed = true;
+        this.log.log(
+          { tableId, gameId: tablePre.currentGameId },
+          "Tisch geschlossen — keine Menschen mehr am Tisch nach Aussteig"
+        );
+      }
+
+      this.gateway.broadcastLobbyListUpdate(tableClosed ? "closed" : "ingame-abandon", tableId);
       await this.pushTableState(tableId);
       return {
         seatFreed: seatRow?.seat ?? null,
-        newOwnerId: null,
-        tableClosed: false,
+        newOwnerId,
+        tableClosed,
       };
     }
 
