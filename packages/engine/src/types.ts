@@ -6,7 +6,7 @@
  * Werte werden im Test `rules-spec.consistency.test.ts` gegen die JSON-Spec
  * gegengeprüft — driftet eines, brechen die Tests.
  *
- * **Stand: Spec 1.1.0 / Encoding 3.0.0** (Release v0.5.0 des NN-Repos).
+ * **Stand: Spec 1.2.0 / Encoding 3.0.0** (Release v0.7.0 des NN-Repos).
  * Encoding-Layout: 20 Sections, 421 dims insgesamt, per-Spieler-positionierte
  * History, vorberechnete `value_per_card` und `strength_per_card`, 5-dim Mode
  * (zusätzlich `is_gumpf`).
@@ -146,7 +146,7 @@ export const ACTION_DIM = 36;
 export const STATE_DIM = 421;
 
 /** Bezugs-Versionen aus `jass_rules.json` / `state_encoding.md`. */
-export const SPEC_VERSION = "1.1.0";
+export const SPEC_VERSION = "1.2.0";
 export const ENCODING_VERSION = "3.0.0";
 
 /** Sonderfall Weli: Schelle-Sechs (Index 9). Spielt nur in Runde 1 eine Rolle. */

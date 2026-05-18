@@ -16,10 +16,10 @@ Im Web-Repo wird die NN-Version in `package.json#jassNn.version` gepinnt:
 
 ```json
 "jassNn": {
-  "version": "v0.5.0",
+  "version": "v0.7.0",
   "repo": "matthili/jass-neuronales-netz",
   "encodingVersion": "3.0.0",
-  "specVersion": "1.1.0"
+  "specVersion": "1.2.0"
 }
 ```
 
@@ -50,8 +50,8 @@ pnpm --filter @jass/engine build
 
 Ein neues NN-Modell wird so eingespielt:
 
-1. NN-Repo veröffentlicht `v1.1.0`.
-2. Web-Repo PR: `package.json#jassNn.version` auf `v1.1.0` setzen.
+1. NN-Repo veröffentlicht `vX.Y.Z`.
+2. Web-Repo PR: `package.json#jassNn.version` auf `vX.Y.Z` setzen.
 3. `pnpm sync:nn && pnpm verify:nn && pnpm test`.
 4. Bei Tests-grün: Merge. Container-Build greift in den neuen Pin.
 
@@ -59,18 +59,18 @@ Ein neues NN-Modell wird so eingespielt:
 
 ## Status der Pipeline
 
-Aktuell gepinnt: **v0.5.0** (`package.json#jassNn.version`).
+Aktuell gepinnt: **v0.7.0** (`package.json#jassNn.version`).
 
-| Komponente                                   | Status                                                                       |
-| -------------------------------------------- | ---------------------------------------------------------------------------- |
-| Python-Engine + Tests im NN-Repo             | ✅ vorhanden                                                                 |
-| `jass_rules.json` (spec_version 1.1.0)       | ✅ in v0.5.0 — additive Änderung: neue Variante **Gumpf**                    |
-| `state_encoding.md` (encoding_version 3.0.0) | ✅ in v0.5.0 — **Breaking Change**: 132 → 421 dims, per-Sitz-History         |
-| `encoding_fixtures.json`                     | ✅ 15 Fixtures (inkl. 3 Gumpf-Cases), TS-Encoder verifiziert byte-equivalent |
-| `keras/best.keras`                           | ✅ in Release v0.5.0 (Multi-Head policy+value, 15 MB)                        |
-| **`tfjs/` (TF.js-Modell)**                   | ✅ in Release v0.5.0 (model.json + 2 Shards, ~5 MB) — entblockt M5           |
-| Release-ZIP + MANIFEST                       | ✅ Release v0.5.0 öffentlich verfügbar, 8 Dateien                            |
-| `pnpm sync:nn` (Download + SHA-Verify)       | ✅ produktiv                                                                 |
+| Komponente                                   | Status                                                                                                         |
+| -------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| Python-Engine + Tests im NN-Repo             | ✅ vorhanden                                                                                                   |
+| `jass_rules.json` (spec_version 1.2.0)       | ✅ in v0.7.0 — additive Erweiterung: `scoring.score_composition`-Block (Formel-Doku, keine Verhaltensänderung) |
+| `state_encoding.md` (encoding_version 3.0.0) | ✅ unverändert seit v0.5.0 — Encoder bleibt byte-equivalent                                                    |
+| `encoding_fixtures.json`                     | ✅ 15 Fixtures (inkl. 3 Gumpf-Cases), TS-Encoder weiterhin byte-equivalent                                     |
+| `keras/best.keras`                           | ✅ in Release v0.7.0 (MCTS-augmented BC, 15 MB, +77.2 % Win-Rate vs v0.5.0)                                    |
+| **`tfjs/` (TF.js-Modell)**                   | ✅ in Release v0.7.0 (model.json + 2 Shards, ~5 MB)                                                            |
+| Release-ZIP + MANIFEST                       | ✅ Release v0.7.0 öffentlich verfügbar, 8 Dateien                                                              |
+| `pnpm sync:nn` (Download + SHA-Verify)       | ✅ produktiv                                                                                                   |
 
 ### Encoder-Version-History
 
@@ -80,9 +80,16 @@ Aktuell gepinnt: **v0.5.0** (`package.json#jassNn.version`).
 | 2.0.0     | 348 dims      | Spielerspezifische History (per Sitz aufgeschlüsselt) — übersprungen im Web-Repo                                                    |
 | **3.0.0** | **421 dims**  | + `value_per_card` (36) + `strength_per_card` (36) vorberechnet; `mode` 4 → 5 Bits (`is_gumpf`); `trump_suit`-Onehot auch bei GUMPF |
 
-**TF.js-Modell:** Seit v0.5.0 ist `tfjs/` (model.json + 2 Binär-Shards, ~5 MB) im Release-ZIP enthalten und vom Hash-Check abgedeckt. M5 (Inferenz-Microservice) ist damit entblockt — `apps/inference` kann das Modell direkt von `external/jass-nn/tfjs/model.json` laden.
+**TF.js-Modell:** Seit v0.5.0 ist `tfjs/` (model.json + 2 Binär-Shards, ~5 MB) im Release-ZIP enthalten und vom Hash-Check abgedeckt. `apps/inference` lädt das Modell direkt von `external/jass-nn/tfjs/model.json`.
 
-### Spielvarianten (Spec 1.1.0)
+### Release-Highlights v0.7.0 (2026-05-18)
+
+- **+77.2 % Win-Rate gegen v0.5.0** (4 000 paired evaluation games, MCTS-augmented Behavioral Cloning).
+- **Encoding 3.0.0 unverändert** — TS-Port übernimmt das Modell ohne Encoder-Änderung; alle 15 Fixtures bleiben byte-equivalent.
+- **Spec 1.2.0 additiv**: neuer `scoring.score_composition`-Block dokumentiert die Punkt-Zusammensetzung formal — keine Verhaltensänderung gegenüber 1.1.0.
+- **Varianten-Stärken**: deutlich stärker in Slalom (65–66 %) und Geiss/Unten (66 %), schwächer in Gumpf (54–57 %). Matsch-Quote ≈ verdreifacht (4,78 % vs 1,59 %).
+
+### Spielvarianten (Spec 1.2.0)
 
 | ID          | Trumpf? | Stich-Reihenfolge                  | Wertpunkte              | Buur-Ausnahme | Note                                                  |
 | ----------- | ------- | ---------------------------------- | ----------------------- | ------------- | ----------------------------------------------------- |

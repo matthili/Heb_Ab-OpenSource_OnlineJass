@@ -93,9 +93,9 @@ function loadSpec(): JassRulesSpec {
 describe("Spec-Konsistenz: types.ts gegen jass_rules.json", () => {
   const spec = loadSpec();
 
-  it("SPEC_VERSION matched (1.1.0 mit Gumpf-Variante)", () => {
+  it("SPEC_VERSION matched (1.2.0 mit Gumpf-Variante + score_composition)", () => {
     expect(SPEC_VERSION).toBe(spec.spec_version);
-    expect(SPEC_VERSION).toBe("1.1.0");
+    expect(SPEC_VERSION).toBe("1.2.0");
   });
 
   it("ENCODING_VERSION ist auf 3.0.0 fixiert (passt zur Fixture-Datei)", () => {

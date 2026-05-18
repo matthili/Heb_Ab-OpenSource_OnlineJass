@@ -14,7 +14,7 @@
  *      `file:`-Schema nicht unterstützt — tfjs würde mit
  *      "fetch failed: not implemented... yet..." abbrechen.
  *
- * Aktuelles Modell (v0.5.0): Single-Input `state[batch,421]` → Multi-Output
+ * Aktuelles Modell (v0.7.0): Single-Input `state[batch,421]` → Multi-Output
  * `{ policy[batch,36] (Softmax), value[batch,1] }`. Die Mask ist NICHT Input
  * (state_encoding.md beschreibt einen Logits-Bias-Layer, das exportierte
  * Modell hat ihn nicht). Maske wird in `server.ts` clientseitig auf die

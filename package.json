@@ -10,10 +10,10 @@
   },
   "packageManager": "pnpm@10.33.2",
   "jassNn": {
-    "version": "v0.5.0",
+    "version": "v0.7.0",
     "repo": "matthili/jass-neuronales-netz",
     "encodingVersion": "3.0.0",
-    "specVersion": "1.1.0"
+    "specVersion": "1.2.0"
   },
   "scripts": {
     "build": "turbo run build",
