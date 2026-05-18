@@ -16,6 +16,12 @@ import { createRouter, RouterProvider } from "@tanstack/react-router";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
+// EB Garamond als Headline-Serif. Self-hosted via @fontsource — keine
+// externen CDN-Calls (DSGVO-freundlich). Wir laden 400 (Regular) und
+// 600 (Semibold), die im CSS via `font-family: "EB Garamond"` benutzt
+// werden. Body bleibt System-UI-Sans für gute Lesbarkeit.
+import "@fontsource/eb-garamond/400.css";
+import "@fontsource/eb-garamond/600.css";
 import "./i18n/index.js"; // Side-Effect: initialisiert i18next vor dem ersten Render
 import { ToastProvider } from "./lib/toast.js";
 import { registerServiceWorker } from "./lib/pwa.js";

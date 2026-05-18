@@ -121,34 +121,37 @@ function Header() {
   });
 
   return (
-    <header className="border-b border-jass-paperEdge bg-jass-cream">
+    <header className="border-b-2 border-jass-paperEdge bg-jass-cream shadow-sm">
       <nav className="mx-auto max-w-5xl px-4 py-3 flex items-center gap-6">
-        <Link to="/" className="font-semibold text-lg">
+        <Link
+          to="/"
+          className="font-serif text-2xl font-semibold text-jass-ink hover:text-jass-brown transition-colors"
+        >
           {t("appName")}
         </Link>
         <div className="ml-auto flex items-center gap-3">
           <LanguageSwitcher />
           {isPending ? (
-            <span className="text-sm text-stone-400">…</span>
+            <span className="text-sm text-jass-inkSoft">…</span>
           ) : data?.user ? (
             <>
               {me?.role === "ADMIN" && (
                 <Link
                   to="/admin"
-                  className="rounded bg-amber-100 px-2 py-1 text-xs font-medium text-amber-900 hover:bg-amber-200"
+                  className="rounded bg-jass-yellow px-2 py-1 text-xs font-semibold text-jass-ink hover:bg-jass-yellowDark hover:text-jass-cream transition-colors"
                 >
                   Admin
                 </Link>
               )}
-              <Link to="/profile" className="text-sm text-stone-700 hover:text-stone-900">
+              <Link
+                to="/profile"
+                className="text-sm font-medium text-jass-inkSoft hover:text-jass-ink transition-colors"
+              >
                 {t("nav.profile")}
               </Link>
-              <span className="text-sm text-stone-600">
-                {/* "Servus, " — fester Präfix; Name als <strong>. Zweisprachig
-                    via i18n: t("nav.greeting") liefert die Variante mit
-                    `{{name}}`-Platzhalter, den wir hier visuell vorab kürzen. */}
+              <span className="text-sm text-jass-inkSoft">
                 {t("nav.greeting", { name: data.user.name }).replace(data.user.name, "")}
-                <strong className="text-stone-900">{data.user.name}</strong>
+                <strong className="text-jass-ink">{data.user.name}</strong>
               </span>
               <button
                 type="button"
@@ -156,20 +159,20 @@ function Header() {
                   await signOut();
                   await navigate({ to: "/" });
                 }}
-                className="rounded border border-stone-300 px-3 py-1.5 text-sm text-stone-700 hover:bg-stone-100"
+                className="btn-jass-secondary text-sm"
               >
                 {t("nav.signOut")}
               </button>
             </>
           ) : (
             <>
-              <Link to="/login" className="text-sm text-stone-700 hover:text-stone-900">
+              <Link
+                to="/login"
+                className="text-sm font-medium text-jass-inkSoft hover:text-jass-ink transition-colors"
+              >
                 {t("nav.signIn")}
               </Link>
-              <Link
-                to="/register"
-                className="rounded bg-stone-900 px-3 py-1.5 text-sm text-white hover:bg-stone-700"
-              >
+              <Link to="/register" className="btn-jass-primary text-sm">
                 {t("nav.signUp")}
               </Link>
             </>

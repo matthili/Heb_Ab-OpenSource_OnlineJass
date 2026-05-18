@@ -2,15 +2,18 @@
  * Globale Styles + Tailwind 4 Entry. Tailwind 4 wird nicht mehr via
  * PostCSS-Plugin angezogen, sondern direkt via `@import "tailwindcss"`.
  *
- * **Theme**: Die `@theme`-Direktive (Tailwind 4) registriert unsere
- * Karten-Farbpalette als Tailwind-Tokens. Damit funktionieren Klassen
- * wie `bg-jass-paper`, `text-jass-ink`, `border-jass-paperEdge` etc.
- * direkt in Komponenten — ohne dass die Hex-Codes verstreut werden.
+ * **Theme**: Die `@theme`-Direktive registriert die Karten-Farbpalette
+ * (siehe `assets/cards/`) als Tailwind-Tokens — `bg-jass-paper`,
+ * `text-jass-ink` etc. funktionieren damit direkt in Komponenten.
  *
- * Die Palette ist aus den Vorarlberger-Jasskarten-PNGs extrahiert
- * (`assets/cards/`): Papierton, Farbsymbole, Tinte, Stoff. Wir nutzen
- * sie als Hintergrund- und Akzentfarben — die Karten-PNGs bleiben
- * unverändert (haben ja eh ihre eigenen Farben).
+ * **Design-Foundation** (Sprint D1):
+ *   - Headline-Serif: EB Garamond für h1/h2/h3 — warmes Spielsalon-Gefühl,
+ *     gute Lesbarkeit bei großen Größen
+ *   - Subtile Papier-Textur unter dem Body (radial gradient + leichte
+ *     Wölbung) — wirkt wertiger als plain-Background
+ *   - Filz-Textur für die Spielfläche (CSS-Gradient-Pattern, kein PNG —
+ *     skaliert sauber, lädt nichts nach)
+ *   - Button-Klassen mit echter Tiefe + Hover-Lift
  */
 @import "tailwindcss";
 
@@ -43,16 +46,163 @@
 
   /* HINTERGRUND (dunkle Bühne) */
   --color-jass-bg: #1d1814;
+
+  /* Headline-Font — EB Garamond ist via @fontsource geladen */
+  --font-serif: "EB Garamond", "Times New Roman", serif;
 }
 
 :root {
-  /* Body-Defaults aus dem Theme — warmes Papier-Beige statt blau-grau. */
   --jass-bg: var(--color-jass-paper);
   --jass-fg: var(--color-jass-ink);
 }
 
+/* Body bekommt eine subtile Papier-Atmosphäre via overlay-Gradient
+ * (kein PNG — skaliert frei). Der Gradient ist sehr dezent, soll nur
+ * den Eindruck von „nicht plattem Hintergrund" geben. */
 html,
 body {
   background-color: var(--jass-bg);
+  background-image:
+    radial-gradient(
+      ellipse at top,
+      color-mix(in srgb, var(--color-jass-cream) 50%, transparent),
+      transparent 60%
+    ),
+    radial-gradient(
+      ellipse at bottom right,
+      color-mix(in srgb, var(--color-jass-paperEdge) 30%, transparent),
+      transparent 70%
+    );
   color: var(--jass-fg);
+  min-height: 100vh;
+}
+
+/* Headlines: Serif, etwas mehr Letter-Spacing, kräftiger.
+ * Tailwind-Klassen wie `text-2xl font-bold` bleiben funktional —
+ * wir überlagern nur die Font-Family. */
+h1,
+h2,
+h3,
+.font-serif {
+  font-family: var(--font-serif);
+  letter-spacing: 0.01em;
+}
+
+h1 {
+  font-weight: 600;
+}
+
+/* Filz-Textur-Klasse für die Spielfläche. CSS-only — zwei
+ * gekreuzte lineare Gradients erzeugen ein dezentes „Stoff"-Pattern,
+ * darunter der grüne Filz-Grundton. */
+.bg-jass-felt {
+  background-color: var(--color-jass-greenDark);
+  background-image:
+    radial-gradient(
+      ellipse at center,
+      color-mix(in srgb, var(--color-jass-green) 55%, transparent),
+      transparent 75%
+    ),
+    repeating-linear-gradient(
+      45deg,
+      transparent,
+      transparent 3px,
+      color-mix(in srgb, var(--color-jass-greenDark) 70%, transparent) 3px,
+      color-mix(in srgb, var(--color-jass-greenDark) 70%, transparent) 4px
+    ),
+    repeating-linear-gradient(
+      -45deg,
+      transparent,
+      transparent 3px,
+      color-mix(in srgb, var(--color-jass-greenDark) 70%, transparent) 3px,
+      color-mix(in srgb, var(--color-jass-greenDark) 70%, transparent) 4px
+    );
+}
+
+/* Wirtshaus-Buttons: Tiefe via Box-Shadow, Hover lift. Wirkt wie
+ * gepresste Pappe statt Web-Flat-Buttons. */
+.btn-jass-primary {
+  background-color: var(--color-jass-ink);
+  color: var(--color-jass-cream);
+  font-weight: 600;
+  padding: 0.5rem 1rem;
+  border-radius: 0.375rem;
+  box-shadow:
+    0 1px 0 0 var(--color-jass-cream) inset,
+    0 2px 0 0 var(--color-jass-brownDark),
+    0 3px 4px 0 rgba(0, 0, 0, 0.2);
+  transition:
+    transform 100ms ease-out,
+    box-shadow 100ms ease-out;
+}
+.btn-jass-primary:hover {
+  transform: translateY(-1px);
+  box-shadow:
+    0 1px 0 0 var(--color-jass-cream) inset,
+    0 3px 0 0 var(--color-jass-brownDark),
+    0 5px 6px 0 rgba(0, 0, 0, 0.25);
+}
+.btn-jass-primary:active {
+  transform: translateY(1px);
+  box-shadow:
+    0 1px 0 0 var(--color-jass-cream) inset,
+    0 1px 0 0 var(--color-jass-brownDark),
+    0 2px 3px 0 rgba(0, 0, 0, 0.2);
+}
+.btn-jass-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn-jass-secondary {
+  background-color: var(--color-jass-paper);
+  color: var(--color-jass-ink);
+  font-weight: 500;
+  padding: 0.5rem 1rem;
+  border-radius: 0.375rem;
+  border: 1px solid var(--color-jass-paperEdge);
+  box-shadow:
+    0 1px 0 0 var(--color-jass-white) inset,
+    0 2px 3px 0 rgba(0, 0, 0, 0.08);
+  transition:
+    transform 100ms ease-out,
+    box-shadow 100ms ease-out,
+    background-color 100ms ease-out;
+}
+.btn-jass-secondary:hover {
+  background-color: var(--color-jass-cream);
+  transform: translateY(-1px);
+  box-shadow:
+    0 1px 0 0 var(--color-jass-white) inset,
+    0 3px 4px 0 rgba(0, 0, 0, 0.12);
+}
+.btn-jass-secondary:active {
+  transform: translateY(1px);
+  box-shadow: 0 1px 1px 0 rgba(0, 0, 0, 0.1);
+}
+.btn-jass-secondary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Card-Container für Lobby-Tische — leichte Tiefe + Hover-Lift,
+ * damit die Tisch-Karten in der Liste mehr Charakter haben. */
+.card-jass {
+  background-color: var(--color-jass-cream);
+  border: 1px solid var(--color-jass-paperEdge);
+  border-radius: 0.5rem;
+  box-shadow:
+    0 1px 0 0 var(--color-jass-white) inset,
+    0 2px 4px 0 rgba(0, 0, 0, 0.08);
+  transition:
+    transform 150ms ease-out,
+    box-shadow 150ms ease-out;
+}
+.card-jass:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 1px 0 0 var(--color-jass-white) inset,
+    0 6px 12px 0 rgba(0, 0, 0, 0.12);
 }

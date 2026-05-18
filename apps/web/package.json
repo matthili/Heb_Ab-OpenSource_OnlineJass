@@ -20,6 +20,7 @@
     "pwa:assets": "pwa-assets-generator"
   },
   "dependencies": {
+    "@fontsource/eb-garamond": "^5.2.7",
     "@jass/engine": "workspace:*",
     "@jass/ui": "workspace:*",
     "@tanstack/react-query": "^5.100.0",

@@ -93,11 +93,7 @@ function ForgotPasswordPage() {
             {error}
           </p>
         )}
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full rounded bg-stone-900 px-4 py-2 text-white hover:bg-stone-700 disabled:opacity-50"
-        >
+        <button type="submit" disabled={loading} className="btn-jass-primary w-full">
           {loading ? t("auth.forgot.submitting") : t("auth.forgot.submit")}
         </button>
       </form>

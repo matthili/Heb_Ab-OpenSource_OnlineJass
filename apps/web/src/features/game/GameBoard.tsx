@@ -172,21 +172,12 @@ function PlayingArea({
 }) {
   return (
     <div
-      // **Responsive Höhe**: Mindesthöhe 32rem — bei h-32-Karten (8rem)
-      // im 3×3-Sub-Grid brauchen die 4 Karten in Slots oben/mitte/unten
-      // mindestens 3×8rem = 24rem nutzbare Höhe; plus Sitz-Labels (je ~2rem)
-      // und Padding kommen wir auf ~32rem als sinnvolle Untergrenze, sonst
-      // überlappen sich die Karten in den Slots.
-      // `h-[clamp(...)]` skaliert mit 65% Viewport-Höhe bis 48rem hoch.
-      // `grid-rows-[auto_1fr_auto]` verteilt die drei Bahnen: oben/unten
-      // Sitz-Labels in ihrer natürlichen Höhe, Mitte nimmt den Rest.
-      className="grid grid-cols-3 grid-rows-[auto_1fr_auto] gap-2 min-h-[32rem] h-[clamp(32rem,65vh,48rem)] rounded-lg p-4 relative shadow-inner"
-      style={{
-        backgroundColor: "var(--color-jass-greenDark)",
-        backgroundImage:
-          "radial-gradient(ellipse at center, color-mix(in srgb, var(--color-jass-green) 60%, transparent), transparent 70%)",
-        border: "2px solid var(--color-jass-brownDark)",
-      }}
+      // Spielfläche mit Filz-Textur (bg-jass-felt — CSS-Pattern aus
+      // gekreuzten Linear-Gradients, kein PNG). Min-Höhe 32rem damit die
+      // h-32-Karten in den 3×3-Slots ohne Überlappung passen; clamp
+      // skaliert auf großen Bildschirmen bis 48rem hoch.
+      className="grid grid-cols-3 grid-rows-[auto_1fr_auto] gap-2 min-h-[32rem] h-[clamp(32rem,65vh,48rem)] rounded-lg p-4 relative shadow-inner bg-jass-felt"
+      style={{ border: "2px solid var(--color-jass-brownDark)" }}
       role="region"
       aria-label="Spielfläche"
     >

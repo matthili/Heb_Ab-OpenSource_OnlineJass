@@ -74,16 +74,16 @@ export function LobbyList() {
   }
 
   return (
-    <ul className="divide-y divide-stone-200 border border-stone-200 rounded">
+    <ul className="space-y-2">
       {tables.map((tbl) => (
-        <li key={tbl.id} className="px-4 py-3 flex items-center gap-4">
+        <li key={tbl.id} className="card-jass px-4 py-3 flex items-center gap-4">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
-              <strong className="text-stone-900">{tbl.ownerName}</strong>
+              <strong className="text-jass-ink font-serif text-lg">{tbl.ownerName}</strong>
               <ModeBadge mode={tbl.joinMode} />
               <StatusBadge status={tbl.status} />
             </div>
-            <div className="text-sm text-stone-500">
+            <div className="text-sm text-jass-inkSoft">
               {t("lobby.seatsTaken", { taken: tbl.seatsTaken })} ·{" "}
               {t("lobby.ai", { type: tbl.aiSeatType })} ·{" "}
               {tbl.autoFillSeconds === null
@@ -122,11 +122,7 @@ function JoinButton(props: {
   // Eigener Tisch → direkt rein.
   if (isMine) {
     return (
-      <button
-        type="button"
-        onClick={onOpen}
-        className="rounded bg-stone-900 px-3 py-1.5 text-sm text-white hover:bg-stone-700"
-      >
+      <button type="button" onClick={onOpen} className="btn-jass-primary text-sm">
         {t("lobby.join.myTable")}
       </button>
     );
@@ -159,7 +155,7 @@ function JoinButton(props: {
         type="button"
         onClick={onJoin}
         disabled={disabled}
-        className="rounded border border-stone-300 px-3 py-1.5 text-sm hover:bg-stone-100 disabled:opacity-50 disabled:cursor-not-allowed"
+        className="btn-jass-secondary text-sm"
       >
         {isPending ? "…" : label}
       </button>
@@ -171,12 +167,12 @@ function JoinButton(props: {
 function ModeBadge({ mode }: { mode: "OPEN" | "REQUEST" | "INVITE" }) {
   const { t } = useTranslation();
   const colors = {
-    OPEN: "bg-emerald-100 text-emerald-800",
-    REQUEST: "bg-amber-100 text-amber-800",
-    INVITE: "bg-violet-100 text-violet-800",
+    OPEN: "bg-jass-green text-jass-cream",
+    REQUEST: "bg-jass-yellow text-jass-ink",
+    INVITE: "bg-jass-red text-jass-cream",
   };
   return (
-    <span className={`rounded px-1.5 py-0.5 text-xs ${colors[mode]}`}>
+    <span className={`rounded px-2 py-0.5 text-xs font-medium ${colors[mode]}`}>
       {t(`lobby.mode.${mode}`)}
     </span>
   );
@@ -184,9 +180,9 @@ function ModeBadge({ mode }: { mode: "OPEN" | "REQUEST" | "INVITE" }) {
 
 function StatusBadge({ status }: { status: "WAITING" | "IN_GAME" | "POST_GAME" | "CLOSED" }) {
   const { t } = useTranslation();
-  if (status === "WAITING") return null; // Default — nicht zeigen
+  if (status === "WAITING") return null;
   return (
-    <span className="rounded bg-stone-100 px-1.5 py-0.5 text-xs text-stone-600">
+    <span className="rounded bg-jass-paper px-2 py-0.5 text-xs text-jass-inkSoft border border-jass-paperEdge">
       {t(`lobby.status.${status}`)}
     </span>
   );

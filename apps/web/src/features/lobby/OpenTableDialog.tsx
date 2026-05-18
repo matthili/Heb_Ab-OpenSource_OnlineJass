@@ -221,19 +221,11 @@ export function OpenTableDialog({ open, onClose }: Props) {
           </div>
         )}
 
-        <div className="flex gap-2 justify-end border-t border-stone-200 pt-3">
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded border border-stone-300 px-4 py-2 text-stone-700 hover:bg-stone-100"
-          >
+        <div className="flex gap-2 justify-end border-t border-jass-paperEdge pt-3">
+          <button type="button" onClick={onClose} className="btn-jass-secondary">
             Abbrechen
           </button>
-          <button
-            type="submit"
-            disabled={openMut.isPending}
-            className="rounded bg-stone-900 px-4 py-2 text-white hover:bg-stone-700 disabled:opacity-50"
-          >
+          <button type="submit" disabled={openMut.isPending} className="btn-jass-primary">
             {openMut.isPending ? "Öffne …" : "Tisch öffnen"}
           </button>
         </div>
