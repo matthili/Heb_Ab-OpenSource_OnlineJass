@@ -18,6 +18,7 @@ import { createRoot } from "react-dom/client";
 
 import "./i18n/index.js"; // Side-Effect: initialisiert i18next vor dem ersten Render
 import { ToastProvider } from "./lib/toast.js";
+import { registerServiceWorker } from "./lib/pwa.js";
 import { routeTree } from "./routeTree.gen.js";
 import "./styles.css";
 
@@ -59,3 +60,7 @@ createRoot(rootEl).render(
     </QueryClientProvider>
   </StrictMode>
 );
+
+// Service Worker erst NACH dem ersten Render registrieren, damit die SW-
+// Bootstrap-Kosten nicht den First-Paint blockieren.
+registerServiceWorker();

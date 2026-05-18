@@ -11,3 +11,6 @@ jasskarten-assets
 *.png
 *.jpg
 *.bin
+# Helm-Templates: prettier kennt das {{ ... }}-Go-Template-Syntax nicht und
+# zerreißt die YAML — Helm lint kümmert sich um die Korrektheit.
+infra/helm/*/templates/

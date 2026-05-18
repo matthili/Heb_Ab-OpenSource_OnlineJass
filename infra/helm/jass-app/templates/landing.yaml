@@ -1,0 +1,59 @@
+{{- $component := "landing" }}
+{{- $fullname := printf "%s-%s" (include "jass-app.fullname" .) $component }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $fullname }}
+  labels:
+    {{- include "jass-app.component.labels" (merge (dict "component" $component) .) | nindent 4 }}
+spec:
+  replicas: {{ .Values.landing.replicas }}
+  selector:
+    matchLabels:
+      {{- include "jass-app.component.selectorLabels" (merge (dict "component" $component) .) | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "jass-app.component.selectorLabels" (merge (dict "component" $component) .) | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "jass-app.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      {{- with .Values.image.pullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: landing
+          image: "{{ .Values.image.registry }}/{{ .Values.image.landingRepository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.landing.port }}
+              protocol: TCP
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 2
+            periodSeconds: 5
+          resources:
+            {{- toYaml .Values.landing.resources | nindent 12 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $fullname }}
+  labels:
+    {{- include "jass-app.component.labels" (merge (dict "component" $component) .) | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - port: {{ .Values.landing.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "jass-app.component.selectorLabels" (merge (dict "component" $component) .) | nindent 4 }}

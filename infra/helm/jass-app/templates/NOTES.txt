@@ -1,0 +1,37 @@
+{{- $fullname := include "jass-app.fullname" . -}}
+Heb ab! Helm-Release "{{ .Release.Name }}" wurde deployed.
+
+Komponenten:
+  - API (NestJS):       {{ $fullname }}-api       ({{ .Values.api.replicas }} replicas)
+  - Inferenz (TF.js):   {{ $fullname }}-inference ({{ .Values.inference.replicas }} replicas)
+  - Web-SPA:            {{ $fullname }}-web       ({{ .Values.web.replicas }} replicas)
+  - Landing:            {{ $fullname }}-landing   ({{ .Values.landing.replicas }} replicas)
+
+{{- if .Values.ingress.enabled }}
+
+Ingress:
+  Host:   https://{{ .Values.ingress.host }}
+  Routen:
+    /         → landing
+    /app/*    → web (SPA)
+    /api/*    → api
+    /ws/*     → api (sticky via Cookie {{ .Release.Name }}-affinity)
+{{- end }}
+
+Schnellcheck:
+  kubectl -n {{ .Release.Namespace }} get pods -l app.kubernetes.io/instance={{ .Release.Name }}
+  kubectl -n {{ .Release.Namespace }} get ingress {{ $fullname }}
+
+Logs (API):
+  kubectl -n {{ .Release.Namespace }} logs -f deployment/{{ $fullname }}-api
+
+{{- if not (or .Values.postgres.url .Values.postgres.existingSecretName) }}
+
+⚠  ACHTUNG: Weder postgres.url noch postgres.existingSecretName ist gesetzt.
+   Die API wird ohne DB-Verbindung nicht hochkommen.
+{{- end }}
+{{- if not (or .Values.redis.host .Values.redis.existingSecretName) }}
+
+⚠  ACHTUNG: Weder redis.host noch redis.existingSecretName ist gesetzt.
+   Die API wird ohne Redis nicht hochkommen.
+{{- end }}

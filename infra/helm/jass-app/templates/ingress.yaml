@@ -1,0 +1,69 @@
+{{- if .Values.ingress.enabled }}
+{{- $fullname := include "jass-app.fullname" . }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ $fullname }}
+  labels:
+    {{- include "jass-app.labels" . | nindent 4 }}
+  annotations:
+    # Sticky-Sessions für WS-Verbindungen — sonst landen WebSocket-Frames
+    # eines Spielers auf wechselnden API-Pods und die Single-Owner-pro-
+    # Tisch-Annahme bricht. nginx-Ingress: Cookie-Affinity.
+    nginx.ingress.kubernetes.io/affinity: "cookie"
+    nginx.ingress.kubernetes.io/session-cookie-name: "jass-affinity"
+    nginx.ingress.kubernetes.io/session-cookie-expires: "172800"
+    nginx.ingress.kubernetes.io/session-cookie-max-age: "172800"
+    # WS-Upgrade-Header durchreichen — die default-nginx-Config tut das
+    # für Socket.IO normalerweise auch, hier explizit für robust.
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    {{- if .Values.ingress.tls.enabled }}
+    cert-manager.io/cluster-issuer: {{ .Values.ingress.tls.clusterIssuer | quote }}
+    {{- end }}
+    {{- with .Values.ingress.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  ingressClassName: {{ .Values.ingress.className | quote }}
+  {{- if .Values.ingress.tls.enabled }}
+  tls:
+    - hosts:
+        - {{ .Values.ingress.host | quote }}
+      secretName: {{ .Values.ingress.tls.secretName | quote }}
+  {{- end }}
+  rules:
+    - host: {{ .Values.ingress.host | quote }}
+      http:
+        paths:
+          # WebSocket-Pfad zuerst — sonst frisst der API-Pfad ihn weg.
+          - path: /ws
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ $fullname }}-api
+                port:
+                  number: {{ .Values.api.port }}
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ $fullname }}-api
+                port:
+                  number: {{ .Values.api.port }}
+          - path: /app
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ $fullname }}-web
+                port:
+                  number: {{ .Values.web.port }}
+          # Root = Landing-Marketing-Site.
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ $fullname }}-landing
+                port:
+                  number: {{ .Values.landing.port }}
+{{- end }}

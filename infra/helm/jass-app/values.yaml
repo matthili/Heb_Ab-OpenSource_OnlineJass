@@ -1,0 +1,150 @@
+# Default-Values für das jass-app Helm-Chart.
+#
+# Vor `helm install` mindestens überschreiben:
+#   - `postgres.url`     — DSN zur externen Postgres-Instanz
+#   - `redis.host` + `redis.port` — Adresse der externen Redis-Instanz
+#   - `secrets.betterAuthSecret` — beliebige zufällige 32-Byte-Hexkette
+#   - `secrets.appSecret`        — separat von BETTER_AUTH_SECRET (AES-Key
+#                                  für SMTP-Passwort-Verschlüsselung)
+#   - `ingress.host`     — Public-Hostname (für TLS + CORS)
+#
+# Production-Pattern: man legt eine `values-prod.yaml` an, die nur die
+# überschriebenen Felder enthält, und installiert mit
+#   `helm install jass-app . -f values-prod.yaml`.
+
+# ─── Globales ──────────────────────────────────────────────────────────
+nameOverride: ""
+fullnameOverride: ""
+
+# Image-Tag-Konvention: in CI auf den Commit-SHA setzen, lokal/dev auf
+# "dev". `pullPolicy: IfNotPresent` reicht für getaggte Images; bei
+# Floating-Tags wie "latest" auf "Always" gehen — wir empfehlen aber
+# unveränderliche Tags pro Release.
+image:
+  registry: ghcr.io/matthili
+  apiRepository: jass-api
+  inferenceRepository: jass-inference
+  webRepository: jass-web
+  landingRepository: jass-landing
+  tag: "M11"
+  pullPolicy: IfNotPresent
+  # Optional: imagePullSecrets, falls Registry private ist.
+  pullSecrets: []
+
+# ─── Externe Datenstores ───────────────────────────────────────────────
+# Postgres + Redis sind absichtlich NICHT im Chart enthalten. Production
+# soll Managed-Postgres + Managed-Redis nutzen (oder bestehende On-Prem-
+# Instanzen). Das Chart erwartet:
+#   - postgres.url:   "postgresql://user:pass@host:5432/dbname?sslmode=require"
+#   - redis.host,port,db,password (TLS-Flag bei Bedarf)
+postgres:
+  url: ""
+  # Wenn `existingSecretName` gesetzt ist, wird POSTGRES_URL daraus gelesen
+  # (Key `url`). Sonst wird ein vom Chart erzeugter Secret verwendet.
+  existingSecretName: ""
+
+redis:
+  host: ""
+  port: 6379
+  db: 0
+  password: ""
+  tls: false
+  existingSecretName: ""
+
+# ─── Secrets (App-intern) ──────────────────────────────────────────────
+secrets:
+  # 32-Byte-Hex empfohlen (`openssl rand -hex 32`). Better Auth signiert
+  # damit die Session-Cookies.
+  betterAuthSecret: ""
+  # AES-256-GCM-Key für verschlüsseltes SMTP-Passwort in AdminSetting.
+  # Separat von BETTER_AUTH_SECRET, weil unterschiedliche Lebensdauer.
+  appSecret: ""
+  # Wenn gesetzt, kommen beide Secrets aus diesem existing-Secret
+  # (Keys: better-auth-secret, app-secret). Sonst wird `<release>-secrets`
+  # gerendert.
+  existingSecretName: ""
+
+# ─── API (NestJS + Socket.IO) ──────────────────────────────────────────
+api:
+  replicas: 2
+  port: 3000
+  resources:
+    requests: { cpu: 100m, memory: 256Mi }
+    limits: { cpu: 1000m, memory: 768Mi }
+  env:
+    # Komma-getrennte Origins für CORS — wird aus ingress.host abgeleitet,
+    # kann hier überschrieben werden.
+    extraOrigins: ""
+  # Hpa-Schwellen aus Plan-Doc §11. Bei k6-Last-Test mit 200 Tischen
+  # sollen wir bei mittlerem CPU-Druck horizontal skalieren.
+  hpa:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 70
+  podAnnotations: {}
+
+# ─── Inferenz-Microservice ─────────────────────────────────────────────
+inference:
+  replicas: 2
+  port: 4000
+  resources:
+    # tfjs-node lädt das Modell (~5 MB) und braucht moderat RAM
+    # für die Piscina-Worker-Pool-Tensoren.
+    requests: { cpu: 200m, memory: 512Mi }
+    limits: { cpu: 2000m, memory: 1.5Gi }
+  hpa:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 8
+    targetCPUUtilizationPercentage: 75
+  podAnnotations: {}
+
+# ─── Web-SPA (statisches Vite-Build, Nginx-served) ─────────────────────
+web:
+  replicas: 2
+  port: 80
+  resources:
+    requests: { cpu: 10m, memory: 32Mi }
+    limits: { cpu: 200m, memory: 128Mi }
+
+# ─── Landing (Astro-Static, Nginx-served) ──────────────────────────────
+landing:
+  replicas: 2
+  port: 80
+  resources:
+    requests: { cpu: 10m, memory: 32Mi }
+    limits: { cpu: 200m, memory: 128Mi }
+
+# ─── Ingress ───────────────────────────────────────────────────────────
+# Sticky-Sessions für /ws — sonst landen WebSocket-Frames eines Spielers
+# auf wechselnden API-Pods, und die Single-Owner-pro-Tisch-Annahme bricht.
+# Bei nginx-Ingress nutzen wir Cookie-Affinity; bei anderen Controllern
+# muss man `annotations` entsprechend anpassen.
+ingress:
+  enabled: true
+  className: "nginx"
+  host: "jass.example.com"
+  # Cert-Manager-Annotation für automatisches TLS — durch
+  # `certManager.enabled: false` ausschaltbar.
+  tls:
+    enabled: true
+    secretName: "jass-app-tls"
+    clusterIssuer: "letsencrypt-prod"
+  annotations: {}
+
+# ─── ServiceAccount / Security ─────────────────────────────────────────
+serviceAccount:
+  create: true
+  name: ""
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  fsGroup: 1000
+
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop: ["ALL"]
+  readOnlyRootFilesystem: false # vite-pwa SW braucht /tmp; ggf. aktivieren

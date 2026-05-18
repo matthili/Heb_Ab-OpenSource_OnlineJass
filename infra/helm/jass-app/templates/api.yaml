@@ -1,0 +1,148 @@
+{{- $component := "api" }}
+{{- $fullname := printf "%s-%s" (include "jass-app.fullname" .) $component }}
+{{- $pgSecret := default (printf "%s-postgres" (include "jass-app.fullname" .)) .Values.postgres.existingSecretName }}
+{{- $redisSecret := default (printf "%s-redis" (include "jass-app.fullname" .)) .Values.redis.existingSecretName }}
+{{- $appSecret := default (printf "%s-secrets" (include "jass-app.fullname" .)) .Values.secrets.existingSecretName }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $fullname }}
+  labels:
+    {{- include "jass-app.component.labels" (merge (dict "component" $component) .) | nindent 4 }}
+spec:
+  replicas: {{ .Values.api.replicas }}
+  selector:
+    matchLabels:
+      {{- include "jass-app.component.selectorLabels" (merge (dict "component" $component) .) | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "jass-app.component.selectorLabels" (merge (dict "component" $component) .) | nindent 8 }}
+      {{- with .Values.api.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      serviceAccountName: {{ include "jass-app.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      {{- with .Values.image.pullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: api
+          image: "{{ .Values.image.registry }}/{{ .Values.image.apiRepository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.api.port }}
+              protocol: TCP
+          env:
+            - name: NODE_ENV
+              value: "production"
+            - name: PORT
+              value: {{ .Values.api.port | quote }}
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $pgSecret }}
+                  key: url
+            - name: REDIS_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $redisSecret }}
+                  key: host
+            - name: REDIS_PORT
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $redisSecret }}
+                  key: port
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $redisSecret }}
+                  key: password
+            - name: REDIS_DB
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $redisSecret }}
+                  key: db
+            - name: REDIS_TLS
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $redisSecret }}
+                  key: tls
+            - name: BETTER_AUTH_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $appSecret }}
+                  key: better-auth-secret
+            - name: APP_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $appSecret }}
+                  key: app-secret
+            - name: BETTER_AUTH_URL
+              value: "https://{{ .Values.ingress.host }}"
+            - name: INFERENCE_URL
+              value: "http://{{ include "jass-app.fullname" . }}-inference:{{ .Values.inference.port }}"
+            {{- if .Values.api.env.extraOrigins }}
+            - name: CORS_EXTRA_ORIGINS
+              value: {{ .Values.api.env.extraOrigins | quote }}
+            {{- end }}
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 15
+          resources:
+            {{- toYaml .Values.api.resources | nindent 12 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $fullname }}
+  labels:
+    {{- include "jass-app.component.labels" (merge (dict "component" $component) .) | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - port: {{ .Values.api.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "jass-app.component.selectorLabels" (merge (dict "component" $component) .) | nindent 4 }}
+{{- if .Values.api.hpa.enabled }}
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ $fullname }}
+  labels:
+    {{- include "jass-app.component.labels" (merge (dict "component" $component) .) | nindent 4 }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ $fullname }}
+  minReplicas: {{ .Values.api.hpa.minReplicas }}
+  maxReplicas: {{ .Values.api.hpa.maxReplicas }}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.api.hpa.targetCPUUtilizationPercentage }}
+{{- end }}

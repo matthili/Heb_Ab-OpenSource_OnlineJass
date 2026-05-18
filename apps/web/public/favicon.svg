@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!--
+    „Heb ab!"-Icon: stilisierter Eichel-Buur über dunklem Hintergrund.
+    Bewusst flach gehalten, damit es als Maskable-Icon und kleine
+    Favicon (16/32 px) noch lesbar bleibt.
+  -->
+  <rect width="512" height="512" rx="80" fill="#1f2937"/>
+  <!-- Eichel-Symbol: vereinfachte Eichel, gold auf dunkel -->
+  <g transform="translate(256 256)">
+    <!-- Eichel-Kappe -->
+    <ellipse cx="0" cy="-70" rx="95" ry="55" fill="#a16207"/>
+    <ellipse cx="0" cy="-80" rx="85" ry="40" fill="#ca8a04"/>
+    <!-- Eichel-Korpus -->
+    <ellipse cx="0" cy="20" rx="80" ry="100" fill="#fbbf24"/>
+    <!-- Stiel -->
+    <rect x="-8" y="-130" width="16" height="40" rx="4" fill="#854d0e"/>
+  </g>
+  <!-- „J" für Jass am unteren Rand -->
+  <text x="256" y="460" text-anchor="middle"
+        font-family="'Helvetica Neue', Arial, sans-serif"
+        font-size="80" font-weight="800" fill="#fef3c7">Jass</text>
+</svg>

@@ -1,0 +1,101 @@
+{{- $component := "inference" }}
+{{- $fullname := printf "%s-%s" (include "jass-app.fullname" .) $component }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $fullname }}
+  labels:
+    {{- include "jass-app.component.labels" (merge (dict "component" $component) .) | nindent 4 }}
+spec:
+  replicas: {{ .Values.inference.replicas }}
+  selector:
+    matchLabels:
+      {{- include "jass-app.component.selectorLabels" (merge (dict "component" $component) .) | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "jass-app.component.selectorLabels" (merge (dict "component" $component) .) | nindent 8 }}
+      {{- with .Values.inference.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      serviceAccountName: {{ include "jass-app.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      {{- with .Values.image.pullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: inference
+          image: "{{ .Values.image.registry }}/{{ .Values.image.inferenceRepository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.inference.port }}
+              protocol: TCP
+          env:
+            - name: NODE_ENV
+              value: "production"
+            - name: PORT
+              value: {{ .Values.inference.port | quote }}
+            # Modell-Dir ist im Container fix; das Image hat external/jass-nn/
+            # beim Build mit reingenommen (siehe apps/inference/Dockerfile).
+            - name: MODEL_DIR
+              value: "/app/external/jass-nn"
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 10 # Modell-Laden braucht ein paar Sekunden
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 15
+          resources:
+            {{- toYaml .Values.inference.resources | nindent 12 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $fullname }}
+  labels:
+    {{- include "jass-app.component.labels" (merge (dict "component" $component) .) | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - port: {{ .Values.inference.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "jass-app.component.selectorLabels" (merge (dict "component" $component) .) | nindent 4 }}
+{{- if .Values.inference.hpa.enabled }}
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ $fullname }}
+  labels:
+    {{- include "jass-app.component.labels" (merge (dict "component" $component) .) | nindent 4 }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ $fullname }}
+  minReplicas: {{ .Values.inference.hpa.minReplicas }}
+  maxReplicas: {{ .Values.inference.hpa.maxReplicas }}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.inference.hpa.targetCPUUtilizationPercentage }}
+{{- end }}
