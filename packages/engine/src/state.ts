@@ -33,6 +33,7 @@ import {
   type CompletedTrick,
   type GameState,
   type Variant,
+  MATCH_BONUS,
   NUM_PLAYERS,
   TRICKS_PER_ROUND,
   DECK_SIZE,
@@ -241,7 +242,15 @@ export function applyMove(state: RoundState, move: Move): RoundState {
 // Final-Score
 // ---------------------------------------------------------------------
 
-/** Karten-Punkte pro Team + Matsch-Flag. Setzt voraus, dass die Runde fertig ist. */
+/**
+ * Karten-Punkte pro Team + Matsch-Flag. Setzt voraus, dass die Runde
+ * fertig ist.
+ *
+ * **Matsch-Bonus**: Wenn ein Team alle 9 Stiche gewonnen hat, addieren
+ * wir `MATCH_BONUS` (= 100) zu seinen `team_card_points`. Die Konsistenz-
+ * Prüfung aus der NN-Spec (`sum(team_card_points) == 157` ohne Matsch,
+ * `== 257` mit Matsch) gilt nach diesem Schritt.
+ */
 export function finalRoundScore(state: RoundState): RoundScore {
   if (!isRoundDone(state)) {
     throw new Error("finalRoundScore: round is not finished yet");
@@ -259,8 +268,15 @@ export function finalRoundScore(state: RoundState): RoundScore {
       break;
     }
   }
+
+  // Matsch-Bonus direkt in team_card_points einrechnen.
+  const team_card_points = [...state.team_card_points];
+  if (matsch_team !== null) {
+    team_card_points[matsch_team] = (team_card_points[matsch_team] ?? 0) + MATCH_BONUS;
+  }
+
   return {
-    team_card_points: state.team_card_points,
+    team_card_points,
     matsch_team,
     trick_winners: state.trick_winners,
   };

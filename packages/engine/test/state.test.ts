@@ -383,7 +383,9 @@ describe("finalRoundScore", () => {
     };
     const score = finalRoundScore(s);
     expect(score.matsch_team).toBe(0);
-    expect(score.team_card_points).toEqual([157, 0]);
+    // Matsch-Bonus +100 wird zu den team_card_points des Sieger-Teams
+    // dazugerechnet → 157 + 100 = 257 (NN-Spec score_composition).
+    expect(score.team_card_points).toEqual([257, 0]);
   });
 
   it("liefert matsch_team=null bei geteiltem Spiel", () => {
