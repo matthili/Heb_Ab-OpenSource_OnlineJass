@@ -198,8 +198,16 @@ model Game {
 model GameSeat {
   gameId     String
   seat       Int // 0..3 bei Kreuz-4P
-  userId     String? // null = KI-Sitz
-  aiSeatType String? // "nn-v0.1.0" | "random" | …
+  userId     String? // null = KI-Sitz von Anfang an
+  aiSeatType String? // "heuristic" | "random" | "nn-v0.1.0" | …
+
+  // **Aussteig-Tracking** (Sprint Q):
+  // Wenn ein Mensch aus dem laufenden Spiel aussteigt, lassen wir `userId`
+  // stehen (für Statistik + Profil-History), setzen aber `leftAt` und
+  // `replacedByAiSeatType`. Server-Logik behandelt den Sitz ab dann wie
+  // einen KI-Sitz vom Typ `replacedByAiSeatType`.
+  leftAt               DateTime? // null = noch dabei
+  replacedByAiSeatType String? // "heuristic" wenn leftAt gesetzt
 
   game Game  @relation(fields: [gameId], references: [id], onDelete: Cascade)
   user User? @relation(fields: [userId], references: [id], onDelete: SetNull)

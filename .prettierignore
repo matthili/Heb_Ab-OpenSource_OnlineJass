@@ -16,3 +16,6 @@ jasskarten-assets
 infra/helm/*/templates/
 # Astro: ohne prettier-plugin-astro kein Parser. Wir lassen es manuell.
 *.astro
+# Prisma-Schema: ohne prettier-plugin-prisma kein Parser. `prisma format`
+# erledigt das Formatieren bei jedem `migrate dev`.
+*.prisma

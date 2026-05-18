@@ -233,4 +233,71 @@ export class AdminService {
       createdAt: r.createdAt.toISOString(),
     }));
   }
+
+  // ─── Quitter-Statistik ──────────────────────────────────────────────
+
+  /**
+   * Aggregierte Quitter-Statistik aus `game.abandoned`-Audit-Einträgen.
+   * Wir bauen ein Ranking nach `hadHumanOpponents`-Aussteigern: das sind
+   * die Spieler, die echten Mitspielern den Spaß verderben. KI-Tische
+   * abandonen ist nicht so schlimm, zählen aber im Counter mit.
+   *
+   * Sortierung: zuerst nach „mit Mitspielern", dann nach total.
+   */
+  async listQuitters(limit: number = 50): Promise<AdminQuitterEntry[]> {
+    // Wir lesen alle `game.abandoned`-Einträge und gruppieren in Node-Code,
+    // weil das Auditlog-Schema kein JSON-Index hat. Bei realistischer
+    // Quitter-Größenordnung (< 10k Einträge) reicht das.
+    const rows = await this.prisma.auditLog.findMany({
+      where: { action: "game.abandoned" },
+      orderBy: { createdAt: "desc" },
+      include: { actor: { select: { id: true, name: true } } },
+    });
+
+    type Aggregate = {
+      userId: string;
+      userName: string | null;
+      total: number;
+      withHumans: number;
+      lastAbandonAt: string;
+    };
+    const map = new Map<string, Aggregate>();
+    for (const r of rows) {
+      if (!r.actorId) continue;
+      const meta = r.meta as { hadHumanOpponents?: boolean } | null;
+      const withHumans = meta?.hadHumanOpponents === true ? 1 : 0;
+      const existing = map.get(r.actorId);
+      if (existing) {
+        existing.total += 1;
+        existing.withHumans += withHumans;
+        // rows ist desc sortiert — der erste Eintrag pro userId ist der
+        // jüngste, weitere Updates sind älter → nichts zu tun.
+      } else {
+        map.set(r.actorId, {
+          userId: r.actorId,
+          userName: r.actor?.name ?? null,
+          total: 1,
+          withHumans,
+          lastAbandonAt: r.createdAt.toISOString(),
+        });
+      }
+    }
+    const out = [...map.values()];
+    out.sort((a, b) => {
+      if (b.withHumans !== a.withHumans) return b.withHumans - a.withHumans;
+      return b.total - a.total;
+    });
+    return out.slice(0, limit);
+  }
+}
+
+export interface AdminQuitterEntry {
+  userId: string;
+  userName: string | null;
+  /** Anzahl aller game.abandoned-Einträge dieses Users. */
+  total: number;
+  /** Davon: bei Spielen mit anderen Menschen (= echter Spaßverderber-Score). */
+  withHumans: number;
+  /** ISO-Timestamp der letzten Aussteig-Aktion. */
+  lastAbandonAt: string;
 }

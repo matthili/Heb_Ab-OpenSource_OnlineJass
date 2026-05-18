@@ -38,6 +38,7 @@ import { RedisContainer } from "@testcontainers/redis";
 import Fastify, { type FastifyInstance } from "fastify";
 
 import { AppModule } from "../../src/app.module.js";
+import { AdminService } from "../../src/modules/admin/admin.service.js";
 import { GameService } from "../../src/modules/game/game.service.js";
 import { ReplayService } from "../../src/modules/game/replay.service.js";
 import { GdprService } from "../../src/modules/users/gdpr.service.js";
@@ -97,6 +98,8 @@ export interface TestAppHandle {
   replay: ReplayService;
   /** GdprService aus dem DI-Container. */
   gdpr: GdprService;
+  /** AdminService aus dem DI-Container. */
+  admin: AdminService;
   /** Auto-Fill-Sweeper. In Tests stoßen wir `.tick()` manuell an. */
   autoFill: AutoFillService;
   /** Capture-Sink des Mail-Services. */
@@ -241,6 +244,7 @@ export async function setupTestApp(): Promise<TestAppHandle> {
   const gamesSvc = app.get(GameService);
   const replaySvc = app.get(ReplayService);
   const gdprSvc = app.get(GdprService);
+  const adminSvc = app.get(AdminService);
   const autoFillSvc = app.get(AutoFillService);
 
   // ─── 7. Reset-Funktion ────────────────────────────────────────────────
@@ -306,6 +310,7 @@ export async function setupTestApp(): Promise<TestAppHandle> {
     games: gamesSvc,
     replay: replaySvc,
     gdpr: gdprSvc,
+    admin: adminSvc,
     autoFill: autoFillSvc,
     capturedMails,
     inference: stub.control,

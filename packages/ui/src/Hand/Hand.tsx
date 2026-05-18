@@ -32,18 +32,38 @@ export interface HandProps {
   onPlay?: (card: CardModel) => void;
 }
 
+/**
+ * Sortiert Karten nach Farbe (Eichel/Schelle/Herz/Laub, siehe SUIT_ID)
+ * und dann nach Rang aufsteigend (Sechs → Sieben → … → Ass). Damit
+ * sieht der Spieler immer dasselbe Bild — egal wie der Server die
+ * Karten ausgeteilt hat. Reduziert auch die Karten-Sortier-Routine,
+ * die jeder echte Jasser sonst manuell vor dem Spiel macht.
+ *
+ * **Warum nicht trumpf-zentriert?** Weil die Trumpf-Farbe erst nach
+ * der Ansage feststeht — eine Re-Sortierung dort wäre verwirrend
+ * (Karten springen im Fan). Stattdessen fix nach SUIT_ID.
+ */
+function sortedHand(cards: readonly CardModel[]): readonly CardModel[] {
+  return [...cards].sort((a, b) => {
+    const suitDiff = SUIT_ID[a.suit] - SUIT_ID[b.suit];
+    if (suitDiff !== 0) return suitDiff;
+    return RANK_ID[a.rank] - RANK_ID[b.rank];
+  });
+}
+
 export function Hand({ cards, legalMask, canPlay = false, onPlay }: HandProps) {
   if (cards.length === 0) {
     return <p className="text-sm text-stone-500 text-center">Keine Karten in der Hand.</p>;
   }
+  const sorted = sortedHand(cards);
   // Überlappung dynamisch nach Kartenzahl: bei 9 Karten brauchen wir
   // stark überlappen, bei 3 reicht moderat. Wir geben ~60 % der Karten-
   // Breite negativen Margin — beim Hover (z-30 + translate-y) hebt sich
   // die einzelne Karte sauber raus.
-  const overlap = cards.length >= 7 ? "-ml-14" : cards.length >= 5 ? "-ml-10" : "-ml-6";
+  const overlap = sorted.length >= 7 ? "-ml-14" : sorted.length >= 5 ? "-ml-10" : "-ml-6";
   return (
     <div className="flex justify-center items-end pt-4 pb-2" role="group" aria-label="Meine Karten">
-      {cards.map((card, i) => {
+      {sorted.map((card, i) => {
         const idx = SUIT_ID[card.suit] * 9 + RANK_ID[card.rank];
         const legal = legalMask ? legalMask[idx] === 1 : true;
         const clickable = canPlay && legal && Boolean(onPlay);

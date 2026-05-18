@@ -53,20 +53,18 @@ export function LeaveTableConfirm({ open, tableStatus, pending, onCancel, onConf
         {isInGame ? (
           <>
             <p className="text-sm text-jass-inkSoft">
-              Das Spiel <strong>läuft gerade</strong>. Ein endgültiges Verlassen ist aktuell noch
-              nicht implementiert — du musst das Spiel zu Ende spielen (oder warten, bis es vorbei
-              ist).
+              Das Spiel <strong>läuft gerade</strong>. Wenn du jetzt aussteigst, übernimmt eine KI
+              deinen Sitz und das Spiel läuft ohne dich weiter — deine Mitspieler werden nicht
+              unterbrochen.
+            </p>
+            <p className="text-sm text-rose-900">
+              <strong>Bedenke:</strong> Wenn echte Mitspieler dabei sind, verderben Aussteiger ihnen
+              den Spaß. Das wird auch im Audit-Log vermerkt.
             </p>
             <p className="text-sm text-jass-inkSoft">
-              Was du machen kannst: einfach woanders hin navigieren (z.B. zur Lobby) — der Tisch
-              bleibt für dich erreichbar, und du findest ihn unter <em>„Dein aktiver Tisch"</em>{" "}
-              wieder.
+              Alternative: einfach kurz woanders hin navigieren — du findest den Tisch unter{" "}
+              <em>„Dein aktiver Tisch"</em> in der Lobby wieder.
             </p>
-            <div className="text-xs text-jass-inkSoft border-t border-jass-paperEdge pt-2">
-              <strong>Geplant</strong>: 60 Sekunden Lobby-Ausflug ohne Aussteig, danach Frage
-              „zurück oder aussteigen?" — und wer dauerhaft aussteigt, wird durch einen KI-Sitz
-              ersetzt.
-            </div>
           </>
         ) : (
           <>
@@ -86,16 +84,18 @@ export function LeaveTableConfirm({ open, tableStatus, pending, onCancel, onConf
           >
             Abbrechen
           </button>
-          {!isInGame && (
-            <button
-              type="button"
-              onClick={onConfirm}
-              disabled={pending}
-              className="rounded bg-jass-red px-4 py-2 text-jass-cream hover:bg-jass-redDark disabled:opacity-50"
-            >
-              {pending ? "Verlasse…" : "Tisch verlassen"}
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={onConfirm}
+            disabled={pending}
+            className="rounded bg-jass-red px-4 py-2 text-jass-cream hover:bg-jass-redDark disabled:opacity-50"
+          >
+            {pending
+              ? "Verlasse…"
+              : isInGame
+                ? "Trotzdem aussteigen (KI übernimmt)"
+                : "Tisch verlassen"}
+          </button>
         </div>
       </div>
     </dialog>

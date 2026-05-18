@@ -535,6 +535,73 @@ export class GameService {
     return this.applyAnnouncementAsSeat(gameId, seat, decision, userId);
   }
 
+  /**
+   * Markiert einen menschlichen Sitz als ausgestiegen — der Sitz bleibt
+   * mit seiner `userId` in der DB (für Spiel-Historie und Quitter-Tracking),
+   * aber `leftAt` wird gesetzt und der Sitz spielt ab dem nächsten Zug als
+   * KI vom Typ `replacedByAiSeatType` weiter.
+   *
+   * Wird vom LobbyService.leaveTable im IN_GAME/POST_GAME-Fall aufgerufen.
+   *
+   * Returnt Metadaten für den Audit-Eintrag:
+   *   - `seat`: welcher Sitz wurde umgeschaltet
+   *   - `hadHumanOpponents`: gab es noch weitere menschliche, nicht-
+   *     ausgestiegene Sitze im Spiel? (= „der Aussteiger lässt echte
+   *     Mitspieler im Stich"). KI-Sitze + andere Aussteiger zählen nicht.
+   *   - `wasInAnnouncing`: war der Aussteiger gerade als Ansager dran?
+   */
+  async markUserLeft(
+    gameId: string,
+    userId: string,
+    replacementAiType: string = "heuristic"
+  ): Promise<{ seat: number; hadHumanOpponents: boolean; wasInAnnouncing: boolean }> {
+    const game = await this.prisma.game.findUnique({
+      where: { id: gameId },
+      include: { seats: true },
+    });
+    if (!game) throw new NotFoundException(`Game ${gameId} nicht gefunden`);
+    if (game.endedAt !== null) {
+      throw new ConflictException("Spiel ist bereits beendet; kein Aussteig nötig.");
+    }
+    const seatRow = game.seats.find((s) => s.userId === userId && s.leftAt === null);
+    if (!seatRow) {
+      throw new ConflictException("Du bist nicht (mehr) am Tisch.");
+    }
+
+    // hadHumanOpponents: ein anderer Sitz mit userId !== null und leftAt === null.
+    const hadHumanOpponents = game.seats.some(
+      (s) => s.seat !== seatRow.seat && s.userId !== null && s.leftAt === null
+    );
+
+    // Falls die Pending-Phase aktiv ist UND der Aussteiger gerade
+    // Ansager war: wir markieren das, damit der WS-Gateway weiß,
+    // dass nach dem Aussteig eine KI-Ansage triggern muss.
+    const pending = await this.loadPending(gameId);
+    const wasInAnnouncing = pending !== null && pending.announcerSeat === seatRow.seat;
+
+    await this.prisma.gameSeat.update({
+      where: { gameId_seat: { gameId, seat: seatRow.seat } },
+      data: { leftAt: new Date(), replacedByAiSeatType: replacementAiType },
+    });
+
+    await this.audit.record({
+      action: "game.abandoned",
+      actorId: userId,
+      target: gameId,
+      meta: asJson({
+        seat: seatRow.seat,
+        hadHumanOpponents,
+        wasInAnnouncing,
+        replacementAiType,
+      }),
+    });
+    this.log.warn(
+      { gameId, seat: seatRow.seat, userId, hadHumanOpponents },
+      "User ist aus laufendem Spiel ausgestiegen — Sitz wird zur KI"
+    );
+    return { seat: seatRow.seat, hadHumanOpponents, wasInAnnouncing };
+  }
+
   async applyAnnouncementAsSeat(
     gameId: string,
     seat: number,
@@ -636,14 +703,10 @@ export class GameService {
   ): Promise<{ kind: "announce" | "move"; seat: number; aiSeatType: string } | null> {
     const pending = await this.loadPending(gameId);
     if (pending) {
-      const row = await this.prisma.gameSeat.findUnique({
-        where: { gameId_seat: { gameId, seat: pending.announcerSeat } },
-      });
-      if (!row) {
-        throw new NotFoundException(`GameSeat ${gameId}#${pending.announcerSeat} nicht gefunden`);
-      }
-      if (row.userId !== null || row.aiSeatType === null) return null;
-      return { kind: "announce", seat: pending.announcerSeat, aiSeatType: row.aiSeatType };
+      const seat = pending.announcerSeat;
+      const effective = await this.effectiveAiTypeForSeat(gameId, seat);
+      if (effective === null) return null; // menschlicher Sitz ohne Aussteig
+      return { kind: "announce", seat, aiSeatType: effective };
     }
     const next = await this.nextAISeat(gameId);
     if (!next) return null;
@@ -658,14 +721,33 @@ export class GameService {
     const state = await this.loadRoundState(gameId);
     if (isRoundDone(state)) return null;
     const seat = whoseTurn(state);
+    const effective = await this.effectiveAiTypeForSeat(gameId, seat);
+    if (effective === null) return null; // Mensch ist dran und nicht ausgestiegen
+    return { seat, aiSeatType: effective };
+  }
+
+  /**
+   * Liefert den `aiSeatType`, der für diesen Sitz **effektiv** spielt:
+   *   - Sitz ist von Anfang an KI → `aiSeatType` aus der DB
+   *   - Sitz war Mensch, der ist ausgestiegen → `replacedByAiSeatType`
+   *   - Sitz ist Mensch, noch dabei → `null` (= dieser Schritt ist nicht
+   *     vom AI-Loop zu treiben)
+   *
+   * Wirft `NotFoundException`, wenn der Sitz nicht existiert.
+   */
+  private async effectiveAiTypeForSeat(gameId: string, seat: number): Promise<string | null> {
     const row = await this.prisma.gameSeat.findUnique({
       where: { gameId_seat: { gameId, seat } },
     });
     if (!row) {
       throw new NotFoundException(`GameSeat ${gameId}#${seat} nicht gefunden`);
     }
-    if (row.userId !== null || row.aiSeatType === null) return null; // Mensch ist dran
-    return { seat, aiSeatType: row.aiSeatType };
+    // Anfangs-KI: keine userId, aiSeatType gesetzt.
+    if (row.userId === null) return row.aiSeatType ?? null;
+    // Mensch noch dabei.
+    if (row.leftAt === null) return null;
+    // Mensch ist ausgestiegen → KI vom Aussteig-Typ.
+    return row.replacedByAiSeatType ?? "heuristic";
   }
 
   /**
@@ -771,10 +853,14 @@ export class GameService {
   // Hilfsfunktionen
   // ───────────────────────────────────────────────────────────────────
 
-  /** Sucht den Sitz für einen User; wirft, wenn er nicht am Tisch sitzt. */
+  /**
+   * Sucht den Sitz für einen User; wirft, wenn er nicht am Tisch sitzt
+   * **oder** schon ausgestiegen ist (`leftAt !== null`). Damit kann ein
+   * Aussteiger keine Moves oder Ansagen mehr machen.
+   */
   private async findSeatForUser(gameId: string, userId: string): Promise<number> {
     const seat = await this.prisma.gameSeat.findFirst({
-      where: { gameId, userId },
+      where: { gameId, userId, leftAt: null },
     });
     if (!seat) {
       throw new ConflictException(`User ${userId} sitzt nicht an Tisch ${gameId}`);

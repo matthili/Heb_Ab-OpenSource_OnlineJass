@@ -773,6 +773,58 @@ export class LobbyService {
       select: { userId: true },
     });
 
+    // Wenn das Spiel gerade läuft (IN_GAME / POST_GAME), läuft das Verlassen
+    // anders: der GameSeat wird nicht gelöscht, sondern als ausgestiegen
+    // markiert und durch eine KI ersetzt. So sehen Mitspieler das Spiel
+    // weiterlaufen — und im Audit-Log steht „User X hat in einer Partie
+    // mit echten Mitspielern aufgegeben".
+    const tablePre = await this.prisma.lobbyTable.findUnique({
+      where: { id: tableId },
+      select: { status: true, currentGameId: true, aiSeatType: true },
+    });
+    if (!tablePre) throw new NotFoundException(`Tisch ${tableId} nicht gefunden`);
+    if (tablePre.status === LobbyTableStatus.CLOSED) {
+      throw new ConflictException("Tisch ist bereits geschlossen.");
+    }
+    if (
+      (tablePre.status === LobbyTableStatus.IN_GAME ||
+        tablePre.status === LobbyTableStatus.POST_GAME) &&
+      tablePre.currentGameId !== null
+    ) {
+      // GameSeat als ausgestiegen markieren, Audit-Eintrag schreiben.
+      // Der LobbyTableSeat wird ebenfalls auf KI umgeschaltet, damit
+      // der Tisch konsistent „4 belegte Sitze, einer davon ist eine
+      // KI" zeigt. So bleibt das Spiel ohne Hänger spielbar.
+      const aiType = tablePre.aiSeatType ?? "heuristic";
+      await this.games.markUserLeft(tablePre.currentGameId, userId, aiType);
+      // Pretty-print Lobby-Sitz auf KI umschalten + Audit für das
+      // Lobby-Event (separat von game.abandoned, weil das den Lobby-
+      // Zustand betrifft).
+      const seatRow = await this.prisma.lobbyTableSeat.findFirst({
+        where: { tableId, userId },
+      });
+      if (seatRow) {
+        await this.prisma.lobbyTableSeat.update({
+          where: { tableId_seat: { tableId, seat: seatRow.seat } },
+          data: { userId: null, aiSeatType: aiType },
+        });
+      }
+      await this.audit.record({
+        action: "lobby.table.leave.ingame",
+        actorId: userId,
+        target: tableId,
+        meta: { seat: seatRow?.seat ?? null },
+      });
+      // Lobby-Broadcast, damit andere Spieler den neuen Sitz-Zustand sehen.
+      this.gateway.broadcastLobbyListUpdate("ingame-abandon", tableId);
+      await this.pushTableState(tableId);
+      return {
+        seatFreed: seatRow?.seat ?? null,
+        newOwnerId: null,
+        tableClosed: false,
+      };
+    }
+
     const result = await this.prisma.$transaction(async (tx) => {
       const table = await tx.lobbyTable.findUnique({
         where: { id: tableId },
@@ -782,13 +834,10 @@ export class LobbyService {
       if (table.status === LobbyTableStatus.CLOSED) {
         throw new ConflictException("Tisch ist bereits geschlossen.");
       }
-      // M6-B-Restriktion: Verlassen nur in WAITING. POST_GAME-Leave kommt
-      // mit M6-E (Re-Match-Vote ergibt sich daraus).
+      // Verlassen in IN_GAME/POST_GAME wird oben behandelt (Sitz-auf-KI-
+      // Umschaltung). Hier landen wir nur im WAITING-Fall.
       if (table.status !== LobbyTableStatus.WAITING) {
-        throw new ConflictException(
-          "Verlassen ist aktuell nur in der WAITING-Phase implementiert. " +
-            "Re-Match-Phase folgt mit M6-E."
-        );
+        throw new ConflictException("Unerwarteter Tisch-Status für Leave-Pfad.");
       }
 
       const mySeat = table.seats.find((s) => s.userId === userId);

@@ -38,7 +38,12 @@ import {
   type SetUserStatusDto,
   type SmtpSettingsDto,
 } from "./admin.dto.js";
-import { AdminService, type AdminAuditEntry, type AdminUserView } from "./admin.service.js";
+import {
+  AdminService,
+  type AdminAuditEntry,
+  type AdminQuitterEntry,
+  type AdminUserView,
+} from "./admin.service.js";
 
 @Controller("api/admin")
 @UseGuards(SessionGuard, RolesGuard)
@@ -127,6 +132,20 @@ export class AdminController {
     @Query(new ZodValidationPipe(ListAuditQuerySchema)) query: ListAuditQuery
   ): Promise<{ entries: AdminAuditEntry[] }> {
     const entries = await this.admin.listAudit(query);
+    return { entries };
+  }
+
+  // ─── Quitter-Stats ─────────────────────────────────────────────────
+
+  /**
+   * Aggregiert die `game.abandoned`-Audit-Einträge zu einer Top-Quitter-
+   * Liste. Spieler mit hohem `withHumans`-Score haben wiederholt echte
+   * Mitspieler im Stich gelassen.
+   */
+  @Get("quitters")
+  async listQuitters(@Query("limit") limitRaw?: string): Promise<{ entries: AdminQuitterEntry[] }> {
+    const limit = Math.min(Math.max(parseInt(limitRaw ?? "50", 10) || 50, 1), 200);
+    const entries = await this.admin.listQuitters(limit);
     return { entries };
   }
 }
