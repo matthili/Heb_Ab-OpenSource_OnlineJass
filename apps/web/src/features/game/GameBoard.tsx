@@ -171,14 +171,15 @@ function PlayingArea({
 }) {
   return (
     <div
-      // **Feste Höhe**: 26rem reicht für 4 Karten in sm-Größe (h-24) plus
-      // Sitz-Labels darüber/darunter. Wir nutzen hier KEIN min-height,
-      // sondern eine echte Höhe, damit das Layout nicht „springt", wenn
-      // der zentrale Trick gerade leer ist (zwischen zwei Stichen). Das
-      // grid-rows-[auto_1fr_auto]-Pattern verteilt die drei Bahnen so:
-      // oben/unten Sitz-Labels in ihrer natürlichen Höhe, Mitte nimmt
-      // den ganzen verbleibenden Platz für den Trick.
-      className="grid grid-cols-3 grid-rows-[auto_1fr_auto] gap-2 h-[26rem] rounded-lg p-4 relative shadow-inner"
+      // **Responsive Höhe**: `min-h-[26rem]` verhindert das Springen
+      // zwischen Stichen (selbst bei leerem Trick mindestens 26rem hoch).
+      // `h-[clamp(...)]` skaliert zwischen 26rem und 40rem hoch, anhand
+      // von 60% Viewport-Höhe — auf großen Bildschirmen wird das Spielfeld
+      // also wirklich groß, auf kleinen bleibt's mindestens lesbar.
+      // `grid-rows-[auto_1fr_auto]` verteilt die drei Bahnen so: oben/unten
+      // Sitz-Labels in ihrer natürlichen Höhe, Mitte nimmt den ganzen
+      // verbleibenden Platz für den Trick.
+      className="grid grid-cols-3 grid-rows-[auto_1fr_auto] gap-2 min-h-[26rem] h-[clamp(26rem,60vh,40rem)] rounded-lg p-4 relative shadow-inner"
       style={{
         backgroundColor: "var(--color-jass-greenDark)",
         backgroundImage:

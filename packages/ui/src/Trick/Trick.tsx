@@ -52,7 +52,7 @@ export function Trick({ cards, starter, mySeat, winnerSeat }: TrickProps) {
       // Feste Höhe — damit das Trick-Sub-Grid nicht kollabiert, wenn der
       // Stich gerade leer ist (zwischen zwei Stichen). Sonst „springt" die
       // umgebende Spielfläche zwischen 0-Karten und 4-Karten-Zustand.
-      className="grid grid-cols-3 grid-rows-3 gap-2 h-full min-h-[14rem]"
+      className="grid grid-cols-3 grid-rows-3 gap-2 h-full min-h-[18rem]"
       role="region"
       aria-label="Stich"
     >
@@ -65,7 +65,7 @@ export function Trick({ cards, starter, mySeat, winnerSeat }: TrickProps) {
             key={`${c.suit}-${c.rank}-${i}`}
             className={`${SLOT_POS[slot]} ${isWinner ? "ring-4 ring-amber-400 rounded-md" : ""}`}
           >
-            <Card card={c} size="sm" />
+            <Card card={c} size="md" />
           </div>
         );
       })}

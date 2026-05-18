@@ -62,7 +62,15 @@ export function Hand({ cards, legalMask, canPlay = false, onPlay }: HandProps) {
   // die einzelne Karte sauber raus.
   const overlap = sorted.length >= 7 ? "-ml-14" : sorted.length >= 5 ? "-ml-10" : "-ml-6";
   return (
-    <div className="flex justify-center items-end pt-4 pb-2" role="group" aria-label="Meine Karten">
+    <div
+      // Eigener Stacking-Context (`isolate`), damit die `zIndex`-Werte
+      // der einzelnen Hand-Karten NICHT mit Geschwister-Elementen
+      // (z.B. der Spielfläche darüber) konkurrieren. Sonst können
+      // Hand-Karten visuell über die Trick-Karten greifen.
+      className="flex justify-center items-end pt-4 pb-2 isolate"
+      role="group"
+      aria-label="Meine Karten"
+    >
       {sorted.map((card, i) => {
         const idx = SUIT_ID[card.suit] * 9 + RANK_ID[card.rank];
         const legal = legalMask ? legalMask[idx] === 1 : true;
@@ -70,7 +78,9 @@ export function Hand({ cards, legalMask, canPlay = false, onPlay }: HandProps) {
         return (
           <div
             key={`${card.suit}-${card.rank}-${i}`}
-            className={`${i === 0 ? "" : overlap} hover:z-30 focus-within:z-30`}
+            // `relative` ist nötig, damit `zIndex` überhaupt wirkt
+            // (z-index braucht einen positionierten Container).
+            className={`relative ${i === 0 ? "" : overlap} hover:z-30 focus-within:z-30`}
             style={{ zIndex: i }}
           >
             <Card
