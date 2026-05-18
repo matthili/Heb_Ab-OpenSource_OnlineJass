@@ -124,7 +124,14 @@ function PlayingArea({
 }) {
   return (
     <div
-      className="grid grid-cols-3 grid-rows-3 gap-2 min-h-[20rem] rounded-lg p-4 relative shadow-inner"
+      // **Feste Höhe**: 26rem reicht für 4 Karten in sm-Größe (h-24) plus
+      // Sitz-Labels darüber/darunter. Wir nutzen hier KEIN min-height,
+      // sondern eine echte Höhe, damit das Layout nicht „springt", wenn
+      // der zentrale Trick gerade leer ist (zwischen zwei Stichen). Das
+      // grid-rows-[auto_1fr_auto]-Pattern verteilt die drei Bahnen so:
+      // oben/unten Sitz-Labels in ihrer natürlichen Höhe, Mitte nimmt
+      // den ganzen verbleibenden Platz für den Trick.
+      className="grid grid-cols-3 grid-rows-[auto_1fr_auto] gap-2 h-[26rem] rounded-lg p-4 relative shadow-inner"
       style={{
         backgroundColor: "var(--color-jass-greenDark)",
         backgroundImage:

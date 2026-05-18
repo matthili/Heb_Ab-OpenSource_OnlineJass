@@ -35,6 +35,12 @@ export function OpenTableDialog({ open, onClose }: Props) {
   const [restartMode, setRestartMode] = useState<RestartMode>("SIEGER_GIBT");
   const [soloVsAi, setSoloVsAi] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  /**
+   * Wenn der API-Call mit „Du besitzt bereits einen aktiven Tisch"
+   * scheitert, schickt der Server `existingTableId` im Body mit — den
+   * heben wir hier ab und zeigen unten einen direkten Rückkehr-Link.
+   */
+  const [existingTableId, setExistingTableId] = useState<string | null>(null);
 
   // open/close ↔ <dialog> öffnen/schließen synchronisieren
   useEffect(() => {
@@ -53,13 +59,33 @@ export function OpenTableDialog({ open, onClose }: Props) {
       void navigate({ to: "/table/$id", params: { id: tableId } });
     },
     onError: (err: unknown) => {
-      setError(err instanceof ApiError ? err.message : "Tisch konnte nicht geöffnet werden.");
+      if (err instanceof ApiError) {
+        setError(err.message);
+        // ApiError.body kann ein Objekt mit `existingTableId` sein
+        // (siehe LobbyService.openTable Conflict-Exception). Wir
+        // extrahieren das defensiv — wenn nicht da, bleibt der Link weg.
+        const body = err.body;
+        if (
+          body &&
+          typeof body === "object" &&
+          "existingTableId" in body &&
+          typeof (body as { existingTableId?: unknown }).existingTableId === "string"
+        ) {
+          setExistingTableId((body as { existingTableId: string }).existingTableId);
+        } else {
+          setExistingTableId(null);
+        }
+      } else {
+        setError("Tisch konnte nicht geöffnet werden.");
+        setExistingTableId(null);
+      }
     },
   });
 
   function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
+    setExistingTableId(null);
     const dto: OpenTableDto = {
       joinMode,
       aiSeatType,
@@ -175,9 +201,23 @@ export function OpenTableDialog({ open, onClose }: Props) {
         {error && (
           <div
             role="alert"
-            className="rounded border border-rose-300 bg-rose-50 px-3 py-2 text-sm text-rose-800"
+            className="rounded border border-rose-300 bg-rose-50 px-3 py-2 text-sm text-rose-800 space-y-2"
           >
-            {error}
+            <p>{error}</p>
+            {existingTableId && (
+              <p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onClose();
+                    void navigate({ to: "/table/$id", params: { id: existingTableId } });
+                  }}
+                  className="underline font-medium hover:no-underline"
+                >
+                  Zum bestehenden Tisch →
+                </button>
+              </p>
+            )}
           </div>
         )}
 

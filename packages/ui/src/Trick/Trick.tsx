@@ -49,7 +49,10 @@ function relativeSlot(absolute: number, mySeat: number): Slot {
 export function Trick({ cards, starter, mySeat, winnerSeat }: TrickProps) {
   return (
     <div
-      className="grid grid-cols-3 grid-rows-3 gap-2 min-h-[12rem]"
+      // Feste Höhe — damit das Trick-Sub-Grid nicht kollabiert, wenn der
+      // Stich gerade leer ist (zwischen zwei Stichen). Sonst „springt" die
+      // umgebende Spielfläche zwischen 0-Karten und 4-Karten-Zustand.
+      className="grid grid-cols-3 grid-rows-3 gap-2 h-full min-h-[14rem]"
       role="region"
       aria-label="Stich"
     >

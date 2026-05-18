@@ -59,6 +59,19 @@ export class LobbyController {
     return { tables };
   }
 
+  /**
+   * Tische, an denen der eingeloggte User aktuell sitzt (oder die er
+   * besitzt). Für die Lobby-Karte „Du bist gerade in einem Tisch" —
+   * damit der User nach einer Navigation zurückfindet.
+   *
+   * Filter: WAITING + IN_GAME + POST_GAME. CLOSED-Tische sind weg.
+   */
+  @Get("my-tables")
+  async myTables(@Req() req: FastifyRequest): Promise<{ tables: TableListEntry[] }> {
+    const tables = await this.lobby.listMyTables(req.user!.id);
+    return { tables };
+  }
+
   @Get("tables/:id")
   async get(@Req() req: FastifyRequest, @Param("id") tableId: string): Promise<TableDetailView> {
     return this.lobby.getTableView(tableId, req.user!.id);

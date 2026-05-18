@@ -23,6 +23,7 @@ import { useGameView } from "~/features/game/useGameView";
 import { api, ApiError } from "~/lib/api";
 import { useSession } from "~/lib/auth-client";
 import { useTableStateEvents } from "~/lib/ws";
+import { LeaveTableConfirm } from "./LeaveTableConfirm";
 import type { TableDetailView } from "./types";
 
 interface Props {
@@ -94,7 +95,7 @@ export function TableDetail({ tableId }: Props) {
       {isOwner ? (
         <OwnerPanel table={data} queryKey={queryKey} />
       ) : amIAtTable ? (
-        <PlayerPanel tableId={tableId} queryKey={queryKey} />
+        <PlayerPanel tableId={tableId} tableStatus={data.status} queryKey={queryKey} />
       ) : null}
     </section>
   );
@@ -142,6 +143,7 @@ function OwnerPanel(props: { table: TableDetailView; queryKey: readonly unknown[
   const { table, queryKey } = props;
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const [confirmLeave, setConfirmLeave] = useState(false);
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey });
 
@@ -153,7 +155,10 @@ function OwnerPanel(props: { table: TableDetailView; queryKey: readonly unknown[
   const leaveMut = useMutation({
     mutationFn: () =>
       api<{ tableClosed: boolean }>(`/api/lobby/tables/${table.id}/leave`, { method: "POST" }),
-    onSuccess: () => navigate({ to: "/lobby" }),
+    onSuccess: () => {
+      setConfirmLeave(false);
+      void navigate({ to: "/lobby" });
+    },
   });
   const approveMut = useMutation({
     mutationFn: (reqId: string) =>
@@ -185,13 +190,20 @@ function OwnerPanel(props: { table: TableDetailView; queryKey: readonly unknown[
         )}
         <button
           type="button"
-          onClick={() => leaveMut.mutate()}
+          onClick={() => setConfirmLeave(true)}
           disabled={leaveMut.isPending}
           className="rounded border border-stone-300 px-4 py-2 text-stone-700 hover:bg-stone-100"
         >
           Tisch verlassen
         </button>
       </div>
+      <LeaveTableConfirm
+        open={confirmLeave}
+        tableStatus={table.status}
+        pending={leaveMut.isPending}
+        onCancel={() => setConfirmLeave(false)}
+        onConfirm={() => leaveMut.mutate()}
+      />
       {startError && (
         <p role="alert" className="text-sm text-rose-700">
           {startError}
@@ -371,13 +383,23 @@ function InviteRow({
   );
 }
 
-function PlayerPanel({ tableId, queryKey }: { tableId: string; queryKey: readonly unknown[] }) {
+function PlayerPanel({
+  tableId,
+  tableStatus,
+  queryKey,
+}: {
+  tableId: string;
+  tableStatus: TableDetailView["status"];
+  queryKey: readonly unknown[];
+}) {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const [confirmLeave, setConfirmLeave] = useState(false);
   const leaveMut = useMutation({
     mutationFn: () => api(`/api/lobby/tables/${tableId}/leave`, { method: "POST" }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey });
+      setConfirmLeave(false);
       void navigate({ to: "/lobby" });
     },
   });
@@ -385,12 +407,19 @@ function PlayerPanel({ tableId, queryKey }: { tableId: string; queryKey: readonl
     <div className="space-y-2 border-t border-stone-200 pt-4">
       <button
         type="button"
-        onClick={() => leaveMut.mutate()}
+        onClick={() => setConfirmLeave(true)}
         disabled={leaveMut.isPending}
         className="rounded border border-stone-300 px-4 py-2 text-stone-700 hover:bg-stone-100"
       >
         Tisch verlassen
       </button>
+      <LeaveTableConfirm
+        open={confirmLeave}
+        tableStatus={tableStatus}
+        pending={leaveMut.isPending}
+        onCancel={() => setConfirmLeave(false)}
+        onConfirm={() => leaveMut.mutate()}
+      />
     </div>
   );
 }

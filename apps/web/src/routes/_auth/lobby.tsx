@@ -7,6 +7,7 @@ import { useTranslation } from "react-i18next";
 
 import { ChatPanel } from "~/features/chat/ChatPanel";
 import { LobbyList } from "~/features/lobby/LobbyList";
+import { MyActiveTables } from "~/features/lobby/MyActiveTables";
 import { OpenTableDialog } from "~/features/lobby/OpenTableDialog";
 
 export const Route = createFileRoute("/_auth/lobby")({
@@ -28,6 +29,7 @@ function LobbyPage() {
           {t("lobby.openTable")}
         </button>
       </header>
+      <MyActiveTables />
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_20rem] gap-4">
         <LobbyList />
         <ChatPanel channelKey="lobby:global" title={t("lobby.title")} />

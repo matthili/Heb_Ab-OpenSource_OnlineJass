@@ -244,6 +244,47 @@ export class LobbyService {
     }));
   }
 
+  /**
+   * Tische, an denen der User aktuell beteiligt ist (Owner ODER Sitz-
+   * Inhaber) und die nicht CLOSED sind. Für die „Mein aktiver Tisch"-
+   * Karte in der Lobby — damit der User nach Navigation zurückfindet.
+   *
+   * Im Gegensatz zu `listTables` ignorieren wir hier `joinMode` (Owner
+   * darf seinen INVITE-Tisch immer sehen) und das Status-Default-Filter
+   * (POST_GAME-Tische gehören auch dazu).
+   */
+  async listMyTables(callerId: string): Promise<TableListEntry[]> {
+    const tables = await this.prisma.lobbyTable.findMany({
+      where: {
+        status: { not: LobbyTableStatus.CLOSED },
+        OR: [{ ownerId: callerId }, { seats: { some: { userId: callerId } } }],
+      },
+      include: {
+        owner: { select: { id: true, name: true } },
+        seats: { select: { seat: true, userId: true } },
+        joinRequests: {
+          where: { userId: callerId, status: JoinRequestStatus.PENDING },
+          select: { id: true },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    return tables.map((t) => ({
+      id: t.id,
+      ownerId: t.ownerId,
+      ownerName: t.owner.name,
+      status: t.status,
+      joinMode: t.joinMode,
+      aiSeatType: t.aiSeatType,
+      autoFillSeconds: t.autoFillSeconds,
+      restartMode: t.restartMode as "WELI" | "SIEGER_GIBT",
+      seatsTaken: t.seats.length,
+      hasPendingRequest: t.joinRequests.length > 0,
+      createdAt: t.createdAt,
+    }));
+  }
+
   // ───────────────────────────────────────────────────────────────────
   // Tisch-Detail
   // ───────────────────────────────────────────────────────────────────
