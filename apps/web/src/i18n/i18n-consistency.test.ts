@@ -8,7 +8,7 @@
  *   - Keine leeren Werte
  *
  * **Dialekt-Whitelist**: Inhalte dürfen in beiden Sprachen gleich sein
- * (z.B. „Welli", „Buur"). Wir prüfen nur Struktur, nicht Wert-Diversität.
+ * (z.B. „WELI", „Buur"). Wir prüfen nur Struktur, nicht Wert-Diversität.
  *
  * Läuft als normaler Vitest-Unit-Test → blockiert CI, wenn jemand einen
  * Key nur in einer Sprache anlegt.

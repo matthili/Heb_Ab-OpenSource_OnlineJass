@@ -4,7 +4,7 @@
  * **Sprachen**: `de` (primär, Inhalte im Vorarlberger Dialekt — der
  * Locale-Code ist BCP-47-konform „de"; Vorarlbergerisch ist eine
  * Dialekt-Variante davon, kein eigener Locale), `en` (sekundär).
- * Dialekt-Begriffe (Welli, Bauer/Ober, …) bleiben in beiden Sprachen
+ * Dialekt-Begriffe (WELI, Bauer/Ober, …) bleiben in beiden Sprachen
  * unverändert, um die Vorarlberger Eigenheiten zu erhalten.
  *
  * **Detection**: `i18next-browser-languagedetector` liest localStorage

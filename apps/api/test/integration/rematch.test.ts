@@ -8,7 +8,7 @@
  *   3. Mind. 1 NO → Tisch zurück nach WAITING, NO-Voter entfernt
  *   4. SIEGER_GIBT: Starter wird aus letztem Game-Score + letztem Geber
  *      bestimmt
- *   5. WELI: Starter ist der Sitz mit dem Welli (Schelle-6)
+ *   5. WELI: Starter ist der Sitz mit dem WELI (Schelle-6)
  *   6. Vote-Idempotenz: gleicher Vote nochmal = ok, anderer Vote = 409
  *   7. Nicht-Tisch-Spieler: 403
  *
@@ -168,7 +168,7 @@ describe("M6-E rematch flow", () => {
     expect(after?.status).toBe("CLOSED");
   });
 
-  it("WELI-Mode: Starter ist der Welli-Inhaber", async () => {
+  it("WELI-Mode: Starter ist der WELI-Inhaber", async () => {
     const [owner] = await makeUsers(1);
     const { gameId } = await openAndFinishSoloVsAi(owner!, "WELI");
 
@@ -180,7 +180,7 @@ describe("M6-E rematch flow", () => {
     const newGameId = vote.body.gameId!;
     const starterSeat = vote.body.starter!;
 
-    // Verifikation: der Starter hat tatsächlich das Welli (Schelle-6) auf
+    // Verifikation: der Starter hat tatsächlich das WELI (Schelle-6) auf
     // der Hand. Wir lesen direkt aus dem RoundState via GameService.
     const view = await app.games.viewForSeat(newGameId, starterSeat);
     const hasWeli = view.hand.some((c) => c.suit === "SCHELLE" && c.rank === "SECHS");

@@ -1118,9 +1118,9 @@ export class LobbyService {
   /**
    * Berechnet Starter und neue Hände nach `restartMode`.
    *
-   * **WELI**: Karten werden gemischt; wer das Welli (Schelle-6) bekommt,
+   * **WELI**: Karten werden gemischt; wer das WELI (Schelle-6) bekommt,
    * ist Starter. Das ist effektiv eine zufällige Wahl mit
-   * Welli-Inhaber-Probability, deterministisch aus dem Mischen ableitbar.
+   * WELI-Inhaber-Probability, deterministisch aus dem Mischen ableitbar.
    *
    * **SIEGER_GIBT**: Hände werden ebenfalls gemischt, aber der Starter wird
    * nicht aus den Karten gelesen, sondern aus dem letzten Game-Ergebnis:
@@ -1146,8 +1146,8 @@ export class LobbyService {
           return { newStarter: seat, newHands: hands };
         }
       }
-      // Welli muss irgendwo sein (es ist im Deck) — defensiv.
-      throw new Error("WELI-Modus: Welli-Karte nicht in den Händen gefunden");
+      // WELI muss irgendwo sein (es ist im Deck) — defensiv.
+      throw new Error("WELI-Modus: WELI-Karte nicht in den Händen gefunden");
     }
     // SIEGER_GIBT
     const points = finalScore?.team_card_points ?? [0, 0];
@@ -1345,7 +1345,7 @@ export class LobbyService {
    * Vorbedingung: Tisch ist 4 voll und in WAITING. Caller hat das geprüft.
    *
    * **M6-Vereinfachung**: Trumpf ist hard-coded `EICHEL`, Starter = 0
-   * (Owner). Re-Match (M6-E) berechnet den Starter dynamisch nach Welli /
+   * (Owner). Re-Match (M6-E) berechnet den Starter dynamisch nach WELI /
    * Sieger-Gibt; die Trumpf-Ansage-UI kommt mit M7 (Frontend).
    */
   private async startGameFromTable(tableId: string): Promise<string | null> {
@@ -1453,7 +1453,7 @@ export class LobbyService {
 
 /**
  * Crypto-RNG für Re-Match-Karten-Mischen. Wir nutzen Node-natives
- * `randomBytes` statt `Math.random`, damit Welli-Inhaber bzw. neue Hände
+ * `randomBytes` statt `Math.random`, damit WELI-Inhaber bzw. neue Hände
  * nicht aus dem `Math.random`-Seed vorhersagbar sind.
  */
 function rematchRng(): RandomFn {

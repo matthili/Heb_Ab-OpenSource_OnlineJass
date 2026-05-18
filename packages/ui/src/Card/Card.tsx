@@ -5,6 +5,10 @@
  * nach `public/cards/` kopiert. Dateiname-Schema: `{suit}-{rank}.png`,
  * WELI als Sonderfall `schelle-6-weli.png`.
  *
+ * **Code-Identifier**: Wir behalten `isWeli` als Variablen-Namen
+ * (Camel-Case-Konvention) — der Vergleichswert im sichtbaren UI ist
+ * konsequent „WELI" geschrieben, im JS-Symbol bleibt's lesbar.
+ *
  * **Rendering**: Die PNGs haben transparente abgerundete Ecken — wir
  * legen also **keinen** weißen Hintergrund und **keinen** Rahmen darunter.
  * Stattdessen nur ein Drop-Shadow, der die Karte vom Untergrund abhebt.

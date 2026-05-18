@@ -97,7 +97,7 @@ export interface CreateGameInput {
   tableId?: string;
   /**
    * Optional: vorab gemischte Hände (z.B. wenn die Lobby für den WELI-
-   * Re-Match-Modus den Welli-Inhaber bestimmen muss, bevor das Game
+   * Re-Match-Modus den WELI-Inhaber bestimmen muss, bevor das Game
    * angelegt wird). Wenn nicht gesetzt, mischt `createGame` selbst per
    * `dealCards(rng)`.
    */
