@@ -1,12 +1,58 @@
 /**
  * Globale Styles + Tailwind 4 Entry. Tailwind 4 wird nicht mehr via
  * PostCSS-Plugin angezogen, sondern direkt via `@import "tailwindcss"`.
+ *
+ * **Theme**: Die `@theme`-Direktive (Tailwind 4) registriert unsere
+ * Karten-Farbpalette als Tailwind-Tokens. Damit funktionieren Klassen
+ * wie `bg-jass-paper`, `text-jass-ink`, `border-jass-paperEdge` etc.
+ * direkt in Komponenten — ohne dass die Hex-Codes verstreut werden.
+ *
+ * Die Palette ist aus den Vorarlberger-Jasskarten-PNGs extrahiert
+ * (`assets/cards/`): Papierton, Farbsymbole, Tinte, Stoff. Wir nutzen
+ * sie als Hintergrund- und Akzentfarben — die Karten-PNGs bleiben
+ * unverändert (haben ja eh ihre eigenen Farben).
  */
 @import "tailwindcss";
 
-/* High-Contrast-Toggle-Stub (M11 macht das ausführlich; hier reichen
- * Custom-Properties als Anker). */
+@theme {
+  /* PAPIER / KARTON — Hintergrund-Schichten */
+  --color-jass-cardBg: #faf3e0;
+  --color-jass-paper: #f0e6cf;
+  --color-jass-paperEdge: #d8c79e;
+  --color-jass-rule: #b6a583;
+  --color-jass-cream: #f7efd9;
+  --color-jass-white: #fcf7e6;
+
+  /* FARBSYMBOLE & TEXTIL */
+  --color-jass-red: #bd2a26;
+  --color-jass-redDark: #7a1714;
+  --color-jass-yellow: #e6b324;
+  --color-jass-yellowDark: #b88410;
+  --color-jass-green: #3f9a36;
+  --color-jass-greenDark: #1f6a2a;
+  --color-jass-brown: #5a3520;
+  --color-jass-brownDark: #3a2010;
+
+  /* TINTE & HAUT */
+  --color-jass-ink: #241b14;
+  --color-jass-inkSoft: #5b4a3a;
+  --color-jass-skin: #f0c8a5;
+  --color-jass-skinDark: #b88562;
+  --color-jass-hair: #3e2410;
+  --color-jass-blue: #2c4a7a;
+
+  /* HINTERGRUND (dunkle Bühne) */
+  --color-jass-bg: #1d1814;
+}
+
 :root {
-  --jass-bg: #fafaf9;
-  --jass-fg: #1c1917;
+  /* Body-Defaults aus dem Theme — warmes Papier-Beige statt blau-grau. */
+  --jass-bg: var(--color-jass-paper);
+  --jass-fg: var(--color-jass-ink);
+}
+
+html,
+body {
+  background-color: var(--jass-bg);
+  color: var(--jass-fg);
 }

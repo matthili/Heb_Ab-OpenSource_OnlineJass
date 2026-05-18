@@ -76,7 +76,7 @@ export function TableDetail({ tableId }: Props) {
         </div>
         <p className="text-sm text-stone-500">
           Modus: {data.joinMode} · KI: {data.aiSeatType} · Re-Match:{" "}
-          {data.restartMode === "WELI" ? "Welli" : "Sieger gibt"}
+          {data.restartMode === "WELI" ? "WELI" : "Sieger gibt"}
         </p>
       </header>
 

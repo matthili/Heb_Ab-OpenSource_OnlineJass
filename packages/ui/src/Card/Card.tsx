@@ -3,15 +3,19 @@
  *
  * **Asset-Quelle**: PNGs aus `assets/cards/`, vom Web-App per Build-Step
  * nach `public/cards/` kopiert. Dateiname-Schema: `{suit}-{rank}.png`,
- * Welli als Sonderfall `schelle-6-weli.png`.
+ * WELI als Sonderfall `schelle-6-weli.png`.
+ *
+ * **Rendering**: Die PNGs haben transparente abgerundete Ecken — wir
+ * legen also **keinen** weißen Hintergrund und **keinen** Rahmen darunter.
+ * Stattdessen nur ein Drop-Shadow, der die Karte vom Untergrund abhebt.
+ * Hover/Focus heben die Karte leicht und verstärken den Schatten.
  *
  * **A11y**: Jede Karte hat ein `aria-label` mit der lesbaren Bezeichnung
  * (z.B. „Herz Bauer"). `role="button"` nur, wenn die Karte interaktiv ist
  * (`onClick` gesetzt); reine Render-Karten sind `role="img"`.
  *
- * **Disabled/Illegal**: Wenn `disabled` (z.B. weil nicht in der
- * `legalActionMask`), wird die Karte 50 % transparent und kein Click-
- * Handler triggert. Tab-Fokus überspringt sie via `tabIndex={-1}`.
+ * **Disabled/Illegal**: Wenn `disabled` (z.B. nicht in der
+ * `legalActionMask`), wird die Karte ausgegraut und kein Click triggert.
  *
  * **High-Contrast**: Wir nutzen Tailwind-CSS-Variablen, sodass ein
  * High-Contrast-Toggle (M11) die Ränder verstärken kann, ohne in den
@@ -28,7 +32,7 @@ export interface CardProps {
   /** Visuell „angehoben" (z.B. hover/focus oder ausgewählt). */
   raised?: boolean;
   /** Größe — `md` ist Default, `sm` für die Trick-Anzeige in der Mitte. */
-  size?: "sm" | "md" | "lg";
+  size?: "xs" | "sm" | "md" | "lg";
   /** Optional: zusätzliche Klassen vom Caller. */
   className?: string;
 }
@@ -71,33 +75,42 @@ const RANK_FILE: Record<Rank, string> = {
   ASS: "A",
 };
 
+// Karten-Größen — Höhe ist proportional zur Druck-Aspect-Ratio der PNGs
+// (≈ 0,67). Wir setzen Höhe explizit, damit die Breite über `w-auto` aus
+// dem Bild kommt und der Layout-Slot nicht eine eigene Aspect-Ratio
+// erzwingt (sonst sieht man weiße Streifen oben/unten).
 const SIZE_CLASSES = {
-  sm: "w-12 h-18",
-  md: "w-20 h-30",
-  lg: "w-28 h-42",
+  xs: "h-14", // Mini-Trick-Historie
+  sm: "h-24", // Trick-Mitte
+  md: "h-36", // Hand
+  lg: "h-48", // Großdarstellung (Replay-Detail)
 } as const;
 
 export function Card(props: CardProps) {
   const { card, onClick, disabled = false, raised = false, size = "md", className = "" } = props;
   const interactive = Boolean(onClick) && !disabled;
 
-  // Dateiname: Sonderfall Welli (Schelle-6) bekommt `schelle-6-weli.png`,
+  // Dateiname: Sonderfall WELI (Schelle-6) bekommt `schelle-6-weli.png`,
   // alle anderen folgen dem `{suit}-{rank}.png`-Schema.
   const isWeli = card.suit === "SCHELLE" && card.rank === "SECHS";
   const imgSrc = isWeli
     ? "/cards/schelle-6-weli.png"
     : `/cards/${SUIT_FILE[card.suit]}-${RANK_FILE[card.rank]}.png`;
 
-  const label = `${SUIT_LABEL[card.suit]} ${RANK_LABEL[card.rank]}${isWeli ? " (Welli)" : ""}`;
+  const label = `${SUIT_LABEL[card.suit]} ${RANK_LABEL[card.rank]}${isWeli ? " (WELI)" : ""}`;
 
+  // Kein Hintergrund, kein Rahmen — nur ein Drop-Shadow auf das SVG/PNG.
+  // `drop-shadow` (statt `shadow`) folgt der Alpha-Maske, sodass die
+  // abgerundeten transparenten Ecken nicht im Rechteck-Schatten landen.
   const baseCls = [
-    "select-none rounded-md shadow-sm border border-stone-300 bg-white",
-    "transition-transform duration-150 ease-out",
+    "select-none w-auto",
     SIZE_CLASSES[size],
-    raised ? "-translate-y-2 shadow-md" : "",
-    disabled ? "opacity-50 cursor-not-allowed" : "",
+    "transition-transform duration-150 ease-out",
+    "drop-shadow-md",
+    raised ? "-translate-y-2 drop-shadow-xl" : "",
+    disabled ? "opacity-40 grayscale cursor-not-allowed" : "",
     interactive
-      ? "cursor-pointer hover:-translate-y-1 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-amber-500"
+      ? "cursor-pointer hover:-translate-y-2 hover:drop-shadow-xl focus:outline-none focus-visible:drop-shadow-[0_0_0_3px_rgba(245,158,11,0.7)]"
       : "",
     className,
   ]
@@ -106,15 +119,20 @@ export function Card(props: CardProps) {
 
   if (interactive) {
     return (
-      <button type="button" aria-label={label} className={baseCls} onClick={() => onClick!(card)}>
-        <img src={imgSrc} alt="" className="w-full h-full object-contain" draggable={false} />
+      <button
+        type="button"
+        aria-label={label}
+        className={`${baseCls} bg-transparent border-0 p-0`}
+        onClick={() => onClick!(card)}
+      >
+        <img src={imgSrc} alt="" className="h-full w-auto" draggable={false} />
       </button>
     );
   }
 
   return (
-    <div role="img" aria-label={label} className={baseCls} tabIndex={disabled ? -1 : undefined}>
-      <img src={imgSrc} alt="" className="w-full h-full object-contain" draggable={false} />
+    <div role="img" aria-label={label} className={baseCls}>
+      <img src={imgSrc} alt="" className="h-full w-auto" draggable={false} />
     </div>
   );
 }

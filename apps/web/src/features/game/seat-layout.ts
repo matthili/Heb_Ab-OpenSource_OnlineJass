@@ -3,12 +3,17 @@
  * der Mitspieler. Die Trick-Karten-Position macht jetzt direkt die
  * `@jass/ui`-Komponente `Trick`.
  *
- *   Relative: 0 = unten (ich), 1 = rechts, 2 = oben, 3 = links
+ * **Drehrichtung**: Beim Jassen läuft alles **im Uhrzeigersinn**. Wenn
+ * ich (Sitz 0) unten sitze, ist der nächste Spieler (Sitz 1) **links**
+ * von mir, dann der Partner gegenüber, dann der dritte rechts.
+ *
+ *   Relative: 0 = unten (ich), 1 = links (nächster), 2 = oben (Partner),
+ *             3 = rechts (vorheriger)
  */
 
-export type ScreenSlot = "bottom" | "right" | "top" | "left";
+export type ScreenSlot = "bottom" | "left" | "top" | "right";
 
-const SLOTS: readonly ScreenSlot[] = ["bottom", "right", "top", "left"];
+const SLOTS: readonly ScreenSlot[] = ["bottom", "left", "top", "right"];
 
 export function relativeSlot(absoluteSeat: number, mySeat: number): ScreenSlot {
   const idx = (((absoluteSeat - mySeat) % 4) + 4) % 4;

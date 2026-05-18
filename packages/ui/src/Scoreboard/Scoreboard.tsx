@@ -50,17 +50,19 @@ export function Scoreboard({
     : null;
 
   return (
-    <div className="flex gap-4 text-sm border-b border-stone-200 pb-2 items-center">
-      <span>
-        Eigenes Team: <strong className="text-stone-900">{ownTeamScore}</strong>
+    <div className="flex gap-4 text-sm border-b border-jass-paperEdge pb-2 items-center">
+      <span className="text-jass-inkSoft">
+        Eigenes Team: <strong className="text-jass-ink tabular-nums">{ownTeamScore}</strong>
       </span>
-      <span>
-        Gegner: <strong className="text-stone-900">{oppTeamScore}</strong>
+      <span className="text-jass-inkSoft">
+        Gegner: <strong className="text-jass-ink tabular-nums">{oppTeamScore}</strong>
       </span>
       {modeText && (
-        <span className="rounded bg-amber-100 px-2 py-0.5 text-xs text-amber-900">{modeText}</span>
+        <span className="rounded bg-jass-yellow px-2 py-0.5 text-xs text-jass-ink font-medium">
+          {modeText}
+        </span>
       )}
-      <span className="ml-auto text-stone-500">Stich {trickIdx + 1} / 9</span>
+      <span className="ml-auto text-jass-inkSoft">Stich {trickIdx + 1} / 9</span>
     </div>
   );
 }

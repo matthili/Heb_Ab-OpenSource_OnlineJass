@@ -121,7 +121,7 @@ function Header() {
   });
 
   return (
-    <header className="border-b border-stone-200 bg-white">
+    <header className="border-b border-jass-paperEdge bg-jass-cream">
       <nav className="mx-auto max-w-5xl px-4 py-3 flex items-center gap-6">
         <Link to="/" className="font-semibold text-lg">
           {t("appName")}

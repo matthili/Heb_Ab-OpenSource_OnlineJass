@@ -146,7 +146,7 @@ export function OpenTableDialog({ open, onClose }: Props) {
           {(
             [
               ["SIEGER_GIBT", "Sieger gibt — der Verlierer kommt raus"],
-              ["WELI", "Welli ausspielen — wer das Welli hat, beginnt"],
+              ["WELI", "WELI ausspielen — wer das WELI hat, beginnt"],
             ] as const
           ).map(([value, label]) => (
             <label key={value} className="flex items-center gap-2 text-sm">

@@ -14,3 +14,5 @@ jasskarten-assets
 # Helm-Templates: prettier kennt das {{ ... }}-Go-Template-Syntax nicht und
 # zerreißt die YAML — Helm lint kümmert sich um die Korrektheit.
 infra/helm/*/templates/
+# Astro: ohne prettier-plugin-astro kein Parser. Wir lassen es manuell.
+*.astro

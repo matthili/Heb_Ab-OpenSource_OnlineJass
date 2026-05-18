@@ -2,9 +2,11 @@
  * Trick-Visualisierung — die im aktuellen Stich liegenden Karten an
  * ihren 4 Positionen.
  *
- * **Layout**: 3×3-Grid mit den 4 Sitz-Slots (Sitz 0 = bottom, 1 = right,
- * 2 = top, 3 = left, jeweils RELATIV zum eigenen Sitz). Die Mitte (1,1)
- * bleibt leer.
+ * **Layout**: 3×3-Grid mit den 4 Sitz-Slots. Beim Jass-Spiel läuft die
+ * Reihenfolge **im Uhrzeigersinn** — relativ zum eigenen Sitz heißt das:
+ * Sitz 0 = bottom (ich), Sitz 1 = left (nächster Spieler), Sitz 2 = top
+ * (Partner), Sitz 3 = right (vorheriger Spieler). Die Mitte (1,1) bleibt
+ * leer.
  *
  * **Slot-Berechnung**: Karten kommen vom Server in Spiel-Reihenfolge,
  * beginnend bei `starter`. Karte `i` gehört absolut zu
@@ -29,8 +31,8 @@ export interface TrickProps {
   winnerSeat?: number;
 }
 
-type Slot = "bottom" | "right" | "top" | "left";
-const SLOTS: readonly Slot[] = ["bottom", "right", "top", "left"];
+type Slot = "bottom" | "left" | "top" | "right";
+const SLOTS: readonly Slot[] = ["bottom", "left", "top", "right"];
 
 const SLOT_POS: Record<Slot, string> = {
   bottom: "row-start-3 col-start-2 self-end justify-self-center",
