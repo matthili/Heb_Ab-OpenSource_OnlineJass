@@ -192,7 +192,7 @@ function LanguageSwitcher() {
         className="rounded border border-stone-300 px-2 py-1 text-sm bg-white"
         aria-label={t("language.label")}
       >
-        <option value="de-vlbg">{t("language.de-vlbg")}</option>
+        <option value="de">{t("language.de")}</option>
         <option value="en">{t("language.en")}</option>
       </select>
     </label>

@@ -49,7 +49,7 @@ model User {
   // Domänen-Felder oberhalb des Better-Auth-Minimums
   role      Role       @default(PLAYER)
   status    UserStatus @default(ACTIVE)
-  locale    String     @default("de-vlbg")
+  locale    String     @default("de")
   deletedAt DateTime? // Soft-Delete (Anonymisierung in M10)
 
   profile        Profile?

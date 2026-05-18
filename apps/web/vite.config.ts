@@ -53,7 +53,7 @@ export default defineConfig({
         orientation: "portrait-primary",
         start_url: "/",
         scope: "/",
-        lang: "de-vlbg",
+        lang: "de",
         icons: [
           { src: "pwa-64x64.png", sizes: "64x64", type: "image/png" },
           { src: "pwa-192x192.png", sizes: "192x192", type: "image/png" },

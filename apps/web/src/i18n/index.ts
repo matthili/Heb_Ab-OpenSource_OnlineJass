@@ -1,13 +1,15 @@
 /**
  * i18n-Initialisierung für die Spiel-SPA.
  *
- * **Sprachen**: `de-vlbg` (primär, Plan-Doc §1), `en` (sekundär).
+ * **Sprachen**: `de` (primär, Inhalte im Vorarlberger Dialekt — der
+ * Locale-Code ist BCP-47-konform „de"; Vorarlbergerisch ist eine
+ * Dialekt-Variante davon, kein eigener Locale), `en` (sekundär).
  * Dialekt-Begriffe (Welli, Bauer/Ober, …) bleiben in beiden Sprachen
  * unverändert, um die Vorarlberger Eigenheiten zu erhalten.
  *
  * **Detection**: `i18next-browser-languagedetector` liest localStorage
  * (`i18nextLng`-Key) — der manuelle Sprach-Wechsel aus der UI persistiert
- * dort. Fallback ist `de-vlbg`.
+ * dort. Fallback ist `de`.
  *
  * **Namespace**: nur `common`. Wenn die App größer wird, splitten wir
  * (z.B. nach Feature: `lobby.json`, `game.json`).
@@ -16,7 +18,7 @@ import i18n from "i18next";
 import LanguageDetector from "i18next-browser-languagedetector";
 import { initReactI18next } from "react-i18next";
 
-import deVlbg from "./de-vlbg/common.json";
+import de from "./de/common.json";
 import en from "./en/common.json";
 
 void i18n
@@ -24,11 +26,11 @@ void i18n
   .use(initReactI18next)
   .init({
     resources: {
-      "de-vlbg": { common: deVlbg },
+      de: { common: de },
       en: { common: en },
     },
-    fallbackLng: "de-vlbg",
-    supportedLngs: ["de-vlbg", "en"],
+    fallbackLng: "de",
+    supportedLngs: ["de", "en"],
     ns: ["common"],
     defaultNS: "common",
     interpolation: {
@@ -38,9 +40,10 @@ void i18n
     detection: {
       order: ["localStorage", "navigator"],
       caches: ["localStorage"],
-      // Browser-Sprache → mappe auf de-vlbg, falls deutsch.
+      // Browser-Sprache: alle deutschen Varianten (de-DE, de-AT, de-CH, …)
+      // auf `de` mappen, alles andere durchreichen.
       convertDetectedLanguage: (lng) => {
-        if (lng.startsWith("de")) return "de-vlbg";
+        if (lng.startsWith("de")) return "de";
         return lng;
       },
     },

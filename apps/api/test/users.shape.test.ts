@@ -19,7 +19,7 @@ const USER: User = {
   updatedAt: new Date("2026-01-01"),
   role: "PLAYER",
   status: "ACTIVE",
-  locale: "de-vlbg",
+  locale: "de",
   deletedAt: null,
 };
 
