@@ -3,7 +3,8 @@
  *   - `Scoreboard` (Punkte/Trumpf-Anzeige)
  *   - Status-Banner („du bist dran" / Spieler X)
  *   - `PlayingArea`: Sitz-Labels an den 4 Rändern + `Trick` in der Mitte
- *   - `LastTrickMini` in der unteren-rechten Ecke (vorletzter Stich)
+ *   - `TrickMini` in den unteren Ecken (links: erster Stich der Runde,
+ *     rechts: letzter abgeschlossener Stich)
  *   - `Hand` mit den eigenen Karten als Fan
  *
  * **Trick-Linger**: Der zentrale Trick wird vom `useDisplayedTrick`-Hook
@@ -21,7 +22,7 @@ import { AnnouncementDialog } from "./AnnouncementDialog";
 import { relativeSlot, SEAT_LABEL_POS } from "./seat-layout";
 import type { AnnouncementDecision, PlayerView } from "./types";
 import { useDisplayedTrick } from "./useDisplayedTrick";
-import { LastTrickMini } from "./LastTrickMini";
+import { TrickMini } from "./TrickMini";
 
 interface Props {
   view: PlayerView;
@@ -171,15 +172,15 @@ function PlayingArea({
 }) {
   return (
     <div
-      // **Responsive Höhe**: `min-h-[26rem]` verhindert das Springen
-      // zwischen Stichen (selbst bei leerem Trick mindestens 26rem hoch).
-      // `h-[clamp(...)]` skaliert zwischen 26rem und 40rem hoch, anhand
-      // von 60% Viewport-Höhe — auf großen Bildschirmen wird das Spielfeld
-      // also wirklich groß, auf kleinen bleibt's mindestens lesbar.
-      // `grid-rows-[auto_1fr_auto]` verteilt die drei Bahnen so: oben/unten
-      // Sitz-Labels in ihrer natürlichen Höhe, Mitte nimmt den ganzen
-      // verbleibenden Platz für den Trick.
-      className="grid grid-cols-3 grid-rows-[auto_1fr_auto] gap-2 min-h-[26rem] h-[clamp(26rem,60vh,40rem)] rounded-lg p-4 relative shadow-inner"
+      // **Responsive Höhe**: Mindesthöhe 32rem — bei h-32-Karten (8rem)
+      // im 3×3-Sub-Grid brauchen die 4 Karten in Slots oben/mitte/unten
+      // mindestens 3×8rem = 24rem nutzbare Höhe; plus Sitz-Labels (je ~2rem)
+      // und Padding kommen wir auf ~32rem als sinnvolle Untergrenze, sonst
+      // überlappen sich die Karten in den Slots.
+      // `h-[clamp(...)]` skaliert mit 65% Viewport-Höhe bis 48rem hoch.
+      // `grid-rows-[auto_1fr_auto]` verteilt die drei Bahnen: oben/unten
+      // Sitz-Labels in ihrer natürlichen Höhe, Mitte nimmt den Rest.
+      className="grid grid-cols-3 grid-rows-[auto_1fr_auto] gap-2 min-h-[32rem] h-[clamp(32rem,65vh,48rem)] rounded-lg p-4 relative shadow-inner"
       style={{
         backgroundColor: "var(--color-jass-greenDark)",
         backgroundImage:
@@ -229,14 +230,21 @@ function PlayingArea({
         />
       </div>
 
-      {/* Mini-Anzeige des letzten abgeschlossenen Stichs in der unteren
-          rechten Ecke. Nur sichtbar, wenn das Linger nicht mehr aktiv
-          ist (sonst doppelt). */}
+      {/* Erster Stich der Runde — unten links, bleibt sichtbar
+          während der ganzen Runde (Vorarlberger Tradition: man darf
+          den ersten Stich nochmal anschauen). */}
+      <div className="row-start-3 col-start-1 self-end justify-self-start z-20 pointer-events-auto">
+        <TrickMini state={state} mySeat={mySeat} seatNames={seatNames} which="first" />
+      </div>
+
+      {/* Letzter abgeschlossener Stich — unten rechts. Während Linger
+          ausgeblendet (zentrale Anzeige zeigt ihn schon). */}
       <div className="row-start-3 col-start-3 self-end justify-self-end z-20 pointer-events-auto">
-        <LastTrickMini
+        <TrickMini
           state={state}
           mySeat={mySeat}
           seatNames={seatNames}
+          which="last"
           hideBecauseLingering={lingering}
         />
       </div>

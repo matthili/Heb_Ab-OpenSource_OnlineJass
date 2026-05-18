@@ -1,27 +1,25 @@
 /**
- * `useDisplayedTrick` — verzögert die Trick-Auflösung um 1,5 s, damit
- * der Spieler sehen kann, welche vierte Karte den Stich gewonnen hat.
+ * `useDisplayedTrick` — verzögert die Trick-Auflösung um 1,8 s, damit der
+ * Spieler sehen kann, welche vierte Karte den Stich gewonnen hat.
  *
- * **Ohne diesen Hook** verschwindet der Stich aus der UI in dem Moment,
- * wo die 4. Karte gespielt wird (Server schickt sofort den Zustand mit
- * `current_trick_cards = []` und `trick_idx + 1`). Damit hat der Spieler
- * keine Chance, die Gewinnerkarte zu sehen.
+ * **Warum nicht „4→0 Karten"-Detection?** Der Server ruft im 4. Move
+ * `applyMove` auf, das ohne Umweg den Stich abschließt:
+ * `current_trick_cards` springt auf `[]` und `completed_tricks` wächst
+ * um 1. Das Frontend sieht NIEMALS einen 4-Karten-Zwischenstand — die
+ * 4. Karte ist schon weg, wenn der WS-State ankommt. Deshalb triggern
+ * wir den Linger auf **`completed_tricks.length`-Wachstum** statt auf
+ * den nie sichtbaren 4-Karten-State.
  *
- * **Mit diesem Hook**: Wenn `current_trick_cards.length` von 4 auf 0
- * fällt, halten wir den alten Stich (aus `completed_tricks[last]`)
- * 1500 ms lang sichtbar und zeigen die Gewinnerkarte mit Ring-Highlight.
- * Danach übergeben wir auf den neuen leeren Trick.
- *
- * Wenn währenddessen der nächste Sitz schon gespielt hätte (KI ist
- * schnell), holen wir den vom Server hinterher — der State wird in einem
- * Ref-buffer gehalten und beim Timer-End angewandt.
+ * Bei Wachstum: wir nehmen den letzten `completed_tricks`-Eintrag und
+ * zeigen ihn samt Gewinner-Highlight 1800 ms lang anstelle des leeren
+ * aktuellen Tricks an.
  */
 import { useEffect, useRef, useState } from "react";
 
 import { trickWinner } from "@jass/engine";
-import type { Card, GameState, Variant } from "@jass/engine";
+import type { Card, GameState } from "@jass/engine";
 
-const LINGER_MS = 1500;
+const LINGER_MS = 1800;
 
 export interface DisplayedTrick {
   cards: readonly Card[];
@@ -37,7 +35,6 @@ export interface DisplayedTrick {
  * gerade-eben-fertigen, falls wir noch im Linger-Window sind.
  */
 export function useDisplayedTrick(state: GameState | undefined): DisplayedTrick {
-  // Aktuelle Live-Werte aus dem State, fallback für „noch nichts da".
   const live: DisplayedTrick = {
     cards: state?.current_trick_cards ?? [],
     starter: state?.current_trick_starter ?? 0,
@@ -46,38 +43,30 @@ export function useDisplayedTrick(state: GameState | undefined): DisplayedTrick 
 
   // State für den „eingefrorenen" Stich; null heißt „kein Linger aktiv".
   const [frozen, setFrozen] = useState<DisplayedTrick | null>(null);
-  // Wir merken uns den vorigen Live-Trick, um den 4→0-Übergang zu erkennen.
-  const prevRef = useRef<DisplayedTrick>(live);
+  // Wachstum von completed_tricks ist unser Trigger: jedes Inkrement
+  // bedeutet „ein Stich wurde gerade abgeschlossen".
+  const prevCompletedCount = useRef<number>(0);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    const prev = prevRef.current;
-    prevRef.current = live;
+    const completedCount = state?.completed_tricks.length ?? 0;
 
-    // Übergang erkannt: vorher 4 Karten, jetzt 0 → ein Trick wurde gerade
-    // abgeschlossen. Wir zeigen den vorherigen Zustand inklusive Gewinner-
-    // Highlight für LINGER_MS Millisekunden.
-    if (prev.cards.length === 4 && live.cards.length === 0 && state) {
-      const variant: Variant = state.variant;
-      const winnerIdx = trickWinner(prev.cards, variant);
-      const winnerSeat = (prev.starter + winnerIdx) % 4;
+    if (state && completedCount > prevCompletedCount.current && completedCount > 0) {
+      // Der zuletzt abgeschlossene Trick — den frieren wir ein.
+      const lastTrick = state.completed_tricks[completedCount - 1]!;
+      const winnerIdx = trickWinner(lastTrick.cards, state.variant);
+      const winnerSeat = (lastTrick.starter + winnerIdx) % 4;
       setFrozen({
-        cards: prev.cards,
-        starter: prev.starter,
+        cards: lastTrick.cards,
+        starter: lastTrick.starter,
         winnerSeat,
         lingering: true,
       });
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
-      timeoutRef.current = setTimeout(() => {
-        setFrozen(null);
-      }, LINGER_MS);
+      timeoutRef.current = setTimeout(() => setFrozen(null), LINGER_MS);
     }
 
-    return () => {
-      // Bei unmount Timer wegräumen; den setFrozen-Reset machen wir hier
-      // bewusst NICHT, sonst kollidiert es mit dem regulären Render-Cycle.
-    };
-    // state als Abhängigkeit reicht (live wird aus state abgeleitet).
+    prevCompletedCount.current = completedCount;
   }, [state]);
 
   // Cleanup beim Komponent-Unmount.
