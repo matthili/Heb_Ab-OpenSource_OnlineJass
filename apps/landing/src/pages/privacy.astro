@@ -2,7 +2,213 @@
 import Base from "../layouts/Base.astro";
 ---
 
-<Base title="Datenschutz — Heb ab!">
-  <h1>Datenschutz</h1>
-  <p>Platzhalter — die Datenschutzerklärung kommt mit M10 (DSGVO-Roll-Out).</p>
+<Base
+  title="Datenschutz — Heb ab!"
+  description="Wer wir sind, welche Daten wir verarbeiten, wie lange und auf welcher Rechtsgrundlage."
+>
+  <article class="prose">
+    <h1>Datenschutzerklärung</h1>
+
+    <p>
+      „Heb ab!" ist eine selbst-gehostete Multiplayer-Plattform für Vorarlberger Kreuz-Jass.
+      Diese Erklärung beschreibt, welche personenbezogenen Daten beim Spielen entstehen,
+      wie wir sie verarbeiten, an wen sie weitergegeben werden — und welche Rechte du
+      als Spieler:in hast.
+    </p>
+
+    <h2>1. Verantwortlicher</h2>
+    <p>
+      Verantwortlich für die Datenverarbeitung ist der jeweilige Betreiber dieser
+      Instanz. Konkrete Kontaktdaten und Anschrift findest du im
+      <a href="/imprint">Impressum</a>.
+    </p>
+
+    <h2>2. Welche Daten wir verarbeiten</h2>
+    <h3>2.1 Beim Registrieren</h3>
+    <ul>
+      <li>
+        <strong>E-Mail-Adresse</strong> — Pflicht. Wir nutzen sie zum Bestätigen des
+        Accounts und für Passwort-Resets.
+      </li>
+      <li><strong>Spielername</strong> — der öffentlich angezeigte Name.</li>
+      <li>
+        <strong>Passwort-Hash (Argon2id)</strong> — wir speichern niemals dein Passwort
+        im Klartext.
+      </li>
+    </ul>
+
+    <h3>2.2 Optionale Profildaten</h3>
+    <ul>
+      <li>Vorname, Nachname, Geburtstag, Wohnort, Land, Hobbys, Bio, Avatar.</li>
+      <li>
+        Pro Feld kannst du selbst entscheiden, ob es <em>privat</em>,
+        <em>nur für eingeloggte Spieler</em>, <em>nur für Freunde</em> oder <em>öffentlich</em>
+        sichtbar ist.
+      </li>
+    </ul>
+
+    <h3>2.3 Spiel-Daten</h3>
+    <ul>
+      <li>Welche Karten du wann gespielt hast (für Replays + Statistiken).</li>
+      <li>Mit wem du gespielt hast und ob ihr gewonnen habt.</li>
+      <li>Chat-Nachrichten (Lobby / Tisch / Private Nachrichten an Freunde).</li>
+    </ul>
+
+    <h3>2.4 Technische Daten</h3>
+    <ul>
+      <li>
+        <strong>Login-Cookie</strong> (HttpOnly, Secure, SameSite=Lax). Nötig zum
+        Eingeloggt-Bleiben; kein Tracking.
+      </li>
+      <li>
+        <strong>Server-Logs</strong> (IP, User-Agent, Pfad, Status). Dienen der
+        Fehlersuche und Missbrauchsabwehr. Standard-Aufbewahrung: 30 Tage.
+      </li>
+      <li>
+        <strong>Audit-Log</strong> für sicherheitsrelevante Aktionen (Login,
+        Admin-Eingriffe). Aufbewahrung dauerhaft, aus Rechenschaftspflicht nach
+        Art. 5(2) DSGVO.
+      </li>
+    </ul>
+
+    <h2>3. Rechtsgrundlagen</h2>
+    <ul>
+      <li>
+        <strong>Vertrag</strong> (Art. 6(1)(b) DSGVO) — Bereitstellen des
+        Spielebetriebs.
+      </li>
+      <li>
+        <strong>Berechtigtes Interesse</strong> (Art. 6(1)(f)) — Sicherheit, Anti-
+        Missbrauch, Fehleranalyse.
+      </li>
+      <li>
+        <strong>Einwilligung</strong> (Art. 6(1)(a)) — z. B. wenn wir später optionale
+        Statistik-Cookies anbieten (Stand heute: keine).
+      </li>
+    </ul>
+
+    <h2>4. Cookies</h2>
+    <p>
+      Wir setzen <strong>nur technisch notwendige Cookies</strong>:
+    </p>
+    <ul>
+      <li>
+        <code>better-auth.session_token</code> — dein Login. Wenn du dich abmeldest
+        oder das Konto löschst, ist es weg.
+      </li>
+      <li>
+        <code>heb-ab.consent</code> — speichert, dass du diesen Hinweis gesehen
+        hast (ein einziges Boolean, keinerlei Tracking-Werte).
+      </li>
+    </ul>
+    <p>
+      Tracking-Cookies, Werbe-Pixel und Drittanbieter-Analytics setzen wir nicht.
+    </p>
+
+    <h2>5. Empfänger / Weitergabe</h2>
+    <p>
+      Daten verlassen unseren Server nicht — es gibt keine Werbenetzwerke, keine
+      US-Analyse-Dienste, kein CDN-Tracking. Ausnahme: wenn ein Spielzug an einen
+      KI-Mitspieler geht, wird der pseudonymisierte Spielzustand (ohne deine Identität)
+      kurz an den Inferenz-Service geschickt — der läuft auf derselben Infrastruktur.
+    </p>
+
+    <h2>6. Speicherdauer</h2>
+    <ul>
+      <li><strong>Account</strong>: bis du ihn löschst.</li>
+      <li>
+        <strong>Server-Logs</strong>: 30 Tage, danach automatisch rotiert.
+      </li>
+      <li>
+        <strong>Lobby-Chat</strong>: 12 Stunden, dann automatisch entfernt.
+      </li>
+      <li>
+        <strong>Spiel-/Tisch-Chat / Private Nachrichten</strong>: solange das
+        Spiel/Profil existiert oder du sie nicht selbst löschst.
+      </li>
+      <li>
+        <strong>Audit-Log</strong>: dauerhaft (Rechenschaftspflicht).
+      </li>
+    </ul>
+
+    <h2>7. Deine Rechte</h2>
+    <ul>
+      <li>
+        <strong>Auskunft</strong> (Art. 15) — du kannst deine Daten jederzeit als JSON
+        herunterladen unter <a href="/app/profile?tab=data">Profil → Meine Daten</a>.
+      </li>
+      <li>
+        <strong>Berichtigung</strong> (Art. 16) — Profil-Felder kannst du im
+        Profil-Editor selbst ändern.
+      </li>
+      <li>
+        <strong>Löschung</strong> (Art. 17) — über
+        <a href="/app/profile?tab=data">Profil → Meine Daten → Konto löschen</a>.
+        Wir anonymisieren deinen Account; deine Spiel-Historie bleibt für Mitspieler
+        sichtbar, aber dein Name wird durch <code>anonym-…</code> ersetzt.
+      </li>
+      <li>
+        <strong>Datenübertragbarkeit</strong> (Art. 20) — JSON-Export wie oben.
+      </li>
+      <li>
+        <strong>Widerspruch</strong> (Art. 21) — schreib uns über die im Impressum
+        genannten Kontaktdaten.
+      </li>
+      <li>
+        <strong>Beschwerde</strong> bei einer Aufsichtsbehörde
+        (Datenschutzbehörde, www.dsb.gv.at).
+      </li>
+    </ul>
+
+    <h2>8. Sicherheit</h2>
+    <ul>
+      <li>Verschlüsselter Transport (TLS).</li>
+      <li>Passwörter mit Argon2id gehasht.</li>
+      <li>
+        Administrative Geheimnisse (z.B. SMTP-Passwörter) AES-256-GCM-verschlüsselt
+        in der Datenbank.
+      </li>
+      <li>Rate-Limiting auf Login + Chat + WebSocket-Events.</li>
+    </ul>
+
+    <h2>9. Änderungen dieser Erklärung</h2>
+    <p>
+      Bei substanziellen Änderungen informieren wir eingeloggte User per E-Mail
+      und blenden beim nächsten Besuch einen Hinweis ein.
+    </p>
+
+    <p class="muted">
+      Stand: 2026-05-18. Diese Erklärung kann jederzeit von der jeweiligen Instanz
+      angepasst werden — bitte beim Betreiber prüfen.
+    </p>
+  </article>
 </Base>
+
+<style>
+  .prose {
+    max-width: 48rem;
+    line-height: 1.6;
+  }
+  .prose h2 {
+    margin-top: 2rem;
+    margin-bottom: 0.5rem;
+  }
+  .prose h3 {
+    margin-top: 1.25rem;
+    margin-bottom: 0.25rem;
+  }
+  .prose ul {
+    padding-left: 1.25rem;
+  }
+  .prose code {
+    background: #f5f5f4;
+    padding: 0.1rem 0.3rem;
+    border-radius: 0.25rem;
+    font-size: 0.875em;
+  }
+  .muted {
+    color: #78716c;
+    font-size: 0.875rem;
+    margin-top: 2rem;
+  }
+</style>

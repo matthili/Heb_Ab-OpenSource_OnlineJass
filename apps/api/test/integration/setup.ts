@@ -39,6 +39,8 @@ import Fastify, { type FastifyInstance } from "fastify";
 
 import { AppModule } from "../../src/app.module.js";
 import { GameService } from "../../src/modules/game/game.service.js";
+import { ReplayService } from "../../src/modules/game/replay.service.js";
+import { GdprService } from "../../src/modules/users/gdpr.service.js";
 import { AutoFillService } from "../../src/modules/lobby/auto-fill.service.js";
 import { MailService } from "../../src/modules/mail/mail.service.js";
 import { PrismaService } from "../../src/modules/prisma/prisma.service.js";
@@ -91,6 +93,10 @@ export interface TestAppHandle {
   redis: RedisService;
   /** GameService aus dem DI-Container — für Service-direkte Game-Tests. */
   games: GameService;
+  /** ReplayService aus dem DI-Container. */
+  replay: ReplayService;
+  /** GdprService aus dem DI-Container. */
+  gdpr: GdprService;
   /** Auto-Fill-Sweeper. In Tests stoßen wir `.tick()` manuell an. */
   autoFill: AutoFillService;
   /** Capture-Sink des Mail-Services. */
@@ -233,6 +239,8 @@ export async function setupTestApp(): Promise<TestAppHandle> {
   const prisma = app.get(PrismaService);
   const redisSvc = app.get(RedisService);
   const gamesSvc = app.get(GameService);
+  const replaySvc = app.get(ReplayService);
+  const gdprSvc = app.get(GdprService);
   const autoFillSvc = app.get(AutoFillService);
 
   // ─── 7. Reset-Funktion ────────────────────────────────────────────────
@@ -296,6 +304,8 @@ export async function setupTestApp(): Promise<TestAppHandle> {
     prisma,
     redis: redisSvc,
     games: gamesSvc,
+    replay: replaySvc,
+    gdpr: gdprSvc,
     autoFill: autoFillSvc,
     capturedMails,
     inference: stub.control,

@@ -6,7 +6,31 @@
     "signIn": "Anmelden",
     "signUp": "Registrieren",
     "signOut": "Abmelden",
-    "greeting": "Servus, {{name}}"
+    "greeting": "Servus, {{name}}",
+    "profile": "Profil"
+  },
+
+  "profile": {
+    "title": "Mein Profil",
+    "tabs": {
+      "history": "Spiel-History",
+      "data": "Meine Daten"
+    },
+    "history": {
+      "title": "Bisherige Partien",
+      "loading": "Lade Partien…",
+      "empty": "Du hast noch keine Partie gespielt. Geh in die Lobby und öffne oder joine einen Tisch.",
+      "loadError": "Konnte History nicht laden: {{message}}",
+      "team": "Team {{team}}",
+      "won": "gewonnen",
+      "lost": "verloren",
+      "draw": "unentschieden",
+      "matsch": "Matsch!",
+      "duringGame": "Während Partie #{{shortId}} · Mitspieler: {{partners}}",
+      "viewReplay": "Replay ansehen",
+      "running": "läuft noch",
+      "finalScore": "{{own}} : {{opp}}"
+    }
   },
 
   "auth": {

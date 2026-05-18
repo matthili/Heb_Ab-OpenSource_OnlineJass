@@ -11,6 +11,7 @@ import { createRootRouteWithContext, Link, Outlet, useNavigate } from "@tanstack
 import { useCallback } from "react";
 import { useTranslation } from "react-i18next";
 
+import { ConsentBanner } from "~/features/consent/ConsentBanner";
 import type { MeProfileResponse } from "~/features/admin/types";
 import { api } from "~/lib/api";
 import { signOut, useSession } from "~/lib/auth-client";
@@ -33,6 +34,7 @@ function RootLayout() {
       <main className="flex-1 mx-auto max-w-5xl w-full px-4 py-6">
         <Outlet />
       </main>
+      <ConsentBanner />
     </div>
   );
 }
@@ -138,6 +140,9 @@ function Header() {
                   Admin
                 </Link>
               )}
+              <Link to="/profile" className="text-sm text-stone-700 hover:text-stone-900">
+                {t("nav.profile")}
+              </Link>
               <span className="text-sm text-stone-600">
                 {/* "Servus, " — fester Präfix; Name als <strong>. Zweisprachig
                     via i18n: t("nav.greeting") liefert die Variante mit

@@ -6,7 +6,31 @@
     "signIn": "Sign in",
     "signUp": "Register",
     "signOut": "Sign out",
-    "greeting": "Hi, {{name}}"
+    "greeting": "Hi, {{name}}",
+    "profile": "Profile"
+  },
+
+  "profile": {
+    "title": "My profile",
+    "tabs": {
+      "history": "Game history",
+      "data": "My data"
+    },
+    "history": {
+      "title": "Past games",
+      "loading": "Loading games…",
+      "empty": "You haven't played a game yet. Visit the lobby to open or join a table.",
+      "loadError": "Could not load history: {{message}}",
+      "team": "Team {{team}}",
+      "won": "won",
+      "lost": "lost",
+      "draw": "draw",
+      "matsch": "Matsch!",
+      "duringGame": "During game #{{shortId}} · partners: {{partners}}",
+      "viewReplay": "View replay",
+      "running": "in progress",
+      "finalScore": "{{own}} : {{opp}}"
+    }
   },
 
   "auth": {
