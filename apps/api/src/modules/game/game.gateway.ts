@@ -39,14 +39,18 @@ import {
 import { createAdapter } from "@socket.io/redis-adapter";
 import type { Server, Socket } from "socket.io";
 
+import { AuditService } from "../audit/audit.service.js";
 import { AuthService } from "../auth/auth.service.js";
 import { RedisService } from "../redis/redis.service.js";
 import { GameLockService } from "./game-lock.service.js";
 import { GameService, type AnnouncementDecision, type PlayerView } from "./game.service.js";
+import { SocketRateTracker } from "../../common/ws-rate-limit.js";
 
 interface SocketData {
   userId?: string;
   userName?: string;
+  /** Per-Socket Rate-Limit-Tracker (siehe `common/ws-rate-limit.ts`). */
+  rateTracker?: SocketRateTracker;
 }
 
 interface AuthenticatedSocket extends Socket {
@@ -77,13 +81,14 @@ export class GameGateway
     private readonly games: GameService,
     private readonly auth: AuthService,
     private readonly redis: RedisService,
-    private readonly locks: GameLockService
+    private readonly locks: GameLockService,
+    private readonly audit: AuditService
   ) {
     // Defensive: alle DI-Params sollten von NestJS gefüllt sein. Wenn nicht,
     // ist das ein Setup-Problem (z.B. fehlende `reflect-metadata` /
     // `decoratorMetadata`-Transform in einer Test-Umgebung) — laut fehlt
     // statt erst beim ersten Method-Call mit verwirrendem TypeError.
-    if (!games || !auth || !redis || !locks) {
+    if (!games || !auth || !redis || !locks || !audit) {
       throw new Error(
         "GameGateway: Constructor-DI unvollständig. " +
           "Prüfe RedisModule/AuthModule-Imports und `emitDecoratorMetadata`."
@@ -125,6 +130,52 @@ export class GameGateway
 
   handleConnection(socket: AuthenticatedSocket): void {
     this.log.debug({ socketId: socket.id, userId: socket.data.userId }, "WS connected");
+
+    // Pro-Socket Rate-Limit-Tracker initialisieren und als
+    // per-Socket-Middleware (`socket.use`) einhängen. Die Middleware
+    // läuft *vor* jedem `@SubscribeMessage`-Handler — Frames, die das
+    // Limit reißen, werden hier verworfen, bevor sie überhaupt einen
+    // Service-Call auslösen. Bei wiederholten Verstößen disconnecten
+    // wir die Connection (Eskalation).
+    const tracker = new SocketRateTracker();
+    socket.data.rateTracker = tracker;
+    socket.use(([eventName], next) => {
+      if (typeof eventName !== "string") {
+        // Engine.IO internal frames haben keinen String-Namen — durchlassen.
+        next();
+        return;
+      }
+      const result = tracker.check(eventName);
+      if (result.allow) {
+        next();
+        return;
+      }
+      // Verstoß: Event verwerfen, Client informieren.
+      socket.emit("game:error", {
+        message: `Rate-Limit erreicht für "${eventName}". Bitte langsamer.`,
+      });
+      if (result.disconnect) {
+        // Asynchron auditen + Disconnect — nicht awaiten, sonst hängt
+        // die Middleware-Chain. Eventual-Consistency reicht.
+        void this.audit
+          .record({
+            action: "security.ws.disconnect.rate_limit",
+            actorId: socket.data.userId ?? null,
+            meta: { event: eventName, socketId: socket.id },
+          })
+          .catch(() => {
+            /* audit darf den Disconnect nicht blockieren */
+          });
+        this.log.warn(
+          { userId: socket.data.userId, socketId: socket.id, event: eventName },
+          "WS-Rate-Limit: Disconnect wegen wiederholter Verstöße"
+        );
+        socket.disconnect(true);
+      }
+      // `next(err)` würde dem Client einen ACK-Error melden — wir wollen
+      // aber das Frame schweigend verwerfen, weil das ACK-Pattern hier
+      // nicht genutzt wird. NICHT next() aufrufen → Handler läuft nicht.
+    });
   }
 
   handleDisconnect(socket: AuthenticatedSocket): void {
