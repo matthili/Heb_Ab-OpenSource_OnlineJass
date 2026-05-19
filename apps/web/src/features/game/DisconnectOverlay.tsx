@@ -1,0 +1,337 @@
+/**
+ * **Disconnect-Overlay** — legt sich über das Spielfeld, sobald ein
+ * Mitspieler die Verbindung verloren hat. Der Chat-Panel bleibt sichtbar
+ * UND bedienbar (das Overlay ist `absolute` im GameBoard-Container,
+ * nicht Vollbild-Modal).
+ *
+ * Phasen-Rendering (siehe `useDisconnectState.DisconnectPhase`):
+ *
+ *   - **GRACE_1** (2 min): Stiller Countdown, Hinweis „Spieler X hat die
+ *     Verbindung verloren". Hoffnung auf Reconnect.
+ *   - **VOTE_1** (15 s): Drei große Vote-Karten (STOP/WAIT/FILL). Live-
+ *     Anzeige der eingegangenen Stimmen (auch KI-Auto-Votes).
+ *   - **GRACE_2** (1 min): Wieder stiller Countdown nach Mehrheits-WAIT.
+ *   - **VOTE_2** (15 s): Wie VOTE_1, aber WAIT_AGAIN wird *für alle*
+ *     disabled, sobald *irgendjemand* etwas anderes gewählt hat
+ *     (Einstimmigkeits-Regel). System-Hinweis kommt parallel im Chat.
+ *   - **CONTINUED**: Kurzes „✔ Spiel läuft weiter"-Linger, dann Overlay
+ *     verschwindet automatisch (Server löscht State nach 3s).
+ *   - **CLOSED**: Result-Modal mit OK-Button → Lobby. So weiß ein User,
+ *     der zwischenzeitlich was getrunken hat, was passiert ist.
+ */
+import { useEffect, useState } from "react";
+import { useNavigate } from "@tanstack/react-router";
+
+import type { SeatView } from "~/features/lobby/types";
+import { type DisconnectState, type VoteChoice, useDisconnectState } from "./useDisconnectState";
+
+interface Props {
+  gameId: string;
+  seats: readonly SeatView[];
+  /** Mein Sitz, um „mein eigener Vote"-Highlighting zu zeigen. */
+  mySeat: number;
+}
+
+export function DisconnectOverlay({ gameId, seats, mySeat }: Props) {
+  const { state, vote, dismissResult } = useDisconnectState(gameId);
+  if (!state) return null;
+  return (
+    <Overlay state={state} seats={seats} mySeat={mySeat} onVote={vote} onDismiss={dismissResult} />
+  );
+}
+
+function Overlay({
+  state,
+  seats,
+  mySeat,
+  onVote,
+  onDismiss,
+}: {
+  state: DisconnectState;
+  seats: readonly SeatView[];
+  mySeat: number;
+  onVote: (c: VoteChoice) => void;
+  onDismiss: () => void;
+}) {
+  const navigate = useNavigate();
+  const disconnectedNames = state.disconnectedSeats
+    .map((d) => seats.find((s) => s.seat === d.seat)?.user?.name ?? `Sitz ${d.seat}`)
+    .join(", ");
+
+  // CLOSED → Result-Modal mit OK → Lobby
+  if (state.phase === "CLOSED") {
+    return (
+      <Backdrop>
+        <Card>
+          <h2 className="text-xl font-bold text-jass-ink">Tisch wurde aufgelöst</h2>
+          <p className="text-sm text-jass-inkSoft">
+            {state.resultMessage ?? "Eine Mehrheit hat fürs Beenden gestimmt."}
+          </p>
+          <div className="flex justify-end pt-2">
+            <button
+              type="button"
+              className="btn-jass-primary"
+              onClick={() => {
+                onDismiss();
+                void navigate({ to: "/lobby" });
+              }}
+            >
+              OK — zur Lobby
+            </button>
+          </div>
+        </Card>
+      </Backdrop>
+    );
+  }
+
+  // CONTINUED → kurz anzeigen, dann unsichtbar (Server löscht State).
+  if (state.phase === "CONTINUED") {
+    return (
+      <Backdrop>
+        <Card>
+          <h2 className="text-lg font-semibold text-emerald-700">
+            ✔ Alle Spieler wieder verbunden
+          </h2>
+          <p className="text-sm text-jass-inkSoft">{state.resultMessage}</p>
+        </Card>
+      </Backdrop>
+    );
+  }
+
+  // GRACE oder VOTE
+  return (
+    <Backdrop>
+      <Card>
+        <header className="space-y-1">
+          <h2 className="text-lg font-bold text-jass-ink">Verbindung verloren</h2>
+          <p className="text-sm text-jass-inkSoft">
+            <strong className="text-jass-ink">{disconnectedNames}</strong> hat die Verbindung zum
+            Server verloren.
+          </p>
+        </header>
+
+        <Countdown endsAt={state.phaseEndsAt} />
+
+        {(state.phase === "GRACE_1" || state.phase === "GRACE_2") && (
+          <p className="text-sm text-jass-inkSoft">
+            {state.phase === "GRACE_1"
+              ? "Wir warten 2 Minuten auf einen Reconnect. Sollte das nicht klappen, beginnt eine kurze Abstimmung."
+              : "Noch 1 Minute Wartezeit — vielleicht kommt er ja gleich zurück."}
+          </p>
+        )}
+
+        {(state.phase === "VOTE_1" || state.phase === "VOTE_2") && (
+          <VoteBlock state={state} seats={seats} mySeat={mySeat} onVote={onVote} />
+        )}
+      </Card>
+    </Backdrop>
+  );
+}
+
+/**
+ * Halbtransparenter Hintergrund über dem GameBoard-Bereich.
+ * `absolute inset-0` heißt: parent (GameBoard-Container) muss
+ * `relative` sein. Wir kommen NICHT über den Chat-Bereich rechts,
+ * weil der außerhalb dieses Containers liegt (Grid-Spalte rechts).
+ */
+function Backdrop({ children }: { children: React.ReactNode }) {
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="disconnect-title"
+      className="absolute inset-0 z-40 flex items-center justify-center bg-stone-900/55 backdrop-blur-sm rounded-lg p-4"
+    >
+      {children}
+    </div>
+  );
+}
+
+function Card({ children }: { children: React.ReactNode }) {
+  return (
+    <div
+      id="disconnect-title"
+      className="max-w-md w-full rounded-lg bg-jass-paper border border-jass-paperEdge shadow-xl p-5 space-y-4"
+    >
+      {children}
+    </div>
+  );
+}
+
+function Countdown({ endsAt }: { endsAt: number }) {
+  const [remainingMs, setRemainingMs] = useState(() => Math.max(0, endsAt - Date.now()));
+  useEffect(() => {
+    const id = setInterval(() => setRemainingMs(Math.max(0, endsAt - Date.now())), 250);
+    return () => clearInterval(id);
+  }, [endsAt]);
+  const totalSec = Math.ceil(remainingMs / 1000);
+  const mm = Math.floor(totalSec / 60);
+  const ss = totalSec % 60;
+  return (
+    <div className="text-center">
+      <div className="text-4xl font-mono font-bold text-jass-ink tabular-nums">
+        {mm}:{ss.toString().padStart(2, "0")}
+      </div>
+    </div>
+  );
+}
+
+function VoteBlock({
+  state,
+  seats,
+  mySeat,
+  onVote,
+}: {
+  state: DisconnectState;
+  seats: readonly SeatView[];
+  mySeat: number;
+  onVote: (c: VoteChoice) => void;
+}) {
+  const myVote = state.votes[mySeat];
+  const isVote2 = state.phase === "VOTE_2";
+  const waitAgainStillAllowed = !isVote2 || !Object.values(state.votes).some((v) => v !== "WAIT");
+
+  return (
+    <div className="space-y-3">
+      <p className="text-sm font-medium text-jass-ink">
+        {isVote2 ? "Zweite Abstimmung — wie weiter?" : "Wie soll's weitergehen?"}
+      </p>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+        <VoteButton
+          choice="STOP"
+          label="Beenden"
+          subtitle="Lobby"
+          color="rose"
+          selected={myVote === "STOP"}
+          onClick={() => onVote("STOP")}
+        />
+        <VoteButton
+          choice="WAIT"
+          label={isVote2 ? "1 Min warten" : "1 Min warten"}
+          subtitle={isVote2 ? "(Einstimmigkeit nötig)" : "auf Reconnect"}
+          color="amber"
+          selected={myVote === "WAIT"}
+          disabled={isVote2 && !waitAgainStillAllowed && myVote !== "WAIT"}
+          onClick={() => onVote("WAIT")}
+        />
+        <VoteButton
+          choice="FILL"
+          label="Mit KI weiter"
+          subtitle="zu Ende spielen"
+          color="emerald"
+          selected={myVote === "FILL"}
+          onClick={() => onVote("FILL")}
+        />
+      </div>
+      <VoteTally state={state} seats={seats} mySeat={mySeat} />
+    </div>
+  );
+}
+
+function VoteButton({
+  label,
+  subtitle,
+  color,
+  selected,
+  disabled,
+  onClick,
+}: {
+  choice: VoteChoice;
+  label: string;
+  subtitle: string;
+  color: "rose" | "amber" | "emerald";
+  selected: boolean;
+  disabled?: boolean;
+  onClick: () => void;
+}) {
+  const palette = {
+    rose: selected
+      ? "bg-rose-600 text-white border-rose-700"
+      : "bg-rose-50 text-rose-900 border-rose-300 hover:bg-rose-100",
+    amber: selected
+      ? "bg-jass-yellow text-jass-ink border-jass-yellowDark"
+      : "bg-jass-cream text-jass-ink border-jass-paperEdge hover:bg-jass-yellow/40",
+    emerald: selected
+      ? "bg-emerald-600 text-white border-emerald-700"
+      : "bg-emerald-50 text-emerald-900 border-emerald-300 hover:bg-emerald-100",
+  }[color];
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className={`rounded-md border-2 px-3 py-2 text-sm font-medium ${palette} disabled:opacity-40 disabled:cursor-not-allowed transition-colors`}
+    >
+      <div>{label}</div>
+      <div className="text-xs opacity-75">{subtitle}</div>
+    </button>
+  );
+}
+
+/**
+ * Stimmübersicht — wer hat schon was gewählt. KIs werden mit 🤖
+ * markiert, der eigene Sitz mit „du".
+ */
+function VoteTally({
+  state,
+  seats,
+  mySeat,
+}: {
+  state: DisconnectState;
+  seats: readonly SeatView[];
+  mySeat: number;
+}) {
+  // Map alle Stimmen (Mensch + KI) zu einer flachen Liste.
+  const all: Array<{ seat: number; choice: VoteChoice; isAi: boolean }> = [];
+  for (const seatId in state.votes) {
+    all.push({ seat: Number(seatId), choice: state.votes[Number(seatId)]!, isAi: false });
+  }
+  for (const ai of state.aiAutoVotes) {
+    all.push({ seat: ai.seat, choice: ai.choice, isAi: true });
+  }
+  // Stimmberechtigte Sitze ohne Vote
+  const pending = state.participants.filter(
+    (p) => p.kind === "HUMAN" && state.votes[p.seat] === undefined
+  );
+
+  if (all.length === 0 && pending.length === 0) return null;
+
+  return (
+    <ul className="text-xs text-jass-inkSoft space-y-1 border-t border-jass-paperEdge pt-2">
+      {all.map((v) => {
+        const seatInfo = seats.find((s) => s.seat === v.seat);
+        const name = v.isAi
+          ? `🤖 KI Sitz ${v.seat}`
+          : v.seat === mySeat
+            ? `Du (Sitz ${v.seat})`
+            : (seatInfo?.user?.name ?? `Sitz ${v.seat}`);
+        return (
+          <li key={`v-${v.seat}-${v.isAi}`}>
+            {name}: <strong className="text-jass-ink">{labelFor(v.choice)}</strong>
+          </li>
+        );
+      })}
+      {pending.map((p) => {
+        const seatInfo = seats.find((s) => s.seat === p.seat);
+        const name =
+          p.seat === mySeat ? `Du (Sitz ${p.seat})` : (seatInfo?.user?.name ?? `Sitz ${p.seat}`);
+        return (
+          <li key={`p-${p.seat}`} className="italic">
+            {name}: noch keine Stimme
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+function labelFor(c: VoteChoice): string {
+  switch (c) {
+    case "STOP":
+      return "Beenden";
+    case "WAIT":
+      return "1 Min warten";
+    case "FILL":
+      return "Mit KI weiter";
+  }
+}

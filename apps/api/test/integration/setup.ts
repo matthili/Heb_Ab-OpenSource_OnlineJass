@@ -156,6 +156,13 @@ export async function setupTestApp(): Promise<TestAppHandle> {
   // Turnstile in Tests deaktivieren — kein Cloudflare-Round-Trip, keine
   // Tokens. Boot in production verweigert dieses Flag.
   process.env["DISABLE_TURNSTILE"] = "1";
+  // Disconnect-Vote-Phasen für Tests stark verkürzen (5% der Realzeit):
+  //   GRACE_1: 6 s statt 120 s
+  //   VOTE_1:  0.75 s statt 15 s
+  //   GRACE_2: 3 s statt 60 s
+  //   VOTE_2:  0.75 s statt 15 s
+  // Boot in production verweigert ≠ 1.
+  process.env["DISCONNECT_PHASE_MS_SCALE"] = "0.05";
   process.env["BETTER_AUTH_URL"] = "http://127.0.0.1:3000"; // wird gleich überschrieben
   process.env["SMTP_HOST"] = "127.0.0.1"; // wird vom MailSink eh nicht genutzt
   process.env["SMTP_PORT"] = "1025";

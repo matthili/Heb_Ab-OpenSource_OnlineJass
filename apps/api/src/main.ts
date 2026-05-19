@@ -33,6 +33,12 @@ function assertNoUnsafeFlagsInProduction(): void {
     "DISABLE_TURNSTILE",
     "DISABLE_CSRF",
   ].filter((k) => process.env[k] === "1");
+  // Phasen-Skalierung darf in production nur 1 (= Default) sein.
+  // Kleinere Werte → User hätte keine echte Reconnect-Chance.
+  const scale = process.env["DISCONNECT_PHASE_MS_SCALE"];
+  if (scale && Number(scale) !== 1) {
+    unsafe.push(`DISCONNECT_PHASE_MS_SCALE=${scale}`);
+  }
   if (unsafe.length > 0) {
     throw new Error(
       `Sicherheits-Flags dürfen in production NICHT gesetzt sein: ${unsafe.join(", ")}. ` +

@@ -56,12 +56,30 @@ export interface DisconnectState {
   resultOutcome: "STOP" | "WAIT" | "FILL" | null;
 }
 
-export const PHASE_DURATION_MS = {
-  GRACE_1: 120_000,
-  VOTE_1: 15_000,
-  GRACE_2: 60_000,
-  VOTE_2: 15_000,
-} as const;
+/**
+ * Phasen-Dauern in ms. Production-Defaults:
+ *   GRACE_1 = 120 s, VOTE_1 = 15 s, GRACE_2 = 60 s, VOTE_2 = 15 s.
+ *
+ * Tests überschreiben via `DISCONNECT_PHASE_MS_SCALE` (z.B. "0.05" =
+ * 5% der Dauer → GRACE_1 wird 6 s statt 120 s). Production darf das
+ * NICHT setzen; `main.ts:assertNoUnsafeFlagsInProduction` blockt das.
+ *
+ * **Wichtig**: jeden Aufruf lazy evaluieren, nicht als Modul-Konstante.
+ * Sonst greift die Env-Variable nicht, falls sie nach dem ersten
+ * Modul-Import gesetzt wird (z.B. im Integration-Test-Setup vor dem
+ * NestFactory.create — die env-Reihenfolge ist da fragil).
+ */
+function phaseDuration(phase: "GRACE_1" | "VOTE_1" | "GRACE_2" | "VOTE_2"): number {
+  const scale = Number(process.env["DISCONNECT_PHASE_MS_SCALE"] ?? "1");
+  const factor = Number.isFinite(scale) && scale > 0 ? scale : 1;
+  const base: Record<typeof phase, number> = {
+    GRACE_1: 120_000,
+    VOTE_1: 15_000,
+    GRACE_2: 60_000,
+    VOTE_2: 15_000,
+  };
+  return Math.max(100, Math.round(base[phase] * factor));
+}
 
 /**
  * Outcome-Hooks. Der Service ruft die Methoden, die das umliegende
@@ -151,7 +169,7 @@ export class DisconnectVoteService implements OnModuleInit {
       state.phase = "GRACE_1";
       const now = Date.now();
       state.phaseStartedAt = now;
-      state.phaseEndsAt = now + PHASE_DURATION_MS.GRACE_1;
+      state.phaseEndsAt = now + phaseDuration("GRACE_1");
     }
     await this.saveState(gameId, state);
 
@@ -312,7 +330,7 @@ export class DisconnectVoteService implements OnModuleInit {
     const now = Date.now();
     state.phase = phase;
     state.phaseStartedAt = now;
-    state.phaseEndsAt = now + PHASE_DURATION_MS[phase];
+    state.phaseEndsAt = now + phaseDuration(phase);
     state.votes = {};
     state.aiAutoVotes = [];
     await this.saveState(gameId, state);
@@ -395,7 +413,7 @@ export class DisconnectVoteService implements OnModuleInit {
       const now = Date.now();
       state.phase = "GRACE_2";
       state.phaseStartedAt = now;
-      state.phaseEndsAt = now + PHASE_DURATION_MS.GRACE_2;
+      state.phaseEndsAt = now + phaseDuration("GRACE_2");
       state.votes = {};
       await this.saveState(gameId, state);
       this.postSystem(
@@ -414,7 +432,7 @@ export class DisconnectVoteService implements OnModuleInit {
           void this.autoCloseAfterFinalWait(gameId).catch((err) => {
             this.log.error({ err, gameId }, "autoClose fehlgeschlagen");
           });
-        }, PHASE_DURATION_MS.GRACE_2);
+        }, phaseDuration("GRACE_2"));
         this.timers.set(gameId, handle);
       } else {
         this.scheduleNextTransition(gameId, state);

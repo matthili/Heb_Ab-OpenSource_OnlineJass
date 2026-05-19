@@ -31,6 +31,17 @@ export function ChatBubble({ message, isOwn }: Props) {
     [message.body]
   );
 
+  // System-Nachrichten (z.B. KI-Vote-Stimmen, Phasen-Hinweise vom
+  // Disconnect-Flow) bekommen ein eigenes, dezenteres Rendering —
+  // mittig, italic, keine „Bubble"-Form.
+  if (message.system) {
+    return (
+      <div className="text-center text-xs italic text-stone-500 py-1 px-2">
+        <span dangerouslySetInnerHTML={{ __html: safeHtml }} />
+      </div>
+    );
+  }
+
   return (
     <div
       className={`flex flex-col ${isOwn ? "items-end" : "items-start"}`}

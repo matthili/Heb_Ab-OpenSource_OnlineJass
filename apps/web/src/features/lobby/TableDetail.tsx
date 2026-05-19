@@ -17,6 +17,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { type FormEvent, useCallback, useState } from "react";
 
 import { ChatPanel } from "~/features/chat/ChatPanel";
+import { DisconnectOverlay } from "~/features/game/DisconnectOverlay";
 import { GameBoard } from "~/features/game/GameBoard";
 import { RematchPanel } from "~/features/game/RematchPanel";
 import { useGameView } from "~/features/game/useGameView";
@@ -546,7 +547,11 @@ function GameSection({
 
   return (
     <section className="grid grid-cols-1 lg:grid-cols-[1fr_20rem] gap-4">
-      <div className="space-y-4">
+      {/* `relative` macht den GameBoard-Container zur Verankerung für das
+          DisconnectOverlay (absolute inset-0). Der Chat-Bereich rechts
+          bleibt außerhalb dieses Containers und damit voll bedienbar —
+          User können auch im Disconnect-Wartemodus tippen. */}
+      <div className="space-y-4 relative">
         <GameBoard
           view={view}
           seats={tableSeats}
@@ -561,6 +566,7 @@ function GameSection({
         {tableStatus === "POST_GAME" && view.status === "finished" && (
           <RematchPanel gameId={gameId} finalScore={view.finalScore} />
         )}
+        <DisconnectOverlay gameId={gameId} seats={tableSeats} mySeat={view.mySeat} />
       </div>
       <ChatPanel channelKey={`game:${gameId}`} title="Tisch-Chat" />
     </section>
