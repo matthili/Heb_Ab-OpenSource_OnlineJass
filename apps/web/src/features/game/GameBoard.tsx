@@ -21,7 +21,7 @@ import { useState } from "react";
 
 import type { SeatView } from "~/features/lobby/types";
 import { AnnouncementDialog } from "./AnnouncementDialog";
-import { CutDeckIntro } from "./CutDeckIntro";
+import { DealCinematic } from "./DealCinematic";
 import { MatschOverlay } from "./MatschOverlay";
 import { relativeSlot, SEAT_LABEL_POS } from "./seat-layout";
 import type { AnnouncementDecision, PlayerView } from "./types";
@@ -71,6 +71,13 @@ export function GameBoard({
   const [currentGroup, setCurrentGroup] = useState<readonly Card[]>([]);
   const [finalizedGroups, setFinalizedGroups] = useState<ReadonlyArray<ReadonlyArray<Card>>>([]);
 
+  // Deal-Cinematic-State: solange `dealActive`, ist der AnnouncementDialog
+  // versteckt — er erscheint erst nach `onComplete`. Pro gameId einmal.
+  // Default `true` für announcing-Phase; die DealCinematic-Komponente
+  // selbst entscheidet via localStorage, ob sie wirklich rendert oder
+  // gleich onComplete callt (z.B. bei Reload).
+  const [dealActive, setDealActive] = useState(true);
+
   // Ansage-Phase: nur die Hand + Dialog rendern, kein Scoreboard/Spielfeld.
   // Die Variante steht ja noch gar nicht fest, das Scoreboard hätte nichts
   // sinnvolles anzuzeigen.
@@ -81,12 +88,25 @@ export function GameBoard({
     const iHaveWeli =
       view.announcement?.iAmAnnouncer === true &&
       view.hand.some((c) => c.suit === "SCHELLE" && c.rank === "SECHS");
+    const announcerSeat = view.announcement?.announcerSeat ?? 0;
     return (
-      <div className="space-y-4 relative">
-        {/* Abheben-Cinematic: spielt einmalig pro gameId vor dem ersten
-            Hand-Reveal. `relative` am Container ist Voraussetzung für
-            das absolut positionierte Overlay. */}
-        <CutDeckIntro gameId={view.gameId} />
+      <div
+        className="space-y-4 relative"
+        // Mindesthöhe, damit die absolute Cinematic im announcing-Modus
+        // Platz hat (sonst wäre der Container nur so hoch wie die Hand
+        // unten + Dialog oben — die fliegenden Karten würden geclippt).
+        style={{ minHeight: dealActive ? "32rem" : undefined }}
+      >
+        {/* Deal-Cinematic: spielt einmalig pro gameId und ersetzt das
+            alte CutDeckIntro. Solange aktiv, ist der Dialog versteckt. */}
+        {dealActive && (
+          <DealCinematic
+            gameId={view.gameId}
+            mySeat={mySeat}
+            announcerSeat={announcerSeat}
+            onComplete={() => setDealActive(false)}
+          />
+        )}
         {error && (
           <div
             role="alert"
@@ -95,23 +115,27 @@ export function GameBoard({
             {error}
           </div>
         )}
-        {iHaveWeli && (
+        {!dealActive && iHaveWeli && (
           <div
             role="status"
             aria-live="polite"
             className="jass-weli-banner rounded-lg border-2 border-jass-yellowDark bg-gradient-to-r from-jass-yellow/30 via-jass-yellow/50 to-jass-yellow/30 px-4 py-3 text-center text-jass-ink font-bold shadow-md"
           >
-            ✨ Du hast den WELI — du beginnst!
+            ✨ Du hast den WELI — du sagst an!
           </div>
         )}
-        <AnnouncementDialog
-          view={view}
-          seatNames={seatNames}
-          pending={announcePending}
-          onAnnounce={onAnnounce}
-        />
-        {/* Hand zeigen, damit der Ansager beim Auswählen seine Karten sieht. */}
-        <Hand cards={view.hand} highlightWeli={iHaveWeli} />
+        {!dealActive && (
+          <>
+            <AnnouncementDialog
+              view={view}
+              seatNames={seatNames}
+              pending={announcePending}
+              onAnnounce={onAnnounce}
+            />
+            {/* Hand zeigen, damit der Ansager beim Auswählen seine Karten sieht. */}
+            <Hand cards={view.hand} highlightWeli={iHaveWeli} />
+          </>
+        )}
       </div>
     );
   }

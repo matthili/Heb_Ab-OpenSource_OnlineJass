@@ -419,8 +419,7 @@ h1 {
   }
   15% {
     opacity: 1;
-    transform: translate(calc(var(--dx) * 0.3), calc(var(--dy) * 0.3)) scale(1)
-      rotate(120deg);
+    transform: translate(calc(var(--dx) * 0.3), calc(var(--dy) * 0.3)) scale(1) rotate(120deg);
   }
   100% {
     opacity: 0;
@@ -435,6 +434,122 @@ h1 {
   border-radius: 2px;
   pointer-events: none;
   animation: jass-matsch-confetti 2.4s cubic-bezier(0.2, 0.7, 0.3, 1) forwards;
+}
+
+/* ── Deal-Cinematic ───────────────────────────────────────────────
+ * Mehrphasige Animation am Spielanfang:
+ *   1. Geber-Sitz hervorheben + Banner
+ *   2. Karten-Stapel mit Misch-Wackel
+ *   3. Stapel gleitet zum Abheber (Ansager)
+ *   4. Klick-Prompt (Heb ab!)
+ *   5. Cut-Animation
+ *   6. Verteilen — kleine Karten fliegen zu allen 4 Sitzen
+ *   7. WELI-Reveal am Ansager-Sitz
+ *
+ * Steuerung der Sub-Animationen erfolgt via CSS-Klassen, die React
+ * je nach Phase setzt. Reduzierte Variante: keine 36 echten Karten,
+ * sondern 4×9 fliegende Stellvertreter — dramaturgisch ausreichend.
+ */
+
+/* Misch-Wackel am Geber-Sitz: ein kleiner Stapel zittert ein paar Mal. */
+@keyframes jass-deal-mix-wobble {
+  0%,
+  100% {
+    transform: translate(0, 0) rotate(0deg);
+  }
+  20% {
+    transform: translate(-3px, -1px) rotate(-2deg);
+  }
+  40% {
+    transform: translate(3px, 1px) rotate(2deg);
+  }
+  60% {
+    transform: translate(-2px, 1px) rotate(-1.5deg);
+  }
+  80% {
+    transform: translate(2px, -1px) rotate(1.5deg);
+  }
+}
+
+.jass-deal-mix-wobble {
+  animation: jass-deal-mix-wobble 0.8s ease-in-out infinite;
+}
+
+/* Stapel-Slide vom Geber zum Abheber. dx/dy als CSS-Variablen,
+ * React setzt sie inline pro Sitz-Position. */
+@keyframes jass-deal-stack-slide {
+  from {
+    transform: translate(var(--from-x, 0), var(--from-y, 0));
+  }
+  to {
+    transform: translate(var(--to-x, 0), var(--to-y, 0));
+  }
+}
+
+.jass-deal-stack-slide {
+  animation: jass-deal-stack-slide 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+}
+
+/* Pulsen, während der Abheber den Cut machen soll. */
+@keyframes jass-deal-cut-pulse {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 0 rgba(245, 158, 11, 0.6),
+      0 4px 16px rgba(0, 0, 0, 0.35);
+  }
+  50% {
+    box-shadow:
+      0 0 0 12px rgba(245, 158, 11, 0),
+      0 4px 20px rgba(0, 0, 0, 0.45);
+  }
+}
+
+.jass-deal-cut-pulse {
+  animation: jass-deal-cut-pulse 1.2s ease-out infinite;
+}
+
+/* Fliegende Verteil-Karten: 9 Karten pro Sitz, gestaffelt.
+ * Jede Karte fliegt von zentraler Position (--from-x/y) zur
+ * Sitz-Position (--to-x/y) mit eigenem delay. */
+@keyframes jass-deal-fly {
+  0% {
+    transform: translate(var(--from-x, 0), var(--from-y, 0)) rotate(0deg) scale(1);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--to-x, 0), var(--to-y, 0)) rotate(var(--end-rot, 0deg)) scale(0.85);
+    opacity: 1;
+  }
+}
+
+.jass-deal-fly {
+  animation: jass-deal-fly 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/* WELI-Reveal: Karte erscheint aus dem Stapel des Ansagers, fliegt
+ * nach oben in den Vordergrund und glüht golden. */
+@keyframes jass-deal-weli-reveal {
+  0% {
+    transform: translate(var(--from-x, 0), var(--from-y, 0)) scale(0.6) rotate(-180deg);
+    opacity: 0;
+    filter: drop-shadow(0 0 0 rgba(255, 220, 100, 0));
+  }
+  40% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--to-x, 0), var(--to-y, 0)) scale(1.2) rotate(0deg);
+    opacity: 1;
+    filter: drop-shadow(0 0 24px rgba(255, 220, 100, 1));
+  }
+}
+
+.jass-deal-weli-reveal {
+  animation: jass-deal-weli-reveal 1.2s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
 }
 
 /* ── Abheben (Cut-the-Deck-Intro) ─────────────────────────────────
@@ -512,11 +627,7 @@ h1 {
   border: 2px solid #f5e6c8;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
   background-image:
-    repeating-linear-gradient(
-      45deg,
-      transparent 0 6px,
-      rgba(255, 255, 255, 0.05) 6px 8px
-    ),
+    repeating-linear-gradient(45deg, transparent 0 6px, rgba(255, 255, 255, 0.05) 6px 8px),
     linear-gradient(135deg, #c4302b 0%, #8a1f1c 100%);
 }
 
@@ -641,7 +752,12 @@ h1 {
   .jass-cut-bottom,
   .jass-cut-label,
   .jass-matsch-card,
-  .jass-matsch-confetti {
+  .jass-matsch-confetti,
+  .jass-deal-mix-wobble,
+  .jass-deal-stack-slide,
+  .jass-deal-cut-pulse,
+  .jass-deal-fly,
+  .jass-deal-weli-reveal {
     animation: none;
   }
 }
