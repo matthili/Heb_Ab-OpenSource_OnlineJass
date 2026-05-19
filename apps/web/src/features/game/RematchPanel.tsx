@@ -28,9 +28,20 @@ const AUTO_YES_SECONDS = 10;
 interface Props {
   gameId: string;
   finalScore: FinalScore | undefined;
+  /** Kumulativer Partie-Stand Team 0 — optional, für Kontext-Anzeige. */
+  cumulativeScoreTeam0?: number;
+  cumulativeScoreTeam1?: number;
+  /** Punkteziel der Partie (z.B. 1000). */
+  targetScore?: number;
 }
 
-export function RematchPanel({ gameId, finalScore }: Props) {
+export function RematchPanel({
+  gameId,
+  finalScore,
+  cumulativeScoreTeam0,
+  cumulativeScoreTeam1,
+  targetScore,
+}: Props) {
   const [myVote, setMyVote] = useState<"YES" | "NO" | null>(null);
   const [outcome, setOutcome] = useState<RematchOutcome | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -69,9 +80,30 @@ export function RematchPanel({ gameId, finalScore }: Props) {
 
       {finalScore && <FinalScoreView score={finalScore} />}
 
+      {/*
+        Kontextueller Partie-Stand: zeigt den kumulativen Score gegen
+        das Punkteziel. Hilft dem User zu verstehen, ob die Partie schon
+        knapp wird oder noch lange dauert.
+      */}
+      {targetScore !== undefined &&
+        cumulativeScoreTeam0 !== undefined &&
+        cumulativeScoreTeam1 !== undefined && (
+          <MatchProgress
+            team0={cumulativeScoreTeam0}
+            team1={cumulativeScoreTeam1}
+            target={targetScore}
+          />
+        )}
+
       {!myVote ? (
         <div className="space-y-2">
-          <p className="text-jass-ink">Nochmal eine Runde?</p>
+          {/* Texte bewusst kontextabhängig:
+                – POST_GAME (= Ziel nicht erreicht, Partie geht weiter):
+                  „Bereit für die nächste Runde?" — neutrale Fortsetzungs-
+                  Frage, keine „Lust auf nochmal"-Konnotation.
+                – Das Panel rendert OHNEHIN nur in POST_GAME; Partie-Ende
+                  läuft via OwnerPanel + new-match-Endpoint. */}
+          <p className="text-jass-ink">Bereit für die nächste Runde?</p>
           <div className="flex flex-wrap items-center gap-3">
             <button
               type="button"
@@ -79,7 +111,7 @@ export function RematchPanel({ gameId, finalScore }: Props) {
               disabled={voteMut.isPending}
               className="btn-jass-primary text-base"
             >
-              ▶ Weiter spielen
+              ▶ Weiter
             </button>
             <button
               type="button"
@@ -138,7 +170,7 @@ function RematchStatus({ vote, outcome }: { vote: "YES" | "NO"; outcome: Rematch
   if (outcome.kind === "pending") {
     return (
       <div className="rounded bg-jass-paper border border-jass-paperEdge px-3 py-2 text-sm text-jass-ink">
-        Du hast „{vote === "YES" ? "weiter spielen" : "aufhören"}" gewählt. Warten auf{" "}
+        Du hast „{vote === "YES" ? "weiter" : "aufhören"}" gewählt. Warten auf{" "}
         {outcome.remainingVotes}{" "}
         {outcome.remainingVotes === 1 ? "weiteren Spieler" : "weitere Spieler"} …
       </div>
@@ -147,13 +179,41 @@ function RematchStatus({ vote, outcome }: { vote: "YES" | "NO"; outcome: Rematch
   if (outcome.kind === "rematch-started") {
     return (
       <div className="rounded bg-emerald-50 border border-emerald-200 px-3 py-2 text-sm text-emerald-900">
-        Alle dabei — neue Runde startet. (Tisch wechselt automatisch zum neuen Game.)
+        Nächste Runde startet. (Tisch wechselt automatisch zum neuen Game.)
       </div>
     );
   }
   return (
     <div className="rounded bg-violet-50 border border-violet-200 px-3 py-2 text-sm text-violet-900">
       Nicht alle wollen weiterspielen. Der Tisch geht zurück in die Warte-Phase.
+    </div>
+  );
+}
+
+/**
+ * Partie-Fortschritt-Anzeige: kumulative Scores beider Teams + Ziel.
+ * Hebt visuell hervor, welches Team näher dran ist und wie viele Punkte
+ * fehlen.
+ */
+function MatchProgress({ team0, team1, target }: { team0: number; team1: number; target: number }) {
+  const leader = team0 > team1 ? 0 : team1 > team0 ? 1 : null;
+  const closest = Math.max(team0, team1);
+  const remaining = Math.max(0, target - closest);
+  return (
+    <div className="rounded border border-jass-paperEdge bg-jass-paper px-4 py-2 text-sm">
+      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+        <span className="text-xs uppercase tracking-wide text-jass-inkSoft">Partie-Stand</span>
+        <span className={leader === 0 ? "font-bold text-jass-ink" : "text-jass-inkSoft"}>
+          Team 0: {team0}
+        </span>
+        <span className={leader === 1 ? "font-bold text-jass-ink" : "text-jass-inkSoft"}>
+          Team 1: {team1}
+        </span>
+        <span className="ml-auto text-xs text-jass-inkSoft">
+          Ziel: <strong className="text-jass-ink">{target}</strong>
+          {remaining > 0 && <> · noch {remaining} Punkte</>}
+        </span>
+      </div>
     </div>
   );
 }

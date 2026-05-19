@@ -114,6 +114,9 @@ export function TableDetail({ tableId }: Props) {
             isAtTable={amIAtTable}
             tableStatus={data.status}
             isFirstGame={data.cumulativeScoreTeam0 + data.cumulativeScoreTeam1 === 0}
+            cumulativeScoreTeam0={data.cumulativeScoreTeam0}
+            cumulativeScoreTeam1={data.cumulativeScoreTeam1}
+            targetScore={data.targetScore}
           />
         )}
 
@@ -581,6 +584,9 @@ function GameSection({
   isAtTable,
   tableStatus,
   isFirstGame,
+  cumulativeScoreTeam0,
+  cumulativeScoreTeam1,
+  targetScore,
 }: {
   gameId: string;
   tableSeats: TableDetailView["seats"];
@@ -588,6 +594,10 @@ function GameSection({
   tableStatus: TableDetailView["status"];
   /** Erstes Spiel der Partie → volle Cinematic. Sonst Kurz-Cinematic. */
   isFirstGame: boolean;
+  /** Kumulative Partie-Stände + Ziel (für RematchPanel-Kontext). */
+  cumulativeScoreTeam0: number;
+  cumulativeScoreTeam1: number;
+  targetScore: number;
 }) {
   const {
     view,
@@ -637,7 +647,13 @@ function GameSection({
           onSubmitWeisen={submitWeisen}
         />
         {tableStatus === "POST_GAME" && view.status === "finished" && (
-          <RematchPanel gameId={gameId} finalScore={view.finalScore} />
+          <RematchPanel
+            gameId={gameId}
+            finalScore={view.finalScore}
+            cumulativeScoreTeam0={cumulativeScoreTeam0}
+            cumulativeScoreTeam1={cumulativeScoreTeam1}
+            targetScore={targetScore}
+          />
         )}
         <DisconnectOverlay gameId={gameId} seats={tableSeats} mySeat={view.mySeat} />
       </div>
