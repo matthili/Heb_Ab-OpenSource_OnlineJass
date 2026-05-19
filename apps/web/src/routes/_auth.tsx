@@ -7,6 +7,7 @@
  */
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 
+import { SessionSupersededBanner } from "~/features/auth/SessionSupersededBanner";
 import { authClient } from "~/lib/auth-client";
 
 /**
@@ -51,5 +52,10 @@ export const Route = createFileRoute("/_auth")({
 });
 
 function AuthLayout() {
-  return <Outlet />;
+  return (
+    <>
+      <SessionSupersededBanner />
+      <Outlet />
+    </>
+  );
 }

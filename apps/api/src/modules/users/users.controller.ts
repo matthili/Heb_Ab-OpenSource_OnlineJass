@@ -26,6 +26,7 @@ import { OptionalSessionGuard } from "../../common/guards/optional-session.guard
 import { ZodValidationPipe } from "../../common/pipes/zod.pipe.js";
 import { FriendsService, type FriendStatusOut, type FriendsList } from "./friends.service.js";
 import { GdprService } from "./gdpr.service.js";
+import { SessionsService, type SessionView } from "./sessions.service.js";
 import { UpdateProfileDtoSchema, type UpdateProfileDto } from "./users.dto.js";
 import { UsersService, type MyProfileView, type PublicProfileView } from "./users.service.js";
 
@@ -34,7 +35,8 @@ export class UsersController {
   constructor(
     private readonly users: UsersService,
     private readonly gdpr: GdprService,
-    private readonly friends: FriendsService
+    private readonly friends: FriendsService,
+    private readonly sessions: SessionsService
   ) {}
 
   @Get("me")
@@ -87,6 +89,28 @@ export class UsersController {
   @UseGuards(SessionGuard)
   async deleteMe(@Req() req: FastifyRequest): Promise<void> {
     await this.gdpr.softDelete(req.user!.id);
+  }
+
+  // ─── Aktive Sessions ─────────────────────────────────────────────
+
+  @Get("me/sessions")
+  @UseGuards(SessionGuard)
+  async listSessions(@Req() req: FastifyRequest): Promise<{ sessions: SessionView[] }> {
+    const sessions = await this.sessions.listForUser(req.user!.id, req.session!.id);
+    return { sessions };
+  }
+
+  @Delete("me/sessions/:sid")
+  @HttpCode(204)
+  @UseGuards(SessionGuard)
+  async revokeSession(@Req() req: FastifyRequest, @Param("sid") sessionId: string): Promise<void> {
+    await this.sessions.revoke(req.user!.id, sessionId, req.session!.id);
+  }
+
+  @Delete("me/sessions")
+  @UseGuards(SessionGuard)
+  async revokeAllOtherSessions(@Req() req: FastifyRequest): Promise<{ revoked: number }> {
+    return this.sessions.revokeAllOthers(req.user!.id, req.session!.id);
   }
 
   // ─── Freundschaften ──────────────────────────────────────────────

@@ -110,7 +110,16 @@ export class AuthService implements OnModuleInit {
       session: {
         expiresIn: 60 * 60 * 24 * 30,
         updateAge: 60 * 60 * 24,
-        cookieCache: { enabled: true, maxAge: 60 * 5 }, // 5 min lokal cachen
+        // **Cookie-Cache bewusst deaktiviert.** Better Auth bietet einen
+        // Server-Side-Cache für Session-Lookups (signiertes Cookie-Payload),
+        // der den DB-Roundtrip pro Request einspart. Der hat aber einen
+        // hässlichen Side-Effect: nach einem revoke (Self-Service „diese
+        // Session abmelden" oder Angriffsfall „alle anderen abmelden")
+        // bleibt der widerrufene Cookie bis zum Cache-Ablauf weiterhin
+        // gültig — bis zu `maxAge` Sekunden Verzögerung im Sicherheits-Pfad.
+        // Wir akzeptieren den Performance-Hit (eine SELECT pro Request)
+        // zugunsten von sofortiger Revoke-Wirkung.
+        cookieCache: { enabled: false },
       },
       advanced: {
         cookiePrefix: "jass",

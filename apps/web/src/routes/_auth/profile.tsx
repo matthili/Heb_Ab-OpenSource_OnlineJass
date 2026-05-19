@@ -16,13 +16,14 @@ import { GameHistoryList } from "~/features/replay/GameHistoryList";
 import { FriendsPanel } from "~/features/profile/FriendsPanel";
 import { ProfileDataPanel } from "~/features/profile/ProfileDataPanel";
 import { ProfileEditPanel } from "~/features/profile/ProfileEditPanel";
+import { SessionsPanel } from "~/features/profile/SessionsPanel";
 
-type ProfileTab = "history" | "edit" | "friends" | "data";
+type ProfileTab = "history" | "edit" | "friends" | "sessions" | "data";
 interface ProfileSearch {
   tab?: ProfileTab;
 }
 
-const VALID_TABS: readonly ProfileTab[] = ["history", "edit", "friends", "data"];
+const VALID_TABS: readonly ProfileTab[] = ["history", "edit", "friends", "sessions", "data"];
 
 export const Route = createFileRoute("/_auth/profile")({
   validateSearch: (search: Record<string, unknown>): ProfileSearch => {
@@ -51,6 +52,9 @@ function ProfilePage() {
         <TabLink target="friends" active={activeTab === "friends"}>
           {t("profile.tabs.friends")}
         </TabLink>
+        <TabLink target="sessions" active={activeTab === "sessions"}>
+          {t("profile.tabs.sessions")}
+        </TabLink>
         <TabLink target="data" active={activeTab === "data"}>
           {t("profile.tabs.data")}
         </TabLink>
@@ -63,6 +67,7 @@ function ProfilePage() {
       )}
       {activeTab === "edit" && <ProfileEditPanel />}
       {activeTab === "friends" && <FriendsPanel />}
+      {activeTab === "sessions" && <SessionsPanel />}
       {activeTab === "data" && <ProfileDataPanel />}
     </section>
   );

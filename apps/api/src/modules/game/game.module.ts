@@ -6,6 +6,7 @@ import { GameController } from "./game.controller.js";
 import { GameGateway } from "./game.gateway.js";
 import { GameLockService } from "./game-lock.service.js";
 import { GameService } from "./game.service.js";
+import { PerUserSocketRegistry } from "./per-user-socket-registry.service.js";
 import { ReplayService } from "./replay.service.js";
 import { AIPlayerFactory } from "./players/ai-player.factory.js";
 
@@ -17,6 +18,7 @@ import { AIPlayerFactory } from "./players/ai-player.factory.js";
     ReplayService,
     GameGateway,
     GameLockService,
+    PerUserSocketRegistry,
     AIPlayerFactory,
     SessionGuard,
   ],

@@ -44,6 +44,7 @@ import { AuthService } from "../auth/auth.service.js";
 import { RedisService } from "../redis/redis.service.js";
 import { GameLockService } from "./game-lock.service.js";
 import { GameService, type AnnouncementDecision, type PlayerView } from "./game.service.js";
+import { PerUserSocketRegistry } from "./per-user-socket-registry.service.js";
 import { SocketRateTracker } from "../../common/ws-rate-limit.js";
 
 interface SocketData {
@@ -82,13 +83,14 @@ export class GameGateway
     private readonly auth: AuthService,
     private readonly redis: RedisService,
     private readonly locks: GameLockService,
-    private readonly audit: AuditService
+    private readonly audit: AuditService,
+    private readonly userRegistry: PerUserSocketRegistry
   ) {
     // Defensive: alle DI-Params sollten von NestJS gefüllt sein. Wenn nicht,
     // ist das ein Setup-Problem (z.B. fehlende `reflect-metadata` /
     // `decoratorMetadata`-Transform in einer Test-Umgebung) — laut fehlt
     // statt erst beim ersten Method-Call mit verwirrendem TypeError.
-    if (!games || !auth || !redis || !locks || !audit) {
+    if (!games || !auth || !redis || !locks || !audit || !userRegistry) {
       throw new Error(
         "GameGateway: Constructor-DI unvollständig. " +
           "Prüfe RedisModule/AuthModule-Imports und `emitDecoratorMetadata`."
@@ -131,55 +133,149 @@ export class GameGateway
   handleConnection(socket: AuthenticatedSocket): void {
     this.log.debug({ socketId: socket.id, userId: socket.data.userId }, "WS connected");
 
-    // Pro-Socket Rate-Limit-Tracker initialisieren und als
-    // per-Socket-Middleware (`socket.use`) einhängen. Die Middleware
-    // läuft *vor* jedem `@SubscribeMessage`-Handler — Frames, die das
-    // Limit reißen, werden hier verworfen, bevor sie überhaupt einen
-    // Service-Call auslösen. Bei wiederholten Verstößen disconnecten
-    // wir die Connection (Eskalation).
+    // ── SYNCHRONER Teil ZUERST: Middleware registrieren, bevor irgend
+    //    ein Client-Frame eintreffen kann. Ein async/await hier oben
+    //    wäre ein Race — Frames könnten den Tracker noch nicht sehen
+    //    und die Middleware noch nicht registriert wäre.
     const tracker = new SocketRateTracker();
     socket.data.rateTracker = tracker;
-    socket.use(([eventName], next) => {
-      if (typeof eventName !== "string") {
-        // Engine.IO internal frames haben keinen String-Namen — durchlassen.
-        next();
-        return;
+    socket.use((packet, next) => {
+      void this.runWsGuards(socket, packet, next);
+    });
+
+    // ── ASYNCHRONER Teil: Per-User-Socket-Limit in Redis tracken.
+    //    Läuft im Hintergrund; falls Redis langsam ist, blockt das den
+    //    Connect-Flow nicht — und der Tracker oben schützt sofort.
+    const userId = socket.data.userId;
+    if (userId) {
+      void this.registerUserSocket(userId, socket).catch((err) => {
+        this.log.warn({ err, userId }, "PerUserSocketRegistry.register fehlgeschlagen");
+      });
+    }
+  }
+
+  private async registerUserSocket(userId: string, socket: AuthenticatedSocket): Promise<void> {
+    const { evictSocketIds } = await this.userRegistry.register(userId, socket.id);
+    if (evictSocketIds.length > 0) {
+      await this.evictOldSockets(userId, evictSocketIds);
+    }
+  }
+
+  async handleDisconnect(socket: AuthenticatedSocket): Promise<void> {
+    this.log.debug({ socketId: socket.id, userId: socket.data.userId }, "WS disconnected");
+    const userId = socket.data.userId;
+    if (userId) {
+      try {
+        await this.userRegistry.unregister(userId, socket.id);
+      } catch (err) {
+        this.log.warn({ err, userId }, "PerUserSocketRegistry.unregister fehlgeschlagen");
       }
-      const result = tracker.check(eventName);
-      if (result.allow) {
-        next();
-        return;
-      }
-      // Verstoß: Event verwerfen, Client informieren.
+    }
+  }
+
+  /**
+   * Middleware-Implementation für jedes eingehende WS-Frame.
+   * Zwei Schichten:
+   *   1. Per-Socket Sliding-Window (in-memory, schnell)
+   *   2. Per-User Aggregat-Rate (Redis, deckt Multi-Tab/Multi-Browser)
+   *
+   * Verstöße in beiden Schichten verwerfen das Frame + informieren
+   * den Client. Wiederholte Per-Socket-Verstöße eskalieren zum
+   * Disconnect (siehe SocketRateTracker).
+   */
+  private async runWsGuards(
+    socket: AuthenticatedSocket,
+    packet: unknown[],
+    next: (err?: Error) => void
+  ): Promise<void> {
+    const eventName = packet[0];
+    if (typeof eventName !== "string") {
+      next();
+      return;
+    }
+    const tracker = socket.data.rateTracker;
+    if (!tracker) {
+      next();
+      return;
+    }
+    // 1. Per-Socket-Check
+    const result = tracker.check(eventName);
+    if (!result.allow) {
       socket.emit("game:error", {
         message: `Rate-Limit erreicht für "${eventName}". Bitte langsamer.`,
       });
       if (result.disconnect) {
-        // Asynchron auditen + Disconnect — nicht awaiten, sonst hängt
-        // die Middleware-Chain. Eventual-Consistency reicht.
         void this.audit
           .record({
             action: "security.ws.disconnect.rate_limit",
             actorId: socket.data.userId ?? null,
-            meta: { event: eventName, socketId: socket.id },
+            meta: { event: eventName, socketId: socket.id, reason: "per-socket" },
           })
           .catch(() => {
             /* audit darf den Disconnect nicht blockieren */
           });
         this.log.warn(
           { userId: socket.data.userId, socketId: socket.id, event: eventName },
-          "WS-Rate-Limit: Disconnect wegen wiederholter Verstöße"
+          "WS-Rate-Limit (per-socket): Disconnect"
         );
         socket.disconnect(true);
       }
-      // `next(err)` würde dem Client einen ACK-Error melden — wir wollen
-      // aber das Frame schweigend verwerfen, weil das ACK-Pattern hier
-      // nicht genutzt wird. NICHT next() aufrufen → Handler läuft nicht.
-    });
+      return;
+    }
+    // 2. Per-User Aggregat-Check (deckt Multi-Tab-Bypass des Per-Socket-Limits)
+    const userId = socket.data.userId;
+    if (userId) {
+      const ok = await this.userRegistry.checkRate(userId);
+      if (!ok) {
+        socket.emit("game:error", {
+          message: "Globales Rate-Limit erreicht (zu viele Aktionen über alle deine Tabs).",
+        });
+        void this.audit
+          .record({
+            action: "security.ws.user_rate_limit",
+            actorId: userId,
+            meta: { event: eventName, socketId: socket.id },
+          })
+          .catch(() => {
+            /* swallow */
+          });
+        return;
+      }
+    }
+    next();
   }
 
-  handleDisconnect(socket: AuthenticatedSocket): void {
-    this.log.debug({ socketId: socket.id, userId: socket.data.userId }, "WS disconnected");
+  /**
+   * Disconnectet alte Sockets eines Users (wenn das Per-User-Limit
+   * gerissen wurde). Schickt vorher noch eine Notification, damit der
+   * UI die Ursache anzeigen kann („Du wurdest von einer neueren Sitzung
+   * abgemeldet").
+   */
+  private async evictOldSockets(userId: string, socketIds: string[]): Promise<void> {
+    const ns = this.server.sockets;
+    for (const sid of socketIds) {
+      const old = ns.sockets.get(sid);
+      if (!old) continue;
+      try {
+        old.emit("auth:session-superseded", {
+          message:
+            "Du hast eine neue Sitzung in einem anderen Tab/Gerät geöffnet. " +
+            "Diese Verbindung wird daher geschlossen.",
+        });
+        old.disconnect(true);
+      } catch {
+        // ignore
+      }
+    }
+    void this.audit
+      .record({
+        action: "security.ws.evict_old_socket",
+        actorId: userId,
+        meta: { evictedSocketIds: socketIds },
+      })
+      .catch(() => {
+        /* swallow */
+      });
   }
 
   // ─── Game events ──────────────────────────────────────────────────
