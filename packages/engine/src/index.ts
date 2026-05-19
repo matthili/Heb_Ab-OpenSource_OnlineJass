@@ -37,4 +37,17 @@ export {
   whoseTurn,
 } from "./state.js";
 
+export {
+  aggregateWeisen,
+  compareDeclarations,
+  findBestWeisenForHand,
+  validateDeclaration,
+  type InvalidWeisDeclaration,
+  type InvalidWeisReason,
+  type WeisDeclaration,
+  type WeisKind,
+  type WeisenAggregateInput,
+  type WeisenAggregateResult,
+} from "./weisen.js";
+
 export const ENGINE_PACKAGE_VERSION = "0.2.0";
