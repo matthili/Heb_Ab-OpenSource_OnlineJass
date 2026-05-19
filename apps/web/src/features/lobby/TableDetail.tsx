@@ -14,7 +14,7 @@
  */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
-import { type FormEvent, useCallback, useState } from "react";
+import { type FormEvent, useCallback, useEffect, useState } from "react";
 
 import { ChatPanel } from "~/features/chat/ChatPanel";
 import { DisconnectOverlay } from "~/features/game/DisconnectOverlay";
@@ -23,6 +23,7 @@ import { RematchPanel } from "~/features/game/RematchPanel";
 import { useGameView } from "~/features/game/useGameView";
 import { api, ApiError } from "~/lib/api";
 import { useSession } from "~/lib/auth-client";
+import { getLobbySocket } from "~/lib/ws";
 import { useTableStateEvents } from "~/lib/ws";
 import { LeaveTableConfirm } from "./LeaveTableConfirm";
 import type { TableDetailView } from "./types";
@@ -56,6 +57,23 @@ export function TableDetail({ tableId }: Props) {
     [queryClient, queryKey, navigate]
   );
   useTableStateEvents(tableId, onWsUpdate);
+
+  // **Game-Ende-Trigger**: Wenn das Game per `game:ended` schließt, wechselt
+  // der Tisch-Status backend-seitig auf POST_GAME (oder MATCH_OVER). Das
+  // Lobby-WS-Event `lobby:table-state` kommt aber NICHT automatisch
+  // hinterher — also stoßen wir hier den Refetch der Tisch-Query an,
+  // damit das `RematchPanel` und die Owner-Aktionen sofort umschalten.
+  useEffect(() => {
+    const sock = getLobbySocket();
+    const onEnded = () => {
+      queryClient.invalidateQueries({ queryKey });
+      queryClient.invalidateQueries({ queryKey: ["lobby", "my-tables"] });
+    };
+    sock.on("game:ended", onEnded);
+    return () => {
+      sock.off("game:ended", onEnded);
+    };
+  }, [queryClient, queryKey]);
 
   if (isPending) return <p className="text-stone-500">Lade Tisch …</p>;
   if (error) {
