@@ -340,6 +340,9 @@ describe("applyMove — Trick-Abschluss", () => {
       trick_winners: [0, 0, 0, 0, 0, 0, 0, 0],
       stoeck_eligible_seat: null,
       stoeck_announced_team: null,
+      weisen_button_clicked_at: [null, null, null, null],
+      weisen_declarations: [[], [], [], []],
+      weisen_evaluated: false,
     };
     let s = applyMove(state, { seat: 0, card: c("EICHEL", "SECHS") });
     s = applyMove(s, { seat: 1, card: c("LAUB", "SECHS") });
@@ -385,6 +388,9 @@ describe("finalRoundScore", () => {
       trick_winners: [0, 2, 0, 2, 0, 2, 0, 2, 0], // alle aus Team 0
       stoeck_eligible_seat: null,
       stoeck_announced_team: null,
+      weisen_button_clicked_at: [null, null, null, null],
+      weisen_declarations: [[], [], [], []],
+      weisen_evaluated: false,
     };
     const score = finalRoundScore(s);
     expect(score.matsch_team).toBe(0);
@@ -409,6 +415,9 @@ describe("finalRoundScore", () => {
       trick_winners: [0, 1, 0, 1, 0, 1, 0, 1, 0],
       stoeck_eligible_seat: null,
       stoeck_announced_team: null,
+      weisen_button_clicked_at: [null, null, null, null],
+      weisen_declarations: [[], [], [], []],
+      weisen_evaluated: false,
     };
     expect(finalRoundScore(s).matsch_team).toBeNull();
   });
@@ -567,6 +576,9 @@ describe("Stöck", () => {
       trick_winners: [0, 1, 0, 1, 0, 1, 0, 1, 0],
       stoeck_eligible_seat: null,
       stoeck_announced_team: 0,
+      weisen_button_clicked_at: [null, null, null, null],
+      weisen_declarations: [[], [], [], []],
+      weisen_evaluated: true,
     };
     const score = finalRoundScore(s);
     expect(score.team_card_points).toEqual([100, 77]); // 80 + 20 Stöck

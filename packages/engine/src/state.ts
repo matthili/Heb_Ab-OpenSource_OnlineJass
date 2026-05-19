@@ -27,6 +27,7 @@
 
 import { cardsEqual } from "./cards.js";
 import { legalMoves, trickPoints, trickWinner } from "./rules.js";
+import { aggregateWeisen, validateDeclaration, type WeisDeclaration } from "./weisen.js";
 import {
   type Announcement,
   type Card,
@@ -89,6 +90,32 @@ export interface RoundState {
   // werden in `finalRoundScore` addiert. Pro Runde nur einmal möglich
   // (es kann maximal einen Stöck-Inhaber geben).
   readonly stoeck_announced_team: number | null;
+
+  // ── Weisen (Vorarlberger Kreuz-Jass) ──────────────────────────────
+  // **Weisen** = Sequenzen + Vier-Gleiche, die ein Spieler im ersten
+  // Spiel (= Trick 1) ausweisen darf. Nach Trick 1 wird das höchste
+  // Weis pro Team verglichen, das Sieger-Team kassiert ALLE eigenen
+  // Weisen-Punkte. Verlierer kriegt nichts (auch wenn er aufsummiert
+  // mehr Weisen hatte).
+  //
+  // Lifecycle pro Spieler:
+  //   1. PENDING (default) — Button noch nicht geklickt, Fenster noch offen
+  //   2. OPEN — Button geklickt, kann jetzt Karten ausweisen
+  //   3. SUBMITTED — Karten finalisiert
+  //   4. MISSED — Window zu, kein Button geklickt → kein Weis
+  //
+  // `weisen_button_clicked_at[seat]`: Timestamp (oder null wenn nicht
+  //   geklickt). Wir tracken den Zeitpunkt, weil das Frontend die
+  //   "OPEN"-Phase daran erkennt + ein konsistentes State-Modell hat.
+  // `weisen_declarations[seat]`: Liste der submitted Deklarationen.
+  //   Leer = nichts ausgewiesen. Mehrere = Spieler hat mehrere Weisen
+  //   (z.B. 4 Buur + 3-Blatt) — Karten müssen disjunkt sein.
+  // `weisen_evaluated`: True ab dem Moment, in dem nach Trick 1 die
+  //   Aggregation gelaufen ist + Punkte zu team_card_points addiert
+  //   wurden. Verhindert doppelte Auswertung.
+  readonly weisen_button_clicked_at: readonly (number | null)[];
+  readonly weisen_declarations: readonly (readonly WeisDeclaration[])[];
+  readonly weisen_evaluated: boolean;
 }
 
 /** Eine Karten-Aktion eines bestimmten Sitzes. */
@@ -158,6 +185,9 @@ export function newRound(opts: NewRoundOptions): RoundState {
     trick_winners: [],
     stoeck_eligible_seat: null,
     stoeck_announced_team: null,
+    weisen_button_clicked_at: new Array<number | null>(num_players).fill(null),
+    weisen_declarations: Array.from({ length: num_players }, () => [] as WeisDeclaration[]),
+    weisen_evaluated: false,
   };
 }
 
@@ -285,6 +315,18 @@ export function applyMove(state: RoundState, move: Move): RoundState {
     cards: newTrickCards,
   };
 
+  // Weisen-Evaluation: gerade-eben Trick 1 abgeschlossen (completed_tricks
+  // hatte 0 Einträge, jetzt nach dem return wären es 1). Wenn noch nicht
+  // evaluiert, jetzt aggregieren + Punkte ans Sieger-Team addieren.
+  let weisenEvaluated = state.weisen_evaluated;
+  let teamPointsAfterWeisen = newTeamPoints;
+  if (!state.weisen_evaluated && state.completed_tricks.length === 0) {
+    // state.completed_tricks.length === 0 vor diesem Trick → das hier ist
+    // der gerade abgeschlossene Trick 1.
+    weisenEvaluated = true;
+    teamPointsAfterWeisen = applyWeisenPoints(state, newTeamPoints);
+  }
+
   return {
     ...state,
     hands: newHands,
@@ -292,10 +334,207 @@ export function applyMove(state: RoundState, move: Move): RoundState {
     current_trick_starter: winnerSeat,
     current_trick_cards: [],
     completed_tricks: [...state.completed_tricks, completed],
-    team_card_points: newTeamPoints,
+    team_card_points: teamPointsAfterWeisen,
     trick_winners: [...state.trick_winners, winnerSeat],
     stoeck_eligible_seat: nextStoeckEligible,
+    weisen_evaluated: weisenEvaluated,
   };
+}
+
+/**
+ * Aggregiert die submitten Weisen nach Trick 1 und gibt die neue
+ * `team_card_points`-Liste mit den Weisen-Punkten ans Sieger-Team
+ * addiert zurück. Verlierer kriegt nichts.
+ */
+function applyWeisenPoints(state: RoundState, baseTeamPoints: readonly number[]): number[] {
+  const declarationsPerSeat: Record<number, readonly WeisDeclaration[]> = {};
+  for (let seat = 0; seat < state.num_players; seat++) {
+    const decls = state.weisen_declarations[seat] ?? [];
+    if (decls.length > 0) declarationsPerSeat[seat] = decls;
+  }
+  // Vorhand = Anspieler des ersten Tricks (= initialer current_trick_starter
+  // im allerersten Trick). Da der Trick 1 gerade abgeschlossen ist, ist
+  // diese Information im allerersten completed_trick (= der gerade
+  // hinzugefügte, aber NOCH nicht im state.completed_tricks-Array).
+  // Workaround: wir wissen, dass der initiale Anspieler bei Round-Start
+  // im allerersten Trick gespielt hat. `trick_winners`-Array ist noch
+  // leer; current_trick_starter (vor diesem applyMove) war der Anspieler
+  // des Trick-1-Starts NUR wenn keine completed_tricks existierten.
+  const vorhandSeat = state.current_trick_starter;
+  const result = aggregateWeisen({
+    declarationsPerSeat,
+    teams: state.teams,
+    trumpSuit: state.variant.trump_suit ?? null,
+    vorhandSeat,
+    numPlayers: state.num_players,
+  });
+  if (result.winningTeam === null || result.points === 0) return [...baseTeamPoints];
+  return baseTeamPoints.map((p, t) => (t === result.winningTeam ? p + result.points : p));
+}
+
+// ---------------------------------------------------------------------
+// Weisen-Aktionen
+// ---------------------------------------------------------------------
+
+/**
+ * Status eines Sitzes bzgl. Weisen — UI- + Logik-Hilfsfunktion.
+ *
+ *   - "PENDING"    Fenster offen, Button noch nicht geklickt.
+ *   - "OPEN"       Button geklickt, Karten-Auswahl möglich.
+ *   - "SUBMITTED"  Karten abgegeben.
+ *   - "MISSED"     Fenster zu, kein Button-Click — kein Weis mehr möglich.
+ *   - "EVALUATED"  Trick 1 ist durch + Auswertung gelaufen.
+ */
+export type WeisenSeatStatus = "PENDING" | "OPEN" | "SUBMITTED" | "MISSED" | "EVALUATED";
+
+/**
+ * Wann ist das Weisen-Window für einen Sitz noch offen?
+ *
+ *   - **Trick 1 muss noch laufen** (completed_tricks.length === 0).
+ *   - **Wenn der Sitz im aktuellen Trick noch nicht gespielt hat**:
+ *     Window offen.
+ *   - **Wenn der Sitz im aktuellen Trick gespielt hat**: Window offen,
+ *     solange der **direkte Nachfolger im UZS** noch nicht gespielt hat.
+ */
+export function weisenWindowOpen(state: RoundState, seat: number): boolean {
+  if (state.weisen_evaluated) return false;
+  if (state.completed_tricks.length > 0) return false; // Trick 1 schon vorbei
+
+  // Hat der Sitz im aktuellen Trick schon gespielt?
+  const positionInTrick =
+    (((seat - state.current_trick_starter) % state.num_players) + state.num_players) %
+    state.num_players;
+  const myCardPlayed = positionInTrick < state.current_trick_cards.length;
+  if (!myCardPlayed) return true;
+
+  // Hat der direkte Nachfolger im aktuellen Trick schon gespielt?
+  const nextPosition = positionInTrick + 1;
+  const nextPlayed = nextPosition < state.current_trick_cards.length;
+  return !nextPlayed;
+}
+
+export function weisenSeatStatus(state: RoundState, seat: number): WeisenSeatStatus {
+  if (state.weisen_evaluated) return "EVALUATED";
+  const submitted = (state.weisen_declarations[seat] ?? []).length > 0;
+  if (submitted) return "SUBMITTED";
+  const buttonClicked = state.weisen_button_clicked_at[seat] !== null;
+  if (buttonClicked) return "OPEN";
+  if (weisenWindowOpen(state, seat)) return "PENDING";
+  return "MISSED";
+}
+
+/**
+ * Sitz klickt den Weisen-Button — Selection-Mode öffnet sich. Validation:
+ * Window muss offen sein UND Sitz noch nicht geklickt haben.
+ */
+export function clickWeisenButton(
+  state: RoundState,
+  seat: number,
+  timestamp: number = Date.now()
+): RoundState {
+  if (state.weisen_evaluated) {
+    throw new InvalidMoveError("Weisen-Phase ist vorbei");
+  }
+  if (state.weisen_button_clicked_at[seat] !== null) {
+    throw new InvalidMoveError(`Sitz ${seat} hat den Weisen-Button schon geklickt`);
+  }
+  if (!weisenWindowOpen(state, seat)) {
+    throw new InvalidMoveError(`Sitz ${seat}: Weisen-Window ist nicht (mehr) offen — zu spät`);
+  }
+  const next = [...state.weisen_button_clicked_at];
+  next[seat] = timestamp;
+  return { ...state, weisen_button_clicked_at: next };
+}
+
+/**
+ * Sitz reicht seine Weis-Deklarationen ein. Mehrere Weisen pro Sitz
+ * sind erlaubt (z.B. 4 Buur + 3-Blatt), aber die Karten ALLER
+ * Deklarationen müssen disjunkt sein (keine Karte doppelt verwenden).
+ *
+ * Erlaubt **so lange `weisen_evaluated === false`** — auch wenn der
+ * direkte Nachfolger schon gespielt hat. Voraussetzung: der Sitz muss
+ * den Button geklickt haben, BEVOR das Window-Geschlossen-Kriterium
+ * griff (= state.weisen_button_clicked_at[seat] !== null).
+ */
+export function submitWeisen(
+  state: RoundState,
+  seat: number,
+  declarations: readonly WeisDeclaration[]
+): RoundState {
+  if (state.weisen_evaluated) {
+    throw new InvalidMoveError("Weisen-Phase ist vorbei");
+  }
+  if (state.weisen_button_clicked_at[seat] === null) {
+    throw new InvalidMoveError(
+      `Sitz ${seat} muss erst den Weisen-Button drücken, bevor er ausweisen kann`
+    );
+  }
+  if ((state.weisen_declarations[seat] ?? []).length > 0) {
+    throw new InvalidMoveError(`Sitz ${seat} hat schon ausgewiesen`);
+  }
+
+  // Wir validieren die Deklarationen NICHT noch einmal hier (das hat
+  // der Caller mit validateDeclaration(...) bereits getan), prüfen aber:
+  //   1. Karten-Disjunktheit zwischen den Deklarationen
+  //   2. Plausibilität (Punkte > 0)
+  const seenCards = new Set<string>();
+  for (const decl of declarations) {
+    if (decl.points <= 0) {
+      throw new InvalidMoveError("Deklaration mit Punkten <= 0");
+    }
+    for (const c of decl.cards) {
+      const key = `${c.suit}-${c.rank}`;
+      if (seenCards.has(key)) {
+        throw new InvalidMoveError(
+          "Karten in mehreren Weisen verwendet — Deklarationen müssen disjunkt sein"
+        );
+      }
+      seenCards.add(key);
+    }
+  }
+  // Außerdem: prüfen, dass alle Karten der Deklarationen zur Original-
+  // Hand des Sitzes gehören. Die Original-Hand kennen wir nicht mehr
+  // direkt (state.hands wurde durch applyMove dezimiert), aber wir
+  // können sie rekonstruieren: aktuelle Hand + alle bisher gespielten
+  // Karten dieses Sitzes.
+  const originalHand: Card[] = [...state.hands[seat]!];
+  for (const tr of state.completed_tricks) {
+    const idx = (((seat - tr.starter) % state.num_players) + state.num_players) % state.num_players;
+    const playedCard = tr.cards[idx];
+    if (playedCard) originalHand.push(playedCard);
+  }
+  // Für den aktuellen, noch nicht-vollen Trick:
+  const posInCurrentTrick =
+    (((seat - state.current_trick_starter) % state.num_players) + state.num_players) %
+    state.num_players;
+  if (posInCurrentTrick < state.current_trick_cards.length) {
+    originalHand.push(state.current_trick_cards[posInCurrentTrick]!);
+  }
+  for (const decl of declarations) {
+    for (const c of decl.cards) {
+      if (!originalHand.some((h) => cardsEqual(h, c))) {
+        throw new InvalidMoveError(
+          `Weis enthält Karte ${c.suit}-${c.rank}, die der Sitz ${seat} nicht in seiner Hand hatte`
+        );
+      }
+    }
+  }
+
+  // Re-Validate jeder Deklaration gegen die Original-Hand
+  for (const decl of declarations) {
+    const v = validateDeclaration(decl.cards, originalHand);
+    if ("invalid" in v) {
+      throw new InvalidMoveError(`Weis ungültig: ${v.reason}`);
+    }
+    if (v.points !== decl.points || v.kind !== decl.kind) {
+      throw new InvalidMoveError("Weis-Deklaration weicht von Re-Validation ab");
+    }
+  }
+
+  const nextDecls = state.weisen_declarations.map((d, i) =>
+    i === seat ? [...declarations] : [...d]
+  );
+  return { ...state, weisen_declarations: nextDecls };
 }
 
 /**

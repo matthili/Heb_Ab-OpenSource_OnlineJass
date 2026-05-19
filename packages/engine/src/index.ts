@@ -26,6 +26,7 @@ export {
   InvalidMoveError,
   announceStoeck,
   applyMove,
+  clickWeisenButton,
   dealCards,
   finalRoundScore,
   freshDeck,
@@ -33,8 +34,12 @@ export {
   isRoundDone,
   newRound,
   shuffleDeck,
+  submitWeisen,
   viewAsPlayer,
+  weisenSeatStatus,
+  weisenWindowOpen,
   whoseTurn,
+  type WeisenSeatStatus,
 } from "./state.js";
 
 export {
