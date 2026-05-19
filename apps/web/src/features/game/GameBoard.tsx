@@ -139,20 +139,6 @@ export function GameBoard({
           ★ Stöck rufen (+20)
         </button>
       )}
-      <WeisenPanel
-        weisen={view.weisen}
-        hand={view.hand}
-        weisenPending={weisenPending}
-        onClickWeisen={onClickWeisen}
-        onSubmitWeisen={onSubmitWeisen}
-        selectionMode={selectionMode}
-        onEnterSelection={() => setSelectionMode(true)}
-        onExitSelection={() => setSelectionMode(false)}
-        currentGroup={currentGroup}
-        setCurrentGroup={setCurrentGroup}
-        finalizedGroups={finalizedGroups}
-        setFinalizedGroups={setFinalizedGroups}
-      />
       {error && (
         <div
           role="alert"
@@ -180,6 +166,24 @@ export function GameBoard({
         selectionMode={selectionMode}
         selected={currentGroup}
         onSelect={(card) => setCurrentGroup(toggleCardInGroup(currentGroup, card))}
+      />
+      {/* Weise-Panel UNTER der Hand: User-Feedback aus erster Demo. Der
+          Button war oberhalb der Spielfläche zu weit weg von den Karten,
+          die er auswählen soll — jetzt direkt anschließend, damit Hand
+          und Auswahl räumlich zusammenliegen. */}
+      <WeisenPanel
+        weisen={view.weisen}
+        hand={view.hand}
+        weisenPending={weisenPending}
+        onClickWeisen={onClickWeisen}
+        onSubmitWeisen={onSubmitWeisen}
+        selectionMode={selectionMode}
+        onEnterSelection={() => setSelectionMode(true)}
+        onExitSelection={() => setSelectionMode(false)}
+        currentGroup={currentGroup}
+        setCurrentGroup={setCurrentGroup}
+        finalizedGroups={finalizedGroups}
+        setFinalizedGroups={setFinalizedGroups}
       />
       <WeisenResultOverlay
         gameId={view.gameId}

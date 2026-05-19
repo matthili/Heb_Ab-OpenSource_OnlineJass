@@ -8,14 +8,17 @@
  *
  * Empty-State: kein Banner → die normale Tisch-Liste darunter rückt auf.
  */
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
+import { useCallback } from "react";
 
 import { api } from "~/lib/api";
+import { useLobbyListEvents } from "~/lib/ws";
 
 import type { TableListEntry } from "./types";
 
 export function MyActiveTables() {
+  const queryClient = useQueryClient();
   const { data } = useQuery<{ tables: TableListEntry[] }>({
     queryKey: ["lobby", "my-tables"],
     queryFn: () => api<{ tables: TableListEntry[] }>("/api/lobby/my-tables"),
@@ -24,6 +27,14 @@ export function MyActiveTables() {
     // Push-Updates über das gleiche Query.
     staleTime: 10_000,
   });
+  // Live-Refresh: bei jedem Lobby-Event (table-opened, seat-changed,
+  // closed) invalidieren wir auch unsere „my-tables"-Query — sonst sieht
+  // der User seinen gerade verlassenen Tisch noch bis zum nächsten
+  // staleTime-Tick.
+  const refetch = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ["lobby", "my-tables"] });
+  }, [queryClient]);
+  useLobbyListEvents(refetch);
   const tables = data?.tables ?? [];
   if (tables.length === 0) return null;
 

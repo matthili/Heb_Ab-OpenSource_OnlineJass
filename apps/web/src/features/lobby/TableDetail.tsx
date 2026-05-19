@@ -234,6 +234,11 @@ function OwnerPanel(props: { table: TableDetailView; queryKey: readonly unknown[
     mutationFn: () =>
       api<{ tableClosed: boolean }>(`/api/lobby/tables/${table.id}/leave`, { method: "POST" }),
     onSuccess: () => {
+      // Lobby-Caches sofort entwerten, sonst sieht der User in der
+      // Lobby seinen gerade verlassenen Tisch noch im „Mein aktiver
+      // Tisch"-Banner (staleTime 10s).
+      queryClient.invalidateQueries({ queryKey: ["lobby", "my-tables"] });
+      queryClient.invalidateQueries({ queryKey: ["lobby", "list"] });
       setConfirmLeave(false);
       void navigate({ to: "/lobby" });
     },
@@ -244,6 +249,8 @@ function OwnerPanel(props: { table: TableDetailView; queryKey: readonly unknown[
       // ist damit erfüllt → ab zur Lobby. Andere Fehler werfen wir in
       // der Konsole, damit der Test-Pfad nicht still scheitert.
       if (err instanceof ApiError && (err.status === 404 || err.status === 409)) {
+        queryClient.invalidateQueries({ queryKey: ["lobby", "my-tables"] });
+        queryClient.invalidateQueries({ queryKey: ["lobby", "list"] });
         setConfirmLeave(false);
         void navigate({ to: "/lobby" });
         return;
@@ -501,6 +508,8 @@ function PlayerPanel({
     mutationFn: () => api(`/api/lobby/tables/${tableId}/leave`, { method: "POST" }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey });
+      queryClient.invalidateQueries({ queryKey: ["lobby", "my-tables"] });
+      queryClient.invalidateQueries({ queryKey: ["lobby", "list"] });
       setConfirmLeave(false);
       void navigate({ to: "/lobby" });
     },
@@ -509,6 +518,8 @@ function PlayerPanel({
       // Tisch, also Intent erfüllt → Lobby.
       if (err instanceof ApiError && (err.status === 404 || err.status === 409)) {
         queryClient.invalidateQueries({ queryKey });
+        queryClient.invalidateQueries({ queryKey: ["lobby", "my-tables"] });
+        queryClient.invalidateQueries({ queryKey: ["lobby", "list"] });
         setConfirmLeave(false);
         void navigate({ to: "/lobby" });
         return;

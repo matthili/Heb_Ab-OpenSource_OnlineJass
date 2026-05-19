@@ -82,9 +82,9 @@ export function WeisenPanel(props: Props) {
         }}
         disabled={weisenPending}
         className="w-full rounded-lg bg-jass-yellow border-2 border-jass-yellowDark px-4 py-3 text-jass-ink font-bold text-lg shadow-md hover:bg-jass-yellow/90 disabled:opacity-50 jass-your-turn-glow"
-        aria-label="Weisen ansagen"
+        aria-label="Weise ansagen"
       >
-        ✋ Weisen ansagen
+        ✋ Weise ansagen
       </button>
     );
   }
@@ -118,7 +118,7 @@ export function WeisenPanel(props: Props) {
   if (weisen.myStatus === "SUBMITTED" && weisen.myDeclarations.length > 0) {
     return (
       <div className="rounded border border-jass-paperEdge bg-jass-paper px-3 py-2 text-sm text-jass-ink">
-        <div className="font-semibold mb-1">Deine Weisen sind angesagt:</div>
+        <div className="font-semibold mb-1">Deine Weise sind angesagt:</div>
         <ul className="space-y-0.5">
           {weisen.myDeclarations.map((d, i) => (
             <li key={i}>
@@ -229,10 +229,10 @@ function SelectionPanel(props: SelectionProps) {
     <div
       className="rounded-lg border-2 border-jass-yellowDark bg-jass-cream p-3 space-y-3 shadow-md"
       role="region"
-      aria-label="Weisen auswählen"
+      aria-label="Weise auswählen"
     >
       <div className="flex items-baseline justify-between">
-        <h3 className="font-bold text-jass-ink">Weisen auswählen</h3>
+        <h3 className="font-bold text-jass-ink">Weise auswählen</h3>
         <span className="text-sm text-jass-inkSoft">
           Karten in der Hand antippen • {totalPoints} Pkt
         </span>
@@ -305,7 +305,7 @@ function SelectionPanel(props: SelectionProps) {
           disabled={weisenPending || (finalizedGroups.length === 0 && !validation?.ok)}
           className="rounded bg-jass-yellow border-2 border-jass-yellowDark px-3 py-1.5 text-sm font-bold text-jass-ink hover:bg-jass-yellow/90 disabled:opacity-40 disabled:cursor-not-allowed"
         >
-          Ansagen abschicken
+          Weise ansagen
         </button>
         <button
           type="button"

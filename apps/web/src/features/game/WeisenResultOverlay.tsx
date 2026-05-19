@@ -17,11 +17,38 @@
  * hängt am `dismissedFor`-Set, das in `useWeisenResultDismiss` lebt.
  */
 import { useEffect, useState } from "react";
-import { Card as CardView } from "@jass/ui";
 
 import type { SeatView } from "~/features/lobby/types";
 import type { WeisDeclarationView, WeisenView } from "./types";
 import { kindLabel } from "./WeisenPanel";
+
+// Mini-Card-Asset-Mapping. Wir rendern hier direkt ein `<img>` mit
+// festem Sizing — die generische `Card`-Komponente aus @jass/ui hat
+// `w-auto`, das ohne Wrapping-Container die intrinsische PNG-Breite
+// annimmt (~600px). Im Result-Overlay wollen wir kompakte Briefmarken,
+// also bypassen wir die generische Komponente.
+const SUIT_FILE: Record<string, string> = {
+  EICHEL: "eichel",
+  SCHELLE: "schelle",
+  HERZ: "herz",
+  LAUB: "laub",
+};
+const RANK_FILE: Record<string, string> = {
+  SECHS: "6",
+  SIEBEN: "7",
+  ACHT: "8",
+  NEUN: "9",
+  ZEHN: "10",
+  UNTER: "U",
+  OBER: "O",
+  KOENIG: "K",
+  ASS: "A",
+};
+
+function miniCardSrc(c: { suit: string; rank: string }): string {
+  if (c.suit === "SCHELLE" && c.rank === "SECHS") return "/cards/schelle-6-weli.png";
+  return `/cards/${SUIT_FILE[c.suit] ?? c.suit.toLowerCase()}-${RANK_FILE[c.rank] ?? c.rank}.png`;
+}
 
 interface Props {
   gameId: string;
@@ -64,7 +91,7 @@ export function WeisenResultOverlay({ gameId, weisen, seats, mySeat }: Props) {
       <div className="max-w-xl w-full my-auto rounded-lg bg-jass-paper border border-jass-paperEdge shadow-xl p-5 space-y-4">
         <header className="text-center">
           <h2 id="weisen-result-title" className="text-xl font-bold text-jass-ink">
-            Weisen-Auswertung
+            Auswertung der Weise
           </h2>
           {winningTeam !== null ? (
             <p className="mt-1 text-jass-inkSoft">
@@ -72,7 +99,7 @@ export function WeisenResultOverlay({ gameId, weisen, seats, mySeat }: Props) {
               <span className="font-bold text-jass-green">{points} Pkt</span>.
             </p>
           ) : (
-            <p className="mt-1 text-jass-inkSoft">Keine Weisen gemeldet.</p>
+            <p className="mt-1 text-jass-inkSoft">Keine Weise gemeldet.</p>
           )}
         </header>
 
@@ -134,17 +161,16 @@ function DeclarationRow({ d }: { d: WeisDeclarationView }) {
     <div className="flex items-center gap-3">
       <div className="flex flex-wrap gap-1">
         {d.cards.map((c, i) => (
-          <CardView
+          // Mini-Card: feste Höhe 2.5rem, Breite proportional über
+          // `w-auto` + `h-10` ist hier explizit beschränkt durch
+          // `style={{ height: '2.5rem' }}` — Tailwind-Purging-sicher.
+          <img
             key={i}
-            // Wire-Format ist {suit:string,rank:string} — wir casten auf
-            // die @jass/engine-Typen, weil der Server garantiert keine
-            // anderen Werte schickt. Falls je mal doch, wäre der
-            // Drift schon durch das Backend-Schema gefangen.
-            card={{
-              suit: c.suit as never,
-              rank: c.rank as never,
-            }}
-            size="xs"
+            src={miniCardSrc(c)}
+            alt=""
+            draggable={false}
+            style={{ height: "2.5rem", width: "auto" }}
+            className="rounded shadow-sm"
           />
         ))}
       </div>
