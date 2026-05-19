@@ -76,6 +76,7 @@
       "submit": "Konto anlegen",
       "submitting": "Wird angelegt…",
       "alreadyHave": "Schon ein Konto?",
+      "existingEmailHint": "Falls deine E-Mail-Adresse schon registriert ist, schicken wir aus Sicherheitsgründen <strong>keine zweite Bestätigungs-Mail</strong>. Schau zuerst in deinem Postfach (auch Spam) nach der ersten — oder nutze <a>Passwort vergessen</a>, um wieder reinzukommen.",
       "passwordTooShort": "Das Passwort muss mindestens 12 Zeichen lang sein.",
       "failed": "Registrierung fehlgeschlagen."
     },

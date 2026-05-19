@@ -1061,7 +1061,26 @@ export class GameService {
   async driveAIsToEnd(gameId: string): Promise<void> {
     let announceSteps = 0;
     for (let i = 0; i < 50; i++) {
-      const action = await this.nextAIAction(gameId);
+      let action: Awaited<ReturnType<typeof this.nextAIAction>>;
+      try {
+        action = await this.nextAIAction(gameId);
+      } catch (err) {
+        // **Robustheit**: Wenn der Redis-State zwischenzeitlich abgelaufen
+        // ist (TTL 6h), ist das Game *technisch* in einem ungültigen
+        // Zustand — wir können es nicht mehr deterministisch zu Ende
+        // treiben. Stattdessen markieren wir das Game als beendet (mit
+        // `endedAt` gesetzt) und kehren sauber zurück, damit der Caller
+        // (z.B. `leaveTable`) den Tisch trotzdem schließen kann.
+        if (err instanceof NotFoundException) {
+          this.log.warn(
+            { gameId, reason: err.message },
+            "driveAIsToEnd: kein Redis-State mehr — Game wird zwangs-beendet"
+          );
+          await this.forceEndStaleGame(gameId);
+          return;
+        }
+        throw err;
+      }
       if (!action) return; // Mensch dran oder Spiel beendet
       if (action.kind === "announce") {
         if (++announceSteps > 2) {
@@ -1077,6 +1096,29 @@ export class GameService {
       if (view.status === "finished") return;
     }
     this.log.warn({ gameId }, "driveAIsToEnd hat Sicherheitsgrenze erreicht");
+  }
+
+  /**
+   * Notfall-Cleanup für Games, deren Redis-State verschwunden ist.
+   * Setzt `endedAt`, schreibt einen Audit-Eintrag — der Tisch kann
+   * danach normal geschlossen werden. Keine Punkte werden vergeben
+   * (Game ist effektiv null-und-nichtig).
+   */
+  private async forceEndStaleGame(gameId: string): Promise<void> {
+    const game = await this.prisma.game.findUnique({
+      where: { id: gameId },
+      select: { endedAt: true },
+    });
+    if (!game || game.endedAt !== null) return; // schon erledigt
+    await this.prisma.game.update({
+      where: { id: gameId },
+      data: { endedAt: new Date() },
+    });
+    await this.audit.record({
+      action: "game.force_ended.stale_state",
+      target: gameId,
+      meta: asJson({ reason: "redis_state_missing" }),
+    });
   }
 
   /**

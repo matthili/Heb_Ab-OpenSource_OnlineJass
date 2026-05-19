@@ -10,7 +10,7 @@
  */
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { type FormEvent, useState } from "react";
-import { useTranslation } from "react-i18next";
+import { Trans, useTranslation } from "react-i18next";
 
 import { TurnstileWidget } from "~/features/auth/TurnstileWidget";
 import { signUp } from "~/lib/auth-client";
@@ -121,6 +121,24 @@ function RegisterPage() {
           action="register"
           onToken={(token) => setCaptchaToken(token)}
         />
+
+        {/*
+          Anti-User-Enumeration-Hinweis: Better Auth verschluckt bewusst
+          den „diese Mail existiert schon"-Fehler (verhindert, dass jemand
+          per Brute-Force prüfen kann, welche Adressen registriert sind).
+          UX-Folge: User, die zweimal Sign-up klicken, bekommen keinen
+          Fehler — aber auch keine zweite Verify-Mail. Dieser Hinweis
+          fängt das ab, *bevor* sie überhaupt klicken.
+        */}
+        <p className="text-xs text-stone-600 bg-jass-cream border border-jass-paperEdge rounded px-3 py-2 leading-snug">
+          <Trans
+            i18nKey="auth.register.existingEmailHint"
+            components={{
+              strong: <strong />,
+              a: <Link to="/forgot-password" className="underline font-medium" />,
+            }}
+          />
+        </p>
 
         {error && (
           <div

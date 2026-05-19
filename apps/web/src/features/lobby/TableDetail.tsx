@@ -237,6 +237,20 @@ function OwnerPanel(props: { table: TableDetailView; queryKey: readonly unknown[
       setConfirmLeave(false);
       void navigate({ to: "/lobby" });
     },
+    onError: (err: unknown) => {
+      // **Robust-Fallback**: wenn der Server 404/409 zurückgibt, ist der
+      // User effektiv nicht mehr am Tisch (entweder existiert er nicht
+      // mehr oder ist schon geschlossen). User-Intent „Tisch verlassen"
+      // ist damit erfüllt → ab zur Lobby. Andere Fehler werfen wir in
+      // der Konsole, damit der Test-Pfad nicht still scheitert.
+      if (err instanceof ApiError && (err.status === 404 || err.status === 409)) {
+        setConfirmLeave(false);
+        void navigate({ to: "/lobby" });
+        return;
+      }
+      // eslint-disable-next-line no-console
+      console.error("Leave-Table-Fehler:", err);
+    },
   });
   const approveMut = useMutation({
     mutationFn: (reqId: string) =>
@@ -489,6 +503,18 @@ function PlayerPanel({
       queryClient.invalidateQueries({ queryKey });
       setConfirmLeave(false);
       void navigate({ to: "/lobby" });
+    },
+    onError: (err: unknown) => {
+      // Siehe OwnerPanel-Pendant: 404 / 409 = User ist eh nicht (mehr) am
+      // Tisch, also Intent erfüllt → Lobby.
+      if (err instanceof ApiError && (err.status === 404 || err.status === 409)) {
+        queryClient.invalidateQueries({ queryKey });
+        setConfirmLeave(false);
+        void navigate({ to: "/lobby" });
+        return;
+      }
+      // eslint-disable-next-line no-console
+      console.error("Leave-Table-Fehler:", err);
     },
   });
   return (

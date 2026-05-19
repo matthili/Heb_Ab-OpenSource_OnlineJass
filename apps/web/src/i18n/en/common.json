@@ -76,6 +76,7 @@
       "submit": "Create account",
       "submitting": "Creating…",
       "alreadyHave": "Already have an account?",
+      "existingEmailHint": "If your e-mail is already registered, we <strong>won't send a second verification mail</strong> (anti-enumeration). Check your inbox (incl. spam) for the original — or use <a>Forgot password</a> to get back in.",
       "passwordTooShort": "Password must be at least 12 characters.",
       "failed": "Registration failed."
     },
