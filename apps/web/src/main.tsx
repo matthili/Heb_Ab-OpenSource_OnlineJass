@@ -23,10 +23,15 @@ import { createRoot } from "react-dom/client";
 import "@fontsource/eb-garamond/400.css";
 import "@fontsource/eb-garamond/600.css";
 import "./i18n/index.js"; // Side-Effect: initialisiert i18next vor dem ersten Render
+import { applyThemeFromStorage } from "./lib/theme.js";
 import { ToastProvider } from "./lib/toast.js";
 import { registerServiceWorker } from "./lib/pwa.js";
 import { routeTree } from "./routeTree.gen.js";
 import "./styles.css";
+
+// **Theme früh setzen** — vor dem ersten React-Render. Sonst sehen
+// User mit Hi-Contrast-Preference einen kurzen Default-Flash.
+applyThemeFromStorage();
 
 const queryClient = new QueryClient({
   defaultOptions: {

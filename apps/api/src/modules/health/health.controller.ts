@@ -22,6 +22,11 @@ export class HealthController {
   @Get("healthz")
   async readiness(): Promise<{ status: "ok"; ts: string; checks: { postgres: "ok" } }> {
     try {
+      // ESLint no-restricted-syntax verbietet $queryRaw global.
+      // Health-Check ist der einzige legitime Use-Case: ein
+      // Tagged-Template ohne User-Input (keine Injection-Fläche),
+      // typsichere Prisma-Methoden bieten kein direktes „SELECT 1".
+      // eslint-disable-next-line no-restricted-syntax
       await this.prisma.$queryRaw`SELECT 1`;
     } catch (err) {
       throw new HttpException(

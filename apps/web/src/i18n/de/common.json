@@ -182,5 +182,10 @@
     "label": "Sprache",
     "de": "Deutsch",
     "en": "English"
+  },
+
+  "theme": {
+    "toHiContrast": "Kontrast-Modus aktivieren",
+    "toDefault": "Zurück zum Standard-Look"
   }
 }

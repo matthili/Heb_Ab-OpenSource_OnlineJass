@@ -41,6 +41,25 @@ export default tseslint.config(
         { prefer: "type-imports", fixStyle: "inline-type-imports" },
       ],
       "no-console": ["warn", { allow: ["warn", "error", "info"] }],
+      // ── Plan-Doc-Sicherheits-Checkliste #7: "ORM only, kein Raw-SQL ohne Param" ──
+      // Prisma hat vier Raw-Methoden:
+      //   - $queryRaw         (tagged template, safe — wenn als template aufgerufen)
+      //   - $executeRaw       (dito)
+      //   - $queryRawUnsafe   (plain string — Injection-Vektor)
+      //   - $executeRawUnsafe (dito)
+      // Pragmatisch verbieten wir ALLE vier. Wer wirklich Raw-SQL braucht
+      // (z.B. komplexe Cross-Table-Migrationen, performance-kritische Views),
+      // soll das mit eigenem `// eslint-disable-next-line no-restricted-syntax`
+      // + Code-Review-Kommentar bewusst signalisieren.
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector:
+            "MemberExpression[property.name=/^\\$(query|execute)Raw(Unsafe)?$/]",
+          message:
+            "Raw-SQL über Prisma ist verboten (Plan-Doc §9.7). Nutze typsichere Prisma-Client-Methoden, oder disable mit `// eslint-disable-next-line no-restricted-syntax` + Begründung im Review.",
+        },
+      ],
     },
   },
   {

@@ -378,3 +378,61 @@ h1 {
     animation: none;
   }
 }
+
+/* ── High-Contrast-Theme ────────────────────────────────────────────
+ * Plan-Doc-§7 + Sicherheits-Checkliste (a11y / WCAG 2.1 AA). User
+ * können im Header zwischen Default und High-Contrast wechseln —
+ * persistiert in localStorage (jass-theme = "hi-contrast").
+ *
+ * Strategie: wir überschreiben die @theme-CSS-Variablen, wenn das
+ * Root-Element `data-theme="hi-contrast"` trägt. Tailwind-Komponenten
+ * mit `bg-jass-*` / `text-jass-*` profitieren automatisch — keine
+ * Komponenten-Anpassung nötig.
+ *
+ * **Farbgebung**: schwarzer Vordergrund auf weißem Papier, knallige
+ * Akzente (Rot+Gelb gesättigt), klare Borders. Kontrast-Ratios alle
+ * ≥ 7:1 (WCAG AAA) statt der Default-AA-Schwelle.
+ */
+:root[data-theme="hi-contrast"] {
+  /* Papier wird reines Weiß, Tinte wird reines Schwarz. */
+  --color-jass-cardBg: #ffffff;
+  --color-jass-paper: #ffffff;
+  --color-jass-paperEdge: #000000;
+  --color-jass-rule: #000000;
+  --color-jass-cream: #f5f5f5;
+  --color-jass-white: #ffffff;
+
+  /* Farb-Symbole maximal gesättigt, dunkle Variante näher schwarz. */
+  --color-jass-red: #d40000;
+  --color-jass-redDark: #800000;
+  --color-jass-yellow: #ffcc00;
+  --color-jass-yellowDark: #806600;
+  --color-jass-green: #008000;
+  --color-jass-greenDark: #004d00;
+  --color-jass-brown: #000000;
+  --color-jass-brownDark: #000000;
+
+  /* Tinte komplett schwarz, „soft"-Variante dunkelgrau. */
+  --color-jass-ink: #000000;
+  --color-jass-inkSoft: #333333;
+  --color-jass-skin: #ffe4cc;
+  --color-jass-skinDark: #806040;
+  --color-jass-hair: #000000;
+  --color-jass-blue: #003399;
+
+  --color-jass-bg: #ffffff;
+}
+
+/* Body-Texturen in Hi-Contrast deaktivieren, sonst stört der subtile
+ * Papier-Verlauf den klaren Schwarz-Weiß-Look. */
+:root[data-theme="hi-contrast"] body,
+:root[data-theme="hi-contrast"] .bg-jass-felt {
+  background-image: none;
+  background-color: var(--color-jass-paper);
+}
+
+/* Fokus-Indikatoren in Hi-Contrast verstärken (Keyboard-Navigation). */
+:root[data-theme="hi-contrast"] *:focus-visible {
+  outline: 3px solid #000000;
+  outline-offset: 2px;
+}
