@@ -31,11 +31,27 @@ export interface GameViewState {
   movePending: boolean;
   /** true, solange ein `game:announce` unterwegs ist. */
   announcePending: boolean;
+  /** true, solange ein `game:weisen-*` Roundtrip unterwegs ist. */
+  weisenPending: boolean;
   playCard: (card: Card) => void;
   /** Trumpf-Ansage (oder Push) absenden. */
   announce: (decision: AnnouncementDecision) => void;
   /** „Stöck" rufen — nur erlaubt, wenn `view.stoeckEligible`. */
   announceStoeck: () => void;
+  /**
+   * „Weisen"-Button klicken. Eröffnet das Selection-Window für die
+   * nachfolgende Karten-Auswahl. Wird vom Server bei geschlossenem
+   * Window zurückgewiesen (`game:error`).
+   */
+  clickWeisen: () => void;
+  /**
+   * Eine oder mehrere Weisen-Gruppen submitten.
+   * Jede `groups`-Untergruppe ist eine separate Deklaration
+   * (z.B. 3-Blatt + 4×Asse zugleich). Karten innerhalb einer Gruppe
+   * müssen ein valider Weis sein; Karten dürfen nicht über Gruppen
+   * hinweg dupliziert werden — Server validiert beides re.
+   */
+  submitWeisen: (groups: ReadonlyArray<ReadonlyArray<Card>>) => void;
   clearError: () => void;
 }
 
@@ -44,6 +60,7 @@ export function useGameView(gameId: string | null): GameViewState {
   const [error, setError] = useState<string | null>(null);
   const [movePending, setMovePending] = useState(false);
   const [announcePending, setAnnouncePending] = useState(false);
+  const [weisenPending, setWeisenPending] = useState(false);
   // Ref zum letzten gameId, damit der play-Callback nicht stale wird.
   const gameIdRef = useRef<string | null>(gameId);
   gameIdRef.current = gameId;
@@ -56,6 +73,7 @@ export function useGameView(gameId: string | null): GameViewState {
       setView(v);
       setMovePending(false);
       setAnnouncePending(false);
+      setWeisenPending(false);
       // State-Update räumt einen alten Move-Fehler auf, sobald ein
       // legitimer State eintrifft.
       setError(null);
@@ -64,6 +82,7 @@ export function useGameView(gameId: string | null): GameViewState {
       setError(e?.message ?? "Spielfehler");
       setMovePending(false);
       setAnnouncePending(false);
+      setWeisenPending(false);
     }
 
     socket.on("game:state", onState);
@@ -100,6 +119,27 @@ export function useGameView(gameId: string | null): GameViewState {
     socket.emit("game:announce-stoeck", { gameId: id });
   }
 
+  function clickWeisen() {
+    const id = gameIdRef.current;
+    if (!id) return;
+    const socket = getLobbySocket();
+    setWeisenPending(true);
+    socket.emit("game:weisen-click", { gameId: id });
+  }
+
+  function submitWeisen(groups: ReadonlyArray<ReadonlyArray<Card>>) {
+    const id = gameIdRef.current;
+    if (!id) return;
+    const socket = getLobbySocket();
+    setWeisenPending(true);
+    // Cards werden 1:1 als {suit, rank}-Tupel über Wire geschickt — das
+    // Backend akzeptiert exakt diese Form (vgl. `game:weisen-submit`-Handler
+    // im gateway). Wir kopieren explizit, damit kein Frozen-Array über die
+    // Socket.IO-Serializer-Grenze geht (manche Server crashen sonst).
+    const payload = groups.map((g) => g.map((c) => ({ suit: c.suit, rank: c.rank })));
+    socket.emit("game:weisen-submit", { gameId: id, groups: payload });
+  }
+
   function clearError() {
     setError(null);
   }
@@ -109,9 +149,12 @@ export function useGameView(gameId: string | null): GameViewState {
     error,
     movePending,
     announcePending,
+    weisenPending,
     playCard,
     announce,
     announceStoeck,
+    clickWeisen,
+    submitWeisen,
     clearError,
   };
 }

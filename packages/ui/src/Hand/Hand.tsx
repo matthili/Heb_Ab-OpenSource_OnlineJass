@@ -30,6 +30,15 @@ export interface HandProps {
   canPlay?: boolean;
   /** Click-Handler. Nur aufgerufen wenn `canPlay && legal`. */
   onPlay?: (card: CardModel) => void;
+  /**
+   * **Selection-Mode** (z.B. Weisen-Auswahl). Wenn `true`, ignoriert die
+   * Hand `canPlay`/`legalMask` und reicht jeden Klick an `onSelect`
+   * weiter; selektierte Karten werden visuell „raised" markiert. Der
+   * Caller pflegt die `selected`-Liste extern.
+   */
+  selectionMode?: boolean;
+  selected?: readonly CardModel[];
+  onSelect?: (card: CardModel) => void;
 }
 
 /**
@@ -51,11 +60,21 @@ function sortedHand(cards: readonly CardModel[]): readonly CardModel[] {
   });
 }
 
-export function Hand({ cards, legalMask, canPlay = false, onPlay }: HandProps) {
+export function Hand({
+  cards,
+  legalMask,
+  canPlay = false,
+  onPlay,
+  selectionMode = false,
+  selected,
+  onSelect,
+}: HandProps) {
   if (cards.length === 0) {
     return <p className="text-sm text-stone-500 text-center">Keine Karten in der Hand.</p>;
   }
   const sorted = sortedHand(cards);
+  // Schnell-Lookup für Selection-Mode: O(1) statt O(N²) im Render-Loop.
+  const selectedKeys = new Set((selected ?? []).map((c) => `${c.suit}-${c.rank}`));
   // Überlappung dynamisch nach Kartenzahl: bei 9 Karten brauchen wir
   // stark überlappen, bei 3 reicht moderat. Wir geben ~60 % der Karten-
   // Breite negativen Margin — beim Hover (z-30 + translate-y) hebt sich
@@ -74,7 +93,14 @@ export function Hand({ cards, legalMask, canPlay = false, onPlay }: HandProps) {
       {sorted.map((card, i) => {
         const idx = SUIT_ID[card.suit] * 9 + RANK_ID[card.rank];
         const legal = legalMask ? legalMask[idx] === 1 : true;
-        const clickable = canPlay && legal && Boolean(onPlay);
+        const isSelected = selectionMode && selectedKeys.has(`${card.suit}-${card.rank}`);
+        // Im Selection-Mode überschreiben wir Play-Logik:
+        //   • alle Karten klickbar (Auswahl-Toggle)
+        //   • `raised`, wenn aktuell ausgewählt
+        //   • `disabled` greift nicht (eine illegale Spielkarte darf
+        //     trotzdem in einem Weis vorkommen)
+        const clickable = selectionMode ? Boolean(onSelect) : canPlay && legal && Boolean(onPlay);
+        const handleClick = selectionMode ? onSelect : canPlay && legal ? onPlay : undefined;
         return (
           <div
             key={`${card.suit}-${card.rank}-${i}`}
@@ -87,8 +113,9 @@ export function Hand({ cards, legalMask, canPlay = false, onPlay }: HandProps) {
             <Card
               card={card}
               size="md"
-              disabled={canPlay && !legal}
-              {...(clickable && onPlay ? { onClick: onPlay } : {})}
+              disabled={!selectionMode && canPlay && !legal}
+              raised={isSelected}
+              {...(clickable && handleClick ? { onClick: handleClick } : {})}
             />
           </div>
         );

@@ -17,6 +17,7 @@
 import { Hand, Scoreboard, Trick } from "@jass/ui";
 import type { Card } from "@jass/engine";
 import { Link } from "@tanstack/react-router";
+import { useState } from "react";
 
 import type { SeatView } from "~/features/lobby/types";
 import { AnnouncementDialog } from "./AnnouncementDialog";
@@ -24,6 +25,8 @@ import { relativeSlot, SEAT_LABEL_POS } from "./seat-layout";
 import type { AnnouncementDecision, PlayerView } from "./types";
 import { useDisplayedTrick } from "./useDisplayedTrick";
 import { TrickMini } from "./TrickMini";
+import { toggleCardInGroup, WeisenPanel } from "./WeisenPanel";
+import { WeisenResultOverlay } from "./WeisenResultOverlay";
 
 interface Props {
   view: PlayerView;
@@ -31,10 +34,13 @@ interface Props {
   mySeat: number;
   movePending: boolean;
   announcePending: boolean;
+  weisenPending: boolean;
   error: string | null;
   onPlayCard: (card: Card) => void;
   onAnnounce: (decision: AnnouncementDecision) => void;
   onAnnounceStoeck: () => void;
+  onClickWeisen: () => void;
+  onSubmitWeisen: (groups: ReadonlyArray<ReadonlyArray<Card>>) => void;
 }
 
 export function GameBoard({
@@ -43,16 +49,25 @@ export function GameBoard({
   mySeat,
   movePending,
   announcePending,
+  weisenPending,
   error,
   onPlayCard,
   onAnnounce,
   onAnnounceStoeck,
+  onClickWeisen,
+  onSubmitWeisen,
 }: Props) {
   const seatNames = buildSeatNames(seats);
   // Hook IMMER auf gleichem Render-Level aufrufen — auch im Ansage-Modus,
   // damit React keine "different number of hooks"-Warnung wirft. Der Hook
   // toleriert `undefined` als no-op.
   const displayed = useDisplayedTrick(view.state ?? undefined);
+
+  // Weisen-Selection-State lebt im GameBoard, weil der WeisenPanel UND die
+  // Hand-Komponente beide darauf zugreifen müssen.
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [currentGroup, setCurrentGroup] = useState<readonly Card[]>([]);
+  const [finalizedGroups, setFinalizedGroups] = useState<ReadonlyArray<ReadonlyArray<Card>>>([]);
 
   // Ansage-Phase: nur die Hand + Dialog rendern, kein Scoreboard/Spielfeld.
   // Die Variante steht ja noch gar nicht fest, das Scoreboard hätte nichts
@@ -103,6 +118,20 @@ export function GameBoard({
           ★ Stöck rufen (+20)
         </button>
       )}
+      <WeisenPanel
+        weisen={view.weisen}
+        hand={view.hand}
+        weisenPending={weisenPending}
+        onClickWeisen={onClickWeisen}
+        onSubmitWeisen={onSubmitWeisen}
+        selectionMode={selectionMode}
+        onEnterSelection={() => setSelectionMode(true)}
+        onExitSelection={() => setSelectionMode(false)}
+        currentGroup={currentGroup}
+        setCurrentGroup={setCurrentGroup}
+        finalizedGroups={finalizedGroups}
+        setFinalizedGroups={setFinalizedGroups}
+      />
       {error && (
         <div
           role="alert"
@@ -125,8 +154,17 @@ export function GameBoard({
       <Hand
         cards={view.hand}
         legalMask={view.legalActionMask}
-        canPlay={view.myTurn && !movePending}
+        canPlay={view.myTurn && !movePending && !selectionMode}
         onPlay={onPlayCard}
+        selectionMode={selectionMode}
+        selected={currentGroup}
+        onSelect={(card) => setCurrentGroup(toggleCardInGroup(currentGroup, card))}
+      />
+      <WeisenResultOverlay
+        gameId={view.gameId}
+        weisen={view.weisen}
+        seats={seats}
+        mySeat={mySeat}
       />
     </div>
   );

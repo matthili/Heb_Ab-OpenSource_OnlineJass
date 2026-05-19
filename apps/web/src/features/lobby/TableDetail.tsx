@@ -530,8 +530,18 @@ function GameSection({
   isAtTable: boolean;
   tableStatus: TableDetailView["status"];
 }) {
-  const { view, error, movePending, announcePending, playCard, announce, announceStoeck } =
-    useGameView(isAtTable ? gameId : null);
+  const {
+    view,
+    error,
+    movePending,
+    announcePending,
+    weisenPending,
+    playCard,
+    announce,
+    announceStoeck,
+    clickWeisen,
+    submitWeisen,
+  } = useGameView(isAtTable ? gameId : null);
 
   if (!isAtTable) {
     return (
@@ -558,10 +568,13 @@ function GameSection({
           mySeat={view.mySeat}
           movePending={movePending}
           announcePending={announcePending}
+          weisenPending={weisenPending}
           error={error}
           onPlayCard={playCard}
           onAnnounce={announce}
           onAnnounceStoeck={announceStoeck}
+          onClickWeisen={clickWeisen}
+          onSubmitWeisen={submitWeisen}
         />
         {tableStatus === "POST_GAME" && view.status === "finished" && (
           <RematchPanel gameId={gameId} finalScore={view.finalScore} />

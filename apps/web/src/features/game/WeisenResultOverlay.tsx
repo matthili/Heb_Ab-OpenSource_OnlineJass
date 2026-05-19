@@ -1,0 +1,157 @@
+/**
+ * **WeisenResultOverlay** — wird nach Abschluss des ersten Spiels (Trick 1)
+ * angezeigt. Backend signalisiert das über `weisen.result` in der PlayerView.
+ *
+ * Inhalt:
+ *   - Header mit Sieger-Team-Markierung + Punkte
+ *   - Pro Sitz: alle gemeldeten Deklarationen (Kind + Punkte + Karten)
+ *   - „Weiter spielen"-Button, der das Overlay schließt
+ *
+ * **Position**: als `absolute inset-0` Backdrop über dem `GameBoard`-
+ * Container — dadurch bleibt der Chat-Bereich rechts bedienbar (siehe
+ * `DisconnectOverlay` für das gleiche Pattern).
+ *
+ * **Lifecycle**: Wir merken uns lokal, ob der User das Overlay schon
+ * geschlossen hat (pro `gameId`). Beim Neuladen des Tabs (gleiche gameId)
+ * würden wir sonst das Overlay erneut zeigen, was nervig wäre. State
+ * hängt am `dismissedFor`-Set, das in `useWeisenResultDismiss` lebt.
+ */
+import { useEffect, useState } from "react";
+import { Card as CardView } from "@jass/ui";
+
+import type { SeatView } from "~/features/lobby/types";
+import type { WeisDeclarationView, WeisenView } from "./types";
+import { kindLabel } from "./WeisenPanel";
+
+interface Props {
+  gameId: string;
+  weisen: WeisenView;
+  seats: readonly SeatView[];
+  /** Eigene Sitz-Nummer — der Sitz wird mit „du" markiert. */
+  mySeat: number;
+}
+
+export function WeisenResultOverlay({ gameId, weisen, seats, mySeat }: Props) {
+  const [dismissed, setDismissed] = useState(false);
+
+  // Wenn die gameId wechselt (z.B. nach Rematch), Dismiss-State zurücksetzen.
+  useEffect(() => {
+    setDismissed(false);
+  }, [gameId]);
+
+  if (!weisen.result || dismissed) return null;
+
+  const { winningTeam, points, perSeat } = weisen.result;
+  // Keine einzige Deklaration → Overlay weglassen (es gibt schlicht nichts
+  // zu feiern). Server liefert in dem Fall `points: 0` + leeres perSeat.
+  if (perSeat.length === 0) return null;
+
+  const seatNames = new Map<number, string>();
+  for (const s of seats) {
+    seatNames.set(
+      s.seat,
+      s.user?.name ?? (s.aiSeatType ? `KI · ${s.aiSeatType}` : `Sitz ${s.seat}`)
+    );
+  }
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="weisen-result-title"
+      className="absolute inset-0 z-40 flex items-center justify-center bg-stone-900/55 backdrop-blur-sm rounded-lg p-4 overflow-y-auto"
+    >
+      <div className="max-w-xl w-full my-auto rounded-lg bg-jass-paper border border-jass-paperEdge shadow-xl p-5 space-y-4">
+        <header className="text-center">
+          <h2 id="weisen-result-title" className="text-xl font-bold text-jass-ink">
+            Weisen-Auswertung
+          </h2>
+          {winningTeam !== null ? (
+            <p className="mt-1 text-jass-inkSoft">
+              <strong className="text-jass-ink">Team {winningTeam} gewinnt</strong> und kassiert{" "}
+              <span className="font-bold text-jass-green">{points} Pkt</span>.
+            </p>
+          ) : (
+            <p className="mt-1 text-jass-inkSoft">Keine Weisen gemeldet.</p>
+          )}
+        </header>
+
+        <ul className="space-y-3">
+          {perSeat.map(({ seat, declarations }) => {
+            // Team-Affiliation (KREUZ_4P): Sitze 0+2 = Team 0, 1+3 = Team 1.
+            // Server liefert das implizit über `winningTeam` — hier nur fürs UI.
+            const teamOfSeat = seat % 2;
+            const isWinner = teamOfSeat === winningTeam;
+            return (
+              <li
+                key={seat}
+                className={`rounded-lg border p-3 ${
+                  isWinner
+                    ? "border-jass-yellowDark bg-jass-yellow/20"
+                    : "border-jass-paperEdge bg-jass-cream"
+                }`}
+              >
+                <div className="flex items-baseline justify-between mb-2">
+                  <div className="font-semibold text-jass-ink">
+                    {seatNames.get(seat) ?? `Sitz ${seat}`}
+                    {seat === mySeat && (
+                      <span className="ml-1 text-xs text-jass-inkSoft">(du)</span>
+                    )}
+                  </div>
+                  <div className="text-xs text-jass-inkSoft">
+                    Team {teamOfSeat}
+                    {isWinner && (
+                      <span className="ml-2 text-jass-yellowDark font-bold">★ Sieger</span>
+                    )}
+                  </div>
+                </div>
+                <ul className="space-y-2">
+                  {declarations.map((d, i) => (
+                    <DeclarationRow key={i} d={d} />
+                  ))}
+                </ul>
+              </li>
+            );
+          })}
+        </ul>
+
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={() => setDismissed(true)}
+            className="rounded bg-jass-yellow border-2 border-jass-yellowDark px-4 py-2 text-sm font-bold text-jass-ink hover:bg-jass-yellow/90"
+          >
+            Weiter spielen
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DeclarationRow({ d }: { d: WeisDeclarationView }) {
+  return (
+    <div className="flex items-center gap-3">
+      <div className="flex flex-wrap gap-1">
+        {d.cards.map((c, i) => (
+          <CardView
+            key={i}
+            // Wire-Format ist {suit:string,rank:string} — wir casten auf
+            // die @jass/engine-Typen, weil der Server garantiert keine
+            // anderen Werte schickt. Falls je mal doch, wäre der
+            // Drift schon durch das Backend-Schema gefangen.
+            card={{
+              suit: c.suit as never,
+              rank: c.rank as never,
+            }}
+            size="xs"
+          />
+        ))}
+      </div>
+      <div className="text-sm">
+        <div className="font-semibold text-jass-ink">{kindLabel(d.kind)}</div>
+        <div className="text-jass-inkSoft">{d.points} Pkt</div>
+      </div>
+    </div>
+  );
+}

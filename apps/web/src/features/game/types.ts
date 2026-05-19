@@ -11,6 +11,39 @@ export interface FinalScore {
 }
 
 /**
+ * Mirror von `WeisDeclarationView` im Backend (`apps/api/.../game.service.ts`).
+ * Felder sind so übertragen, dass die UI Karten 1:1 in `Card`-Komponenten
+ * rendern kann.
+ */
+export interface WeisDeclarationView {
+  kind: string;
+  cards: ReadonlyArray<{ suit: string; rank: string }>;
+  points: number;
+}
+
+/**
+ * Mirror von `PlayerView.weisen` im Backend (game.service.ts).
+ *   - `myStatus`: pro-Sitz-Stand der Weisen-Phase.
+ *   - `canClickButton`: nur true, wenn das Window für mich offen ist.
+ *   - `myDeclarations`: bereits abgegebene Deklarationen meines Sitzes.
+ *   - `result`: nach Trick-1-Aggregation gesetzt — enthält Sieger-Team und
+ *     alle Deklarationen pro Sitz (auch fremde, die nun publik sind).
+ */
+export interface WeisenView {
+  myStatus: "PENDING" | "OPEN" | "SUBMITTED" | "MISSED" | "EVALUATED";
+  canClickButton: boolean;
+  myDeclarations: ReadonlyArray<WeisDeclarationView>;
+  result?: {
+    winningTeam: number | null;
+    points: number;
+    perSeat: ReadonlyArray<{
+      seat: number;
+      declarations: ReadonlyArray<WeisDeclarationView>;
+    }>;
+  };
+}
+
+/**
  * Drei Phasen:
  *   - `announcing`: warten auf Trumpf-Ansage. `state` ist null, `announcement` ist gesetzt.
  *   - `playing`: regulärer Spiel-Modus.
@@ -42,6 +75,11 @@ export interface PlayerView {
   stoeckEligible: boolean;
   /** Team, das offiziell Stöck angesagt hat (für UI-Anzeige). */
   stoeckAnnouncedTeam?: number | null;
+  /**
+   * Weisen-Status für den eigenen Sitz. UI rendert daraus den
+   * Weisen-Button, den Selection-Mode und das Result-Overlay nach Trick 1.
+   */
+  weisen: WeisenView;
 }
 
 /**
