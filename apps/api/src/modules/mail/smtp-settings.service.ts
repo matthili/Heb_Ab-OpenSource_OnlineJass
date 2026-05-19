@@ -2,10 +2,11 @@
  * SMTP-Settings im AdminSetting-Table.
  *
  * **Verschlüsselung**: Das SMTP-Passwort wird mit AES-256-GCM
- * verschlüsselt, bevor es in die DB geht. Schlüssel = `APP_SECRET`
- * (separat vom Better-Auth-Secret, weil andere Lebensdauer/Rotation).
- * Falls `APP_SECRET` fehlt, fällt der Service auf `BETTER_AUTH_SECRET`
- * zurück — in Dev pragma, in M11 wird das hart getrennt.
+ * verschlüsselt, bevor es in die DB geht. Der Schlüssel kommt aus dem
+ * `AppSecretService` (HKDF-Domain-Separation): `purpose="smtp-encryption"`
+ * liefert einen 32-Byte-Key, der kryptografisch unabhängig von Auth-
+ * oder CSRF-Schlüsseln ist. Compromise des SMTP-Keys verrät weder das
+ * Master-Secret noch andere Sub-Keys.
  *
  * **Layout in DB** (AdminSetting.value als Json):
  *   "smtp.host"       → { value: "smtp.example.com" }
@@ -18,8 +19,9 @@
  * Env-Variablen aus `.env` zurück (Bootstrap-Konfig).
  */
 import { Injectable, Logger } from "@nestjs/common";
-import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:crypto";
+import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
 
+import { AppSecretService } from "../../common/app-secret.service.js";
 import { PrismaService } from "../prisma/prisma.service.js";
 
 export interface SmtpSettings {
@@ -47,13 +49,19 @@ const KEYS = {
 @Injectable()
 export class SmtpSettingsService {
   private readonly log = new Logger(SmtpSettingsService.name);
-  private readonly key: Buffer;
 
-  constructor(private readonly prisma: PrismaService) {
-    // AES-256 braucht einen 32-Byte-Key. Wir hashen das App-Secret auf
-    // 32 Bytes — robust gegen unterschiedliche Secret-Längen.
-    const secret = process.env["APP_SECRET"] ?? process.env["BETTER_AUTH_SECRET"] ?? "dev-fallback";
-    this.key = createHash("sha256").update(secret).digest();
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly appSecret: AppSecretService
+  ) {}
+
+  /**
+   * Lazy-resolve, weil AppSecretService.onModuleInit zwingend vorher
+   * läuft (gleicher Boot). Direkt-Aufruf im ctor wäre unsicher, weil
+   * NestJS-DI Konstruktoren VOR onModuleInit aufruft.
+   */
+  private get key(): Buffer {
+    return this.appSecret.derive("smtp-encryption");
   }
 
   /**

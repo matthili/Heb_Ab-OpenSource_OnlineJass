@@ -144,6 +144,11 @@ export async function setupTestApp(): Promise<TestAppHandle> {
   process.env["AI_STEP_DELAY_MS"] = "20";
   // Better Auth braucht ein Secret ≥ 32 Bytes. Bei Tests: deterministisch.
   process.env["BETTER_AUTH_SECRET"] = "test-secret-deterministic-32bytes-min-aaaa";
+  // Master-Secret für AppSecretService (HKDF-Domain-Separation für SMTP-
+  // Encryption etc.). Deterministisch in Tests, damit verschlüsselte
+  // Werte über Test-Reloads erhalten bleiben. Production-Validation
+  // greift hier nicht — wir laufen mit NODE_ENV=test.
+  process.env["APP_SECRET"] = "test-app-secret-deterministic-32bytes-min-bbbb";
   process.env["BETTER_AUTH_URL"] = "http://127.0.0.1:3000"; // wird gleich überschrieben
   process.env["SMTP_HOST"] = "127.0.0.1"; // wird vom MailSink eh nicht genutzt
   process.env["SMTP_PORT"] = "1025";

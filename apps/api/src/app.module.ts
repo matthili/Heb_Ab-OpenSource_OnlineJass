@@ -8,6 +8,7 @@ import type { IncomingMessage } from "node:http";
 import { Module } from "@nestjs/common";
 import { LoggerModule } from "nestjs-pino";
 
+import { AppSecretModule } from "./common/app-secret.module.js";
 import { AdminModule } from "./modules/admin/admin.module.js";
 import { AuditModule } from "./modules/audit/audit.module.js";
 import { AuthModule } from "./modules/auth/auth.module.js";
@@ -56,6 +57,7 @@ const pinoHttp = isDev
 @Module({
   imports: [
     LoggerModule.forRoot({ pinoHttp }),
+    AppSecretModule,
     PrismaModule,
     RedisModule,
     MailModule,
