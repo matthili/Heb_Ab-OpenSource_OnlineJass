@@ -12,7 +12,7 @@
  * Better Auth selbst exposed seinen HTTP-Handler über `auth.handler(req)` —
  * den ruft der AuthController auf und reicht ihn an Fastify durch.
  */
-import { APIError } from "better-auth/api";
+import { APIError, createAuthMiddleware } from "better-auth/api";
 import { Injectable, Logger, type OnModuleInit } from "@nestjs/common";
 import { betterAuth, type BetterAuthOptions } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
@@ -22,6 +22,8 @@ import { BlocklistService } from "../blocklist/blocklist.service.js";
 import { MailService } from "../mail/mail.service.js";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { hashPassword, verifyPassword } from "./password.js";
+import { checkPasswordStrength } from "./password-strength.js";
+import { TurnstileService } from "./turnstile.service.js";
 
 // Better Auth liefert keinen stabilen `Auth`-Export-Type, der zu unserer
 // vollständig getypten Config passt — wir lassen TS den Return-Type ableiten.
@@ -36,7 +38,8 @@ export class AuthService implements OnModuleInit {
     private readonly prisma: PrismaService,
     private readonly mail: MailService,
     private readonly blocklist: BlocklistService,
-    private readonly audit: AuditService
+    private readonly audit: AuditService,
+    private readonly turnstile: TurnstileService
   ) {}
 
   onModuleInit(): void {
@@ -197,6 +200,79 @@ export class AuthService implements OnModuleInit {
             },
           },
         },
+      },
+      hooks: {
+        before: createAuthMiddleware(async (ctx) => {
+          const path = ctx.path;
+          const isSignUp = path === "/sign-up/email";
+          const isReset = path === "/reset-password";
+          const isForgot = path === "/forget-password";
+          const needsCaptcha = isSignUp || isForgot;
+          const needsStrengthCheck = isSignUp || isReset;
+          if (!needsStrengthCheck && !needsCaptcha) return;
+
+          const body = (ctx.body ?? {}) as {
+            password?: string;
+            newPassword?: string;
+            email?: string;
+            name?: string;
+            captchaToken?: string;
+          };
+          const ip = extractIp(ctx);
+
+          // ── Turnstile (Captcha) bei Registrierung + Passwort-Reset-Mail ──
+          // Bewusst NICHT bei /sign-in/email: Login ist durch Rate-Limit
+          // + Lockout-Pattern abgedeckt, ein Captcha dort wäre vor allem
+          // UX-Bremse. Bot-Registrierungen + Mass-Forgot-Password (Spam-
+          // Vektor) sind die kritischeren Pfade.
+          if (needsCaptcha && process.env["DISABLE_TURNSTILE"] !== "1") {
+            const tokenFromHeader = (ctx.headers?.get?.("x-turnstile-token") ??
+              (ctx.request?.headers as Headers | undefined)?.get?.("x-turnstile-token") ??
+              undefined) as string | undefined;
+            const result = await this.turnstile.verify(body.captchaToken ?? tokenFromHeader, ip);
+            if (!result.ok) {
+              await this.audit.record({
+                action: "security.captcha.reject",
+                meta: { path, errors: [...result.errors], email: body.email ?? null },
+                ip,
+              });
+              throw new APIError("BAD_REQUEST", {
+                message: "Captcha-Validierung fehlgeschlagen. Bitte erneut versuchen.",
+                code: "CAPTCHA_FAILED",
+              });
+            }
+          }
+
+          // ── zxcvbn-Passwort-Stärke ───────────────────────────────────
+          // Nur auf Pfaden mit *neuem* Passwort (sign-up + reset).
+          // Sign-in prüft NICHT, sonst hätten wir Lock-Out für legacy User.
+          if (needsStrengthCheck && process.env["DISABLE_PASSWORD_STRENGTH_CHECK"] !== "1") {
+            const pw = body.password ?? body.newPassword;
+            if (typeof pw === "string" && pw.length > 0) {
+              // Kontext-Eingaben fließen in zxcvbn ein, damit „matthias2026"
+              // als Passwort von User „matthias" abgelehnt wird.
+              const userInputs: string[] = [];
+              if (body.email) {
+                userInputs.push(body.email);
+                const local = body.email.split("@")[0];
+                if (local) userInputs.push(local);
+              }
+              if (body.name) userInputs.push(body.name);
+
+              const check = await checkPasswordStrength(pw, userInputs);
+              if (!check.ok) {
+                const suggestion =
+                  check.feedback.warning ??
+                  check.feedback.suggestions[0] ??
+                  "Bitte ein längeres, weniger vorhersehbares Passwort wählen.";
+                throw new APIError("BAD_REQUEST", {
+                  message: `Passwort zu schwach (Score ${check.score}/4): ${suggestion}`,
+                  code: "WEAK_PASSWORD",
+                });
+              }
+            }
+          }
+        }),
       },
     };
     return betterAuth(options);

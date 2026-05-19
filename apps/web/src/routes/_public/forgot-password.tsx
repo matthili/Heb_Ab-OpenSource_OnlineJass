@@ -11,6 +11,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { type FormEvent, useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import { TurnstileWidget } from "~/features/auth/TurnstileWidget";
 import { api } from "~/lib/api";
 
 export const Route = createFileRoute("/_public/forgot-password")({
@@ -23,10 +24,16 @@ function ForgotPasswordPage() {
   const [sent, setSent] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const [resetCounter, setResetCounter] = useState(0);
 
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
+    if (!captchaToken) {
+      setError(t("auth.captchaPending"));
+      return;
+    }
     setLoading(true);
     try {
       // Better-Auth's React-Client exposed `forgetPassword` nicht direkt;
@@ -35,6 +42,7 @@ function ForgotPasswordPage() {
       // (User-Enumeration-Schutz).
       await api("/api/auth/forget-password", {
         method: "POST",
+        headers: { "X-Turnstile-Token": captchaToken },
         body: {
           email,
           // Reset-Link führt zur `/reset-password`-Route mit dem token im
@@ -47,6 +55,8 @@ function ForgotPasswordPage() {
       setSent(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Fehler.");
+      setCaptchaToken(null);
+      setResetCounter((n) => n + 1);
     } finally {
       setLoading(false);
     }
@@ -88,12 +98,21 @@ function ForgotPasswordPage() {
             autoComplete="email"
           />
         </label>
+        <TurnstileWidget
+          key={resetCounter}
+          action="forgot-password"
+          onToken={(token) => setCaptchaToken(token)}
+        />
         {error && (
           <p role="alert" className="text-sm text-rose-700">
             {error}
           </p>
         )}
-        <button type="submit" disabled={loading} className="btn-jass-primary w-full">
+        <button
+          type="submit"
+          disabled={loading || !captchaToken}
+          className="btn-jass-primary w-full"
+        >
           {loading ? t("auth.forgot.submitting") : t("auth.forgot.submit")}
         </button>
       </form>

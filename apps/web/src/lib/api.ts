@@ -26,6 +26,8 @@ export interface ApiOptions<TBody = unknown> {
   method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   body?: TBody;
   signal?: AbortSignal;
+  /** Zusätzliche Request-Header (z.B. X-Turnstile-Token). */
+  headers?: Record<string, string>;
   /** Wenn true, parsen wir die Response nicht (für Endpoints, die 204 No-Content liefern). */
   raw?: boolean;
 }
@@ -34,15 +36,18 @@ export async function api<TResponse = unknown, TBody = unknown>(
   path: string,
   opts: ApiOptions<TBody> = {}
 ): Promise<TResponse> {
-  const { method = "GET", body, signal, raw = false } = opts;
+  const { method = "GET", body, signal, headers, raw = false } = opts;
   // `exactOptionalPropertyTypes: true` verbietet `undefined` als Wert für
   // optionale Properties — daher Felder bedingt einbauen statt mit
   // undefined explizit zu setzen.
+  const mergedHeaders: Record<string, string> = {
+    ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
+    ...(headers ?? {}),
+  };
   const init: RequestInit = {
     method,
-    ...(body !== undefined
-      ? { headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }
-      : {}),
+    ...(Object.keys(mergedHeaders).length > 0 ? { headers: mergedHeaders } : {}),
+    ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
     ...(signal ? { signal } : {}),
   };
   const res = await fetch(path, init);

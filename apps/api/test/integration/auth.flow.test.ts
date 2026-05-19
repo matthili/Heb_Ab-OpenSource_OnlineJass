@@ -148,4 +148,29 @@ describe("M3 auth flow (register → verify → login → session)", () => {
     // Mail-Sink leer
     expect(app.capturedMails).toHaveLength(0);
   });
+
+  it("lehnt Registrierung mit schwachem Passwort ab (zxcvbn)", async () => {
+    // Wir aktivieren den zxcvbn-Check für diesen einen Test, indem wir
+    // das Test-Override-Flag vorübergehend rausnehmen.
+    const before = process.env["DISABLE_PASSWORD_STRENGTH_CHECK"];
+    delete process.env["DISABLE_PASSWORD_STRENGTH_CHECK"];
+    try {
+      const weak = await http.request("/api/auth/sign-up/email", {
+        method: "POST",
+        body: JSON.stringify({
+          email: "weak@jass.local",
+          password: "password1234", // klassisches schwaches Passwort
+          name: "weakling",
+        }),
+      });
+      expect(weak.status).toBeGreaterThanOrEqual(400);
+      expect(JSON.stringify(weak.body)).toMatch(/WEAK_PASSWORD|zu schwach/i);
+
+      // Kein User angelegt
+      const users = await app.prisma.user.findMany({ where: { email: "weak@jass.local" } });
+      expect(users).toHaveLength(0);
+    } finally {
+      if (before !== undefined) process.env["DISABLE_PASSWORD_STRENGTH_CHECK"] = before;
+    }
+  });
 });

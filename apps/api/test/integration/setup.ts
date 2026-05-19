@@ -149,6 +149,13 @@ export async function setupTestApp(): Promise<TestAppHandle> {
   // Werte über Test-Reloads erhalten bleiben. Production-Validation
   // greift hier nicht — wir laufen mit NODE_ENV=test.
   process.env["APP_SECRET"] = "test-app-secret-deterministic-32bytes-min-bbbb";
+  // zxcvbn-Passwort-Stärke-Check für Tests deaktivieren — die Test-Helper
+  // benutzen kurze Demo-Passwörter wie "password-12-chars", die zxcvbn
+  // zu Recht ablehnt. Boot in production verweigert dieses Flag.
+  process.env["DISABLE_PASSWORD_STRENGTH_CHECK"] = "1";
+  // Turnstile in Tests deaktivieren — kein Cloudflare-Round-Trip, keine
+  // Tokens. Boot in production verweigert dieses Flag.
+  process.env["DISABLE_TURNSTILE"] = "1";
   process.env["BETTER_AUTH_URL"] = "http://127.0.0.1:3000"; // wird gleich überschrieben
   process.env["SMTP_HOST"] = "127.0.0.1"; // wird vom MailSink eh nicht genutzt
   process.env["SMTP_PORT"] = "1025";

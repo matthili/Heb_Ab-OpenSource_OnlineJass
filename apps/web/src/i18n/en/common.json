@@ -65,6 +65,7 @@
   },
 
   "auth": {
+    "captchaPending": "Please complete the captcha before continuing.",
     "register": {
       "title": "Create an account",
       "intro": "Register with a player name and a password. You will receive a confirmation e-mail.",

@@ -6,9 +6,11 @@
 import type { IncomingMessage } from "node:http";
 
 import { Module } from "@nestjs/common";
+import { APP_GUARD } from "@nestjs/core";
 import { LoggerModule } from "nestjs-pino";
 
 import { AppSecretModule } from "./common/app-secret.module.js";
+import { OriginCheckGuard } from "./common/guards/origin-check.guard.js";
 import { AdminModule } from "./modules/admin/admin.module.js";
 import { AuditModule } from "./modules/audit/audit.module.js";
 import { AuthModule } from "./modules/auth/auth.module.js";
@@ -71,6 +73,11 @@ const pinoHttp = isDev
     ChatModule,
     AdminModule,
     HealthModule,
+  ],
+  providers: [
+    // Globaler CSRF-Guard: Origin-Header-Check für state-changing Methoden.
+    // Läuft auf jedem HTTP-Request, bevor irgend ein Controller dran kommt.
+    { provide: APP_GUARD, useClass: OriginCheckGuard },
   ],
 })
 export class AppModule {}

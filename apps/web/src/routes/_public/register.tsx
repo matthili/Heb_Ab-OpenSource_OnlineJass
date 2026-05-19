@@ -12,6 +12,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { type FormEvent, useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import { TurnstileWidget } from "~/features/auth/TurnstileWidget";
 import { signUp } from "~/lib/auth-client";
 
 export const Route = createFileRoute("/_public/register")({
@@ -26,6 +27,11 @@ function RegisterPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  // Inkrementeller Reset-Schlüssel — bei einem fehlgeschlagenen Submit
+  // verbrennen wir das alte Token (Cloudflare lässt es nicht zweimal
+  // einlösen) und re-mounten das Widget mit `key={resetCounter}`.
+  const [resetCounter, setResetCounter] = useState(0);
 
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -34,21 +40,35 @@ function RegisterPage() {
       setError(t("auth.register.passwordTooShort"));
       return;
     }
+    if (!captchaToken) {
+      setError(t("auth.captchaPending"));
+      return;
+    }
     setLoading(true);
     try {
-      const res = await signUp.email({
-        email,
-        password,
-        name,
-        callbackURL: `${window.location.origin}/?verified=1`,
-      });
+      const res = await signUp.email(
+        {
+          email,
+          password,
+          name,
+          callbackURL: `${window.location.origin}/?verified=1`,
+        },
+        {
+          headers: { "X-Turnstile-Token": captchaToken },
+        }
+      );
       if (res.error) {
         setError(res.error.message ?? t("auth.register.failed"));
+        // Token verbrannt — frisches Widget rendern.
+        setCaptchaToken(null);
+        setResetCounter((n) => n + 1);
         return;
       }
       await navigate({ to: "/check-email", search: { email } });
     } catch (err) {
       setError(err instanceof Error ? err.message : t("auth.register.failed"));
+      setCaptchaToken(null);
+      setResetCounter((n) => n + 1);
     } finally {
       setLoading(false);
     }
@@ -96,6 +116,12 @@ function RegisterPage() {
           />
         </Field>
 
+        <TurnstileWidget
+          key={resetCounter}
+          action="register"
+          onToken={(token) => setCaptchaToken(token)}
+        />
+
         {error && (
           <div
             role="alert"
@@ -105,7 +131,11 @@ function RegisterPage() {
           </div>
         )}
 
-        <button type="submit" disabled={loading} className="btn-jass-primary w-full">
+        <button
+          type="submit"
+          disabled={loading || !captchaToken}
+          className="btn-jass-primary w-full"
+        >
           {loading ? t("auth.register.submitting") : t("auth.register.submit")}
         </button>
       </form>

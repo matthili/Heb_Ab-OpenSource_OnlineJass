@@ -65,6 +65,7 @@
   },
 
   "auth": {
+    "captchaPending": "Bitte das Captcha lösen, bevor du fortfährst.",
     "register": {
       "title": "Registrieren",
       "intro": "Mit der Registrierung legst du einen Spielernamen + ein Passwort an. Du bekommst eine Bestätigungs-Mail.",

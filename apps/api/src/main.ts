@@ -15,10 +15,45 @@ import helmet from "@fastify/helmet";
 import { Logger } from "nestjs-pino";
 
 import { AppModule } from "./app.module.js";
+import { getTrustedOrigins } from "./common/trusted-origins.js";
 
 const DEFAULT_PORT = 3000;
 
+/**
+ * Sicherheits-Flags, die in Production NICHT gesetzt sein dürfen.
+ * Wenn jemand `DISABLE_AUTH_RATE_LIMIT=1` oder `DISABLE_PASSWORD_STRENGTH_CHECK=1`
+ * unbemerkt in eine Prod-Env schreibt, soll die App den Boot verweigern —
+ * sonst läuft die Anwendung mit ausgeschaltetem Schutz ohne Warnung weiter.
+ */
+function assertNoUnsafeFlagsInProduction(): void {
+  if (process.env["NODE_ENV"] !== "production") return;
+  const unsafe = [
+    "DISABLE_AUTH_RATE_LIMIT",
+    "DISABLE_PASSWORD_STRENGTH_CHECK",
+    "DISABLE_TURNSTILE",
+    "DISABLE_CSRF",
+  ].filter((k) => process.env[k] === "1");
+  if (unsafe.length > 0) {
+    throw new Error(
+      `Sicherheits-Flags dürfen in production NICHT gesetzt sein: ${unsafe.join(", ")}. ` +
+        `Diese sind nur für lokale Tests gedacht.`
+    );
+  }
+  // Turnstile-Pflicht in Production. Wer Captcha bewusst nicht will,
+  // muss DISABLE_TURNSTILE=1 setzen — siehe oben, das fängt der Check
+  // dann ebenfalls ab und wirft. Effektiv: ohne TURNSTILE_SECRET_KEY
+  // startet die Production-App nicht.
+  if (!process.env["TURNSTILE_SECRET_KEY"]) {
+    throw new Error(
+      "TURNSTILE_SECRET_KEY ist in production Pflicht. Ein Captcha-Bypass " +
+        "würde Register/Forget-Password als Bot-Vektor öffnen."
+    );
+  }
+}
+
 async function bootstrap(): Promise<void> {
+  assertNoUnsafeFlagsInProduction();
+
   const app = await NestFactory.create<NestFastifyApplication>(
     AppModule,
     new FastifyAdapter({
@@ -38,10 +73,25 @@ async function bootstrap(): Promise<void> {
     crossOriginResourcePolicy: { policy: "same-site" },
   });
 
-  // CORS bewusst eng halten — same-origin im Compose-Stack, in M11 für Prod
-  // explizit auf das öffentliche Frontend-Origin gepinnt.
+  // CORS strict: nur explizit getrustete Origins (gleiche Liste wie der
+  // OriginCheckGuard, eine Quelle der Wahrheit). `origin: true` würde
+  // mit `credentials: true` jedem Browser-Origin erlauben, authentifizierte
+  // Reads zu machen — das wäre eine CSRF-Falle. Hier explizit pinnen.
+  const trustedOrigins = getTrustedOrigins();
   app.enableCors({
-    origin: true,
+    origin: (incomingOrigin, callback) => {
+      // Kein Origin (z.B. server-to-server / curl): erlaubt — fetch ohne
+      // Browser hat keinen Cookie-Kontext, also auch keinen CSRF-Vektor.
+      if (!incomingOrigin) return callback(null, true);
+      if (trustedOrigins.includes(incomingOrigin)) {
+        return callback(null, true);
+      }
+      // Nicht-trust: kein CORS-Header → Browser blockt die Response.
+      // Wir setzen kein `false` als Origin, sondern werfen — das landet
+      // im Fastify-Error-Handler als 500, was deutlicher ist als ein
+      // stilles 200 ohne Access-Control-Allow-Origin.
+      return callback(new Error(`CORS: untrusted origin ${incomingOrigin}`), false);
+    },
     credentials: true,
   });
 
