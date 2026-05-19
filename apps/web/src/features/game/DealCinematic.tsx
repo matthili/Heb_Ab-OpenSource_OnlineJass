@@ -50,6 +50,12 @@ interface Props {
   announcerSeat: number;
   /** Spielerzahl, default 4. */
   numPlayers?: number;
+  /**
+   * `full` (Default) — volle Cinematic mit Misch + Slide + Wait-Cut + Cut.
+   * `short` — direkt mit der Verteil-Animation starten (für Spiele 2+
+   *   einer Partie, damit man nicht jedes Mal warten muss).
+   */
+  mode?: "full" | "short";
   /** Wird aufgerufen, wenn die Cinematic durch ist (oder übersprungen wird). */
   onComplete: () => void;
 }
@@ -99,6 +105,7 @@ export function DealCinematic({
   mySeat,
   announcerSeat,
   numPlayers = 4,
+  mode = "full",
   onComplete,
 }: Props) {
   // Geber = vor dem Ansager im UZS = (announcer - 1 + n) % n
@@ -122,7 +129,10 @@ export function DealCinematic({
     return loadSeen().has(gameId);
   }, [gameId]);
 
-  const [phase, setPhase] = useState<Phase>(skip ? "done" : "mix");
+  // Im short-Mode beginnen wir direkt mit der Verteil-Phase — der
+  // Geber/Abheben-Teil wird übersprungen (passiert beim echten Tisch
+  // ja auch nicht jedes Mal mit voller Zeremonie).
+  const [phase, setPhase] = useState<Phase>(skip ? "done" : mode === "short" ? "deal" : "mix");
 
   // Sobald done → markSeen + onComplete.
   useEffect(() => {

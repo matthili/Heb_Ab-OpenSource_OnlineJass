@@ -38,6 +38,13 @@ interface Props {
   announcePending: boolean;
   weisenPending: boolean;
   error: string | null;
+  /**
+   * Soll die Deal-Cinematic im Voll- oder Kurz-Modus laufen?
+   * - "full": Misch + Stapel + Abheben + Verteilen + WELI (Spiel 1)
+   * - "short": nur Verteilen + WELI-Reveal (Re-Match, Spiel 2+)
+   * Default `full` für Backwards-Kompat.
+   */
+  dealCinematicMode?: "full" | "short";
   onPlayCard: (card: Card) => void;
   onAnnounce: (decision: AnnouncementDecision) => void;
   onAnnounceStoeck: () => void;
@@ -53,6 +60,7 @@ export function GameBoard({
   announcePending,
   weisenPending,
   error,
+  dealCinematicMode = "full",
   onPlayCard,
   onAnnounce,
   onAnnounceStoeck,
@@ -104,6 +112,7 @@ export function GameBoard({
             gameId={view.gameId}
             mySeat={mySeat}
             announcerSeat={announcerSeat}
+            mode={dealCinematicMode}
             onComplete={() => setDealActive(false)}
           />
         )}

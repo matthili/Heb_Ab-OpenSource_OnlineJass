@@ -113,6 +113,7 @@ export function TableDetail({ tableId }: Props) {
             tableSeats={data.seats}
             isAtTable={amIAtTable}
             tableStatus={data.status}
+            isFirstGame={data.cumulativeScoreTeam0 + data.cumulativeScoreTeam1 === 0}
           />
         )}
 
@@ -579,11 +580,14 @@ function GameSection({
   tableSeats,
   isAtTable,
   tableStatus,
+  isFirstGame,
 }: {
   gameId: string;
   tableSeats: TableDetailView["seats"];
   isAtTable: boolean;
   tableStatus: TableDetailView["status"];
+  /** Erstes Spiel der Partie → volle Cinematic. Sonst Kurz-Cinematic. */
+  isFirstGame: boolean;
 }) {
   const {
     view,
@@ -625,6 +629,7 @@ function GameSection({
           announcePending={announcePending}
           weisenPending={weisenPending}
           error={error}
+          dealCinematicMode={isFirstGame ? "full" : "short"}
           onPlayCard={playCard}
           onAnnounce={announce}
           onAnnounceStoeck={announceStoeck}
