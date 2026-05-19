@@ -1,0 +1,87 @@
+# Caddyfile für „Heb ab!" — Reverse-Proxy + Auto-TLS + Sicherheits-Header.
+#
+# **Was hier passiert:**
+#   - Caddy holt sich automatisch Let's-Encrypt-Zertifikate für `JASS_DOMAIN`
+#     (Email aus `JASS_ACME_EMAIL`). Voraussetzung: Port 80 + 443 öffentlich
+#     erreichbar.
+#   - HSTS, X-Frame, Referrer-Policy, Permissions-Policy + CSP zentral.
+#   - **WebSocket-Sticky**: alle `/ws/*`-Frames eines Clients gehen an die
+#     gleiche `api`-Replica (ip_hash). Verhindert, dass ein Spieler mitten
+#     im Spiel die Replica wechselt und der GameLockService verwirrt wird.
+#   - **CSP**: streng — `default-src 'self'`, Inline-Scripts nicht erlaubt,
+#     Cloudflare-Turnstile als einzige fremde Origin in `script-src` +
+#     `frame-src`. CSP-Reporting per `report-to`-Header wäre M11-Erweiterung.
+#
+# **Caddy-Variablen** (per Env):
+#   - JASS_DOMAIN          z.B. "heb-ab.example.com"
+#   - JASS_ACME_EMAIL      z.B. "ops@example.com"
+#
+# **Wichtig bei Container-Setup**: Caddy braucht ein Volume für
+# `/data/caddy` (Cert-Storage). Sonst werden bei jedem Container-Restart
+# die Zertifikate neu beantragt → Let's-Encrypt-Rate-Limit-Risiko.
+{
+	email {$JASS_ACME_EMAIL}
+	# Production-Limits: Connection-Drains 30s, größere Read-Header-Limits
+	# für WS-Upgrade-Handshakes mit längeren Cookies.
+	servers {
+		max_header_size 16KB
+	}
+}
+
+{$JASS_DOMAIN} {
+	encode zstd gzip
+
+	# ── Sicherheits-Header ────────────────────────────────────────────
+	header {
+		# HSTS: 1 Jahr, alle Subdomains, preload-fähig.
+		Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+
+		# Click-Jacking-Schutz.
+		X-Frame-Options "DENY"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+
+		# Permissions-Policy: alles deaktivieren, was wir nicht brauchen.
+		Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=()"
+
+		# CSP — bewusst eng. Cloudflare-Turnstile braucht eigene Script-+
+		# Frame-Source. Inline-Styles erlaubt, weil Tailwind v4 + Vite
+		# inline-CSS für CSS-Variablen + theme produzieren können.
+		Content-Security-Policy "default-src 'self'; script-src 'self' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' wss://{$JASS_DOMAIN}; frame-src https://challenges.cloudflare.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+
+		# Cross-Origin-Isolation für künftige SharedArrayBuffer/PWA-Updates.
+		Cross-Origin-Opener-Policy "same-origin"
+		Cross-Origin-Resource-Policy "same-site"
+
+		# Default-Server-Header von Caddy entfernen.
+		-Server
+	}
+
+	# ── Routing ──────────────────────────────────────────────────────
+	# REST-API → api:3000, normal Round-Robin (jeder Request kann auf
+	# beliebige Replica).
+	@api path /api/*
+	reverse_proxy @api api:3000
+
+	# WebSocket → api:3000, **sticky** über IP-Hash. Caddy erkennt das
+	# Upgrade-Header-Pattern automatisch und behält die Verbindung
+	# offen; die ip_hash-Policy garantiert, dass derselbe Client immer
+	# auf der gleichen Replica landet.
+	@ws path /ws*
+	reverse_proxy @ws api:3000 {
+		lb_policy ip_hash
+	}
+
+	# Health-Check (für externe Uptime-Monitore, ohne CSRF-Origin-Check).
+	@health path /healthz
+	reverse_proxy @health api:3000
+
+	# Spiel-SPA unter /app/*. Vite-Build mit base="/app/" liefert
+	# Assets unter /app/assets/, SPA-Routing fängt der nginx-Container
+	# (try_files $uri /index.html) ab — wir reichen also einfach durch.
+	@web path /app/*
+	reverse_proxy @web web:80
+
+	# Alles andere → Landing (Astro statisch).
+	reverse_proxy landing:80
+}

@@ -1,0 +1,195 @@
+# Prod-Compose-Stack für „Heb ab!" — selbst-hostbar auf einem NAS oder
+# kleinen VPS. Für Multi-Instance-Skalierung gibt's das Helm-Chart unter
+# `infra/helm/jass-app/`.
+#
+# **Was hier passiert:**
+#   - `caddy` als TLS-Terminator + Reverse-Proxy (siehe ./caddy/Caddyfile).
+#   - `api` (NestJS) + `inference` (tfjs) mit Healthchecks + restart-Policy.
+#   - `web` + `landing` als nginx-gehostete static builds.
+#   - `postgres` + `redis` lokal — bei echter Skalierung Managed-Service.
+#   - **Mailhog ist NICHT dabei** (das ist Dev). SMTP läuft via
+#     `SMTP_HOST`/`SMTP_USER`/`SMTP_PASSWORD` zum externen Mail-Anbieter.
+#
+# **Pflicht-Env** in `.env` neben dem Compose-File:
+#   JASS_DOMAIN, JASS_ACME_EMAIL — für Caddy + TLS
+#   POSTGRES_PASSWORD, BETTER_AUTH_SECRET, APP_SECRET (alle ≥ 32 zufällige Zeichen)
+#   TURNSTILE_SECRET_KEY, TURNSTILE_SITE_KEY, VITE_TURNSTILE_SITE_KEY
+#   SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASSWORD, SMTP_FROM
+#
+# **Start:**
+#   docker compose -f infra/docker-compose.prod.yml --env-file .env up -d
+#
+# **Update auf neuere Images:**
+#   1. Image-Tags in dieser Datei bumpen (oder per `--build` lokal bauen).
+#   2. docker compose ... pull
+#   3. docker compose ... up -d  (rolling restart pro Service)
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: jass-pg
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: jass
+      POSTGRES_USER: jass
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?required}
+    volumes:
+      - jass-pg-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U jass -d jass"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    # Keine Port-Exponierung nach außen — nur intern erreichbar.
+    networks: [jass-internal]
+
+  redis:
+    image: redis:7-alpine
+    container_name: jass-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - jass-redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks: [jass-internal]
+
+  api:
+    image: jass-api:${JASS_IMAGE_TAG:-latest}
+    build:
+      context: ..
+      dockerfile: apps/api/Dockerfile
+    container_name: jass-api
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      API_PORT: "3000"
+      DATABASE_URL: postgresql://jass:${POSTGRES_PASSWORD}@postgres:5432/jass?schema=public
+      REDIS_URL: redis://redis:6379
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?required}
+      BETTER_AUTH_URL: https://${JASS_DOMAIN:?required}
+      APP_SECRET: ${APP_SECRET:?required}
+      WEB_PUBLIC_URL: https://${JASS_DOMAIN}/app
+      LANDING_PUBLIC_URL: https://${JASS_DOMAIN}
+      TURNSTILE_SECRET_KEY: ${TURNSTILE_SECRET_KEY:?required}
+      INFERENCE_URL: http://inference:4000
+      SMTP_HOST: ${SMTP_HOST:?required}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM: ${SMTP_FROM:?required}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      inference: { condition: service_started }
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3000/api/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks: [jass-internal]
+
+  inference:
+    image: jass-inference:${JASS_IMAGE_TAG:-latest}
+    build:
+      context: ..
+      dockerfile: apps/inference/Dockerfile
+    container_name: jass-inference
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      INFERENCE_PORT: "4000"
+      MODEL_DIR: /app/external/jass-nn
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    volumes:
+      # Modell-Files aus dem Host-Repo-Checkout. `pnpm sync:nn` auf dem
+      # Host hält das aktuell — kein Image-Rebuild bei Modell-Updates.
+      - ../external/jass-nn:/app/external/jass-nn:ro
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:4000/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    networks: [jass-internal]
+
+  web:
+    image: jass-web:${JASS_IMAGE_TAG:-latest}
+    build:
+      context: ..
+      dockerfile: apps/web/Dockerfile
+      args:
+        VITE_TURNSTILE_SITE_KEY: ${VITE_TURNSTILE_SITE_KEY:?required}
+    container_name: jass-web
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1/"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+    networks: [jass-internal]
+
+  landing:
+    image: jass-landing:${JASS_IMAGE_TAG:-latest}
+    build:
+      context: ..
+      dockerfile: apps/landing/Dockerfile
+    container_name: jass-landing
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1/"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+    networks: [jass-internal]
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: jass-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      JASS_DOMAIN: ${JASS_DOMAIN:?required}
+      JASS_ACME_EMAIL: ${JASS_ACME_EMAIL:?required}
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - jass-caddy-data:/data
+      - jass-caddy-config:/config
+    depends_on:
+      api: { condition: service_healthy }
+      web: { condition: service_healthy }
+      landing: { condition: service_healthy }
+    networks: [jass-internal, jass-public]
+
+networks:
+  # Internes Netz für Pod-zu-Pod Traffic. Nur Caddy hat Brücke nach außen.
+  jass-internal:
+    internal: false # bei strikteren Setups true, dann braucht aber jeder
+    # Service einen eigenen Reverse-Proxy für Outbound (z.B. SMTP).
+  jass-public:
+    driver: bridge
+
+volumes:
+  jass-pg-data:
+  jass-redis-data:
+  jass-caddy-data:
+  jass-caddy-config:
