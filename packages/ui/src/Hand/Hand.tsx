@@ -39,6 +39,16 @@ export interface HandProps {
   selectionMode?: boolean;
   selected?: readonly CardModel[];
   onSelect?: (card: CardModel) => void;
+  /**
+   * **WELI-Highlight**: Hebt die WELI-Karte (Schelle-Sechs) mit
+   *   1. einer einmaligen Reveal-Animation NACH dem Hand-Deal-Stagger
+   *      (Pop nach oben, goldene Aura);
+   *   2. einer anhaltenden, dezenten Glüh-Animation, solange diese
+   *      Prop true ist.
+   * Caller setzt das auf `true`, wenn der eigene Sitz den WELI hat
+   * (= ist WELI in `cards`). Default `false` (kein Effekt).
+   */
+  highlightWeli?: boolean;
 }
 
 /**
@@ -68,6 +78,7 @@ export function Hand({
   selectionMode = false,
   selected,
   onSelect,
+  highlightWeli = false,
 }: HandProps) {
   if (cards.length === 0) {
     return <p className="text-sm text-stone-500 text-center">Keine Karten in der Hand.</p>;
@@ -94,6 +105,17 @@ export function Hand({
         const idx = SUIT_ID[card.suit] * 9 + RANK_ID[card.rank];
         const legal = legalMask ? legalMask[idx] === 1 : true;
         const isSelected = selectionMode && selectedKeys.has(`${card.suit}-${card.rank}`);
+        const isWeliCard = card.suit === "SCHELLE" && card.rank === "SECHS";
+        // WELI-Reveal startet NACH dem Hand-Deal — animation-delay setzen
+        // wir hier explizit auf die ungefähre End-Zeit der Deal-Stagger
+        // (i * 60ms Stagger + 500ms Animation = ~1040ms für 9 Karten).
+        // Danach läuft die persistente Glow-Animation (Loop) endlos
+        // weiter, bis die Karte gespielt wird.
+        const weliClasses = highlightWeli && isWeliCard ? "jass-weli-reveal jass-weli-glow" : "";
+        const weliStyle =
+          highlightWeli && isWeliCard
+            ? ({ animationDelay: `${9 * 60 + 100}ms, 2.5s` } as React.CSSProperties)
+            : undefined;
         // Im Selection-Mode überschreiben wir Play-Logik:
         //   • alle Karten klickbar (Auswahl-Toggle)
         //   • `raised`, wenn aktuell ausgewählt
@@ -110,13 +132,18 @@ export function Hand({
             className={`relative jass-hand-deal ${i === 0 ? "" : overlap} hover:z-30 focus-within:z-30`}
             style={{ zIndex: i, animationDelay: `${i * 60}ms` }}
           >
-            <Card
-              card={card}
-              size="md"
-              disabled={!selectionMode && canPlay && !legal}
-              raised={isSelected}
-              {...(clickable && handleClick ? { onClick: handleClick } : {})}
-            />
+            {/* WELI-Reveal-Wrapper: separater Layer, damit unsere
+                Hover-Translates auf der Card nicht mit dem WELI-Animation-
+                Transform kollidieren. */}
+            <div className={weliClasses} {...(weliStyle ? { style: weliStyle } : {})}>
+              <Card
+                card={card}
+                size="md"
+                disabled={!selectionMode && canPlay && !legal}
+                raised={isSelected}
+                {...(clickable && handleClick ? { onClick: handleClick } : {})}
+              />
+            </div>
           </div>
         );
       })}

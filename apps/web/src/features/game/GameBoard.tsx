@@ -21,6 +21,8 @@ import { useState } from "react";
 
 import type { SeatView } from "~/features/lobby/types";
 import { AnnouncementDialog } from "./AnnouncementDialog";
+import { CutDeckIntro } from "./CutDeckIntro";
+import { MatschOverlay } from "./MatschOverlay";
 import { relativeSlot, SEAT_LABEL_POS } from "./seat-layout";
 import type { AnnouncementDecision, PlayerView } from "./types";
 import { useDisplayedTrick } from "./useDisplayedTrick";
@@ -73,14 +75,33 @@ export function GameBoard({
   // Die Variante steht ja noch gar nicht fest, das Scoreboard hätte nichts
   // sinnvolles anzuzeigen.
   if (view.status === "announcing") {
+    // WELI-Highlight: Der WELI bestimmt traditionell den Anfänger des
+    // ersten Spiels. Wenn ich der Ansager bin (= ich habe den WELI) UND
+    // der WELI ist tatsächlich in meiner Hand, zeige Reveal + Banner.
+    const iHaveWeli =
+      view.announcement?.iAmAnnouncer === true &&
+      view.hand.some((c) => c.suit === "SCHELLE" && c.rank === "SECHS");
     return (
-      <div className="space-y-4">
+      <div className="space-y-4 relative">
+        {/* Abheben-Cinematic: spielt einmalig pro gameId vor dem ersten
+            Hand-Reveal. `relative` am Container ist Voraussetzung für
+            das absolut positionierte Overlay. */}
+        <CutDeckIntro gameId={view.gameId} />
         {error && (
           <div
             role="alert"
             className="rounded border border-rose-300 bg-rose-50 px-3 py-2 text-sm text-rose-800"
           >
             {error}
+          </div>
+        )}
+        {iHaveWeli && (
+          <div
+            role="status"
+            aria-live="polite"
+            className="jass-weli-banner rounded-lg border-2 border-jass-yellowDark bg-gradient-to-r from-jass-yellow/30 via-jass-yellow/50 to-jass-yellow/30 px-4 py-3 text-center text-jass-ink font-bold shadow-md"
+          >
+            ✨ Du hast den WELI — du beginnst!
           </div>
         )}
         <AnnouncementDialog
@@ -90,7 +111,7 @@ export function GameBoard({
           onAnnounce={onAnnounce}
         />
         {/* Hand zeigen, damit der Ansager beim Auswählen seine Karten sieht. */}
-        <Hand cards={view.hand} />
+        <Hand cards={view.hand} highlightWeli={iHaveWeli} />
       </div>
     );
   }
@@ -165,6 +186,12 @@ export function GameBoard({
         weisen={view.weisen}
         seats={seats}
         mySeat={mySeat}
+      />
+      <MatschOverlay
+        gameId={view.gameId}
+        finalScore={view.finalScore}
+        mySeat={mySeat}
+        teams={state.teams}
       />
     </div>
   );

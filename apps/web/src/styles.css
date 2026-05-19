@@ -367,6 +367,264 @@ h1 {
   animation: jass-sparkle 1.2s ease-out forwards;
 }
 
+/* ── Matsch-Banner ────────────────────────────────────────────────
+ * Wenn ein Team alle 9 Stiche kassiert: dramatischer Banner mit
+ * Bounce-In + leichtem Wackeln + goldener Funkenflug rundherum.
+ * Self-dismiss nach 5s ODER per User-Click.
+ */
+@keyframes jass-matsch-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.4) rotate(-8deg);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.15) rotate(2deg);
+  }
+  80% {
+    transform: scale(0.96) rotate(-1deg);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+  }
+}
+
+@keyframes jass-matsch-wobble {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  25% {
+    transform: rotate(-1.5deg);
+  }
+  75% {
+    transform: rotate(1.5deg);
+  }
+}
+
+.jass-matsch-card {
+  animation:
+    jass-matsch-in 0.9s cubic-bezier(0.34, 1.56, 0.64, 1) both,
+    jass-matsch-wobble 2.5s ease-in-out 0.9s infinite;
+}
+
+/* Confetti-Stream rundherum — kleine Goldpartikel, die nach außen
+ * driften. Wir generieren das im JSX über inline-CSS-Variablen
+ * (jeder Partikel kriegt eigene --dx/--dy). */
+@keyframes jass-matsch-confetti {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0) scale(0) rotate(0);
+  }
+  15% {
+    opacity: 1;
+    transform: translate(calc(var(--dx) * 0.3), calc(var(--dy) * 0.3)) scale(1)
+      rotate(120deg);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--dx), var(--dy)) scale(0.4) rotate(720deg);
+  }
+}
+
+.jass-matsch-confetti {
+  position: absolute;
+  width: 10px;
+  height: 14px;
+  border-radius: 2px;
+  pointer-events: none;
+  animation: jass-matsch-confetti 2.4s cubic-bezier(0.2, 0.7, 0.3, 1) forwards;
+}
+
+/* ── Abheben (Cut-the-Deck-Intro) ─────────────────────────────────
+ * Vor jedem Spiel-Start spielt eine kurze Cinematic ab: ein Karten-
+ * Stapel erscheint zentral, die obere Hälfte hebt sich, dreht sich
+ * leicht und fällt unter die untere zurück — wie das traditionelle
+ * Abheben am echten Tisch. Pure Optik (Server hat schon RNG-gemischt);
+ * dient nur dem Vorarlberger Ritual-Feeling.
+ *
+ * Wir nutzen zwei Layer (`.jass-cut-top` und `.jass-cut-bottom`), die
+ * unabhängig animiert sind und am Ende zu einem Stapel verschmelzen.
+ */
+@keyframes jass-cut-top {
+  0% {
+    transform: translate(-50%, calc(-50% - 4px)) rotate(0deg);
+  }
+  30% {
+    transform: translate(-160%, calc(-50% - 40px)) rotate(-12deg);
+  }
+  55% {
+    transform: translate(-160%, calc(-50% - 40px)) rotate(-12deg);
+  }
+  80% {
+    transform: translate(-50%, calc(-50% + 14px)) rotate(2deg);
+  }
+  100% {
+    transform: translate(-50%, calc(-50% + 4px)) rotate(0deg);
+  }
+}
+
+@keyframes jass-cut-bottom {
+  0%,
+  60% {
+    transform: translate(-50%, calc(-50% + 4px)) rotate(0deg);
+  }
+  80% {
+    transform: translate(-50%, calc(-50% - 14px)) rotate(-2deg);
+  }
+  100% {
+    transform: translate(-50%, calc(-50% - 4px)) rotate(0deg);
+  }
+}
+
+@keyframes jass-cut-fade-out {
+  0%,
+  85% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+}
+
+.jass-cut-stack {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 8rem;
+  height: 11rem;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  animation: jass-cut-fade-out 2.6s ease-out forwards;
+}
+
+.jass-cut-top,
+.jass-cut-bottom {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 100%;
+  height: calc(50% - 4px);
+  background: linear-gradient(135deg, #c4302b 0%, #8a1f1c 100%);
+  border-radius: 6px;
+  border: 2px solid #f5e6c8;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+  background-image:
+    repeating-linear-gradient(
+      45deg,
+      transparent 0 6px,
+      rgba(255, 255, 255, 0.05) 6px 8px
+    ),
+    linear-gradient(135deg, #c4302b 0%, #8a1f1c 100%);
+}
+
+.jass-cut-top {
+  animation: jass-cut-top 2.2s cubic-bezier(0.34, 1.2, 0.64, 1) forwards;
+  z-index: 2;
+}
+
+.jass-cut-bottom {
+  animation: jass-cut-bottom 2.2s cubic-bezier(0.34, 1.2, 0.64, 1) forwards;
+  z-index: 1;
+}
+
+.jass-cut-label {
+  position: absolute;
+  left: 50%;
+  top: calc(50% + 6rem);
+  transform: translateX(-50%);
+  font-weight: 700;
+  font-size: 1rem;
+  color: var(--color-jass-ink, #2d1810);
+  text-shadow: 0 1px 2px rgba(245, 230, 200, 0.8);
+  white-space: nowrap;
+  letter-spacing: 0.04em;
+  opacity: 0;
+  animation: jass-cut-label-in 2.4s ease-out forwards;
+}
+
+@keyframes jass-cut-label-in {
+  0%,
+  10% {
+    opacity: 0;
+    transform: translate(-50%, 4px);
+  }
+  30%,
+  80% {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, 0);
+  }
+}
+
+/* ── WELI-Reveal ────────────────────────────────────────────────────
+ * Wenn der WELI in der eigenen Hand auftaucht, hebt er sich nach dem
+ * Austeilen kurz heraus — leichter Pop nach oben, goldene Aura,
+ * dann zurück in den Fan. Wir starten die Animation NACH dem
+ * staggered Deal-Effekt (animation-delay durch Inline-Style oder
+ * via JS-Class-Toggle nach Mount). */
+@keyframes jass-weli-reveal {
+  0% {
+    transform: translateY(0) scale(1);
+    filter: drop-shadow(0 0 0 rgba(255, 220, 100, 0));
+  }
+  30% {
+    transform: translateY(-16px) scale(1.12) rotate(-2deg);
+    filter: drop-shadow(0 0 16px rgba(255, 220, 100, 0.95));
+  }
+  60% {
+    transform: translateY(-16px) scale(1.12) rotate(2deg);
+    filter: drop-shadow(0 0 24px rgba(255, 220, 100, 1));
+  }
+  100% {
+    transform: translateY(0) scale(1) rotate(0);
+    filter: drop-shadow(0 0 0 rgba(255, 220, 100, 0));
+  }
+}
+
+.jass-weli-reveal {
+  animation: jass-weli-reveal 2.4s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  z-index: 40;
+  /* Persistent gold ring nach der Reveal-Phase — bleibt während Ansage. */
+}
+
+/* Andauernde, dezente WELI-Aura nach dem Reveal (während Ansage-Phase). */
+@keyframes jass-weli-glow {
+  0%,
+  100% {
+    filter: drop-shadow(0 0 4px rgba(255, 220, 100, 0.6));
+  }
+  50% {
+    filter: drop-shadow(0 0 10px rgba(255, 220, 100, 0.9));
+  }
+}
+
+.jass-weli-glow {
+  animation: jass-weli-glow 2.5s ease-in-out infinite;
+}
+
+/* Banner „Du hast den WELI" — slidet von oben rein, bleibt, wird
+ * vom React-Code zur passenden Zeit unmounted. */
+@keyframes jass-weli-banner-in {
+  from {
+    opacity: 0;
+    transform: translateY(-12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.jass-weli-banner {
+  animation: jass-weli-banner-in 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .jass-card-enter,
   .jass-trick-win-pulse,
@@ -374,7 +632,16 @@ h1 {
   .jass-seat-active-pulse,
   .jass-score-pop,
   .jass-hand-deal,
-  .jass-sparkle {
+  .jass-sparkle,
+  .jass-weli-reveal,
+  .jass-weli-glow,
+  .jass-weli-banner,
+  .jass-cut-stack,
+  .jass-cut-top,
+  .jass-cut-bottom,
+  .jass-cut-label,
+  .jass-matsch-card,
+  .jass-matsch-confetti {
     animation: none;
   }
 }
