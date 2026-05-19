@@ -77,4 +77,26 @@ export class ChatGateway {
   broadcastMessage(view: ChatMessageView): void {
     this.server.to(channelRoom(view.channelKey)).emit("chat:message", view);
   }
+
+  /**
+   * **System-Nachricht** an einen Channel. Ephemer — keine DB-Persistenz,
+   * nur Live-Broadcast. Wird z.B. vom DisconnectVoteService genutzt, um
+   * KI-Stimmen und Phasen-Hinweise an den Game-Chat zu posten.
+   *
+   * Frontend erkennt System-Nachrichten daran, dass `senderId` leer ist
+   * und `system: true` gesetzt — Rendering: ausgegrautes Italic.
+   */
+  broadcastSystemMessage(channelKey: string, body: string): void {
+    const view = {
+      id: `system-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      channel: channelKey.startsWith("game:") ? ("GAME" as const) : ("LOBBY" as const),
+      channelKey,
+      senderId: "",
+      senderName: "System",
+      body,
+      createdAt: new Date().toISOString(),
+      system: true as const,
+    };
+    this.server.to(channelRoom(channelKey)).emit("chat:message", view);
+  }
 }

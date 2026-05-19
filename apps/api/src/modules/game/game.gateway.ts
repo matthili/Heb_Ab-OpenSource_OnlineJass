@@ -41,11 +41,14 @@ import type { Server, Socket } from "socket.io";
 
 import { AuditService } from "../audit/audit.service.js";
 import { AuthService } from "../auth/auth.service.js";
+import { ChatGateway } from "../chat/chat.gateway.js";
 import { RedisService } from "../redis/redis.service.js";
+import { DisconnectVoteService } from "./disconnect-vote.service.js";
 import { GameLockService } from "./game-lock.service.js";
 import { GameService, type AnnouncementDecision, type PlayerView } from "./game.service.js";
 import { PerUserSocketRegistry } from "./per-user-socket-registry.service.js";
 import { SocketRateTracker } from "../../common/ws-rate-limit.js";
+import type { VoteChoice } from "./disconnect-vote.js";
 
 interface SocketData {
   userId?: string;
@@ -84,13 +87,24 @@ export class GameGateway
     private readonly redis: RedisService,
     private readonly locks: GameLockService,
     private readonly audit: AuditService,
-    private readonly userRegistry: PerUserSocketRegistry
+    private readonly userRegistry: PerUserSocketRegistry,
+    private readonly disconnectVote: DisconnectVoteService,
+    private readonly chatGateway: ChatGateway
   ) {
     // Defensive: alle DI-Params sollten von NestJS gefüllt sein. Wenn nicht,
     // ist das ein Setup-Problem (z.B. fehlende `reflect-metadata` /
     // `decoratorMetadata`-Transform in einer Test-Umgebung) — laut fehlt
     // statt erst beim ersten Method-Call mit verwirrendem TypeError.
-    if (!games || !auth || !redis || !locks || !audit || !userRegistry) {
+    if (
+      !games ||
+      !auth ||
+      !redis ||
+      !locks ||
+      !audit ||
+      !userRegistry ||
+      !disconnectVote ||
+      !chatGateway
+    ) {
       throw new Error(
         "GameGateway: Constructor-DI unvollständig. " +
           "Prüfe RedisModule/AuthModule-Imports und `emitDecoratorMetadata`."
@@ -122,6 +136,41 @@ export class GameGateway
       socket.data.userId = userId;
       next();
     });
+
+    // Disconnect-Vote-Service mit Server-Referenz + Outcome-Hooks
+    // versorgen. Boot-Recovery läuft danach im Hintergrund.
+    this.disconnectVote.setServer(server);
+    void this.disconnectVote.setHooks({
+      closeTable: async (gameId, reason) => {
+        await this.handleDisconnectClose(gameId, reason);
+      },
+      replaceSeatWithAi: async (gameId, _seat, userId) => {
+        await this.games.markUserLeft(gameId, userId);
+        await this.games.driveAIsToEnd(gameId);
+      },
+      resumeGame: async (gameId) => {
+        // Bei reinem Reconnect läuft das Game eh weiter — aber falls
+        // gerade eine KI dran ist (z.B. Disconnect mitten im Trick),
+        // muss der AI-Loop angestoßen werden.
+        await this.driveAIsLoop(gameId);
+      },
+      postChatSystemMessage: (gameId, body) => {
+        this.chatGateway.broadcastSystemMessage(`game:${gameId}`, body);
+      },
+    });
+  }
+
+  /** Wird vom Disconnect-Vote-Service aufgerufen, wenn der Tisch geschlossen
+   *  werden muss (STOP-Outcome). Delegiert an `GameService.closeGameForDisconnect`
+   *  (DB + Redis-Cleanup) und broadcastet `game:disconnect-closed` an alle
+   *  Sockets im Room. Das Frontend zeigt dann das Result-Overlay mit OK-Button. */
+  private async handleDisconnectClose(gameId: string, reason: string): Promise<void> {
+    try {
+      await this.games.closeGameForDisconnect(gameId, reason);
+      this.server.to(roomKey(gameId)).emit("game:disconnect-closed", { reason });
+    } catch (err) {
+      this.log.error({ err, gameId }, "Tisch-Close nach Disconnect fehlgeschlagen");
+    }
   }
 
   async onModuleDestroy(): Promise<void> {
@@ -164,12 +213,34 @@ export class GameGateway
   async handleDisconnect(socket: AuthenticatedSocket): Promise<void> {
     this.log.debug({ socketId: socket.id, userId: socket.data.userId }, "WS disconnected");
     const userId = socket.data.userId;
-    if (userId) {
-      try {
-        await this.userRegistry.unregister(userId, socket.id);
-      } catch (err) {
-        this.log.warn({ err, userId }, "PerUserSocketRegistry.unregister fehlgeschlagen");
+    if (!userId) return;
+    try {
+      await this.userRegistry.unregister(userId, socket.id);
+      const remaining = await this.userRegistry.countSockets(userId);
+      if (remaining === 0) {
+        // User ist real offline — alle Tabs/Geräte weg.
+        // Wenn er an einem laufenden Game sitzt, Disconnect-Vote-Flow
+        // triggern. Sonst nichts zu tun.
+        await this.triggerDisconnectVotesForUser(userId);
       }
+    } catch (err) {
+      this.log.warn({ err, userId }, "Disconnect-Handling fehlgeschlagen");
+    }
+  }
+
+  /**
+   * Für jeden laufenden Game, in dem der User sitzt, den Disconnect-
+   * Vote-Service informieren. Ein User kann theoretisch an mehreren
+   * Tischen gleichzeitig sitzen (Schema erlaubt es), praktisch ist es
+   * aber typischerweise einer.
+   */
+  private async triggerDisconnectVotesForUser(userId: string): Promise<void> {
+    const gameIds = await this.games.getActiveGameIdsForUser(userId);
+    for (const gameId of gameIds) {
+      const seat = await this.games.findActiveSeatForUser(gameId, userId);
+      if (seat === null) continue;
+      const participants = await this.games.getDisconnectParticipants(gameId, [seat]);
+      await this.disconnectVote.onSeatDisconnected(gameId, seat, userId, participants);
     }
   }
 
@@ -295,6 +366,23 @@ export class GameGateway
       const view = await this.games.viewForUser(gameId, userId);
       await socket.join(roomKey(gameId));
       socket.emit("game:state", view);
+
+      // Disconnect-Reconnect: User war evtl. in einer Disconnect-Phase
+      // (siehe DisconnectVoteService). Sobald sein erstes WS-Connect
+      // wieder steht UND er ein Game gejoint hat, ist er „zurück" —
+      // Vote-Service räumt seinen Sitz aus den disconnectedSeats.
+      void this.disconnectVote.onSeatReconnected(gameId, userId).catch((err) => {
+        this.log.warn({ err, gameId, userId }, "DisconnectVote.onSeatReconnected fehlgeschlagen");
+      });
+
+      // Initial-State des Disconnect-Overlay an den neuen Socket
+      // pushen — wenn er mitten in der Vote-Phase reinkommt, soll er
+      // direkt das Overlay sehen.
+      const disconnectState = await this.disconnectVote.getState(gameId);
+      if (disconnectState) {
+        socket.emit("game:disconnect-state", disconnectState);
+      }
+
       // Beim allerersten Join (z.B. solo-vs-3-KI: Mensch joint, Tisch
       // ist gerade auf "announcing" mit einem KI-Announcer) muss die
       // KI-Loop angestoßen werden. Lock-geschützt, damit das nicht mit
@@ -304,6 +392,38 @@ export class GameGateway
           await this.driveAIsLoop(gameId);
         });
       }
+    } catch (err) {
+      this.fail(socket, this.errorMessage(err));
+    }
+  }
+
+  /**
+   * Vote-Endpoint für Disconnect-Abstimmung.
+   * Payload: `{ gameId, choice: "STOP" | "WAIT" | "FILL" }`.
+   * Validation läuft im `DisconnectVoteService.castVote` (Phase, Sitz,
+   * Einstimmigkeit etc.). Fehler werden als `game:error` zurückgegeben.
+   */
+  @SubscribeMessage("game:disconnect-vote")
+  async onDisconnectVote(
+    @ConnectedSocket() socket: AuthenticatedSocket,
+    @MessageBody() payload: { gameId?: string; choice?: string }
+  ): Promise<void> {
+    const userId = socket.data.userId;
+    if (!userId) return this.fail(socket, "Not authenticated");
+    const gameId = payload?.gameId;
+    const choice = payload?.choice;
+    if (typeof gameId !== "string" || !choice) {
+      return this.fail(socket, "gameId + choice required");
+    }
+    if (choice !== "STOP" && choice !== "WAIT" && choice !== "FILL") {
+      return this.fail(socket, `Invalid vote choice: ${choice}`);
+    }
+    try {
+      const seat = await this.games.findActiveSeatForUser(gameId, userId);
+      if (seat === null) {
+        return this.fail(socket, "Du sitzt nicht aktiv an diesem Tisch.");
+      }
+      await this.disconnectVote.castVote(gameId, userId, seat, choice as VoteChoice);
     } catch (err) {
       this.fail(socket, this.errorMessage(err));
     }

@@ -995,6 +995,101 @@ export class GameService {
   // ───────────────────────────────────────────────────────────────────
 
   /**
+   * Schließt einen Tisch wegen Disconnect (STOP-Outcome). Setzt das
+   * Game auf `endedAt`, die LobbyTable auf `CLOSED` + `currentGameId=null`,
+   * räumt Redis-State. Anschließend muss der Caller die Game-Sockets
+   * informieren (über `game:disconnect-closed`).
+   *
+   * Bewusst keine Final-Score-Logik — der Spielstand wird verworfen
+   * (Disconnect ist kein regulär beendetes Game). Cumulative-Scores
+   * der LobbyTable bleiben unangetastet.
+   */
+  async closeGameForDisconnect(gameId: string, reason: string): Promise<void> {
+    const game = await this.prisma.game.findUnique({
+      where: { id: gameId },
+      select: { tableId: true, endedAt: true },
+    });
+    if (!game) return;
+    if (!game.endedAt) {
+      await this.prisma.game.update({
+        where: { id: gameId },
+        data: { endedAt: new Date() },
+      });
+    }
+    if (game.tableId) {
+      await this.prisma.lobbyTable.update({
+        where: { id: game.tableId },
+        data: { status: "CLOSED", currentGameId: null, closedAt: new Date() },
+      });
+    }
+    await this.audit.record({
+      action: "lobby.table.closed.disconnect",
+      target: gameId,
+      meta: { reason, tableId: game.tableId ?? null },
+    });
+    // Redis-Game-State + Disconnect-State räumen.
+    try {
+      await this.redis.client.del(`game:${gameId}:state`);
+      await this.redis.client.del(`game:${gameId}:disconnect`);
+    } catch {
+      // ignorieren — eventual cleanup ok
+    }
+  }
+
+  /**
+   * Liefert die aktuellen GameSeat-Verhältnisse für die Disconnect-Vote-
+   * Logik: pro Sitz, ob er gerade „menschlich aktiv" (= User dabei,
+   * leftAt=null) oder „KI" ist. Disconnected ≠ left — ein User, der die
+   * WS-Verbindung verloren hat, hat trotzdem `leftAt=null` und zählt
+   * hier als HUMAN.
+   *
+   * Caller (DisconnectVoteService) bekommt das als Liste von Sitzen
+   * exklusive der aktuell disconnected Sitze (die zählen nicht als
+   * stimmberechtigt).
+   */
+  async getDisconnectParticipants(
+    gameId: string,
+    disconnectedSeats: readonly number[]
+  ): Promise<Array<{ seat: number; kind: "HUMAN" | "AI" }>> {
+    const seats = await this.prisma.gameSeat.findMany({
+      where: { gameId },
+      orderBy: { seat: "asc" },
+    });
+    const result: Array<{ seat: number; kind: "HUMAN" | "AI" }> = [];
+    for (const s of seats) {
+      if (disconnectedSeats.includes(s.seat)) continue;
+      // Mensch, der noch aktiv am Tisch sitzt (kein leftAt) → HUMAN.
+      // Alles andere (initial KI, oder Aussteiger mit replacedByAi) → AI.
+      const isHuman = s.userId !== null && s.leftAt === null;
+      result.push({ seat: s.seat, kind: isHuman ? "HUMAN" : "AI" });
+    }
+    return result;
+  }
+
+  /**
+   * Liefert die Game-IDs, in denen `userId` aktuell als nicht-
+   * ausgestiegener Sitz steht UND das Game noch läuft (kein endedAt).
+   * Wird vom Gateway beim Disconnect aufgerufen, um den Vote-Service
+   * zu triggern.
+   */
+  async getActiveGameIdsForUser(userId: string): Promise<string[]> {
+    const seats = await this.prisma.gameSeat.findMany({
+      where: { userId, leftAt: null, game: { endedAt: null } },
+      select: { gameId: true, seat: true },
+    });
+    return seats.map((s) => s.gameId);
+  }
+
+  /** Liefert die Sitz-Nummer eines Users in einem Game oder `null`. */
+  async findActiveSeatForUser(gameId: string, userId: string): Promise<number | null> {
+    const seat = await this.prisma.gameSeat.findFirst({
+      where: { gameId, userId, leftAt: null },
+      select: { seat: true },
+    });
+    return seat?.seat ?? null;
+  }
+
+  /**
    * Sucht den Sitz für einen User; wirft, wenn er nicht am Tisch sitzt
    * **oder** schon ausgestiegen ist (`leftAt !== null`). Damit kann ein
    * Aussteiger keine Moves oder Ansagen mehr machen.

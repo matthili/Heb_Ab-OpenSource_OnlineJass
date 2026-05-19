@@ -102,6 +102,16 @@ export class PerUserSocketRegistry {
   }
 
   /**
+   * Wie viele Sockets sind aktuell für diesen User registriert? Wird
+   * vom Disconnect-Vote-Trigger benutzt, um zu entscheiden: ist der
+   * User wirklich „offline" (= 0 Sockets) oder nur einer von mehreren
+   * Tabs weg.
+   */
+  async countSockets(userId: string): Promise<number> {
+    return this.redis.client.zcard(this.socketsKey(userId));
+  }
+
+  /**
    * Prüft das Aggregat-Limit. Returnt `true` = erlaubt, `false` =
    * Drosseln. Aufrufer ist verantwortlich, das Frame zu verwerfen.
    * Eigenes Audit-Logging hier nicht (Caller hat mehr Kontext).
