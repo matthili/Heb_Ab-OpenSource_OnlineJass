@@ -15,6 +15,9 @@ env:
   PNPM_VERSION: "10"
 
 jobs:
+  # ─────────────────────────────────────────────────────────────────
+  # Lint & Typecheck — schnell, läuft parallel zu Tests
+  # ─────────────────────────────────────────────────────────────────
   lint-and-typecheck:
     name: Lint & Typecheck
     runs-on: ubuntu-latest
@@ -42,8 +45,46 @@ jobs:
       - name: Typecheck
         run: pnpm typecheck
 
+  # ─────────────────────────────────────────────────────────────────
+  # Dependency-Audit — schlägt bei high/critical CVEs an
+  # ─────────────────────────────────────────────────────────────────
+  audit:
+    name: Dependency audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # `pnpm audit --prod --audit-level high` schlägt fehl, wenn eine
+      # production-Dependency eine Schwachstelle mit High+/Critical-
+      # Severity hat. Moderate/Low werden geloggt aber nicht gateted —
+      # sonst würde CI bei jedem npm-Drift-Tag rot blinken.
+      - name: pnpm audit (production deps only, high+)
+        run: pnpm audit --prod --audit-level high
+        continue-on-error: false
+
+      # Moderate-Severity-Check als separater Step mit `continue-on-error`,
+      # damit es als Warn-Signal erscheint, ohne den CI-Lauf zu killen.
+      - name: pnpm audit moderate (warn-only)
+        run: pnpm audit --prod --audit-level moderate
+        continue-on-error: true
+
+  # ─────────────────────────────────────────────────────────────────
+  # Unit-Tests + Coverage-Gates
+  # ─────────────────────────────────────────────────────────────────
   test:
-    name: Unit tests
+    name: Unit tests + coverage
     runs-on: ubuntu-latest
     needs: lint-and-typecheck
     steps:
@@ -61,5 +102,48 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Run unit tests
-        run: pnpm test:unit
+      # NN-Artefakt syncen, weil packages/engine-Fixture-Tests sonst
+      # nicht laufen können (encoding_fixtures.json + jass_rules.json
+      # liegen außerhalb des Repos in external/jass-nn/).
+      # `GH_TOKEN` braucht der `gh release download`-Call im sync-Skript.
+      # `continue-on-error: true` weil das NN-Repo evtl. in einem anderen
+      # Org liegt — falls der GITHUB_TOKEN keinen Read-Zugang hat,
+      # melden die Fixture-Tests „nicht gefunden" und können temporär
+      # auf einen Folge-PR warten.
+      - name: Sync NN artifact
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: pnpm sync:nn
+        continue-on-error: true
+
+      - name: Run unit tests with coverage
+        run: pnpm test:unit -- --coverage --reporter=default
+
+      # Coverage-Gates aus dem Plan-Doc:
+      #   - packages/engine ≥ 95%
+      #   - apps/api        ≥ 80%
+      #   - apps/web        ≥ 60%
+      # Wir nutzen vitest's eingebauten threshold-Mechanismus (siehe
+      # vitest.config.ts in den jeweiligen Workspaces) — der Step hier
+      # bestätigt nur, dass die threshold-Files existieren (eine
+      # Konfig-Drift-Sicherung).
+      - name: Verify coverage thresholds configured
+        run: |
+          set -e
+          for pkg in packages/engine apps/api apps/web; do
+            if [ -f "$pkg/vitest.config.ts" ] && ! grep -q "thresholds" "$pkg/vitest.config.ts"; then
+              echo "::error file=$pkg/vitest.config.ts::Coverage-Thresholds nicht konfiguriert"
+              exit 1
+            fi
+          done
+
+      - name: Upload coverage artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-reports
+          path: |
+            packages/*/coverage/
+            apps/*/coverage/
+          if-no-files-found: ignore
+          retention-days: 14

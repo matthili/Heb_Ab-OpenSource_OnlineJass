@@ -1,0 +1,109 @@
+name: Nightly NN-Parity
+
+# Plan-Doc M2 sieht einen nightly Self-Play-Parity-Test gegen den
+# Python-Engine-Goldstandard vor. Aktuell gibt es im Repo:
+#
+#   - `packages/engine/test/encoder.fixtures.test.ts`
+#     vergleicht den TS-Encoder gegen vom Python erzeugte Fixtures
+#     (`external/jass-nn/encoding_fixtures.json`). Das **deckt den
+#     Encoder zu 100%** ab, ist aber kein „spielt 10.000 Hands gegen
+#     Python und vergleicht Move-für-Move".
+#
+#   - Es gibt **noch keine** `self-play.parity.test.ts`, die Spiele
+#     simuliert. Der Trace-Export im NN-Repo (Python-Seite) müsste
+#     dafür existieren.
+#
+# Dieser nightly Workflow ist die **Vorbereitung**: sobald der
+# Parity-Test existiert, läuft er hier mit aktuellsten Spec-Fixtures
+# aus dem NN-Repo (sync:nn) und meldet Drift via GitHub Issue, falls
+# rot. Bis dahin läuft er nur den Fixture-Test, der vorhandene
+# Drift-Indikator ist (Fixtures von ihm aktuell zu syncen ist
+# erlaubt, weil das NN-Repo per Release-Tag gepinnt ist).
+#
+# Manueller Trigger via `workflow_dispatch` ist erlaubt, falls man
+# außerhalb der Nightly-Schedule prüfen will.
+
+on:
+  schedule:
+    # Jeden Tag um 03:30 UTC (= 04:30/05:30 Europe/Vienna je nach DST).
+    # So weit nachts, dass es nicht mit interaktiver Arbeit kollidiert.
+    - cron: "30 3 * * *"
+  workflow_dispatch:
+
+env:
+  NODE_VERSION: "24"
+  PNPM_VERSION: "10"
+
+jobs:
+  parity:
+    name: NN-Fixture-Parity gegen aktuelles NN-Release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write # bei Drift Issue anlegen
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Sync NN artifact (pinned version aus package.json#jassNn)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: pnpm sync:nn
+
+      - name: Verify MANIFEST hashes
+        run: pnpm verify:nn
+
+      - name: Run engine fixture tests
+        id: fixture
+        run: pnpm --filter @jass/engine test
+
+      - name: Run engine tests (rules-spec.consistency)
+        run: pnpm --filter @jass/engine test rules-spec.consistency
+
+      # Bei Drift (Fixture-Tests rot): Issue erstellen, damit der Bug
+      # nicht im Cron-Rauschen verloren geht. Nur einmal pro Tag, kein
+      # Spam.
+      - name: Open issue on drift
+        if: failure() && steps.fixture.conclusion == 'failure'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const today = new Date().toISOString().slice(0, 10);
+            const title = "NN-Parity-Drift erkannt (" + today + ")";
+            const runUrl = context.serverUrl + "/" + context.repo.owner + "/" + context.repo.repo + "/actions/runs/" + context.runId;
+            const body = [
+              "Der nightly Parity-Job ist heute rot - die TS-Engine ist von der Python-Spec gedriftet.",
+              "",
+              "Run: " + runUrl,
+              "",
+              "Moegliche Ursachen:",
+              "- NN-Repo hat ein neues Release mit geaenderten Fixtures gemacht, aber package.json#jassNn.version ist noch alt -> pnpm sync:nn + Tests + commit.",
+              "- TS-Encoder ist von der Spec abgewichen -> Code-Fix noetig.",
+              "",
+              "Vor Code-Aenderungen am Encoder: docs/NN-CONTRACT.md lesen.",
+            ].join("\n");
+            const existing = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: "open",
+              labels: "nn-parity-drift",
+            });
+            if (existing.data.some((i) => i.title === title)) return;
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title,
+              body,
+              labels: ["nn-parity-drift", "bug"],
+            });
