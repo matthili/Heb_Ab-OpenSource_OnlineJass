@@ -45,6 +45,7 @@ import {
   announceStoeck,
   applyMove,
   cardIndex,
+  clickWeisenButton,
   dealCards,
   finalRoundScore,
   handOf,
@@ -54,8 +55,15 @@ import {
   legalActionMask,
   newRound,
   SPEC_VERSION,
+  submitWeisen,
+  validateDeclaration,
   viewAsPlayer,
+  weisenSeatStatus,
+  weisenWindowOpen,
   whoseTurn,
+  findBestWeisenForHand,
+  aggregateWeisen,
+  type WeisDeclaration,
 } from "@jass/engine";
 
 import { AuditService } from "../audit/audit.service.js";
@@ -204,6 +212,38 @@ export interface PlayerView {
   stoeckEligible: boolean;
   /** Team, das offiziell Stöck angesagt hat — nur informativ (für UI-Anzeige). */
   stoeckAnnouncedTeam?: number | null;
+
+  /**
+   * **Weisen-Status für den eigenen Sitz** — Frontend rendert das Weisen-UI
+   * abhängig davon (Button zeigen / Selection-Mode / SUBMITTED-Markierung).
+   */
+  weisen: {
+    /** Status für den eigenen Sitz. */
+    myStatus: "PENDING" | "OPEN" | "SUBMITTED" | "MISSED" | "EVALUATED";
+    /** Ist der Klick auf den „Weisen"-Button aktuell erlaubt? */
+    canClickButton: boolean;
+    /** Eigene bereits submitten Deklarationen. */
+    myDeclarations: ReadonlyArray<WeisDeclarationView>;
+    /**
+     * Wenn die Aggregation gelaufen ist (Trick 1 vorbei): die submitten
+     * Weisen ALLER Sitze sowie das Sieger-Team. Vorher: undefined.
+     */
+    result?: {
+      winningTeam: number | null;
+      points: number;
+      perSeat: ReadonlyArray<{ seat: number; declarations: WeisDeclarationView[] }>;
+    };
+  };
+}
+
+/**
+ * Weis-View für den Client. Wir reichen genug Info durch, dass das
+ * Frontend den Weis korrekt rendern kann (Karten + Punkte + Kind).
+ */
+export interface WeisDeclarationView {
+  kind: string;
+  cards: ReadonlyArray<{ suit: string; rank: string }>;
+  points: number;
 }
 
 /**
@@ -404,6 +444,11 @@ export class GameService {
         },
         stoeckEligible: false,
         stoeckAnnouncedTeam: null,
+        weisen: {
+          myStatus: "PENDING",
+          canClickButton: false,
+          myDeclarations: [],
+        },
       };
     }
     const state = await this.loadRoundState(gameId);
@@ -422,6 +467,7 @@ export class GameService {
       myTurn: !finished && whoseTurn(state) === seat,
       stoeckEligible: !finished && state.stoeck_eligible_seat === seat,
       stoeckAnnouncedTeam: state.stoeck_announced_team,
+      weisen: buildWeisenView(state, seat),
     };
     if (finished) {
       view.finalScore = finalRoundScore(state);
@@ -590,6 +636,172 @@ export class GameService {
       meta: asJson({ seat, team: state.teams[seat] }),
     });
     return { view: await this.viewForSeat(gameId, seat) };
+  }
+
+  // ───────────────────────────────────────────────────────────────────
+  // Weisen
+  // ───────────────────────────────────────────────────────────────────
+
+  /**
+   * User klickt den „Weisen"-Button. Öffnet die Karten-Selection für
+   * diesen Sitz, ohne dass schon Karten ausgewählt sein müssen.
+   */
+  async clickWeisenAsUser(gameId: string, userId: string): Promise<{ view: PlayerView }> {
+    const seat = await this.findSeatForUser(gameId, userId);
+    return this.clickWeisenAsSeat(gameId, seat, userId);
+  }
+
+  async clickWeisenAsSeat(
+    gameId: string,
+    seat: number,
+    userId: string | null = null
+  ): Promise<{ view: PlayerView }> {
+    const state = await this.loadRoundState(gameId);
+    let nextState: RoundState;
+    try {
+      nextState = clickWeisenButton(state, seat);
+    } catch (err) {
+      if (err instanceof InvalidMoveError) {
+        await this.audit.record({
+          action: "game.weisen.click.invalid",
+          actorId: userId,
+          target: gameId,
+          meta: asJson({ seat, reason: err.message }),
+        });
+        throw new BadRequestException(err.message);
+      }
+      throw err;
+    }
+    await this.writeRoundStateToRedis(gameId, nextState);
+    await this.audit.record({
+      action: "game.weisen.click",
+      actorId: userId,
+      target: gameId,
+      meta: asJson({ seat }),
+    });
+    return { view: await this.viewForSeat(gameId, seat) };
+  }
+
+  /**
+   * User submittet seine Weis-Karten. Cards aus dem Frontend werden
+   * server-seitig mit `validateDeclaration` durchgespielt — kein Vertrauen
+   * auf die Client-Klassifizierung.
+   *
+   * Mehrere Weisen pro Submit erlaubt (z.B. 4 Buur + 3-Blatt) — Karten
+   * müssen über die Deklarationen disjunkt sein.
+   */
+  async submitWeisenAsUser(
+    gameId: string,
+    userId: string,
+    weisCardGroups: ReadonlyArray<ReadonlyArray<Card>>
+  ): Promise<{ view: PlayerView }> {
+    const seat = await this.findSeatForUser(gameId, userId);
+    return this.submitWeisenAsSeat(gameId, seat, weisCardGroups, userId);
+  }
+
+  async submitWeisenAsSeat(
+    gameId: string,
+    seat: number,
+    weisCardGroups: ReadonlyArray<ReadonlyArray<Card>>,
+    userId: string | null = null
+  ): Promise<{ view: PlayerView }> {
+    const state = await this.loadRoundState(gameId);
+    // Original-Hand rekonstruieren (= aktuelle Hand + ggf. schon
+    // gespielte erste Karte) — wird von `validateDeclaration` benutzt.
+    const originalHand: Card[] = [...state.hands[seat]!];
+    for (const tr of state.completed_tricks) {
+      const idx =
+        (((seat - tr.starter) % state.num_players) + state.num_players) % state.num_players;
+      const card = tr.cards[idx];
+      if (card) originalHand.push(card);
+    }
+    const posInCurrent =
+      (((seat - state.current_trick_starter) % state.num_players) + state.num_players) %
+      state.num_players;
+    if (posInCurrent < state.current_trick_cards.length) {
+      originalHand.push(state.current_trick_cards[posInCurrent]!);
+    }
+
+    const declarations: WeisDeclaration[] = [];
+    for (const group of weisCardGroups) {
+      const v = validateDeclaration(group, originalHand);
+      if ("invalid" in v) {
+        await this.audit.record({
+          action: "game.weisen.submit.invalid",
+          actorId: userId,
+          target: gameId,
+          meta: asJson({ seat, reason: v.reason }),
+        });
+        throw new BadRequestException(`Weis ungültig: ${v.reason}`);
+      }
+      declarations.push(v);
+    }
+
+    let nextState: RoundState;
+    try {
+      nextState = submitWeisen(state, seat, declarations);
+    } catch (err) {
+      if (err instanceof InvalidMoveError) {
+        await this.audit.record({
+          action: "game.weisen.submit.invalid",
+          actorId: userId,
+          target: gameId,
+          meta: asJson({ seat, reason: err.message }),
+        });
+        throw new BadRequestException(err.message);
+      }
+      throw err;
+    }
+    await this.writeRoundStateToRedis(gameId, nextState);
+    await this.audit.record({
+      action: "game.weisen.submit",
+      actorId: userId,
+      target: gameId,
+      meta: asJson({
+        seat,
+        count: declarations.length,
+        points: declarations.reduce((s, d) => s + d.points, 0),
+      }),
+    });
+    return { view: await this.viewForSeat(gameId, seat) };
+  }
+
+  /**
+   * KI-Auto-Weisen: ein KI-Sitz klickt automatisch den Button + submittet
+   * sofort alle optimalen Weisen. Wird vom `driveAIsLoop` (Gateway) nach
+   * der Trumpf-Ansage UND nach jedem AI-Move im Trick 1 aufgerufen, falls
+   * der KI-Sitz noch eine Weisen-Chance hat.
+   *
+   * No-op wenn nichts zu deklarieren ist (leere Liste) oder das Window
+   * für diesen Sitz nicht (mehr) offen ist.
+   */
+  async aiAutoWeisenForSeat(gameId: string, seat: number): Promise<void> {
+    const state = await this.loadRoundState(gameId);
+    if (!weisenWindowOpen(state, seat)) return;
+    if (weisenSeatStatus(state, seat) !== "PENDING") return;
+    // Original-Hand rekonstruieren
+    const originalHand: Card[] = [...state.hands[seat]!];
+    for (const tr of state.completed_tricks) {
+      const idx =
+        (((seat - tr.starter) % state.num_players) + state.num_players) % state.num_players;
+      const card = tr.cards[idx];
+      if (card) originalHand.push(card);
+    }
+    const declarations = findBestWeisenForHand(originalHand);
+    let next = clickWeisenButton(state, seat);
+    if (declarations.length > 0) {
+      next = submitWeisen(next, seat, declarations);
+    }
+    await this.writeRoundStateToRedis(gameId, next);
+    await this.audit.record({
+      action: "game.weisen.ai_auto",
+      target: gameId,
+      meta: asJson({
+        seat,
+        count: declarations.length,
+        points: declarations.reduce((s, d) => s + d.points, 0),
+      }),
+    });
   }
 
   // ───────────────────────────────────────────────────────────────────
@@ -1194,4 +1406,65 @@ function buildAnnouncement(decision: AnnouncementDecision & { kind: "announce" }
  */
 function asJson(v: unknown): Prisma.InputJsonValue {
   return v as Prisma.InputJsonValue;
+}
+
+/**
+ * Baut den Weisen-Teil der `PlayerView` für einen Sitz. Nach Trick 1
+ * (= `weisen_evaluated`) zeigen wir auch das aggregierte Result —
+ * sonst ist `result` undefined.
+ */
+function buildWeisenView(state: RoundState, seat: number): PlayerView["weisen"] {
+  const myStatus = weisenSeatStatus(state, seat);
+  const canClickButton =
+    myStatus === "PENDING" &&
+    weisenWindowOpen(state, seat) &&
+    state.weisen_button_clicked_at[seat] === null;
+  const myDeclarations = (state.weisen_declarations[seat] ?? []).map(declToView);
+
+  if (!state.weisen_evaluated) {
+    return { myStatus, canClickButton, myDeclarations };
+  }
+
+  // Result: alle Submitten pro Sitz + Aggregat
+  const declarationsPerSeat: Record<number, readonly WeisDeclaration[]> = {};
+  for (let s = 0; s < state.num_players; s++) {
+    const decls = state.weisen_declarations[s] ?? [];
+    if (decls.length > 0) declarationsPerSeat[s] = decls;
+  }
+  // Vorhand-Bestimmung: der allererste Trick wurde von completed_tricks[0]
+  // gespielt — sein `starter` ist die Vorhand.
+  const firstTrick = state.completed_tricks[0];
+  const vorhandSeat = firstTrick?.starter ?? 0;
+  const aggregate = aggregateWeisen({
+    declarationsPerSeat,
+    teams: state.teams,
+    trumpSuit: state.variant.trump_suit ?? null,
+    vorhandSeat,
+    numPlayers: state.num_players,
+  });
+  const perSeat: Array<{ seat: number; declarations: WeisDeclarationView[] }> = [];
+  for (let s = 0; s < state.num_players; s++) {
+    const decls = state.weisen_declarations[s] ?? [];
+    if (decls.length > 0) {
+      perSeat.push({ seat: s, declarations: decls.map(declToView) });
+    }
+  }
+  return {
+    myStatus,
+    canClickButton,
+    myDeclarations,
+    result: {
+      winningTeam: aggregate.winningTeam,
+      points: aggregate.points,
+      perSeat,
+    },
+  };
+}
+
+function declToView(d: WeisDeclaration): WeisDeclarationView {
+  return {
+    kind: d.kind,
+    cards: d.cards.map((c) => ({ suit: c.suit, rank: c.rank })),
+    points: d.points,
+  };
 }

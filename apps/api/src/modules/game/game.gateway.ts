@@ -529,6 +529,68 @@ export class GameGateway
   }
 
   /**
+   * Weisen-Button geklickt: öffnet die Karten-Selection für diesen Sitz.
+   * Payload: `{ gameId }`.
+   */
+  @SubscribeMessage("game:weisen-click")
+  async onWeisenClick(
+    @ConnectedSocket() socket: AuthenticatedSocket,
+    @MessageBody() payload: { gameId?: string }
+  ): Promise<void> {
+    const userId = socket.data.userId;
+    if (!userId) return this.fail(socket, "Not authenticated");
+    const gameId = payload?.gameId;
+    if (typeof gameId !== "string" || gameId.length === 0) {
+      return this.fail(socket, "gameId required");
+    }
+    try {
+      await this.locks.withLock(gameId, async () => {
+        await this.games.clickWeisenAsUser(gameId, userId);
+        await this.broadcastState(gameId);
+      });
+    } catch (err) {
+      this.fail(socket, this.errorMessage(err));
+    }
+  }
+
+  /**
+   * Weisen-Submit: Karten in Gruppen pro Weis. Beispiel:
+   *   `[ [{suit:'EICHEL',rank:'UNTER'},…vier Buur…],
+   *      [{suit:'HERZ',rank:'SECHS'},…3-Blatt…] ]`
+   * Server validiert jede Gruppe + Disjunktheit der Karten.
+   */
+  @SubscribeMessage("game:weisen-submit")
+  async onWeisenSubmit(
+    @ConnectedSocket() socket: AuthenticatedSocket,
+    @MessageBody()
+    payload: {
+      gameId?: string;
+      groups?: Array<Array<{ suit: string; rank: string }>>;
+    }
+  ): Promise<void> {
+    const userId = socket.data.userId;
+    if (!userId) return this.fail(socket, "Not authenticated");
+    const gameId = payload?.gameId;
+    const groups = payload?.groups;
+    if (typeof gameId !== "string" || !Array.isArray(groups)) {
+      return this.fail(socket, "gameId + groups required");
+    }
+    try {
+      await this.locks.withLock(gameId, async () => {
+        // Casts auf Card[] — Validierung im Service übernimmt das Zod-Äquivalent.
+        const typed = groups.map(
+          (g) =>
+            g.map((c) => ({ suit: c.suit, rank: c.rank })) as Array<{ suit: string; rank: string }>
+        ) as never;
+        await this.games.submitWeisenAsUser(gameId, userId, typed);
+        await this.broadcastState(gameId);
+      });
+    } catch (err) {
+      this.fail(socket, this.errorMessage(err));
+    }
+  }
+
+  /**
    * KI-Loop für **beide** Spielphasen:
    *
    *   - **announce**: wenn der aktuelle Announcer eine KI ist, lässt der
@@ -562,6 +624,13 @@ export class GameGateway
         await sleep(aiStepDelayMs());
         continue;
       }
+
+      // Weisen-Auto-Vor-Move: bevor die KI ihre erste Karte in Trick 1
+      // spielt, soll sie deklarieren (= Button klicken + Karten submitten).
+      // Die Engine prüft via `weisenWindowOpen`, ob das Fenster noch
+      // offen ist; bei jedem späteren Aufruf ist es ein No-op.
+      await this.games.aiAutoWeisenForSeat(gameId, action.seat);
+      await this.broadcastState(gameId);
 
       // Move-Schritt.
       const card = await this.games.aiChooseMove(gameId, action.seat, action.aiSeatType);
