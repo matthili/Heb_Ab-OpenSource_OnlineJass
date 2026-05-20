@@ -238,7 +238,7 @@ export class LobbyService {
         },
       },
       orderBy: { createdAt: "desc" },
-      take: 100, // sicheres Limit für M6; Pagination in M7
+      take: 100, // sicheres Limit; Pagination bei Bedarf später
     });
 
     return tables.map((t) => ({

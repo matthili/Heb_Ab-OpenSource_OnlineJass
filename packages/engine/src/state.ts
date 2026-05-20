@@ -21,8 +21,6 @@
  *   - Karte muss in der Hand sein
  *   - Karte muss in `legalMoves(...)` enthalten sein
  *
- * Bewusst ausgeklammert für M4 (kommt mit M6+): Weisen, Stöcke, Matsch-Bonus
- * im Score, Slalom-Modus-Wechsel pro Trick, Push-to-Partner-Ansage.
  */
 
 import { cardsEqual } from "./cards.js";

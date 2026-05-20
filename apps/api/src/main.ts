@@ -72,8 +72,8 @@ async function bootstrap(): Promise<void> {
   // strukturiert geloggt werden.
   app.useLogger(app.get(Logger));
 
-  // Sicherheits-Header: HSTS + grundlegende Defaults. Stricte CSP folgt in M11,
-  // sobald Frontend-Assets + Inferenz-WS-Origins final feststehen.
+  // Sicherheits-Header: HSTS + grundlegende Defaults. Die strikte CSP wird im
+  // Caddy-Reverse-Proxy gesetzt (siehe infra/caddy/Caddyfile), nicht hier.
   await app.register(helmet, {
     contentSecurityPolicy: false, // in Caddy-Reverse-Proxy gesetzt
     crossOriginResourcePolicy: { policy: "same-site" },

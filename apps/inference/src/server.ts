@@ -12,8 +12,9 @@
  *   - `bodensee` → Bodensee-Jass (encoding bodensee_1.0.0, state 291)
  *
  * Welche Modelle beim Boot geladen werden, steuert `INFERENCE_GAME_TYPES`
- * (Komma-Liste, Default `kreuz,solo`). Bodensee wird erst aktiviert, wenn
- * sein TypeScript-Encoder fertig ist.
+ * (Komma-Liste, Default `kreuz,solo`). Bodensee ist integriert und wird
+ * geladen, sobald `bodensee` in `INFERENCE_GAME_TYPES` aufgenommen wird und
+ * das Bodensee-Modell im Release-Artefakt vorliegt.
  *
  * **Lifecycle**: Modelle beim Start geladen, Encoding-Version pro Modell
  * gegen die erwartete Version geprüft (Hard-Error bei Mismatch). `/health`

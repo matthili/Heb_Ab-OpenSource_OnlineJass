@@ -100,8 +100,7 @@ export interface Announcement {
    * UNTEN). Pro Stich wird der Modus alterniert.
    *
    * **Constraint**: bei `variant.mode === "TRUMPF" | "GUMPF"` muss
-   * `slalom === false` sein. Wird in der GameState-Builder-Logik validiert
-   * (kommt mit M4).
+   * `slalom === false` sein. Wird in der GameState-Builder-Logik validiert.
    */
   readonly slalom: boolean;
 }

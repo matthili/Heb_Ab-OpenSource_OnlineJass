@@ -16,11 +16,11 @@
  *     `viewForPlayer(gameId, userId)` nur den per-Sitz gefilterten `GameState`
  *     + die eigene Hand. Fremde Hände verlassen den Server niemals.
  *
- * Aktuelle Einschränkungen (M4):
- *   - Genau eine Runde pro Game (`round_idx = 0`). Multi-Runden-Logik kommt mit M6.
- *   - Variante wird beim Anlegen fixiert (kein Trumpf-Ansage-Dialog, kein Push).
- *   - Single-Owner-pro-Tisch (Redis-Lock) noch nicht aktiv — kommt mit M11
- *     für Multi-Instance.
+ * Design-Hinweise:
+ *   - Ein `Game` = eine Runde (`round_idx = 0`); eine ganze Partie über mehrere
+ *     Spiele läuft über den Re-Match-Flow der Lobby (jeweils ein neues `Game`).
+ *   - Die Variante wird im Ansage-Modus gewählt (Trumpf-Ansage inkl. Schieben).
+ *   - Single-Owner-pro-Tisch ist über den `GameLockService` (Redis) aktiv.
  */
 import {
   BadRequestException,

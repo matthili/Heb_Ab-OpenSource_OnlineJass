@@ -7,7 +7,7 @@
  *   - Trick   (M7-E): 4-Slot-Stichvisualisierung mit Winner-Highlight
  *   - Scoreboard (M7-E): Punkte + Trumpf-Anzeige
  *
- * ChatBubble folgt mit M8.
+ * Die Chat-Komponenten (ChatBubble/ChatPanel) leben in `apps/web`, nicht hier.
  */
 export { Card, type CardProps } from "./Card/Card.js";
 export { Hand, type HandProps } from "./Hand/Hand.js";
