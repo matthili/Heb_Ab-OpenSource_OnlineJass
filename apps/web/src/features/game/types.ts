@@ -1,6 +1,7 @@
 /**
  * Game-Frontend-Types — Spiegel von `apps/api/src/modules/game/game.service.ts`
- * (PlayerView). M11 ersetzt das durch generierte OpenAPI-Types.
+ * (PlayerView). Bewusst handgepflegt: `PlayerView` ist ein WebSocket-Payload,
+ * den ein OpenAPI-Schema (beschreibt nur REST) ohnehin nicht abdecken würde.
  */
 import type { Card, GameState, PlayMode, Suit } from "@jass/engine";
 

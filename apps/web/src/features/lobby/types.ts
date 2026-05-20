@@ -2,10 +2,10 @@
  * Frontend-Types für die Lobby — gespiegelt vom Backend
  * (`apps/api/src/modules/lobby/lobby.service.ts`).
  *
- * **Hinweis**: Diese Types sind handgepflegt. In M11 erzeugen wir sie
- * automatisch aus dem OpenAPI-Schema des Backends (`packages/shared-types`),
- * dann ist diese Datei weg. Bis dahin muss sie bei Backend-DTO-Änderungen
- * mitwachsen.
+ * **Hinweis**: Diese Types sind bewusst handgepflegt und müssen bei
+ * Backend-DTO-Änderungen mitwachsen. Eine automatische Generierung aus einem
+ * OpenAPI-Schema ist als Backlog-Punkt notiert (PLAN.md §14), aktuell aber
+ * nicht umgesetzt.
  */
 
 export type LobbyStatus = "WAITING" | "IN_GAME" | "POST_GAME" | "MATCH_OVER" | "CLOSED";
