@@ -16,6 +16,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { type FormEvent, useCallback, useEffect, useState } from "react";
 
+import { BodenseeBoard } from "~/features/bodensee/BodenseeBoard";
+import { useBodenseeView } from "~/features/bodensee/useBodenseeView";
 import { ChatPanel } from "~/features/chat/ChatPanel";
 import { DisconnectOverlay } from "~/features/game/DisconnectOverlay";
 import { GameBoard } from "~/features/game/GameBoard";
@@ -70,8 +72,10 @@ export function TableDetail({ tableId }: Props) {
       queryClient.invalidateQueries({ queryKey: ["lobby", "my-tables"] });
     };
     sock.on("game:ended", onEnded);
+    sock.on("bodensee:ended", onEnded);
     return () => {
       sock.off("game:ended", onEnded);
+      sock.off("bodensee:ended", onEnded);
     };
   }, [queryClient, queryKey]);
 
@@ -107,7 +111,14 @@ export function TableDetail({ tableId }: Props) {
       {data.currentGameId &&
         (data.status === "IN_GAME" ||
           data.status === "POST_GAME" ||
-          data.status === "MATCH_OVER") && (
+          data.status === "MATCH_OVER") &&
+        (data.variant === "BODENSEE_2P" ? (
+          <BodenseeGameSection
+            gameId={data.currentGameId}
+            tableSeats={data.seats}
+            isAtTable={amIAtTable}
+          />
+        ) : (
           <GameSection
             gameId={data.currentGameId}
             tableSeats={data.seats}
@@ -117,7 +128,7 @@ export function TableDetail({ tableId }: Props) {
             cumulativeScores={data.cumulativeScores}
             targetScore={data.targetScore}
           />
-        )}
+        ))}
 
       {isOwner ? (
         <OwnerPanel table={data} queryKey={queryKey} />
@@ -177,13 +188,13 @@ function CumulativeScoreBar({ table }: { table: TableDetailView }) {
   const target = table.targetScore;
   // Falls noch kein Game gespielt wurde: Balken weglassen.
   if (scores.every((s) => s === 0)) return null;
-  const isSolo = table.variant === "SOLO_4P";
+  const isPerPlayer = table.variant === "SOLO_4P" || table.variant === "BODENSEE_2P";
   const winner = scores.findIndex((s) => s >= target); // -1 = noch offen
 
-  // Zeilen-Label: bei Solo der Spielername (Team-ID == Sitz), bei Kreuz
-  // die Team-Bezeichnung mit den zugehörigen Sitzen.
+  // Zeilen-Label: bei Solo/Bodensee der Spielername (Konto je Sitz), bei
+  // Kreuz die Team-Bezeichnung mit den zugehörigen Sitzen.
   const labelFor = (teamIdx: number): string => {
-    if (isSolo) {
+    if (isPerPlayer) {
       const seat = table.seats.find((s) => s.seat === teamIdx);
       if (seat?.user) return seat.user.name;
       if (seat?.aiSeatType) return `KI (Sitz ${teamIdx + 1})`;
@@ -671,6 +682,56 @@ function GameSection({
           />
         )}
         <DisconnectOverlay gameId={gameId} seats={tableSeats} mySeat={view.mySeat} />
+      </div>
+      <ChatPanel channelKey={`game:${gameId}`} title="Tisch-Chat" />
+    </section>
+  );
+}
+
+/**
+ * Game-Section für Bodensee-Jass (2 Spieler). Eigener WS-Pfad
+ * (`useBodenseeView`) und eine eigene Spielfläche (`BodenseeBoard`).
+ * Re-Match und Disconnect-Overlay sind hier noch nicht angebunden —
+ * der Tisch landet nach Spielende in POST_GAME, von wo der Owner über
+ * „Neue Partie" bzw. die Lobby weitermacht.
+ */
+function BodenseeGameSection({
+  gameId,
+  tableSeats,
+  isAtTable,
+}: {
+  gameId: string;
+  tableSeats: TableDetailView["seats"];
+  isAtTable: boolean;
+}) {
+  const { view, error, movePending, announcePending, playCard, announce } = useBodenseeView(
+    isAtTable ? gameId : null
+  );
+
+  if (!isAtTable) {
+    return (
+      <div className="rounded border border-stone-200 bg-stone-50 px-4 py-3 text-sm text-stone-600">
+        Spiel läuft — du sitzt aber nicht am Tisch.
+      </div>
+    );
+  }
+
+  if (!view) {
+    return <p className="text-stone-500">Lade Spiel …</p>;
+  }
+
+  return (
+    <section className="grid grid-cols-1 lg:grid-cols-[1fr_20rem] gap-4">
+      <div className="space-y-4">
+        <BodenseeBoard
+          view={view}
+          seats={tableSeats}
+          movePending={movePending}
+          announcePending={announcePending}
+          error={error}
+          onPlayCard={playCard}
+          onAnnounce={announce}
+        />
       </div>
       <ChatPanel channelKey={`game:${gameId}`} title="Tisch-Chat" />
     </section>

@@ -11,8 +11,8 @@
 export type LobbyStatus = "WAITING" | "IN_GAME" | "POST_GAME" | "MATCH_OVER" | "CLOSED";
 export type JoinMode = "OPEN" | "REQUEST" | "INVITE";
 export type RestartMode = "WELI" | "SIEGER_GIBT";
-/** Spielart eines Tisches. KREUZ_6P/KREUZ_STEIGERN/BODENSEE_2P folgen. */
-export type TableVariant = "KREUZ_4P" | "SOLO_4P";
+/** Spielart eines Tisches. KREUZ_6P/KREUZ_STEIGERN folgen. */
+export type TableVariant = "KREUZ_4P" | "SOLO_4P" | "BODENSEE_2P";
 
 export interface TableListEntry {
   id: string;

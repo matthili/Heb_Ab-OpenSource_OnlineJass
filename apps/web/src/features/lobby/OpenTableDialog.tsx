@@ -104,6 +104,7 @@ const SCORE_PRESETS: readonly number[] = [500, 1000, 1200, 2500];
 const DEFAULT_SCORE: Record<TableVariant, number> = {
   KREUZ_4P: 1000,
   SOLO_4P: 500,
+  BODENSEE_2P: 500,
 };
 
 const VARIANT_OPTIONS: ReadonlyArray<{
@@ -121,7 +122,17 @@ const VARIANT_OPTIONS: ReadonlyArray<{
     title: "Solo-Jass",
     hint: "Jeder gegen jeden — kein Partner, kein Schieben. Ziel 500.",
   },
+  {
+    value: "BODENSEE_2P",
+    title: "Bodensee-Jass",
+    hint: "Zwei Spieler, Tisch-Stapel mit verdeckten Karten. Ziel 500.",
+  },
 ];
+
+/** KI-Sitze für den „allein gegen KI"-Shortcut — bei Bodensee nur Sitz 1. */
+function soloAiSeats(variant: TableVariant): { seat: number }[] {
+  return variant === "BODENSEE_2P" ? [{ seat: 1 }] : [{ seat: 1 }, { seat: 2 }, { seat: 3 }];
+}
 
 export function OpenTableDialog({ open, onClose }: Props) {
   const dialogRef = useRef<HTMLDialogElement>(null);
@@ -145,8 +156,9 @@ export function OpenTableDialog({ open, onClose }: Props) {
    */
   function changeVariant(next: TableVariant) {
     setVariant(next);
-    const otherDefault = next === "KREUZ_4P" ? DEFAULT_SCORE.SOLO_4P : DEFAULT_SCORE.KREUZ_4P;
-    if (targetScore === otherDefault) {
+    // Punkteziel nur mitziehen, wenn der User noch auf einem Spielart-Default
+    // steht (also nichts Eigenes eingetippt hat).
+    if ((Object.values(DEFAULT_SCORE) as number[]).includes(targetScore)) {
       setTargetScore(DEFAULT_SCORE[next]);
     }
   }
@@ -199,7 +211,7 @@ export function OpenTableDialog({ open, onClose }: Props) {
       autoFillSeconds: autoFill,
       restartMode,
       targetScore,
-      initialAiSeats: soloVsAi ? [{ seat: 1 }, { seat: 2 }, { seat: 3 }] : [],
+      initialAiSeats: soloVsAi ? soloAiSeats(variant) : [],
     };
     openMut.mutate(dto);
   }
@@ -256,10 +268,10 @@ export function OpenTableDialog({ open, onClose }: Props) {
             <div className="flex items-center justify-between gap-3">
               <div>
                 <div className="font-semibold text-jass-ink">
-                  🎯 Direkt allein gegen 3 KI starten
+                  🎯 Direkt allein gegen {variant === "BODENSEE_2P" ? "die KI" : "3 KI"} starten
                 </div>
                 <div className="text-xs text-jass-inkSoft mt-0.5">
-                  Klick und los — Tisch ist privat, Sitze 1–3 werden mit der gewählten KI belegt.
+                  Klick und los — Tisch ist privat, freie Sitze werden mit der gewählten KI belegt.
                 </div>
               </div>
               <input
@@ -530,8 +542,8 @@ function SummaryRow({
       <div className="text-xs font-semibold uppercase text-jass-inkSoft mb-1">Zusammenfassung</div>
       <div className="text-jass-ink leading-relaxed">
         <span className="font-semibold">{variantLabel}</span> ·{" "}
-        {soloVsAi ? "Solo gegen 3 KI" : joinLabel} ·{" "}
-        <span className="font-semibold">{aiLabel}</span> ·{" "}
+        {soloVsAi ? (variant === "BODENSEE_2P" ? "Solo gegen 1 KI" : "Solo gegen 3 KI") : joinLabel}{" "}
+        · <span className="font-semibold">{aiLabel}</span> ·{" "}
         {autoFill === null ? "kein Auto-Fill" : `Auto-Fill nach ${autoFill}s`} · Ziel{" "}
         <span className="font-semibold">{targetScore}</span> · {restartLabel}
       </div>

@@ -109,6 +109,10 @@ export interface BodenseePlayerView {
   trickIdx: number;
   ownScore: number;
   oppScore: number;
+  /** Karten im laufenden Stich (0–2) plus der anspielende Sitz. */
+  currentTrick: { cards: readonly Card[]; starter: number };
+  /** Zuletzt abgeschlossener Stich — bleibt sichtbar, bis der nächste beginnt. */
+  lastTrick?: { cards: readonly Card[]; starter: number; winner: number };
   announcement?: {
     announcerSeat: number;
     iAmAnnouncer: boolean;
@@ -277,6 +281,7 @@ export class BodenseeGameService {
         trickIdx: 0,
         ownScore: 0,
         oppScore: 0,
+        currentTrick: { cards: [], starter: -1 },
         announcement: {
           announcerSeat: pending.announcerIdx,
           iAmAnnouncer: pending.announcerIdx === seat,
@@ -313,7 +318,20 @@ export class BodenseeGameService {
       trickIdx: state.trick_idx,
       ownScore: view.own_score,
       oppScore: view.opp_score,
+      currentTrick: {
+        cards: view.current_trick_cards,
+        starter: view.current_trick_starter,
+      },
     };
+    const completed = view.completed_tricks;
+    if (completed.length > 0) {
+      const last = completed[completed.length - 1]!;
+      result.lastTrick = {
+        cards: last.cards,
+        starter: last.starter,
+        winner: state.trick_winners[completed.length - 1] ?? -1,
+      };
+    }
     if (state.variant.trump_suit !== undefined) result.trumpSuit = state.variant.trump_suit;
     if (finished) {
       const score = finalBodenseeScore(state);

@@ -1,0 +1,423 @@
+/**
+ * Bodensee-Spielfläche — die 2-Spieler-Variante.
+ *
+ * Layout (von oben nach unten):
+ *   - Status-Leiste: Stich-Zähler, Modus/Trumpf, Punkte
+ *   - Gegner-Bereich: verdeckte Hand + sichtbare Tisch-Karten
+ *   - Stich-Mitte: laufender Stich, sonst der zuletzt abgeschlossene
+ *   - Eigener Bereich: eigene 6 Tisch-Stapel + Hand (klickbar bei Zug)
+ *   - Ansage-Panel (Phase `announcing`) bzw. End-Overlay (`finished`)
+ *
+ * Spielbar ist der „Pool": Handkarten + sichtbare Tisch-Karten. Welche
+ * Karte legal ist, sagt `legalActionMask` (36-Bit, Index = `cardIndex`).
+ */
+import { cardIndex, type Card as CardModel, type PlayMode, type Suit } from "@jass/engine";
+import { Card } from "@jass/ui";
+import { useState } from "react";
+
+import type { SeatView } from "~/features/lobby/types";
+import type { BodenseeAnnouncement, BodenseeView } from "./types";
+
+interface Props {
+  view: BodenseeView;
+  seats: SeatView[];
+  movePending: boolean;
+  announcePending: boolean;
+  error: string | null;
+  onPlayCard: (card: CardModel) => void;
+  onAnnounce: (announcement: BodenseeAnnouncement) => void;
+}
+
+const SUIT_LABEL: Record<Suit, string> = {
+  EICHEL: "Eichel",
+  SCHELLE: "Schelle",
+  HERZ: "Herz",
+  LAUB: "Laub",
+};
+
+const MODE_LABEL: Record<PlayMode, string> = {
+  TRUMPF: "Trumpf",
+  GUMPF: "Gumpf",
+  OBEN: "Obenabe",
+  UNTEN: "Undenufe",
+};
+
+function cardKey(c: CardModel): string {
+  return `${c.suit}-${c.rank}`;
+}
+
+export function BodenseeBoard({
+  view,
+  seats,
+  movePending,
+  announcePending,
+  error,
+  onPlayCard,
+  onAnnounce,
+}: Props) {
+  const oppSeat = 1 - view.mySeat;
+  const seatName = (seat: number): string => {
+    const s = seats.find((x) => x.seat === seat);
+    if (s?.user) return s.user.name;
+    if (s?.aiSeatType) return `KI (${s.aiSeatType})`;
+    return `Sitz ${seat + 1}`;
+  };
+
+  const isLegal = (c: CardModel): boolean => view.legalActionMask[cardIndex(c)] === 1;
+  const canPlay = view.status === "playing" && view.myTurn && !movePending;
+
+  return (
+    <div className="space-y-3">
+      {/* Status-Leiste */}
+      <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-jass-paperEdge bg-jass-cream px-4 py-2 text-sm">
+        <span className="text-jass-inkSoft">
+          Stich <strong className="text-jass-ink">{Math.min(view.trickIdx + 1, 18)}</strong> / 18
+        </span>
+        <span className="text-jass-inkSoft">
+          Modus:{" "}
+          <strong className="text-jass-ink">
+            {view.playMode ? MODE_LABEL[view.playMode] : "—"}
+            {view.trumpSuit ? ` ${SUIT_LABEL[view.trumpSuit]}` : ""}
+          </strong>
+        </span>
+        <span className="text-jass-inkSoft">
+          Du <strong className="text-jass-ink">{view.ownScore}</strong> :{" "}
+          <strong className="text-jass-ink">{view.oppScore}</strong> {seatName(oppSeat)}
+        </span>
+      </div>
+
+      {error && (
+        <p
+          role="alert"
+          className="rounded bg-rose-50 border border-rose-300 px-3 py-2 text-sm text-rose-800"
+        >
+          {error}
+        </p>
+      )}
+
+      {/* Gegner-Bereich */}
+      <section className="rounded-lg border border-jass-paperEdge bg-jass-paper p-3 space-y-2">
+        <div className="flex items-center justify-between text-sm">
+          <span className="font-semibold text-jass-ink">{seatName(oppSeat)}</span>
+          <span className="text-jass-inkSoft">
+            {view.opponentHandCount} Handkarten · {view.opponentHiddenCount} verdeckt am Tisch
+          </span>
+        </div>
+        <div className="flex flex-wrap items-end gap-1">
+          {Array.from({ length: view.opponentHandCount }).map((_, i) => (
+            <FaceDownCard key={`oh-${i}`} size="xs" />
+          ))}
+        </div>
+        {(view.opponentVisibleTable.length > 0 || view.opponentHiddenCount > 0) && (
+          <div className="flex flex-wrap items-end gap-1 border-t border-jass-paperEdge pt-2">
+            {view.opponentVisibleTable.map((c) => (
+              <Card key={`ot-${cardKey(c)}`} card={c} size="sm" />
+            ))}
+            {Array.from({ length: view.opponentHiddenCount }).map((_, i) => (
+              <FaceDownCard key={`ohid-${i}`} size="sm" />
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* Stich-Mitte */}
+      <section className="rounded-xl bg-emerald-800 px-4 py-5 text-center text-emerald-50 shadow-inner">
+        <TrickArea view={view} seatName={seatName} />
+      </section>
+
+      {/* Eigener Bereich */}
+      <section className="rounded-lg border border-jass-paperEdge bg-jass-paper p-3 space-y-3">
+        <div className="text-sm">
+          {view.status === "playing" &&
+            (view.myTurn ? (
+              <span className="font-semibold text-emerald-700">Du bist am Zug.</span>
+            ) : (
+              <span className="text-jass-inkSoft">{seatName(oppSeat)} ist am Zug …</span>
+            ))}
+        </div>
+
+        {/* Eigene Tisch-Stapel */}
+        <div>
+          <p className="text-xs uppercase tracking-wide text-jass-inkSoft mb-1">Dein Tisch</p>
+          <div className="flex flex-wrap items-end gap-1.5">
+            {view.ownTable.map((stack, i) => (
+              <TableStackSlot
+                key={`my-stack-${i}`}
+                stack={stack}
+                playable={canPlay}
+                isLegal={isLegal}
+                onPlay={onPlayCard}
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* Eigene Hand */}
+        <div>
+          <p className="text-xs uppercase tracking-wide text-jass-inkSoft mb-1">Deine Hand</p>
+          <div className="flex flex-wrap items-end gap-1">
+            {view.hand.length === 0 && (
+              <span className="text-sm text-jass-inkSoft italic">keine Handkarten mehr</span>
+            )}
+            {view.hand.map((c) => {
+              const legal = isLegal(c);
+              return (
+                <Card
+                  key={cardKey(c)}
+                  card={c}
+                  size="md"
+                  {...(canPlay && legal ? { onClick: onPlayCard } : {})}
+                  disabled={canPlay && !legal}
+                />
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      {/* Ansage-Phase */}
+      {view.status === "announcing" &&
+        (view.announcement?.iAmAnnouncer ? (
+          <AnnouncePanel pending={announcePending} onAnnounce={onAnnounce} />
+        ) : (
+          <p className="rounded-lg border border-jass-paperEdge bg-jass-cream px-4 py-3 text-sm text-jass-inkSoft">
+            {seatName(view.announcement?.announcerSeat ?? oppSeat)} wählt gerade die Variante …
+          </p>
+        ))}
+
+      {/* End-Overlay */}
+      {view.status === "finished" && view.finalScore && (
+        <FinishedPanel view={view} oppName={seatName(oppSeat)} />
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Stich-Mitte
+// ─────────────────────────────────────────────────────────────────────
+
+function TrickArea({ view, seatName }: { view: BodenseeView; seatName: (seat: number) => string }) {
+  const live = view.currentTrick;
+  if (live.cards.length > 0) {
+    return (
+      <div>
+        <p className="text-xs uppercase tracking-wide text-emerald-200 mb-2">Laufender Stich</p>
+        <div className="flex items-end justify-center gap-4">
+          {live.cards.map((c, i) => {
+            const seat = i === 0 ? live.starter : 1 - live.starter;
+            return (
+              <div key={`ct-${i}`} className="space-y-1">
+                <Card card={c} size="md" />
+                <p className="text-xs text-emerald-100">
+                  {seat === view.mySeat ? "Du" : seatName(seat)}
+                </p>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
+  const last = view.lastTrick;
+  if (last) {
+    return (
+      <div>
+        <p className="text-xs uppercase tracking-wide text-emerald-200 mb-2">
+          Letzter Stich — {last.winner === view.mySeat ? "du hast" : `${seatName(last.winner)} hat`}{" "}
+          gewonnen
+        </p>
+        <div className="flex items-end justify-center gap-4 opacity-80">
+          {last.cards.map((c, i) => {
+            const seat = i === 0 ? last.starter : 1 - last.starter;
+            return (
+              <div key={`lt-${i}`} className="space-y-1">
+                <Card card={c} size="sm" />
+                <p className="text-xs text-emerald-100">
+                  {seat === view.mySeat ? "Du" : seatName(seat)}
+                </p>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
+  return <p className="text-sm text-emerald-100">Der Stich beginnt …</p>;
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Tisch-Stapel
+// ─────────────────────────────────────────────────────────────────────
+
+function TableStackSlot({
+  stack,
+  playable,
+  isLegal,
+  onPlay,
+}: {
+  stack: BodenseeView["ownTable"][number];
+  playable: boolean;
+  isLegal: (c: CardModel) => boolean;
+  onPlay: (c: CardModel) => void;
+}) {
+  if (!stack.visible) {
+    return (
+      <div className="h-24 w-16 rounded-md border border-dashed border-jass-paperEdge bg-jass-cream/50" />
+    );
+  }
+  const legal = isLegal(stack.visible);
+  return (
+    <div className="relative">
+      <Card
+        card={stack.visible}
+        size="sm"
+        {...(playable && legal ? { onClick: onPlay } : {})}
+        disabled={playable && !legal}
+      />
+      {stack.hasHidden && (
+        <span
+          className="absolute -bottom-1 -right-1 rounded-full bg-jass-brownDark px-1.5 py-0.5 text-[10px] font-semibold text-jass-cream"
+          title="Eine verdeckte Karte liegt darunter"
+        >
+          +1
+        </span>
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Verdeckte Karte
+// ─────────────────────────────────────────────────────────────────────
+
+function FaceDownCard({ size }: { size: "xs" | "sm" }) {
+  const cls = size === "xs" ? "h-14 w-9" : "h-24 w-16";
+  return (
+    <div
+      className={`${cls} rounded-md border border-jass-brownDark bg-gradient-to-br from-jass-brownDark to-stone-700 shadow`}
+      aria-hidden="true"
+    />
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Ansage-Panel
+// ─────────────────────────────────────────────────────────────────────
+
+type AnnounceMode = "TRUMPF" | "GUMPF" | "OBEN" | "UNTEN" | "SLALOM";
+
+const ANNOUNCE_MODES: ReadonlyArray<{ value: AnnounceMode; label: string }> = [
+  { value: "TRUMPF", label: "Trumpf" },
+  { value: "GUMPF", label: "Gumpf" },
+  { value: "OBEN", label: "Obenabe" },
+  { value: "UNTEN", label: "Undenufe" },
+  { value: "SLALOM", label: "Slalom" },
+];
+
+const SUITS: readonly Suit[] = ["EICHEL", "SCHELLE", "HERZ", "LAUB"];
+
+function AnnouncePanel({
+  pending,
+  onAnnounce,
+}: {
+  pending: boolean;
+  onAnnounce: (a: BodenseeAnnouncement) => void;
+}) {
+  const [mode, setMode] = useState<AnnounceMode>("TRUMPF");
+  const [suit, setSuit] = useState<Suit>("EICHEL");
+  const needsSuit = mode === "TRUMPF" || mode === "GUMPF";
+
+  function confirm() {
+    if (mode === "SLALOM") {
+      onAnnounce({ variant: { mode: "OBEN" }, slalom: true });
+      return;
+    }
+    if (needsSuit) {
+      onAnnounce({ variant: { mode, trump_suit: suit }, slalom: false });
+      return;
+    }
+    onAnnounce({ variant: { mode }, slalom: false });
+  }
+
+  return (
+    <section className="rounded-lg border-2 border-jass-yellowDark bg-jass-yellow/15 p-4 space-y-3">
+      <h3 className="font-semibold text-jass-ink">Du bist am Ansagen — wähle die Variante</h3>
+      <div className="flex flex-wrap gap-2">
+        {ANNOUNCE_MODES.map((m) => (
+          <button
+            key={m.value}
+            type="button"
+            onClick={() => setMode(m.value)}
+            aria-pressed={mode === m.value}
+            className={`rounded-full border px-3 py-1 text-sm transition ${
+              mode === m.value
+                ? "border-jass-yellowDark bg-jass-yellow font-semibold text-jass-ink"
+                : "border-jass-paperEdge bg-jass-cream text-jass-inkSoft hover:bg-jass-yellow/20"
+            }`}
+          >
+            {m.label}
+          </button>
+        ))}
+      </div>
+      {needsSuit && (
+        <div className="flex flex-wrap gap-2">
+          {SUITS.map((s) => (
+            <button
+              key={s}
+              type="button"
+              onClick={() => setSuit(s)}
+              aria-pressed={suit === s}
+              className={`rounded border px-3 py-1 text-sm transition ${
+                suit === s
+                  ? "border-jass-yellowDark bg-jass-yellow font-semibold text-jass-ink"
+                  : "border-jass-paperEdge bg-jass-cream text-jass-inkSoft hover:bg-jass-yellow/20"
+              }`}
+            >
+              {SUIT_LABEL[s]}
+            </button>
+          ))}
+        </div>
+      )}
+      <button
+        type="button"
+        onClick={confirm}
+        disabled={pending}
+        className="btn-jass-primary disabled:opacity-50"
+      >
+        {pending ? "Sage an …" : "Ansagen"}
+      </button>
+    </section>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// End-Overlay
+// ─────────────────────────────────────────────────────────────────────
+
+function FinishedPanel({ view, oppName }: { view: BodenseeView; oppName: string }) {
+  const points = view.finalScore!.player_total_points;
+  const mine = points[view.mySeat] ?? 0;
+  const theirs = points[1 - view.mySeat] ?? 0;
+  const iWon = mine > theirs;
+  const draw = mine === theirs;
+  const matschMe = view.finalScore!.matsch_player === view.mySeat;
+
+  return (
+    <section className="rounded-lg border-2 border-jass-yellowDark bg-jass-yellow/20 p-4 text-center space-y-1">
+      <h3 className="text-lg font-bold text-jass-ink">
+        {draw ? "Unentschieden!" : iWon ? "Du hast gewonnen!" : `${oppName} hat gewonnen.`}
+      </h3>
+      <p className="text-jass-ink">
+        Du <strong>{mine}</strong> : <strong>{theirs}</strong> {oppName}
+      </p>
+      {view.finalScore!.matsch_player !== null && (
+        <p className="text-sm text-jass-yellowDark font-semibold">
+          {matschMe ? "Matsch — alle 18 Stiche!" : `${oppName} hat einen Matsch gemacht.`}
+        </p>
+      )}
+    </section>
+  );
+}
