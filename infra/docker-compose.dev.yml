@@ -79,7 +79,7 @@ services:
       INFERENCE_PORT: "4000"
       MODEL_DIR: /app/external/jass-nn
       # Welche Spielart-Modelle der Service beim Boot lädt (Komma-Liste).
-      INFERENCE_GAME_TYPES: "kreuz,solo"
+      INFERENCE_GAME_TYPES: "kreuz,solo,bodensee"
       LOG_LEVEL: info
     volumes:
       - ../external/jass-nn:/app/external/jass-nn:ro

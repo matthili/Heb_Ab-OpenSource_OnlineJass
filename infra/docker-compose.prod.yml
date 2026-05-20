@@ -112,7 +112,7 @@ services:
       INFERENCE_PORT: "4000"
       MODEL_DIR: /app/external/jass-nn
       # Komma-Liste der beim Boot geladenen Spielart-Modelle.
-      INFERENCE_GAME_TYPES: "kreuz,solo"
+      INFERENCE_GAME_TYPES: "kreuz,solo,bodensee"
       LOG_LEVEL: ${LOG_LEVEL:-info}
     volumes:
       # Modell-Files aus dem Host-Repo-Checkout. `pnpm sync:nn` auf dem
