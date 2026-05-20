@@ -21,6 +21,15 @@ import type { PlayMode, Suit } from "@jass/engine";
 
 import { useAnimatedNumber } from "./useAnimatedNumber.js";
 
+/** Ein Spieler-Konto im Solo-Scoreboard. */
+export interface SoloScoreEntryData {
+  /** Anzeige-Name des Sitzes. */
+  label: string;
+  points: number;
+  /** true → der eigene Sitz (visuell hervorgehoben). */
+  isMe: boolean;
+}
+
 export interface ScoreboardProps {
   ownTeamScore: number;
   oppTeamScore: number;
@@ -29,6 +38,11 @@ export interface ScoreboardProps {
   mode?: PlayMode;
   /** Trumpf-Farbe, nur relevant bei mode === "TRUMPF" oder "GUMPF". */
   trumpSuit?: Suit;
+  /**
+   * **Solo-Jass**: wenn gesetzt, zeigt das Scoreboard 4 Einzelkonten
+   * statt der Team-Anzeige (own/opp werden dann ignoriert).
+   */
+  soloPlayers?: readonly SoloScoreEntryData[];
 }
 
 const SUIT_LABEL: Record<Suit, string> = {
@@ -71,12 +85,36 @@ function useScorePop(value: number): { delta: number; seq: number } | null {
   return pop;
 }
 
+/**
+ * Ein einzelnes Solo-Konto mit Hochzähl-Animation + „+X"-Pop.
+ * Eigene Komponente, damit die Hooks pro Spieler sauber instanziiert
+ * werden (Hooks dürfen nicht in Schleifen stehen).
+ */
+function SoloScoreEntry({ label, points, isMe }: SoloScoreEntryData) {
+  const animated = useAnimatedNumber(points);
+  const pop = useScorePop(points);
+  return (
+    <span className={`relative ${isMe ? "text-jass-ink font-semibold" : "text-jass-inkSoft"}`}>
+      {label}: <strong className="text-jass-ink tabular-nums">{animated}</strong>
+      {pop && (
+        <span
+          key={pop.seq}
+          className="jass-score-pop absolute -top-1 left-1/2 -translate-x-1/2 text-jass-green font-semibold text-base"
+        >
+          +{pop.delta}
+        </span>
+      )}
+    </span>
+  );
+}
+
 export function Scoreboard({
   ownTeamScore,
   oppTeamScore,
   trickIdx,
   mode,
   trumpSuit,
+  soloPlayers,
 }: ScoreboardProps) {
   const modeText = mode
     ? mode === "TRUMPF" || mode === "GUMPF"
@@ -84,6 +122,48 @@ export function Scoreboard({
       : MODE_LABEL[mode]
     : null;
 
+  // ── Solo-Variante: 4 Einzelkonten ───────────────────────────────────
+  // Routing-Only: KEINE Hooks in dieser Funktion — die Team- und Solo-
+  // Varianten sind eigene Komponenten, damit der bedingte Render keinen
+  // Rules-of-Hooks-Verstoß verursacht.
+  if (soloPlayers && soloPlayers.length > 0) {
+    return (
+      <div className="flex gap-4 text-sm border-b border-jass-paperEdge pb-2 items-center flex-wrap">
+        {soloPlayers.map((p, i) => (
+          <SoloScoreEntry key={i} label={p.label} points={p.points} isMe={p.isMe} />
+        ))}
+        {modeText && (
+          <span className="rounded bg-jass-yellow px-2 py-0.5 text-xs text-jass-ink font-medium">
+            {modeText}
+          </span>
+        )}
+        <span className="ml-auto text-jass-inkSoft">Stich {trickIdx + 1} / 9</span>
+      </div>
+    );
+  }
+
+  return (
+    <TeamScoreboard
+      ownTeamScore={ownTeamScore}
+      oppTeamScore={oppTeamScore}
+      trickIdx={trickIdx}
+      modeText={modeText}
+    />
+  );
+}
+
+/** Team-Scoreboard (Kreuz-Jass): own vs. opp mit Hochzähl-Animation. */
+function TeamScoreboard({
+  ownTeamScore,
+  oppTeamScore,
+  trickIdx,
+  modeText,
+}: {
+  ownTeamScore: number;
+  oppTeamScore: number;
+  trickIdx: number;
+  modeText: string | null;
+}) {
   const ownAnimated = useAnimatedNumber(ownTeamScore);
   const oppAnimated = useAnimatedNumber(oppTeamScore);
   const ownPop = useScorePop(ownTeamScore);

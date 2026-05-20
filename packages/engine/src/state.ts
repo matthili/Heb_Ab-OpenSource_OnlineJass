@@ -655,6 +655,8 @@ export function viewAsPlayer(state: RoundState, perspectiveSeat: number): GameSt
     completed_tricks: state.completed_tricks,
     own_team_score: own,
     opp_team_score: opp,
+    // Volles Punkte-Array — für das Solo-Scoreboard (4 Einzelkonten).
+    team_card_points: state.team_card_points,
     round_idx: state.round_idx,
     trick_idx: state.trick_idx,
     num_players: state.num_players,

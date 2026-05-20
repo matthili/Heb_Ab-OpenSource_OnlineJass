@@ -153,6 +153,18 @@ export function GameBoard({
   const state = view.state!; // status !== announcing → state ist garantiert da
   const variant = state.variant;
 
+  // Solo-Jass erkennen: jeder Sitz hat ein eigenes Team (4 unterschiedliche
+  // Team-IDs). Dann zeigt das Scoreboard 4 Einzelkonten statt own/opp.
+  const isSolo = new Set(state.teams).size === state.teams.length;
+  const soloPlayers =
+    isSolo && state.team_card_points
+      ? state.teams.map((teamId, seat) => ({
+          label: seat === mySeat ? "Du" : (seatNames.get(seat) ?? `Sitz ${seat + 1}`),
+          points: state.team_card_points![teamId] ?? 0,
+          isMe: seat === mySeat,
+        }))
+      : undefined;
+
   return (
     <div className="space-y-4">
       <Scoreboard
@@ -161,6 +173,7 @@ export function GameBoard({
         trickIdx={state.trick_idx}
         mode={variant.mode}
         {...(variant.trump_suit !== undefined ? { trumpSuit: variant.trump_suit } : {})}
+        {...(soloPlayers ? { soloPlayers } : {})}
       />
       <StatusBanner view={view} seats={seats} />
       {view.stoeckEligible && (

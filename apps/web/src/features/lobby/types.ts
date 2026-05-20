@@ -11,6 +11,8 @@
 export type LobbyStatus = "WAITING" | "IN_GAME" | "POST_GAME" | "MATCH_OVER" | "CLOSED";
 export type JoinMode = "OPEN" | "REQUEST" | "INVITE";
 export type RestartMode = "WELI" | "SIEGER_GIBT";
+/** Spielart eines Tisches. KREUZ_6P/KREUZ_STEIGERN/BODENSEE_2P folgen. */
+export type TableVariant = "KREUZ_4P" | "SOLO_4P";
 
 export interface TableListEntry {
   id: string;
@@ -18,6 +20,8 @@ export interface TableListEntry {
   ownerName: string;
   status: LobbyStatus;
   joinMode: JoinMode;
+  /** Spielart — "KREUZ_4P" (Team) oder "SOLO_4P" (jeder gegen jeden). */
+  variant: TableVariant;
   aiSeatType: string;
   autoFillSeconds: number | null;
   restartMode: RestartMode;
@@ -49,11 +53,11 @@ export interface TableDetailView extends TableListEntry {
 /** DTO für POST /api/lobby/tables. */
 export interface OpenTableDto {
   joinMode?: JoinMode;
-  variant?: "KREUZ_4P";
+  variant?: TableVariant;
   aiSeatType?: string;
   autoFillSeconds?: number | null;
   restartMode?: RestartMode;
-  /** Punkteziel (500..5000, Default 1000). */
+  /** Punkteziel (500..5000, Default 1000 / bei Solo 500). */
   targetScore?: number;
   initialAiSeats?: { seat: number; aiSeatType?: string }[];
 }

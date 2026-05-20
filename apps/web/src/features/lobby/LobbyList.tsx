@@ -80,6 +80,7 @@ export function LobbyList() {
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
               <strong className="text-jass-ink font-serif text-lg">{tbl.ownerName}</strong>
+              <VariantBadge variant={tbl.variant} />
               <ModeBadge mode={tbl.joinMode} />
               <StatusBadge status={tbl.status} />
             </div>
@@ -161,6 +162,19 @@ function JoinButton(props: {
       </button>
       {failedHere && <span className="text-xs text-rose-700">{failedHere}</span>}
     </div>
+  );
+}
+
+/**
+ * Spielart-Badge. Kreuz-Jass ist der Default — wir zeigen das Badge nur
+ * für die abweichende Solo-Variante, damit die Liste ruhig bleibt.
+ */
+function VariantBadge({ variant }: { variant: TableListEntry["variant"] }) {
+  if (variant !== "SOLO_4P") return null;
+  return (
+    <span className="rounded bg-jass-brown px-2 py-0.5 text-xs font-medium text-jass-cream">
+      Solo
+    </span>
   );
 }
 

@@ -30,7 +30,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { type FormEvent, useEffect, useRef, useState } from "react";
 
 import { api, ApiError } from "~/lib/api";
-import type { JoinMode, OpenTableDto, RestartMode } from "./types";
+import type { JoinMode, OpenTableDto, RestartMode, TableVariant } from "./types";
 
 interface Props {
   open: boolean;
@@ -100,11 +100,35 @@ const AUTO_FILL_PRESETS: ReadonlyArray<{ label: string; value: number | null }> 
 
 const SCORE_PRESETS: readonly number[] = [500, 1000, 1200, 2500];
 
+// Default-Punkteziel pro Spielart (Vorarlberger Konvention).
+const DEFAULT_SCORE: Record<TableVariant, number> = {
+  KREUZ_4P: 1000,
+  SOLO_4P: 500,
+};
+
+const VARIANT_OPTIONS: ReadonlyArray<{
+  value: TableVariant;
+  title: string;
+  hint: string;
+}> = [
+  {
+    value: "KREUZ_4P",
+    title: "Kreuz-Jass",
+    hint: "Klassisch: 2 Teams (Sitz 1+3 gegen 2+4), Schieben erlaubt. Ziel 1000.",
+  },
+  {
+    value: "SOLO_4P",
+    title: "Solo-Jass",
+    hint: "Jeder gegen jeden — kein Partner, kein Schieben. Ziel 500.",
+  },
+];
+
 export function OpenTableDialog({ open, onClose }: Props) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
+  const [variant, setVariant] = useState<TableVariant>("KREUZ_4P");
   const [joinMode, setJoinMode] = useState<JoinMode>("OPEN");
   const [aiSeatType, setAiSeatType] = useState<AiSeatType>("heuristic");
   const [autoFill, setAutoFill] = useState<number | null>(30);
@@ -113,6 +137,19 @@ export function OpenTableDialog({ open, onClose }: Props) {
   const [soloVsAi, setSoloVsAi] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [existingTableId, setExistingTableId] = useState<string | null>(null);
+
+  /**
+   * Spielart wechseln. Passt das Punkteziel mit an — aber nur, wenn der
+   * User es noch nicht selbst von einem Default weg verstellt hat
+   * (Heuristik: aktueller Wert == Default der ANDEREN Spielart).
+   */
+  function changeVariant(next: TableVariant) {
+    setVariant(next);
+    const otherDefault = next === "KREUZ_4P" ? DEFAULT_SCORE.SOLO_4P : DEFAULT_SCORE.KREUZ_4P;
+    if (targetScore === otherDefault) {
+      setTargetScore(DEFAULT_SCORE[next]);
+    }
+  }
 
   // open/close ↔ <dialog> öffnen/schließen synchronisieren
   useEffect(() => {
@@ -156,6 +193,7 @@ export function OpenTableDialog({ open, onClose }: Props) {
     setError(null);
     setExistingTableId(null);
     const dto: OpenTableDto = {
+      variant,
       joinMode,
       aiSeatType,
       autoFillSeconds: autoFill,
@@ -234,6 +272,21 @@ export function OpenTableDialog({ open, onClose }: Props) {
               />
             </div>
           </button>
+
+          {/* Spielart */}
+          <Section title="Spielart">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {VARIANT_OPTIONS.map((opt) => (
+                <Tile
+                  key={opt.value}
+                  selected={variant === opt.value}
+                  onClick={() => changeVariant(opt.value)}
+                  title={opt.title}
+                  hint={opt.hint}
+                />
+              ))}
+            </div>
+          </Section>
 
           {/* Wer darf rein */}
           <Section title="Wer darf an den Tisch?">
@@ -334,6 +387,7 @@ export function OpenTableDialog({ open, onClose }: Props) {
 
           {/* Live-Zusammenfassung */}
           <SummaryRow
+            variant={variant}
             joinMode={joinMode}
             aiSeatType={aiSeatType}
             autoFill={autoFill}
@@ -451,6 +505,7 @@ function Pill({
 }
 
 function SummaryRow({
+  variant,
   joinMode,
   aiSeatType,
   autoFill,
@@ -458,6 +513,7 @@ function SummaryRow({
   targetScore,
   soloVsAi,
 }: {
+  variant: TableVariant;
   joinMode: JoinMode;
   aiSeatType: AiSeatType;
   autoFill: number | null;
@@ -465,6 +521,7 @@ function SummaryRow({
   targetScore: number;
   soloVsAi: boolean;
 }) {
+  const variantLabel = VARIANT_OPTIONS.find((o) => o.value === variant)?.title ?? variant;
   const joinLabel = JOIN_MODE_OPTIONS.find((o) => o.value === joinMode)?.title ?? joinMode;
   const aiLabel = AI_TYPE_OPTIONS.find((o) => o.value === aiSeatType)?.title ?? aiSeatType;
   const restartLabel = RESTART_OPTIONS.find((o) => o.value === restartMode)?.title ?? restartMode;
@@ -472,6 +529,7 @@ function SummaryRow({
     <div className="rounded-lg bg-jass-cream border border-jass-paperEdge px-4 py-3 text-sm">
       <div className="text-xs font-semibold uppercase text-jass-inkSoft mb-1">Zusammenfassung</div>
       <div className="text-jass-ink leading-relaxed">
+        <span className="font-semibold">{variantLabel}</span> ·{" "}
         {soloVsAi ? "Solo gegen 3 KI" : joinLabel} ·{" "}
         <span className="font-semibold">{aiLabel}</span> ·{" "}
         {autoFill === null ? "kein Auto-Fill" : `Auto-Fill nach ${autoFill}s`} · Ziel{" "}

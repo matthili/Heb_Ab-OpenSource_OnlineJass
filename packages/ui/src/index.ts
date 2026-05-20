@@ -12,6 +12,10 @@
 export { Card, type CardProps } from "./Card/Card.js";
 export { Hand, type HandProps } from "./Hand/Hand.js";
 export { Trick, type TrickProps } from "./Trick/Trick.js";
-export { Scoreboard, type ScoreboardProps } from "./Scoreboard/Scoreboard.js";
+export {
+  Scoreboard,
+  type ScoreboardProps,
+  type SoloScoreEntryData,
+} from "./Scoreboard/Scoreboard.js";
 
 export const UI_PACKAGE_VERSION = "0.0.2-m7e";

@@ -128,10 +128,19 @@ export interface GameState {
   readonly announcement: Announcement;
   readonly current_trick_cards: readonly Card[];
   readonly current_trick_starter: number; // 0..3
-  readonly teams: readonly number[]; // Default [0, 1, 0, 1]
+  readonly teams: readonly number[]; // Default [0, 1, 0, 1]; Solo [0,1,2,3]
   readonly completed_tricks: readonly CompletedTrick[];
   readonly own_team_score: number;
   readonly opp_team_score: number;
+  /**
+   * Punkte je Team-ID, volles Array (Länge = Anzahl Teams). Bei Kreuz
+   * 2 Einträge, bei Solo 4. Punkte sind öffentliche Information — das
+   * Frontend nutzt das für das Solo-Scoreboard (4 Einzelkonten).
+   *
+   * **Optional**, weil das NN-Repo-`GameState` (Encoder-Fixtures) dieses
+   * Feld nicht kennt; `viewAsPlayer()` füllt es jedoch immer.
+   */
+  readonly team_card_points?: readonly number[];
   readonly round_idx: number;
   readonly trick_idx: number; // 0..8
   readonly num_players: number; // bei Kreuz-Jass 4
