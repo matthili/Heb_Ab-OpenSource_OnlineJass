@@ -63,6 +63,10 @@ interface FixturesFile {
 
 // --- Fixture-Datei einlesen --------------------------------------------------
 
+// Multi-Modell-Layout: das Kreuz-Jass-Modell (encoding 3.0.0) liegt in
+// `external/jass-nn/kreuz/`. Die Encoder-Fixtures gehören zu diesem
+// Encoding und werden von dort gelesen. (Solo nutzt denselben Encoder,
+// Bodensee hat eigene Fixtures — letztere folgen in einem Patch-Release.)
 const FIXTURES_PATH = join(
   __dirname,
   "..",
@@ -70,6 +74,7 @@ const FIXTURES_PATH = join(
   "..",
   "external",
   "jass-nn",
+  "kreuz",
   "encoding_fixtures.json"
 );
 

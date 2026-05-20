@@ -25,7 +25,7 @@ import { promisify } from "node:util";
 import { join } from "node:path";
 
 import * as tf from "@tensorflow/tfjs";
-import { ENCODING_VERSION as EXPECTED_ENCODING_VERSION, SPEC_VERSION } from "@jass/engine";
+import { SPEC_VERSION } from "@jass/engine";
 
 // Explizite Wert-Referenz statt nur side-effect-Import: garantiert, dass die
 // Registration-Statements in mask-bias-layer.ts vor `tf.loadLayersModel`
@@ -39,6 +39,10 @@ interface Manifest {
   spec_version: string;
   encoding_version: string;
   has_model: boolean;
+  /** Optional ab v0.9.0 — z.B. "team", "solo", "bodensee_2p". */
+  team_mode?: string;
+  /** Optional ab v0.9.0 — z.B. "kreuz", "solo", "bodensee". */
+  game_mode?: string;
 }
 
 interface ModelJson {
@@ -61,22 +65,35 @@ export interface ModelMeta {
   releaseVersion: string;
   specVersion: string;
   encodingVersion: string;
+  /** Optional — z.B. "team", "solo", "bodensee_2p". */
+  teamMode?: string;
+  /** Optional — z.B. "kreuz", "solo", "bodensee". */
+  gameMode?: string;
 }
 
 /**
- * Lädt Modell + MANIFEST aus `modelDir` (z.B. `external/jass-nn/`).
+ * Lädt Modell + MANIFEST aus `modelDir` (z.B. `external/jass-nn/kreuz/`).
+ *
+ * `expectedEncodingVersion` ist die Encoding-Version, die der Encoder für
+ * diese Spielart erwartet (kreuz/solo → "3.0.0", bodensee → "bodensee_1.0.0").
+ * Wir prüfen sie gegen das MANIFEST — bei Mismatch wird ein inkompatibler
+ * Featurevektor an das Modell gegeben, daher **Fail fast**.
+ *
  * Wirft bei Encoding-Version-Mismatch oder fehlendem `tfjs/model.json`.
  */
-export async function loadModel(modelDir: string): Promise<LoadedModel> {
+export async function loadModel(
+  modelDir: string,
+  expectedEncodingVersion: string
+): Promise<LoadedModel> {
   // Custom-Layer-Registration ist Pflicht VOR `tf.loadLayersModel` — sonst
   // hängt der Deserialisierer (Pure-JS-tfjs) auf der unbekannten Klasse.
   registerCustomLayers();
   void MaskBias; // hält den Import lebendig, falls bundler unsicher
 
   const manifest = readManifest(modelDir);
-  if (manifest.encoding_version !== EXPECTED_ENCODING_VERSION) {
+  if (manifest.encoding_version !== expectedEncodingVersion) {
     throw new Error(
-      `Encoding-Version-Mismatch: erwartet ${EXPECTED_ENCODING_VERSION}, ` +
+      `Encoding-Version-Mismatch in ${modelDir}: erwartet ${expectedEncodingVersion}, ` +
         `MANIFEST.json sagt ${manifest.encoding_version}. ` +
         `App muss aktualisiert werden, oder das NN-Artefakt zurückgepinnt.`
     );
@@ -174,6 +191,8 @@ export function manifestToMeta(m: Manifest): ModelMeta {
     releaseVersion: m.release_version,
     specVersion: m.spec_version,
     encodingVersion: m.encoding_version,
+    ...(m.team_mode !== undefined ? { teamMode: m.team_mode } : {}),
+    ...(m.game_mode !== undefined ? { gameMode: m.game_mode } : {}),
   };
 }
 

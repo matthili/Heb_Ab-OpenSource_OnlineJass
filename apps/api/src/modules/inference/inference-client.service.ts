@@ -27,6 +27,12 @@ export class InferenceUnavailableError extends Error {
 }
 
 export interface PredictRequest {
+  /**
+   * Spielart — bestimmt, welches Modell der Inferenz-Service nutzt.
+   * Default `kreuz` (Backwards-Kompat). Mögliche Werte: `kreuz`, `solo`,
+   * `bodensee`.
+   */
+  gameType?: "kreuz" | "solo" | "bodensee";
   state: readonly number[];
   mask: readonly number[];
 }
@@ -39,6 +45,8 @@ export interface PredictResponse {
     releaseVersion: string;
     specVersion: string;
     encodingVersion: string;
+    teamMode?: string;
+    gameMode?: string;
   };
 }
 
@@ -66,7 +74,11 @@ export class InferenceClient {
       const res = await fetch(`${this.baseUrl}/predict`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ state: body.state, mask: body.mask }),
+        body: JSON.stringify({
+          gameType: body.gameType ?? "kreuz",
+          state: body.state,
+          mask: body.mask,
+        }),
         signal: controller.signal,
       });
       if (!res.ok) {

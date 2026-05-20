@@ -1,26 +1,27 @@
 #!/usr/bin/env tsx
 /**
- * Lädt das NN-Artefakt (`jass-nn-vX.Y.Z.zip`) aus einem GitHub-Release des
- * Schwester-Repos via `gh release download` und entpackt es nach `external/jass-nn/`.
+ * Lädt die NN-Artefakte (`jass-nn-vX.Y.Z.zip`) aus GitHub-Releases des
+ * Schwester-Repos via `gh release download` und entpackt sie nach
+ * `external/jass-nn/<gameType>/`.
  *
- * Lauf: `pnpm sync:nn`        (idempotent)
- *       `pnpm sync:nn --force` (erzwingt Neudownload)
+ * **Multi-Modell** (seit der 3-Spielarten-Integration): Die App nutzt drei
+ * unabhängige Modelle — Kreuz-Jass, Solo-Jass, Bodensee-Jass. Jedes hat
+ * eine eigene Release-Version und liegt in einem eigenen Unterordner:
+ *
+ *   external/jass-nn/
+ *     kreuz/    ← v0.7.0  (encoding 3.0.0)
+ *     solo/     ← v0.8.0  (encoding 3.0.0)
+ *     bodensee/ ← v0.9.0  (encoding bodensee_1.0.0)
+ *
+ * Lauf: `pnpm sync:nn`               (idempotent, alle Modelle)
+ *       `pnpm sync:nn --force`       (erzwingt Neudownload aller)
+ *       `pnpm sync:nn kreuz solo`    (nur ausgewählte Modelle)
  *
  * Voraussetzung: GitHub CLI (`gh`) installiert und authentifiziert.
  *   - Lokal: `gh auth login` (einmalig)
- *   - CI:    Umgebungsvariable `GH_TOKEN` setzen (GitHub Actions liefert sie als
- *            `${{ secrets.GITHUB_TOKEN }}` mit Read-Zugang zum eigenen Repo;
- *            für fremde Repos einen Token mit `repo:read` bereitstellen).
+ *   - CI:    Umgebungsvariable `GH_TOKEN` setzen.
  *
- * Datenquellen: package.json#jassNn.{version,repo}
- *
- * Ablauf:
- *   1. Auflösen, wo `gh` liegt (PATH; auf Windows: Standard-Installationspfade).
- *   2. Skippen, wenn `external/jass-nn/MANIFEST.json` schon zur gepinnten Version passt.
- *   3. Ziel-Inhalt aufräumen (außer .cache/).
- *   4. `gh release download <ver> --repo <repo> --pattern jass-nn-*.zip --dir .cache`
- *   5. ZIP entpacken, Top-Level-Direktorie (`jass-nn-vX.Y.Z/`) abflachen.
- *   6. Sanity: MANIFEST.json muss existieren.
+ * Datenquellen: package.json#jassNn.{repo,models}
  *
  * Die anschließende Datei-für-Datei-Hash-Verifikation läuft separat über
  * `pnpm verify:nn` (siehe scripts/verify-nn-manifest.ts).
@@ -33,32 +34,44 @@ import { fileURLToPath } from "node:url";
 import extract from "extract-zip";
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const TARGET_DIR = join(REPO_ROOT, "external", "jass-nn");
-const CACHE_DIR = join(TARGET_DIR, ".cache");
+const BASE_DIR = join(REPO_ROOT, "external", "jass-nn");
+const CACHE_DIR = join(BASE_DIR, ".cache");
 
 const FORCE = process.argv.includes("--force");
+/** Optionale Positional-Args = Teilmenge der zu syncenden Spielarten. */
+const SELECTED = process.argv.slice(2).filter((a) => !a.startsWith("--"));
+
+interface ModelConfig {
+  version: string;
+  encodingVersion?: string;
+  specVersion?: string;
+}
 
 interface RootPackageJson {
-  jassNn?: { version?: string; repo?: string };
+  jassNn?: {
+    repo?: string;
+    models?: Record<string, ModelConfig>;
+  };
 }
 
 interface ExistingManifest {
   release_version?: string;
 }
 
-function loadConfig(): { version: string; repo: string } {
+function loadConfig(): { repo: string; models: Record<string, ModelConfig> } {
   const pkg = JSON.parse(readFileSync(join(REPO_ROOT, "package.json"), "utf8")) as RootPackageJson;
-  const version = pkg.jassNn?.version;
   const repo = pkg.jassNn?.repo;
-  if (!version || !repo) {
-    throw new Error("package.json#jassNn.{version,repo} fehlt.");
+  const models = pkg.jassNn?.models;
+  if (!repo || !models || Object.keys(models).length === 0) {
+    throw new Error("package.json#jassNn.{repo,models} fehlt oder leer.");
   }
-  return { version, repo };
+  return { repo, models };
 }
 
-function alreadyUpToDate(version: string): boolean {
+/** Ein Modell ist aktuell, wenn sein MANIFEST.json zur gepinnten Version passt. */
+function alreadyUpToDate(gameType: string, version: string): boolean {
   if (FORCE) return false;
-  const manifestPath = join(TARGET_DIR, "MANIFEST.json");
+  const manifestPath = join(BASE_DIR, gameType, "MANIFEST.json");
   if (!existsSync(manifestPath)) return false;
   try {
     const m = JSON.parse(readFileSync(manifestPath, "utf8")) as ExistingManifest;
@@ -69,8 +82,8 @@ function alreadyUpToDate(version: string): boolean {
 }
 
 /**
- * Lokalisiert die `gh`-Binary. Versucht erst den PATH (via `process.env.PATH`
- * + plattform-übliche Suffixe), dann Windows-Standard-Installationspfade.
+ * Lokalisiert die `gh`-Binary. Versucht erst den PATH, dann Windows-
+ * Standard-Installationspfade.
  */
 function findGh(): string {
   if (process.platform === "win32") {
@@ -82,8 +95,6 @@ function findGh(): string {
       if (existsSync(c)) return c;
     }
   }
-  // Auf POSIX-Systemen vertrauen wir darauf, dass `gh` im PATH liegt.
-  // child_process.spawn löst PATH automatisch auf.
   return "gh";
 }
 
@@ -109,6 +120,7 @@ function runGh(args: string[]): Promise<void> {
   });
 }
 
+/** Entpackt das ZIP nach `target` und flacht die `jass-nn-*`-Top-Dir ab. */
 async function extractZipFlattenTopDir(zipPath: string, target: string): Promise<void> {
   const staging = join(target, ".staging");
   await rm(staging, { recursive: true, force: true });
@@ -130,70 +142,100 @@ async function extractZipFlattenTopDir(zipPath: string, target: string): Promise
   await rm(staging, { recursive: true, force: true });
 }
 
-async function clearTargetExceptCache(): Promise<void> {
-  if (!existsSync(TARGET_DIR)) return;
-  for (const e of await readdir(TARGET_DIR)) {
-    if (e === ".cache") continue;
-    await rm(join(TARGET_DIR, e), { recursive: true, force: true });
+/** Räumt das Zielverzeichnis (z.B. external/jass-nn/solo) leer. */
+async function clearDir(dir: string): Promise<void> {
+  if (!existsSync(dir)) return;
+  for (const e of await readdir(dir)) {
+    await rm(join(dir, e), { recursive: true, force: true });
   }
 }
 
-async function main(): Promise<void> {
-  const { version, repo } = loadConfig();
-  console.info(`[sync-nn] gepinnt: ${repo} @ ${version}`);
-  console.info(`[sync-nn] Ziel:    ${TARGET_DIR}`);
-
-  if (alreadyUpToDate(version)) {
-    console.info(
-      `[sync-nn] external/jass-nn/MANIFEST.json passt zur gepinnten Version — übersprungen. (--force erzwingt Neudownload.)`
-    );
-    return;
+/**
+ * Synct ein einzelnes Modell für eine Spielart in seinen Unterordner.
+ */
+async function syncModel(repo: string, gameType: string, cfg: ModelConfig): Promise<boolean> {
+  const targetDir = join(BASE_DIR, gameType);
+  if (alreadyUpToDate(gameType, cfg.version)) {
+    console.info(`[sync-nn] ${gameType}: MANIFEST passt zu ${cfg.version} — übersprungen.`);
+    return false;
   }
 
-  await clearTargetExceptCache();
+  await clearDir(targetDir);
+  await mkdir(targetDir, { recursive: true });
   await mkdir(CACHE_DIR, { recursive: true });
 
-  // Alte jass-nn-*.zip-Dateien aus dem Cache räumen (Versions-Wechsel würde
-  // sonst zur Doppel-ZIP-Situation führen). Nicht-ZIP-Cache-Dateien bleiben.
-  for (const f of await readdir(CACHE_DIR)) {
-    if (/^jass-nn-.*\.zip$/.test(f)) {
-      await rm(join(CACHE_DIR, f), { force: true });
-    }
-  }
+  // Pro-Spielart eigenes Cache-Unterverzeichnis, damit parallele
+  // Versionen sich nicht in die Quere kommen.
+  const cacheSub = join(CACHE_DIR, gameType);
+  await rm(cacheSub, { recursive: true, force: true });
+  await mkdir(cacheSub, { recursive: true });
 
-  // gh release download lädt das passende Asset; --clobber überschreibt evtl.
-  // gecachte alte Versionen.
-  console.info(`[sync-nn] gh release download ${version} ...`);
+  console.info(`[sync-nn] ${gameType}: gh release download ${cfg.version} ...`);
   await runGh([
     "release",
     "download",
-    version,
+    cfg.version,
     "--repo",
     repo,
     "--pattern",
     "jass-nn-*.zip",
     "--dir",
-    CACHE_DIR,
+    cacheSub,
     "--clobber",
   ]);
 
-  // ZIP-Pfad ermitteln (gh nennt das File so wie im Release-Asset benannt).
-  const zips = (await readdir(CACHE_DIR)).filter((n) => /^jass-nn-.*\.zip$/.test(n));
+  const zips = (await readdir(cacheSub)).filter((n) => /^jass-nn-.*\.zip$/.test(n));
   if (zips.length === 0) {
-    throw new Error(`Kein jass-nn-*.zip in ${CACHE_DIR} nach gh release download.`);
+    throw new Error(`Kein jass-nn-*.zip in ${cacheSub} nach gh release download.`);
   }
   if (zips.length > 1) {
-    throw new Error(`Mehrere jass-nn-*.zip in ${CACHE_DIR}: ${zips.join(", ")} — bitte aufräumen.`);
+    throw new Error(`Mehrere jass-nn-*.zip in ${cacheSub}: ${zips.join(", ")}.`);
   }
-  const zipPath = join(CACHE_DIR, zips[0] as string);
+  const zipPath = join(cacheSub, zips[0] as string);
 
-  console.info(`[sync-nn] entpacke ${zips[0]} nach ${TARGET_DIR} ...`);
-  await extractZipFlattenTopDir(zipPath, TARGET_DIR);
+  console.info(`[sync-nn] ${gameType}: entpacke ${zips[0]} → ${targetDir} ...`);
+  await extractZipFlattenTopDir(zipPath, targetDir);
 
-  if (!existsSync(join(TARGET_DIR, "MANIFEST.json"))) {
-    throw new Error(`Sanity-Check fehlgeschlagen: MANIFEST.json fehlt nach Entpacken.`);
+  if (!existsSync(join(targetDir, "MANIFEST.json"))) {
+    throw new Error(`Sanity-Check fehlgeschlagen: MANIFEST.json fehlt in ${targetDir}.`);
   }
-  console.info(`[sync-nn] OK — ${version} gesynct. Folge mit \`pnpm verify:nn\`.`);
+
+  // Encoding-Version-Sanity: das MANIFEST muss zur erwarteten Version
+  // passen — fängt vertauschte Releases früh ab.
+  if (cfg.encodingVersion) {
+    const m = JSON.parse(readFileSync(join(targetDir, "MANIFEST.json"), "utf8")) as {
+      encoding_version?: string;
+    };
+    if (m.encoding_version !== cfg.encodingVersion) {
+      throw new Error(
+        `${gameType}: MANIFEST encoding_version ${m.encoding_version} ≠ erwartet ${cfg.encodingVersion}.`
+      );
+    }
+  }
+  console.info(`[sync-nn] ${gameType}: OK — ${cfg.version} gesynct.`);
+  return true;
+}
+
+async function main(): Promise<void> {
+  const { repo, models } = loadConfig();
+  const gameTypes = SELECTED.length > 0 ? SELECTED : Object.keys(models);
+
+  console.info(`[sync-nn] Repo: ${repo}`);
+  console.info(`[sync-nn] Modelle: ${gameTypes.join(", ")}`);
+
+  let synced = 0;
+  for (const gt of gameTypes) {
+    const cfg = models[gt];
+    if (!cfg) {
+      throw new Error(`Unbekannte Spielart '${gt}' — nicht in package.json#jassNn.models.`);
+    }
+    if (await syncModel(repo, gt, cfg)) synced++;
+  }
+
+  console.info(
+    `[sync-nn] Fertig — ${synced}/${gameTypes.length} Modell(e) neu gesynct. ` +
+      `Folge mit \`pnpm verify:nn\`.`
+  );
 }
 
 main().catch((err: unknown) => {

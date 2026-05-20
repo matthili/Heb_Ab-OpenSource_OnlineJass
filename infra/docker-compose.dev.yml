@@ -61,9 +61,10 @@ services:
   inference:
     # NN-Inferenz-Microservice. Optional, nur aktiv im Compose-Profil `nn`:
     #   docker compose --profile nn up -d
-    # Modell wird per Volume aus `external/jass-nn/` gemountet (read-only); das
-    # Verzeichnis befüllt `pnpm sync:nn`. So ist ein Modell-Update ein Mount-
-    # Reload, kein Image-Rebuild.
+    # Modelle werden per Volume aus `external/jass-nn/` gemountet (read-only).
+    # MODEL_DIR ist das Basis-Verzeichnis; der Service lädt pro Spielart einen
+    # Unterordner (kreuz/, solo/, …). `pnpm sync:nn` befüllt sie. So ist ein
+    # Modell-Update ein Mount-Reload, kein Image-Rebuild.
     image: jass-inference:dev
     build:
       context: ..
@@ -77,6 +78,8 @@ services:
       NODE_ENV: production
       INFERENCE_PORT: "4000"
       MODEL_DIR: /app/external/jass-nn
+      # Welche Spielart-Modelle der Service beim Boot lädt (Komma-Liste).
+      INFERENCE_GAME_TYPES: "kreuz,solo"
       LOG_LEVEL: info
     volumes:
       - ../external/jass-nn:/app/external/jass-nn:ro

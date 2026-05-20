@@ -1,19 +1,21 @@
 #!/usr/bin/env tsx
 /**
- * Verifiziert das in `external/jass-nn/` entpackte NN-Artefakt:
- *   - MANIFEST.json existiert
+ * Verifiziert die in `external/jass-nn/<gameType>/` entpackten NN-Artefakte:
+ *   - MANIFEST.json existiert pro Spielart
  *   - SHA-256-Hashes aller gelisteten Dateien stimmen
- *   - encoding_version stimmt mit package.json#jassNn.encodingVersion überein
- *   - spec_version    stimmt mit package.json#jassNn.specVersion überein
- *   - release_version stimmt mit package.json#jassNn.version überein
+ *   - encoding_version stimmt mit package.json#jassNn.models[gt].encodingVersion
+ *   - spec_version    stimmt mit package.json#jassNn.models[gt].specVersion
+ *   - release_version stimmt mit package.json#jassNn.models[gt].version
  *
- * Lauf: `pnpm verify:nn` (CI Pre-Test-Step)
+ * **Multi-Modell**: prüft jede Spielart (kreuz/solo/bodensee) einzeln.
  *
- * Erwartet die MANIFEST-Struktur, wie sie das jass-neuronales-netz-Release-Skript
- * produziert (Stand v0.1.0): `release_version`/`spec_version`/`encoding_version`
- * + `files: [{path, size_bytes, sha256}]`. Pfade in `files[].path` sind
- * relativ zur ZIP-Wurzel (`jass-nn-vX.Y.Z/...`); für die Verifikation wird der
- * Top-Level-Dir-Prefix abgeschnitten.
+ * Lauf: `pnpm verify:nn`              (alle Modelle)
+ *       `pnpm verify:nn kreuz solo`   (Teilmenge)
+ *
+ * MANIFEST-Struktur (Stand NN-Repo v0.1.0): `release_version`/`spec_version`/
+ * `encoding_version` + `files: [{path, size_bytes, sha256}]`. Pfade in
+ * `files[].path` sind relativ zur ZIP-Wurzel (`jass-nn-vX.Y.Z/...`); für die
+ * Verifikation wird der Top-Level-Dir-Prefix abgeschnitten.
  */
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync, statSync } from "node:fs";
@@ -21,16 +23,17 @@ import { join, resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const NN_DIR = join(REPO_ROOT, "external", "jass-nn");
-const MANIFEST_PATH = join(NN_DIR, "MANIFEST.json");
+const BASE_DIR = join(REPO_ROOT, "external", "jass-nn");
 
-interface PinnedConfig {
+const SELECTED = process.argv.slice(2).filter((a) => !a.startsWith("--"));
+
+interface ModelConfig {
   version?: string;
   encodingVersion?: string;
   specVersion?: string;
 }
 interface RootPackageJson {
-  jassNn?: PinnedConfig;
+  jassNn?: { models?: Record<string, ModelConfig> };
 }
 
 interface ManifestFile {
@@ -56,71 +59,94 @@ function stripTopDir(p: string): string {
   return idx === -1 ? p : p.slice(idx + 1);
 }
 
-function main(): void {
-  if (!existsSync(MANIFEST_PATH)) {
-    console.error(`[verify-nn] MANIFEST.json fehlt: ${MANIFEST_PATH}`);
-    console.error("  Lauf zuerst `pnpm sync:nn`.");
-    process.exit(2);
+/** Verifiziert ein einzelnes Modell-Verzeichnis. Returnt true bei Erfolg. */
+function verifyModel(gameType: string, cfg: ModelConfig): boolean {
+  const nnDir = join(BASE_DIR, gameType);
+  const manifestPath = join(nnDir, "MANIFEST.json");
+  if (!existsSync(manifestPath)) {
+    console.error(`[verify-nn] ${gameType}: MANIFEST.json fehlt (${manifestPath}).`);
+    console.error(`  Lauf zuerst \`pnpm sync:nn ${gameType}\`.`);
+    return false;
   }
 
-  const pinned = (
-    JSON.parse(readFileSync(join(REPO_ROOT, "package.json"), "utf8")) as RootPackageJson
-  ).jassNn;
-  if (!pinned) {
-    console.error("[verify-nn] package.json#jassNn fehlt.");
-    process.exit(2);
-  }
-
-  const manifest = JSON.parse(readFileSync(MANIFEST_PATH, "utf8")) as Manifest;
+  const manifest = JSON.parse(readFileSync(manifestPath, "utf8")) as Manifest;
   let ok = true;
   const checks: Array<[label: string, expected: string | undefined, actual: string | undefined]> = [
-    ["release_version", pinned.version, manifest.release_version],
-    ["spec_version", pinned.specVersion, manifest.spec_version],
-    ["encoding_version", pinned.encodingVersion, manifest.encoding_version],
+    ["release_version", cfg.version, manifest.release_version],
+    ["spec_version", cfg.specVersion, manifest.spec_version],
+    ["encoding_version", cfg.encodingVersion, manifest.encoding_version],
   ];
   for (const [label, expected, actual] of checks) {
     if (expected !== actual) {
-      console.error(`[verify-nn] ${label}-Mismatch: pin=${expected} vs MANIFEST=${actual}`);
+      console.error(
+        `[verify-nn] ${gameType}: ${label}-Mismatch: pin=${expected} vs MANIFEST=${actual}`
+      );
       ok = false;
     }
   }
 
   const files = manifest.files ?? [];
   if (files.length === 0) {
-    console.error("[verify-nn] MANIFEST.json enthält keine Datei-Einträge.");
+    console.error(`[verify-nn] ${gameType}: MANIFEST.json enthält keine Datei-Einträge.`);
     ok = false;
   }
 
   for (const f of files) {
     const rel = stripTopDir(f.path);
-    const full = join(NN_DIR, rel);
+    const full = join(nnDir, rel);
     if (!existsSync(full)) {
-      console.error(`[verify-nn] Datei fehlt: ${rel}`);
+      console.error(`[verify-nn] ${gameType}: Datei fehlt: ${rel}`);
       ok = false;
       continue;
     }
     const size = statSync(full).size;
     if (size !== f.size_bytes) {
-      console.error(`[verify-nn] Größe falsch (${rel}): ${size} vs ${f.size_bytes}`);
+      console.error(`[verify-nn] ${gameType}: Größe falsch (${rel}): ${size} vs ${f.size_bytes}`);
       ok = false;
     }
     const actual = sha256(full);
     if (actual !== f.sha256) {
       console.error(
-        `[verify-nn] SHA-256 falsch (${rel}):\n    erwartet: ${f.sha256}\n    aktuell:  ${actual}`
+        `[verify-nn] ${gameType}: SHA-256 falsch (${rel}):\n    erwartet: ${f.sha256}\n    aktuell:  ${actual}`
       );
       ok = false;
     }
   }
 
-  if (!ok) {
+  if (ok) {
+    console.info(
+      `[verify-nn] ${gameType}: OK — ${files.length} Datei(en) verifiziert ` +
+        `(release=${manifest.release_version}, encoding=${manifest.encoding_version}).`
+    );
+  }
+  return ok;
+}
+
+function main(): void {
+  const pkg = JSON.parse(readFileSync(join(REPO_ROOT, "package.json"), "utf8")) as RootPackageJson;
+  const models = pkg.jassNn?.models;
+  if (!models || Object.keys(models).length === 0) {
+    console.error("[verify-nn] package.json#jassNn.models fehlt oder leer.");
+    process.exit(2);
+  }
+
+  const gameTypes = SELECTED.length > 0 ? SELECTED : Object.keys(models);
+  let allOk = true;
+  for (const gt of gameTypes) {
+    const cfg = models[gt];
+    if (!cfg) {
+      console.error(`[verify-nn] Unbekannte Spielart '${gt}'.`);
+      allOk = false;
+      continue;
+    }
+    if (!verifyModel(gt, cfg)) allOk = false;
+  }
+
+  if (!allOk) {
     console.error("[verify-nn] FEHLGESCHLAGEN.");
     process.exit(1);
   }
-  console.info(
-    `[verify-nn] OK — ${files.length} Datei(en) gegen MANIFEST verifiziert ` +
-      `(release=${manifest.release_version}, spec=${manifest.spec_version}, encoding=${manifest.encoding_version}).`
-  );
+  console.info(`[verify-nn] Alle ${gameTypes.length} Modell(e) OK.`);
 }
 
 try {

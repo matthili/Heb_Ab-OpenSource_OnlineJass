@@ -32,7 +32,18 @@ import {
 } from "../src/types.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const SPEC_PATH = join(__dirname, "..", "..", "..", "external", "jass-nn", "jass_rules.json");
+// Multi-Modell-Layout: jass_rules.json aus dem Kreuz-Modell-Verzeichnis.
+// Kreuz + Solo teilen dieselbe Spec; Bodensee hat eine eigene.
+const SPEC_PATH = join(
+  __dirname,
+  "..",
+  "..",
+  "..",
+  "external",
+  "jass-nn",
+  "kreuz",
+  "jass_rules.json"
+);
 
 // --- Spec-Schema (nur die Felder, die wir hier vergleichen) -----------------
 

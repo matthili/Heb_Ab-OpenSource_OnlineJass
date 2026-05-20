@@ -88,7 +88,7 @@ jobs:
               "Run: " + runUrl,
               "",
               "Moegliche Ursachen:",
-              "- NN-Repo hat ein neues Release mit geaenderten Fixtures gemacht, aber package.json#jassNn.version ist noch alt -> pnpm sync:nn + Tests + commit.",
+              "- NN-Repo hat ein neues Release mit geaenderten Fixtures gemacht, aber package.json#jassNn.models[<gameType>].version ist noch alt -> pnpm sync:nn + Tests + commit.",
               "- TS-Encoder ist von der Spec abgewichen -> Code-Fix noetig.",
               "",
               "Vor Code-Aenderungen am Encoder: docs/NN-CONTRACT.md lesen.",
