@@ -236,6 +236,19 @@ export class BodenseeGameService {
     return { view: await this.viewForSeat(gameId, seat) };
   }
 
+  /** Ansage durch einen menschlichen Spieler — löst userId → Sitz auf. */
+  async applyAnnouncementAsUser(
+    gameId: string,
+    userId: string,
+    announcement: Announcement
+  ): Promise<{ view: BodenseePlayerView }> {
+    return this.applyAnnouncementAsSeat(
+      gameId,
+      await this.findSeatForUser(gameId, userId),
+      announcement
+    );
+  }
+
   // ───────────────────────────────────────────────────────────────────
   // Sicht
   // ───────────────────────────────────────────────────────────────────

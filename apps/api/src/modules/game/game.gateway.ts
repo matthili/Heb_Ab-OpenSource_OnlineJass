@@ -37,12 +37,14 @@ import {
   WebSocketServer,
 } from "@nestjs/websockets";
 import { createAdapter } from "@socket.io/redis-adapter";
+import type { Announcement } from "@jass/engine";
 import type { Server, Socket } from "socket.io";
 
 import { AuditService } from "../audit/audit.service.js";
 import { AuthService } from "../auth/auth.service.js";
 import { ChatGateway } from "../chat/chat.gateway.js";
 import { RedisService } from "../redis/redis.service.js";
+import { BodenseeGameService, type BodenseePlayerView } from "./bodensee-game.service.js";
 import { DisconnectVoteService } from "./disconnect-vote.service.js";
 import { GameLockService } from "./game-lock.service.js";
 import { GameService, type AnnouncementDecision, type PlayerView } from "./game.service.js";
@@ -83,6 +85,7 @@ export class GameGateway
 
   constructor(
     private readonly games: GameService,
+    private readonly bodenseeGames: BodenseeGameService,
     private readonly auth: AuthService,
     private readonly redis: RedisService,
     private readonly locks: GameLockService,
@@ -97,6 +100,7 @@ export class GameGateway
     // statt erst beim ersten Method-Call mit verwirrendem TypeError.
     if (
       !games ||
+      !bodenseeGames ||
       !auth ||
       !redis ||
       !locks ||
@@ -651,6 +655,163 @@ export class GameGateway
     this.log.warn({ gameId }, "driveAIsLoop hat Sicherheitsgrenze erreicht");
   }
 
+  // ─── Bodensee events ──────────────────────────────────────────────
+  //
+  // Eigener WS-Pfad für die 2-Spieler-Variante. Bewusst getrennte Events
+  // (`bodensee:*`) und ein eigener `BodenseeGameService` — der Kreuz/Solo-
+  // Pfad oben bleibt davon unberührt. Auth-Middleware, Rate-Limit-Guards,
+  // Lock-Service und der Room-Mechanismus werden geteilt.
+
+  @SubscribeMessage("bodensee:join")
+  async onBodenseeJoin(
+    @ConnectedSocket() socket: AuthenticatedSocket,
+    @MessageBody() payload: { gameId?: string }
+  ): Promise<void> {
+    const userId = socket.data.userId;
+    if (!userId) return this.failBodensee(socket, "Not authenticated");
+    const gameId = payload?.gameId;
+    if (typeof gameId !== "string" || gameId.length === 0) {
+      return this.failBodensee(socket, "gameId required");
+    }
+    try {
+      const view = await this.bodenseeGames.viewForUser(gameId, userId);
+      await socket.join(roomKey(gameId));
+      socket.emit("bodensee:state", view);
+      // Ist der Tisch im Ansage-Modus und eine KI ist Ansager, muss die
+      // KI-Loop angestoßen werden (analog zum Kreuz-`onJoin`). Lock-
+      // geschützt gegen parallele `bodensee:announce`-Events.
+      if (view.status === "announcing" && view.announcement?.iAmAnnouncer !== true) {
+        await this.locks.withLock(gameId, async () => {
+          await this.driveBodenseeAIsLoop(gameId);
+        });
+      }
+    } catch (err) {
+      this.failBodensee(socket, this.errorMessage(err));
+    }
+  }
+
+  @SubscribeMessage("bodensee:announce")
+  async onBodenseeAnnounce(
+    @ConnectedSocket() socket: AuthenticatedSocket,
+    @MessageBody() payload: { gameId?: string; announcement?: unknown }
+  ): Promise<void> {
+    const userId = socket.data.userId;
+    if (!userId) return this.failBodensee(socket, "Not authenticated");
+    const gameId = payload?.gameId;
+    const announcement = payload?.announcement;
+    if (typeof gameId !== "string" || !isBodenseeAnnouncement(announcement)) {
+      return this.failBodensee(socket, "gameId + announcement { variant: { mode } } required");
+    }
+    try {
+      await this.locks.withLock(gameId, async () => {
+        await this.bodenseeGames.applyAnnouncementAsUser(gameId, userId, announcement);
+        await this.broadcastBodenseeState(gameId);
+        // Nach der Ansage kann sofort eine KI am Zug sein → Loop drehen.
+        await this.driveBodenseeAIsLoop(gameId);
+      });
+    } catch (err) {
+      this.failBodensee(socket, this.errorMessage(err));
+    }
+  }
+
+  @SubscribeMessage("bodensee:move")
+  async onBodenseeMove(
+    @ConnectedSocket() socket: AuthenticatedSocket,
+    @MessageBody() payload: { gameId?: string; card?: { suit?: string; rank?: string } }
+  ): Promise<void> {
+    const userId = socket.data.userId;
+    if (!userId) return this.failBodensee(socket, "Not authenticated");
+    const gameId = payload?.gameId;
+    const card = payload?.card;
+    if (
+      typeof gameId !== "string" ||
+      !card ||
+      typeof card.suit !== "string" ||
+      typeof card.rank !== "string"
+    ) {
+      return this.failBodensee(socket, "gameId + card { suit, rank } required");
+    }
+    try {
+      // Single-Owner-Lock: User-Move + KI-Loop laufen als atomarer Block.
+      await this.locks.withLock(gameId, async () => {
+        const { view } = await this.bodenseeGames.playMoveAsUser(gameId, userId, {
+          suit: card.suit as never,
+          rank: card.rank as never,
+        });
+        await this.broadcastBodenseeState(gameId);
+        if (view.status === "finished") {
+          this.server.to(roomKey(gameId)).emit("bodensee:ended", { finalScore: view.finalScore });
+          return;
+        }
+        await this.driveBodenseeAIsLoop(gameId);
+      });
+    } catch (err) {
+      this.failBodensee(socket, this.errorMessage(err));
+    }
+  }
+
+  /**
+   * KI-Loop für den Bodensee-Tisch — deckt Ansage- und Move-Phase ab.
+   * Bodensee kennt kein Schieben: pro Spiel gibt es genau eine Ansage,
+   * danach 36 Move-Schritte (18 Stiche × 2 Spieler). Die Sicherheits-
+   * grenze von 50 Iterationen liegt komfortabel darüber.
+   */
+  private async driveBodenseeAIsLoop(gameId: string): Promise<void> {
+    let announceSteps = 0;
+    for (let i = 0; i < 50; i++) {
+      const action = await this.bodenseeGames.nextAIAction(gameId);
+      if (!action) return; // Mensch ist dran oder Spiel vorbei
+
+      if (action.kind === "announce") {
+        if (++announceSteps > 1) {
+          this.log.error({ gameId, seat: action.seat }, "Bodensee-Ansage-Loop > 1 — fail-safe");
+          return;
+        }
+        const decision = await this.bodenseeGames.aiChooseAnnouncement(gameId, action.seat);
+        await this.bodenseeGames.applyAnnouncementAsSeat(gameId, action.seat, decision);
+        await this.broadcastBodenseeState(gameId);
+        await sleep(aiStepDelayMs());
+        continue;
+      }
+
+      const card = await this.bodenseeGames.aiChooseMove(gameId, action.seat);
+      const { view } = await this.bodenseeGames.playMoveAsSeat(gameId, action.seat, card);
+      await this.broadcastBodenseeState(gameId);
+      if (view.status === "finished") {
+        this.server.to(roomKey(gameId)).emit("bodensee:ended", { finalScore: view.finalScore });
+        return;
+      }
+      await sleep(aiStepDelayMs());
+    }
+    this.log.warn({ gameId }, "driveBodenseeAIsLoop hat Sicherheitsgrenze erreicht");
+  }
+
+  /**
+   * Pusht an jeden Socket im Bodensee-Room dessen **eigene** Sicht — pro
+   * Socket individuell gefiltert, damit kein Spieler die verdeckten Karten
+   * des Gegners sieht. Spiegelt `broadcastState` für den Kreuz-Pfad.
+   */
+  private async broadcastBodenseeState(gameId: string): Promise<void> {
+    const sockets = (await this.server.in(roomKey(gameId)).fetchSockets()) as unknown as Array<{
+      data: SocketData;
+      emit(event: string, payload: unknown): boolean;
+    }>;
+    for (const sock of sockets) {
+      const userId = sock.data.userId;
+      if (!userId) continue;
+      try {
+        const view: BodenseePlayerView = await this.bodenseeGames.viewForUser(gameId, userId);
+        sock.emit("bodensee:state", view);
+      } catch (err) {
+        sock.emit("bodensee:error", { message: this.errorMessage(err) });
+      }
+    }
+  }
+
+  private failBodensee(socket: AuthenticatedSocket, message: string): void {
+    socket.emit("bodensee:error", { message });
+  }
+
   // ─── Helpers ──────────────────────────────────────────────────────
 
   /**
@@ -705,6 +866,19 @@ export class GameGateway
 
 function roomKey(gameId: string): string {
   return `game:${gameId}`;
+}
+
+/**
+ * Minimal-Validierung einer Bodensee-Ansage aus dem WS-Payload. Die
+ * inhaltliche Prüfung (gültiger Modus, Trumpf-Farbe etc.) übernimmt die
+ * Engine in `newBodenseeRound`; hier wird nur die grobe Struktur geprüft,
+ * damit der Cast auf `Announcement` ehrlich ist.
+ */
+function isBodenseeAnnouncement(v: unknown): v is Announcement {
+  if (typeof v !== "object" || v === null) return false;
+  const variant = (v as { variant?: unknown }).variant;
+  if (typeof variant !== "object" || variant === null) return false;
+  return typeof (variant as { mode?: unknown }).mode === "string";
 }
 
 /**
