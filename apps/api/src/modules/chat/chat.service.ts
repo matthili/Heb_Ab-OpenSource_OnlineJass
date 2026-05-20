@@ -141,6 +141,17 @@ export class ChatService {
     }));
   }
 
+  /**
+   * Wirft, wenn der User den Channel nicht lesen/abonnieren darf. Nutzt
+   * exakt dieselben Regeln wie `send`/`getHistory` (LOBBY frei, GAME nur
+   * Tisch-Sitze, DM nur die zwei Beteiligten) — gedacht für den
+   * WS-`chat:subscribe`-Guard, damit Nicht-Mitglieder nicht mithören.
+   */
+  async assertCanAccessChannel(userId: string, channelKey: string): Promise<void> {
+    const channel = this.classifyChannel(channelKey);
+    await this.requireMembership(userId, channel, channelKey);
+  }
+
   // ─── Channel-Klassifikation + Access-Control ───────────────────────
 
   private classifyChannel(channelKey: string): ChatChannel {

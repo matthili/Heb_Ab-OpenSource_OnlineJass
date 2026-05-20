@@ -13,11 +13,11 @@
  * Auth-Middleware wird vom GameGateway global gesetzt (`server.use`) —
  * dadurch ist `socket.data.userId` auch hier garantiert verfügbar.
  *
- * **Channel-Access**: wir prüfen die Mitgliedschaft im REST-Sende-Pfad
- * (`ChatService.send`). Beim WS-Subscribe akzeptieren wir alle gültigen
- * Channel-Keys — wer nicht Mitglied ist, hört zwar mit, kann aber nichts
- * senden. Für M8-Scope ist das akzeptabel; striktes Auth-Subscribe
- * (Server prüft Membership beim subscribe) kommt mit M11.
+ * **Channel-Access**: Sowohl der REST-Sende-Pfad (`ChatService.send`) als
+ * auch der WS-`chat:subscribe`-Handler prüfen die Mitgliedschaft über
+ * `ChatService.assertCanAccessChannel` (LOBBY frei, GAME nur Tisch-Sitze,
+ * DM nur die zwei Beteiligten). Wer nicht Mitglied ist, kann den Channel
+ * weder abonnieren noch mithören.
  */
 import { Injectable } from "@nestjs/common";
 import {
@@ -29,7 +29,7 @@ import {
 } from "@nestjs/websockets";
 import type { Server, Socket } from "socket.io";
 
-import type { ChatMessageView } from "./chat.service.js";
+import { ChatService, type ChatMessageView } from "./chat.service.js";
 
 interface AuthSocketData {
   userId?: string;
@@ -50,14 +50,24 @@ export class ChatGateway {
   @WebSocketServer()
   server!: Server;
 
+  constructor(private readonly chat: ChatService) {}
+
   @SubscribeMessage("chat:subscribe")
   async onSubscribe(
     @ConnectedSocket() socket: AuthenticatedSocket,
     @MessageBody() payload: { channelKey?: string }
   ): Promise<{ ok: true } | { error: string }> {
-    if (!socket.data.userId) return { error: "Not authenticated" };
+    const userId = socket.data.userId;
+    if (!userId) return { error: "Not authenticated" };
     const key = payload?.channelKey;
     if (typeof key !== "string" || key.length === 0) return { error: "channelKey required" };
+    // Mitgliedschaft prüfen — sonst könnte ein Nicht-Mitglied einen fremden
+    // Game-Chat oder ein privates DM mithören.
+    try {
+      await this.chat.assertCanAccessChannel(userId, key);
+    } catch (err) {
+      return { error: err instanceof Error ? err.message : "Zugriff verweigert" };
+    }
     await socket.join(channelRoom(key));
     return { ok: true };
   }
