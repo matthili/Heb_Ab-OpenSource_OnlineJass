@@ -59,6 +59,8 @@ export interface TableListEntry {
   ownerName: string;
   status: LobbyTableStatus;
   joinMode: JoinMode;
+  /** Spielart des Tisches — z.B. "KREUZ_4P", "SOLO_4P". */
+  variant: string;
   aiSeatType: string;
   autoFillSeconds: number | null;
   restartMode: "WELI" | "SIEGER_GIBT";
@@ -242,6 +244,7 @@ export class LobbyService {
       ownerName: t.owner.name,
       status: t.status,
       joinMode: t.joinMode,
+      variant: t.variant,
       aiSeatType: t.aiSeatType,
       autoFillSeconds: t.autoFillSeconds,
       restartMode: t.restartMode as "WELI" | "SIEGER_GIBT",
@@ -286,6 +289,7 @@ export class LobbyService {
       ownerName: t.owner.name,
       status: t.status,
       joinMode: t.joinMode,
+      variant: t.variant,
       aiSeatType: t.aiSeatType,
       autoFillSeconds: t.autoFillSeconds,
       restartMode: t.restartMode as "WELI" | "SIEGER_GIBT",
@@ -352,6 +356,7 @@ export class LobbyService {
       ownerName: table.owner.name,
       status: table.status,
       joinMode: table.joinMode,
+      variant: table.variant,
       aiSeatType: table.aiSeatType,
       autoFillSeconds: table.autoFillSeconds,
       restartMode: table.restartMode as "WELI" | "SIEGER_GIBT",
@@ -1201,7 +1206,8 @@ export class LobbyService {
         aiSeatType: s.aiSeatType,
       })),
       newStarter,
-      newHands
+      newHands,
+      variantEnumToGameType(game.table.variant)
     );
     await this.audit.record({
       action: "game.rematch.started",
@@ -1304,13 +1310,15 @@ export class LobbyService {
     tableId: string,
     seats: SeatAssignment[],
     starter: number,
-    hands: Card[][]
+    hands: Card[][],
+    gameType: "kreuz" | "solo"
   ): Promise<string> {
     const { gameId } = await this.games.createGame({
       tableId,
       announcerSeat: starter,
       seats,
       hands,
+      gameType,
     });
     return gameId;
   }
@@ -1566,8 +1574,12 @@ export class LobbyService {
     const { gameId } = await this.games.createGame({
       tableId,
       seats,
+      gameType: variantEnumToGameType(table.variant),
     });
-    this.log.log({ tableId, gameId }, "Game aus Tisch gestartet (Ansage-Modus)");
+    this.log.log(
+      { tableId, gameId, variant: table.variant },
+      "Game aus Tisch gestartet (Ansage-Modus)"
+    );
     return gameId;
   }
 
@@ -1647,6 +1659,16 @@ export class LobbyService {
     }
     return { gameId };
   }
+}
+
+/**
+ * Mappt den DB-`GameVariant`-Enum auf die `GameType` des GameService
+ * (`kreuz` | `solo`). SOLO_4P → solo, alles andere → kreuz.
+ * KREUZ_6P / KREUZ_STEIGERN / BODENSEE_2P sind noch nicht spielbar und
+ * fallen sicherheitshalber auf `kreuz` zurück.
+ */
+function variantEnumToGameType(variant: string): "kreuz" | "solo" {
+  return variant === "SOLO_4P" ? "solo" : "kreuz";
 }
 
 /**

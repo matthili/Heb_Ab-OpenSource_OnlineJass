@@ -141,6 +141,13 @@ export interface RoundScore {
 /** Standard-Sitz/Team-Zuordnung im Kreuz-Jass: Sitz 0+2 vs. 1+3. */
 export const DEFAULT_TEAMS: readonly number[] = [0, 1, 0, 1];
 
+/**
+ * Sitz/Team-Zuordnung im Solo-Jass: jeder Spieler ist sein eigenes Team.
+ * Damit verteilt die team-agnostische Punkte-/Weisen-/Matsch-Aggregation
+ * automatisch pro Spieler statt pro Paar.
+ */
+export const SOLO_TEAMS: readonly number[] = [0, 1, 2, 3];
+
 interface NewRoundOptions {
   variant: Variant;
   announcement: Announcement;

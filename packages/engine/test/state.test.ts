@@ -726,6 +726,90 @@ describe("Integration: 9-Tricks-Lauf bis isRoundDone", () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────
+// Solo-Jass: teams=[0,1,2,3] (jeder Spieler sein eigenes Team)
+// ─────────────────────────────────────────────────────────────────────
+
+const SOLO_TEAMS: readonly number[] = [0, 1, 2, 3];
+
+describe("Solo-Jass (teams=[0,1,2,3])", () => {
+  it("newRound mit Solo-Teams legt 4 Team-Punkte-Slots an", () => {
+    const hands = dealCards(seededRng(7));
+    const s = newRound({
+      variant: TRUMPF_EICHEL,
+      announcement: TRUMPF_EICHEL_ANN,
+      hands,
+      starter: 0,
+      teams: SOLO_TEAMS,
+    });
+    expect(s.teams).toEqual(SOLO_TEAMS);
+    // numTeams = 4 → vier separate Punkte-Konten
+    expect(s.team_card_points).toHaveLength(4);
+    expect(s.team_card_points).toEqual([0, 0, 0, 0]);
+  });
+
+  it("spielt eine komplette Solo-Runde — 9 Tricks, 4 Spieler-Konten, Summe 157", () => {
+    const rng = seededRng(2027);
+    const hands = dealCards(rng);
+    let s = newRound({
+      variant: TRUMPF_EICHEL,
+      announcement: TRUMPF_EICHEL_ANN,
+      hands,
+      starter: 0,
+      teams: SOLO_TEAMS,
+    });
+
+    while (!isRoundDone(s)) {
+      const seat = whoseTurn(s);
+      const hand = handOf(s, seat);
+      const legal = legalMovesFromHand(hand, s);
+      const card = legal[Math.floor(rng() * legal.length)] as Card;
+      s = applyMove(s, { seat, card });
+    }
+
+    expect(s.completed_tricks).toHaveLength(TRICKS_PER_ROUND);
+
+    const score = finalRoundScore(s);
+    // Vier Konten — jeder Spieler hat sein eigenes.
+    expect(score.team_card_points).toHaveLength(4);
+    // 152 Karten-Punkte + 5 Letzter-Stich-Bonus = 157, ohne Matsch.
+    const sum = score.team_card_points.reduce((a, b) => a + b, 0);
+    expect([157, 257]).toContain(sum); // 257 falls ein Spieler alle 9 Stiche macht
+  });
+
+  it("Matsch wird im Solo dem EINZELNEN Spieler gutgeschrieben", () => {
+    // Konstruierter End-State: Sitz 2 hat alle 9 Stiche gewonnen.
+    const hands = dealCards(seededRng(9));
+    const base = newRound({
+      variant: TRUMPF_EICHEL,
+      announcement: TRUMPF_EICHEL_ANN,
+      hands,
+      starter: 0,
+      teams: SOLO_TEAMS,
+    });
+    const finished: RoundState = {
+      ...base,
+      hands: [[], [], [], []],
+      trick_idx: TRICKS_PER_ROUND,
+      trick_winners: new Array(TRICKS_PER_ROUND).fill(2),
+      completed_tricks: new Array(TRICKS_PER_ROUND).fill({
+        starter: 0,
+        cards: [c("EICHEL", "ASS")],
+      }),
+      // Vier Konten; Sitz 2 hat die 157 Karten-Punkte kassiert.
+      team_card_points: [0, 0, 157, 0],
+    };
+    const score = finalRoundScore(finished);
+    // Matsch-Team ist Sitz 2 (sein eigenes Team in Solo).
+    expect(score.matsch_team).toBe(2);
+    // +100 Matsch-Bonus NUR für Sitz 2.
+    expect(score.team_card_points[2]).toBe(257);
+    expect(score.team_card_points[0]).toBe(0);
+    expect(score.team_card_points[1]).toBe(0);
+    expect(score.team_card_points[3]).toBe(0);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────
 // Helpers
 // ─────────────────────────────────────────────────────────────────────
 

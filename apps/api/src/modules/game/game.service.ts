@@ -54,6 +54,7 @@ import {
   isWeli,
   legalActionMask,
   newRound,
+  SOLO_TEAMS,
   SPEC_VERSION,
   submitWeisen,
   validateDeclaration,
@@ -102,7 +103,16 @@ interface PendingAnnouncement {
   announcerSeat: number;
   /** Wenn schon einmal gepusht wurde: vom welchen Sitz. Partner darf nicht zurückpushen. */
   pushedFromSeat: number | null;
+  /**
+   * Solo-Jass: jeder Spieler für sich (teams=[0,1,2,3]), kein Schieben.
+   * Optional, damit alte Pending-Objekte ohne das Feld als `false`
+   * (= Kreuz-Jass) interpretiert werden.
+   */
+  isSolo?: boolean;
 }
+
+/** Spielart, die der Caller an `createGame` übergeben kann. */
+export type GameType = "kreuz" | "solo";
 
 /**
  * Eingabe für `createGame`. Sitze sind 4 Einträge in Sitz-Reihenfolge 0..3.
@@ -158,6 +168,13 @@ export interface CreateGameInput {
    * `dealCards(rng)`.
    */
   hands?: readonly (readonly Card[])[];
+  /**
+   * Spielart. `kreuz` (Default) = Team-Spiel (Sitz 0+2 vs 1+3).
+   * `solo` = jeder gegen jeden (teams=[0,1,2,3]), kein Schieben.
+   * Bestimmt die Team-Konfiguration der Engine, den DB-`GameVariant`
+   * und welches NN-Modell die KI nutzt.
+   */
+  gameType?: GameType;
 }
 
 /**
@@ -317,6 +334,10 @@ export class GameService {
       }
     }
 
+    // Spielart → Team-Konfiguration. Solo: jeder sein eigenes Team.
+    const isSolo = (input.gameType ?? "kreuz") === "solo";
+    const teams = isSolo ? SOLO_TEAMS : undefined; // undefined → Engine-Default
+
     const state = isAnnouncingMode
       ? null
       : newRound({
@@ -324,6 +345,7 @@ export class GameService {
           announcement: input.announcement!,
           hands: hands as Card[][],
           starter: input.starter!,
+          ...(teams !== undefined ? { teams } : {}),
         });
 
     // Game + GameSeats + RoundDecision in einer Transaktion anlegen. `seats`
@@ -331,7 +353,7 @@ export class GameService {
     const game = await this.prisma.$transaction(async (tx) => {
       const created = await tx.game.create({
         data: {
-          variant: variantToEnum(),
+          variant: variantToEnum(input.gameType ?? "kreuz"),
           ruleVersion: SPEC_VERSION,
           ...(input.tableId !== undefined ? { tableId: input.tableId } : {}),
         },
@@ -382,6 +404,7 @@ export class GameService {
         hands: hands as Card[][],
         announcerSeat: announcerSeat!,
         pushedFromSeat: null,
+        isSolo,
       });
     } else {
       await this.writeRoundStateToRedis(game.id, state!);
@@ -425,8 +448,9 @@ export class GameService {
     if (pending) {
       const hand = pending.hands[seat] ?? [];
       // canPush nur für den Original-Ansager (vor einem Push). Nach einem
-      // Push ist `pushedFromSeat` gesetzt → kein Zurück mehr.
-      const canPush = pending.pushedFromSeat === null;
+      // Push ist `pushedFromSeat` gesetzt → kein Zurück mehr. Im Solo-Jass
+      // gibt es kein Schieben (kein Partner) → immer false.
+      const canPush = !pending.isSolo && pending.pushedFromSeat === null;
       return {
         gameId,
         status: "announcing",
@@ -940,6 +964,10 @@ export class GameService {
     }
 
     if (decision.kind === "push") {
+      // Solo-Jass kennt kein Schieben — es gibt keinen Partner.
+      if (pending.isSolo) {
+        throw new BadRequestException("Schieben gibt es im Solo-Jass nicht.");
+      }
       // Push: an den Partner schieben. Nur erlaubt, wenn noch nicht gepusht
       // wurde — Partner darf nicht zurück.
       if (pending.pushedFromSeat !== null) {
@@ -950,6 +978,7 @@ export class GameService {
         hands: pending.hands,
         announcerSeat: partnerSeat,
         pushedFromSeat: seat,
+        ...(pending.isSolo !== undefined ? { isSolo: pending.isSolo } : {}),
       };
       await this.writePendingToRedis(gameId, next);
       await this.audit.record({
@@ -969,12 +998,13 @@ export class GameService {
     // Starter, sonst der aktuelle (=original) Announcer.
     const starter = pending.pushedFromSeat !== null ? pending.pushedFromSeat : seat;
 
-    // RoundState bauen und in Redis schreiben.
+    // RoundState bauen und in Redis schreiben. Solo: jeder sein eigenes Team.
     const state = newRound({
       variant: ann.variant,
       announcement: ann,
       hands: pending.hands,
       starter,
+      ...(pending.isSolo ? { teams: SOLO_TEAMS } : {}),
     });
 
     // RoundDecision updaten (Platzhalter überschreiben).
@@ -1383,10 +1413,16 @@ function seededRng(seed: number): RandomFn {
   };
 }
 
-function variantToEnum(): GameVariant {
-  // Aktuell nur KREUZ_4P; spätere Varianten werden hier diskriminiert
-  // (z.B. KREUZ_STEIGERN mit Bieter-Variante in M12+).
-  return "KREUZ_4P";
+function variantToEnum(gameType: GameType): GameVariant {
+  // Mappt die App-Spielart auf den DB-`GameVariant`-Enum-Wert.
+  // KREUZ_6P / KREUZ_STEIGERN / BODENSEE_2P kommen in späteren Sprints.
+  switch (gameType) {
+    case "solo":
+      return "SOLO_4P";
+    case "kreuz":
+    default:
+      return "KREUZ_4P";
+  }
 }
 
 function suitToInt(s: Card["suit"]): number {

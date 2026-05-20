@@ -36,7 +36,12 @@ export class NNInferencePlayer implements AIPlayer {
   async chooseCard(hand: readonly Card[], state: GameState): Promise<Card> {
     const vec = encodeState(hand, state);
     const mask = legalActionMask(hand, state);
+    // Spielart aus der Team-Konfiguration ableiten: hat jeder Sitz ein
+    // eigenes Team (4 unterschiedliche IDs), ist es Solo-Jass — dann muss
+    // der Inferenz-Service das Solo-Modell (v0.8.0) nutzen. Sonst Kreuz.
+    const gameType = new Set(state.teams).size === state.teams.length ? "solo" : "kreuz";
     const res = await this.client.predict({
+      gameType,
       state: Array.from(vec),
       mask: Array.from(mask),
     });

@@ -23,6 +23,7 @@ export {
   type RoundScore,
   type RoundState,
   DEFAULT_TEAMS,
+  SOLO_TEAMS,
   InvalidMoveError,
   announceStoeck,
   applyMove,

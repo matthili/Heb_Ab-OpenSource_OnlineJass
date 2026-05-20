@@ -17,7 +17,9 @@ const AiSeatTypeSchema = z
 
 const JoinModeSchema = z.enum(["OPEN", "REQUEST", "INVITE"]);
 const RestartModeSchema = z.enum(["WELI", "SIEGER_GIBT"]);
-const VariantEnumSchema = z.enum(["KREUZ_4P"]); // M6: nur 4P; weitere kommen in M12+
+// Spielarten: Kreuz-Jass (4er-Team) und Solo-Jass (jeder gegen jeden).
+// KREUZ_6P / KREUZ_STEIGERN / BODENSEE_2P folgen in späteren Sprints.
+const VariantEnumSchema = z.enum(["KREUZ_4P", "SOLO_4P"]);
 
 /**
  * Tisch öffnen. Eröffner sitzt auf Sitz 0. Optional können KI-Sitze direkt
