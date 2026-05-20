@@ -56,4 +56,7 @@ export {
   type WeisenAggregateResult,
 } from "./weisen.js";
 
+// Bodensee-Jass (2-Spieler-Variante, eigenes Encoding bodensee_1.0.0).
+export * from "./bodensee/index.js";
+
 export const ENGINE_PACKAGE_VERSION = "0.2.0";

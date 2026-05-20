@@ -148,14 +148,16 @@ export function legalMoves(
   }
 
   // Fall B: Nicht-Trumpf wurde angespielt; man hat die Lead-Farbe.
-  // Vorarlberger Regel: Lead-Farbe bedienen ODER mit BELIEBIGEM Trumpf
-  // stechen. Wir geben einfach Lead-Farben + alle Trümpfe zurück (ohne
-  // Duplikate, falls jemand Trumpf-Lead gleich Lead-Farbe hätte —
-  // unmöglich, weil leadSuit !== trump in diesem Branch).
+  // Vorarlberger Regel: Lead-Farbe MUSS bedient werden — die EINZIGE
+  // Trumpf-Ausnahme ist der Buur (Trumpf-Unter), der zusätzlich gespielt
+  // werden darf. Beliebiges Trumpf-Stechen ist NICHT erlaubt, solange
+  // man die Lead-Farbe bedienen kann. (Spiegelt `legal_moves` aus dem
+  // NN-Repo, `jass_engine/rules.py` — bestätigt durch die Bodensee-
+  // Encoder-Fixtures.)
   const same = hand.filter((c) => c.suit === leadSuit);
   if (same.length > 0) {
-    const trumpsInHand = hand.filter((c) => c.suit === trump);
-    return [...same, ...trumpsInHand];
+    const buur = hand.find((c) => c.suit === trump && c.rank === "UNTER");
+    return buur ? [...same, buur] : [...same];
   }
 
   // Fall C: Nicht-Trumpf angespielt, Lead-Farbe nicht in der Hand

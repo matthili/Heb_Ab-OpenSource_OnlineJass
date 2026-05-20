@@ -138,37 +138,34 @@ describe("legalMoves: TRUMPF — Buur-Ausnahme", () => {
     expect(legalMoves(hand, trick, v)).toEqual(hand);
   });
 
-  it("Vorarlberg: Nicht-Trumpf-Lead, Lead-Farbe + mehrere Trümpfe → alle Trümpfe zum Stechen erlaubt", () => {
-    // Vorarlberger Regel: „Mit Trumpf darf man immer stechen", auch wenn
-    // man die Lead-Farbe bedienen könnte. Hier hat der Spieler 2 Herz-
-    // Karten (Lead) und 3 Eichel-Trümpfe (inkl. niedrigen, Nicht-Buur).
-    // Alle drei Trümpfe müssen legal sein, nicht nur der Buur.
+  it("Vorarlberg: Nicht-Trumpf-Lead, Lead-Farbe + Trümpfe → bedienen, nur Buur als Trumpf-Ausnahme", () => {
+    // Vorarlberger Regel (`legal_moves` aus dem NN-Repo, bestätigt durch
+    // die Bodensee-Encoder-Fixtures): wer die Lead-Farbe bedienen kann,
+    // MUSS bedienen — als einzige Trumpf-Ausnahme darf der Buur
+    // (Trumpf-Unter) zusätzlich gespielt werden. Niedrige Nicht-Buur-
+    // Trümpfe sind NICHT erlaubt, solange man bedienen kann.
     const hand: Card[] = [
       c("HERZ", "ASS"),
       c("HERZ", "SIEBEN"),
-      c("EICHEL", "UNTER"), // Buur
-      c("EICHEL", "OBER"),
-      c("EICHEL", "SECHS"), // niedriger Trumpf — wäre nach reiner Buur-Regel ILLEGAL
+      c("EICHEL", "UNTER"), // Buur — erlaubt
+      c("EICHEL", "OBER"), // Nicht-Buur-Trumpf — NICHT erlaubt
+      c("EICHEL", "SECHS"), // Nicht-Buur-Trumpf — NICHT erlaubt
     ];
     const trick: Card[] = [c("HERZ", "OBER")];
     const v = TRUMPF("EICHEL");
     const legal = legalMoves(hand, trick, v);
-    // Reihenfolge: erst Lead-Farben, dann Trümpfe — alle in der Hand
-    expect(legal).toEqual([
-      c("HERZ", "ASS"),
-      c("HERZ", "SIEBEN"),
-      c("EICHEL", "UNTER"),
-      c("EICHEL", "OBER"),
-      c("EICHEL", "SECHS"),
-    ]);
+    // Lead-Farben + Buur, keine anderen Trümpfe.
+    expect(legal).toEqual([c("HERZ", "ASS"), c("HERZ", "SIEBEN"), c("EICHEL", "UNTER")]);
   });
 
-  it("Vorarlberg: GUMPF folgt der gleichen Trumpf-Stech-Regel", () => {
+  it("Vorarlberg: GUMPF — bedienen, nur Buur als Trumpf-Ausnahme", () => {
+    // Spieler hat Lead-Farbe (Herz) + Nicht-Buur-Trümpfe (Laub O, Laub 6).
+    // Kein Buur in der Hand → nur die Lead-Farbe ist legal.
     const hand: Card[] = [c("HERZ", "ZEHN"), c("LAUB", "OBER"), c("LAUB", "SECHS")];
     const trick: Card[] = [c("HERZ", "ASS")];
     const v: Variant = { mode: "GUMPF", trump_suit: "LAUB" };
     const legal = legalMoves(hand, trick, v);
-    expect(legal).toEqual([c("HERZ", "ZEHN"), c("LAUB", "OBER"), c("LAUB", "SECHS")]);
+    expect(legal).toEqual([c("HERZ", "ZEHN")]);
   });
 });
 
