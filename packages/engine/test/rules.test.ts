@@ -138,34 +138,52 @@ describe("legalMoves: TRUMPF — Buur-Ausnahme", () => {
     expect(legalMoves(hand, trick, v)).toEqual(hand);
   });
 
-  it("Vorarlberg: Nicht-Trumpf-Lead, Lead-Farbe + Trümpfe → bedienen, nur Buur als Trumpf-Ausnahme", () => {
-    // Vorarlberger Regel (`legal_moves` aus dem NN-Repo, bestätigt durch
-    // die Bodensee-Encoder-Fixtures): wer die Lead-Farbe bedienen kann,
-    // MUSS bedienen — als einzige Trumpf-Ausnahme darf der Buur
-    // (Trumpf-Unter) zusätzlich gespielt werden. Niedrige Nicht-Buur-
-    // Trümpfe sind NICHT erlaubt, solange man bedienen kann.
+  it("Jass-Grundregel: Nicht-Trumpf-Lead, kein Trumpf im Stich → bedienen ODER mit jedem Trumpf stechen", () => {
+    // „Man muss Farbe geben — außer man will stechen." Liegt noch kein
+    // Trumpf im Stich, sticht jeder Trumpf → alle Trümpfe sind legal,
+    // auch niedrige Nicht-Buur-Trümpfe, auch wenn man bedienen könnte.
     const hand: Card[] = [
       c("HERZ", "ASS"),
       c("HERZ", "SIEBEN"),
-      c("EICHEL", "UNTER"), // Buur — erlaubt
-      c("EICHEL", "OBER"), // Nicht-Buur-Trumpf — NICHT erlaubt
-      c("EICHEL", "SECHS"), // Nicht-Buur-Trumpf — NICHT erlaubt
+      c("EICHEL", "UNTER"), // Buur
+      c("EICHEL", "OBER"),
+      c("EICHEL", "SECHS"), // niedriger Trumpf — trotzdem legal
     ];
-    const trick: Card[] = [c("HERZ", "OBER")];
+    const trick: Card[] = [c("HERZ", "OBER")]; // Nicht-Trumpf-Lead, kein Trumpf
     const v = TRUMPF("EICHEL");
     const legal = legalMoves(hand, trick, v);
-    // Lead-Farben + Buur, keine anderen Trümpfe.
-    expect(legal).toEqual([c("HERZ", "ASS"), c("HERZ", "SIEBEN"), c("EICHEL", "UNTER")]);
+    // Lead-Farben + ALLE Trümpfe.
+    expect(legal).toEqual([
+      c("HERZ", "ASS"),
+      c("HERZ", "SIEBEN"),
+      c("EICHEL", "UNTER"),
+      c("EICHEL", "OBER"),
+      c("EICHEL", "SECHS"),
+    ]);
   });
 
-  it("Vorarlberg: GUMPF — bedienen, nur Buur als Trumpf-Ausnahme", () => {
-    // Spieler hat Lead-Farbe (Herz) + Nicht-Buur-Trümpfe (Laub O, Laub 6).
-    // Kein Buur in der Hand → nur die Lead-Farbe ist legal.
+  it("Jass-Grundregel: GUMPF folgt der gleichen Stech-Regel", () => {
     const hand: Card[] = [c("HERZ", "ZEHN"), c("LAUB", "OBER"), c("LAUB", "SECHS")];
     const trick: Card[] = [c("HERZ", "ASS")];
     const v: Variant = { mode: "GUMPF", trump_suit: "LAUB" };
     const legal = legalMoves(hand, trick, v);
-    expect(legal).toEqual([c("HERZ", "ZEHN")]);
+    expect(legal).toEqual([c("HERZ", "ZEHN"), c("LAUB", "OBER"), c("LAUB", "SECHS")]);
+  });
+
+  it("Kein-Untertrumpfen: liegt schon ein Trumpf, darf man bei Lead-Farbe nur HÖHER stechen", () => {
+    // 4-Spieler-Fall B: Laub angespielt, schon mit Eichel-Ober gestochen.
+    // Spieler hat Laub (Lead-Farbe) + Eichel-Ass (höher als Ober) +
+    // Eichel-Sechs (tiefer → Untertrumpfen, verboten weil man bedienen
+    // könnte).
+    const hand: Card[] = [
+      c("LAUB", "KOENIG"),
+      c("EICHEL", "ASS"), // höher als Ober → legal
+      c("EICHEL", "SECHS"), // tiefer als Ober → Untertrumpfen, illegal
+    ];
+    const trick: Card[] = [c("LAUB", "ZEHN"), c("EICHEL", "OBER")];
+    const v = TRUMPF("EICHEL");
+    const legal = legalMoves(hand, trick, v);
+    expect(legal).toEqual([c("LAUB", "KOENIG"), c("EICHEL", "ASS")]);
   });
 });
 

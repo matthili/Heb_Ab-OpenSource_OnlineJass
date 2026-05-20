@@ -148,16 +148,22 @@ export function legalMoves(
   }
 
   // Fall B: Nicht-Trumpf wurde angespielt; man hat die Lead-Farbe.
-  // Vorarlberger Regel: Lead-Farbe MUSS bedient werden — die EINZIGE
-  // Trumpf-Ausnahme ist der Buur (Trumpf-Unter), der zusätzlich gespielt
-  // werden darf. Beliebiges Trumpf-Stechen ist NICHT erlaubt, solange
-  // man die Lead-Farbe bedienen kann. (Spiegelt `legal_moves` aus dem
-  // NN-Repo, `jass_engine/rules.py` — bestätigt durch die Bodensee-
-  // Encoder-Fixtures.)
+  // Jass-Grundregel: **bedienen ODER stechen**. Man darf die Lead-Farbe
+  // bedienen — oder mit Trumpf stechen, sofern der Trumpf den Stich auch
+  // gewinnt. Liegt schon ein Trumpf im Stich, darf man nur HÖHER trumpfen
+  // (Kein-Untertrumpfen — einen tieferen Trumpf „ohne Not" werfen, obwohl
+  // man bedienen könnte, ist verboten). Liegt kein Trumpf, sticht jeder.
   const same = hand.filter((c) => c.suit === leadSuit);
   if (same.length > 0) {
-    const buur = hand.find((c) => c.suit === trump && c.rank === "UNTER");
-    return buur ? [...same, buur] : [...same];
+    const trumpsInHand = hand.filter((c) => c.suit === trump);
+    const highestTrump = highestTrumpIn(currentTrick, trump);
+    const stechbar =
+      highestTrump === null
+        ? trumpsInHand
+        : trumpsInHand.filter(
+            (c) => TRUMP_RANK_ORDER[c.rank] > TRUMP_RANK_ORDER[highestTrump.rank]
+          );
+    return [...same, ...stechbar];
   }
 
   // Fall C: Nicht-Trumpf angespielt, Lead-Farbe nicht in der Hand
