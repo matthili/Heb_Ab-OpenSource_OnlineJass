@@ -27,10 +27,11 @@ export interface TableListEntry {
   restartMode: RestartMode;
   /** Punkteziel der Partie (kumulativ über alle Spiele). */
   targetScore: number;
-  /** Kumulative Punkte Team 0 über alle bisher beendeten Spiele. */
-  cumulativeScoreTeam0: number;
-  /** Kumulative Punkte Team 1 über alle bisher beendeten Spiele. */
-  cumulativeScoreTeam1: number;
+  /**
+   * Kumulative Punkte je Team über alle bisher beendeten Spiele.
+   * Länge 2 bei Kreuz-Jass, 4 bei Solo-Jass (ein Konto je Spieler).
+   */
+  cumulativeScores: readonly number[];
   seatsTaken: number;
   hasPendingRequest: boolean;
   createdAt: string; // ISO

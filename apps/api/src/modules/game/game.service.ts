@@ -581,23 +581,35 @@ export class GameService {
       //     Match-Voting möglich).
       let matchOver = false;
       if (updated.tableId) {
-        const t0 = score.team_card_points[0] ?? 0;
-        const t1 = score.team_card_points[1] ?? 0;
+        // `team_card_points` hat 2 Einträge bei Kreuz, 4 bei Solo. Wir
+        // incrementen alle vier DB-Konten atomar — Team2/3 sind bei Kreuz
+        // schlicht +0. So zählt auch eine Solo-Partie für alle 4 Spieler
+        // korrekt mit.
+        const pts = score.team_card_points;
         const tableAfter = await this.prisma.lobbyTable.update({
           where: { id: updated.tableId },
           data: {
-            cumulativeScoreTeam0: { increment: t0 },
-            cumulativeScoreTeam1: { increment: t1 },
+            cumulativeScoreTeam0: { increment: pts[0] ?? 0 },
+            cumulativeScoreTeam1: { increment: pts[1] ?? 0 },
+            cumulativeScoreTeam2: { increment: pts[2] ?? 0 },
+            cumulativeScoreTeam3: { increment: pts[3] ?? 0 },
           },
           select: {
             targetScore: true,
             cumulativeScoreTeam0: true,
             cumulativeScoreTeam1: true,
+            cumulativeScoreTeam2: true,
+            cumulativeScoreTeam3: true,
           },
         });
-        matchOver =
-          tableAfter.cumulativeScoreTeam0 >= tableAfter.targetScore ||
-          tableAfter.cumulativeScoreTeam1 >= tableAfter.targetScore;
+        // Partie gewonnen, sobald IRGENDEIN Konto das Ziel erreicht.
+        const cumulatives = [
+          tableAfter.cumulativeScoreTeam0,
+          tableAfter.cumulativeScoreTeam1,
+          tableAfter.cumulativeScoreTeam2,
+          tableAfter.cumulativeScoreTeam3,
+        ];
+        matchOver = cumulatives.some((c) => c >= tableAfter.targetScore);
         await this.prisma.lobbyTable.update({
           where: { id: updated.tableId },
           data: { status: matchOver ? "MATCH_OVER" : "POST_GAME" },

@@ -113,9 +113,8 @@ export function TableDetail({ tableId }: Props) {
             tableSeats={data.seats}
             isAtTable={amIAtTable}
             tableStatus={data.status}
-            isFirstGame={data.cumulativeScoreTeam0 + data.cumulativeScoreTeam1 === 0}
-            cumulativeScoreTeam0={data.cumulativeScoreTeam0}
-            cumulativeScoreTeam1={data.cumulativeScoreTeam1}
+            isFirstGame={data.cumulativeScores.every((s) => s === 0)}
+            cumulativeScores={data.cumulativeScores}
             targetScore={data.targetScore}
           />
         )}
@@ -169,20 +168,30 @@ function StatusBadge({ status }: { status: TableDetailView["status"] }) {
 }
 
 /**
- * Kumulativer Score-Balken: zeigt T0/T1 mit Fortschritt zum Punkteziel.
- * Wenn ein Team das Ziel erreicht/überschritten hat, wird der Balken
- * goldgelb hervorgehoben — die Partie ist offiziell entschieden.
+ * Kumulativer Score-Balken: zeigt den Partie-Fortschritt zum Punkteziel.
+ * Bei Kreuz-Jass 2 Team-Zeilen, bei Solo-Jass 4 Spieler-Zeilen. Wer das
+ * Ziel erreicht, wird goldgelb hervorgehoben.
  */
 function CumulativeScoreBar({ table }: { table: TableDetailView }) {
-  const t0 = table.cumulativeScoreTeam0;
-  const t1 = table.cumulativeScoreTeam1;
+  const scores = table.cumulativeScores;
   const target = table.targetScore;
-  // Falls noch kein Game gespielt wurde, zeigen wir den Balken nicht
-  // (verwirrt mehr als er hilft).
-  if (t0 === 0 && t1 === 0) return null;
-  const t0Pct = Math.min(100, Math.round((t0 / target) * 100));
-  const t1Pct = Math.min(100, Math.round((t1 / target) * 100));
-  const winner = t0 >= target ? 0 : t1 >= target ? 1 : null;
+  // Falls noch kein Game gespielt wurde: Balken weglassen.
+  if (scores.every((s) => s === 0)) return null;
+  const isSolo = table.variant === "SOLO_4P";
+  const winner = scores.findIndex((s) => s >= target); // -1 = noch offen
+
+  // Zeilen-Label: bei Solo der Spielername (Team-ID == Sitz), bei Kreuz
+  // die Team-Bezeichnung mit den zugehörigen Sitzen.
+  const labelFor = (teamIdx: number): string => {
+    if (isSolo) {
+      const seat = table.seats.find((s) => s.seat === teamIdx);
+      if (seat?.user) return seat.user.name;
+      if (seat?.aiSeatType) return `KI (Sitz ${teamIdx + 1})`;
+      return `Sitz ${teamIdx + 1}`;
+    }
+    return teamIdx === 0 ? "Team 0 (Sitz 1 + 3)" : "Team 1 (Sitz 2 + 4)";
+  };
+
   return (
     <section
       className="rounded-lg border border-jass-paperEdge bg-jass-paper p-3 space-y-2"
@@ -192,14 +201,21 @@ function CumulativeScoreBar({ table }: { table: TableDetailView }) {
         <span>
           Partie-Stand (Ziel: <strong className="text-jass-ink">{target}</strong>)
         </span>
-        {winner !== null && (
+        {winner >= 0 && (
           <span className="text-jass-yellowDark font-semibold">
-            Team {winner} hat die Partie gewonnen!
+            {labelFor(winner)} hat die Partie gewonnen!
           </span>
         )}
       </div>
-      <ScoreRow label={`Team 0 (Sitz 0 + 2)`} score={t0} pct={t0Pct} highlight={winner === 0} />
-      <ScoreRow label={`Team 1 (Sitz 1 + 3)`} score={t1} pct={t1Pct} highlight={winner === 1} />
+      {scores.map((score, i) => (
+        <ScoreRow
+          key={i}
+          label={labelFor(i)}
+          score={score}
+          pct={Math.min(100, Math.round((score / target) * 100))}
+          highlight={winner === i}
+        />
+      ))}
     </section>
   );
 }
@@ -584,8 +600,7 @@ function GameSection({
   isAtTable,
   tableStatus,
   isFirstGame,
-  cumulativeScoreTeam0,
-  cumulativeScoreTeam1,
+  cumulativeScores,
   targetScore,
 }: {
   gameId: string;
@@ -594,9 +609,8 @@ function GameSection({
   tableStatus: TableDetailView["status"];
   /** Erstes Spiel der Partie → volle Cinematic. Sonst Kurz-Cinematic. */
   isFirstGame: boolean;
-  /** Kumulative Partie-Stände + Ziel (für RematchPanel-Kontext). */
-  cumulativeScoreTeam0: number;
-  cumulativeScoreTeam1: number;
+  /** Kumulative Partie-Stände (2 bei Kreuz, 4 bei Solo) für RematchPanel. */
+  cumulativeScores: readonly number[];
   targetScore: number;
 }) {
   const {
@@ -650,9 +664,10 @@ function GameSection({
           <RematchPanel
             gameId={gameId}
             finalScore={view.finalScore}
-            cumulativeScoreTeam0={cumulativeScoreTeam0}
-            cumulativeScoreTeam1={cumulativeScoreTeam1}
+            cumulativeScores={cumulativeScores}
             targetScore={targetScore}
+            seats={tableSeats}
+            mySeat={view.mySeat}
           />
         )}
         <DisconnectOverlay gameId={gameId} seats={tableSeats} mySeat={view.mySeat} />

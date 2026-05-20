@@ -3,23 +3,22 @@
  * prominenten „Weiter spielen"-Button.
  *
  * **Flow** (User-Spec aus Demo-Feedback):
- *   - Großer „Weiter spielen"-Button als Hauptaktion (= YES vote).
+ *   - Großer „Weiter"-Button als Hauptaktion (= YES vote).
  *   - Daneben dezent „Aufhören" (= NO vote, Tisch geht zurück nach WAITING).
  *   - **10-Sekunden-Auto-YES**: wenn der User innerhalb 10 s nicht klickt,
- *     wird YES automatisch ausgelöst. So muss niemand klicken, wenn er
- *     ohnehin weitermachen möchte (häufiger Fall) — Aufhören ist die
- *     bewusste Aktion.
- *   - Countdown sichtbar als kleine Sekundenzahl unter dem Button.
- *   - Nach dem Vote: Status-Anzeige (wartet auf Mitspieler / Rematch
- *     startet / zurück zur Lobby).
+ *     wird YES automatisch ausgelöst.
+ *   - Nach dem Vote: Status-Anzeige.
+ *
+ * **Solo-Jass**: erkennt 4 Konten an `finalScore.team_card_points.length`.
+ * Final-Score + Partie-Stand zeigen dann 4 Einzelspieler statt 2 Teams.
  *
  * Outcome-Events kommen via WS (`game:rematch-decided`) — die werden im
- * Eltern-Component (TableDetail) gehandhabt. Hier ist nur die Anzeige
- * + Vote-API-Call + Countdown-Logik.
+ * Eltern-Component (TableDetail) gehandhabt.
  */
 import { useMutation } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 
+import type { SeatView } from "~/features/lobby/types";
 import { api, ApiError } from "~/lib/api";
 import type { FinalScore, RematchOutcome } from "./types";
 
@@ -28,19 +27,23 @@ const AUTO_YES_SECONDS = 10;
 interface Props {
   gameId: string;
   finalScore: FinalScore | undefined;
-  /** Kumulativer Partie-Stand Team 0 — optional, für Kontext-Anzeige. */
-  cumulativeScoreTeam0?: number;
-  cumulativeScoreTeam1?: number;
-  /** Punkteziel der Partie (z.B. 1000). */
+  /** Kumulative Partie-Stände (2 bei Kreuz, 4 bei Solo). */
+  cumulativeScores?: readonly number[];
+  /** Punkteziel der Partie (z.B. 1000 / Solo 500). */
   targetScore?: number;
+  /** Sitze des Tisches — für die Namens-Auflösung im Solo-Modus. */
+  seats?: readonly SeatView[];
+  /** Eigener Sitz — wird im Solo-Final-Score mit „du" markiert. */
+  mySeat?: number;
 }
 
 export function RematchPanel({
   gameId,
   finalScore,
-  cumulativeScoreTeam0,
-  cumulativeScoreTeam1,
+  cumulativeScores,
   targetScore,
+  seats,
+  mySeat,
 }: Props) {
   const [myVote, setMyVote] = useState<"YES" | "NO" | null>(null);
   const [outcome, setOutcome] = useState<RematchOutcome | null>(null);
@@ -63,7 +66,6 @@ export function RematchPanel({
   });
 
   // Auto-YES-Countdown: läuft, solange noch nicht gevotet wurde.
-  // Bei 0 → automatisch YES auslösen.
   useEffect(() => {
     if (myVote !== null) return;
     if (secondsLeft <= 0) {
@@ -74,35 +76,35 @@ export function RematchPanel({
     return () => clearTimeout(t);
   }, [secondsLeft, myVote, voteMut]);
 
+  // Solo = 4 Punkte-Konten im Final-Score.
+  const isSolo = (finalScore?.team_card_points.length ?? 2) === 4;
+
+  /** Namens-Auflösung für einen Sitz (Solo: Team-ID == Sitz). */
+  function seatLabel(seat: number): string {
+    if (seat === mySeat) return "Du";
+    const s = seats?.find((x) => x.seat === seat);
+    if (s?.user) return s.user.name;
+    if (s?.aiSeatType) return `KI (Sitz ${seat + 1})`;
+    return `Sitz ${seat + 1}`;
+  }
+
   return (
     <section className="space-y-4 rounded-lg border border-jass-paperEdge bg-jass-cream p-4 shadow-sm">
       <h2 className="text-xl font-bold text-jass-ink">Spiel beendet</h2>
 
-      {finalScore && <FinalScoreView score={finalScore} />}
+      {finalScore && <FinalScoreView score={finalScore} isSolo={isSolo} seatLabel={seatLabel} />}
 
-      {/*
-        Kontextueller Partie-Stand: zeigt den kumulativen Score gegen
-        das Punkteziel. Hilft dem User zu verstehen, ob die Partie schon
-        knapp wird oder noch lange dauert.
-      */}
-      {targetScore !== undefined &&
-        cumulativeScoreTeam0 !== undefined &&
-        cumulativeScoreTeam1 !== undefined && (
-          <MatchProgress
-            team0={cumulativeScoreTeam0}
-            team1={cumulativeScoreTeam1}
-            target={targetScore}
-          />
-        )}
+      {targetScore !== undefined && cumulativeScores !== undefined && (
+        <MatchProgress
+          scores={cumulativeScores}
+          target={targetScore}
+          isSolo={isSolo}
+          seatLabel={seatLabel}
+        />
+      )}
 
       {!myVote ? (
         <div className="space-y-2">
-          {/* Texte bewusst kontextabhängig:
-                – POST_GAME (= Ziel nicht erreicht, Partie geht weiter):
-                  „Bereit für die nächste Runde?" — neutrale Fortsetzungs-
-                  Frage, keine „Lust auf nochmal"-Konnotation.
-                – Das Panel rendert OHNEHIN nur in POST_GAME; Partie-Ende
-                  läuft via OwnerPanel + new-match-Endpoint. */}
           <p className="text-jass-ink">Bereit für die nächste Runde?</p>
           <div className="flex flex-wrap items-center gap-3">
             <button
@@ -139,27 +141,38 @@ export function RematchPanel({
   );
 }
 
-function FinalScoreView({ score }: { score: FinalScore }) {
-  const sum = score.team_card_points.reduce((a, b) => a + b, 0);
-  const winner =
-    (score.team_card_points[0] ?? 0) > (score.team_card_points[1] ?? 0)
-      ? 0
-      : (score.team_card_points[1] ?? 0) > (score.team_card_points[0] ?? 0)
-        ? 1
-        : null;
+function FinalScoreView({
+  score,
+  isSolo,
+  seatLabel,
+}: {
+  score: FinalScore;
+  isSolo: boolean;
+  seatLabel: (seat: number) => string;
+}) {
+  const pts = score.team_card_points;
+  const sum = pts.reduce((a, b) => a + b, 0);
+  // Sieger = Konto mit den meisten Punkten (eindeutig oder null bei Gleichstand).
+  const max = Math.max(...pts);
+  const leaders = pts.filter((p) => p === max).length;
+  const winner = leaders === 1 ? pts.indexOf(max) : null;
+
   return (
     <div className="rounded border border-jass-paperEdge bg-jass-paper px-4 py-3 space-y-1">
-      <div className="flex gap-4 font-medium text-jass-ink">
-        <span>
-          Team 0 (Sitz 0+2): <strong>{score.team_card_points[0] ?? 0}</strong>
-        </span>
-        <span>
-          Team 1 (Sitz 1+3): <strong>{score.team_card_points[1] ?? 0}</strong>
-        </span>
+      <div className="flex flex-wrap gap-x-4 gap-y-1 font-medium text-jass-ink">
+        {pts.map((p, i) => (
+          <span key={i} className={winner === i ? "font-bold" : undefined}>
+            {isSolo ? seatLabel(i) : i === 0 ? "Team 0 (Sitz 1+3)" : "Team 1 (Sitz 2+4)"}:{" "}
+            <strong>{p}</strong>
+          </span>
+        ))}
       </div>
       <p className="text-sm text-jass-inkSoft">
-        Summe: {sum} {score.matsch_team !== null && <> · Matsch für Team {score.matsch_team}!</>}
-        {winner !== null && <> · Sieg: Team {winner}</>}
+        Summe: {sum}{" "}
+        {score.matsch_team !== null && (
+          <>· Matsch für {isSolo ? seatLabel(score.matsch_team) : `Team ${score.matsch_team}`}!</>
+        )}
+        {winner !== null && <> · Sieg: {isSolo ? seatLabel(winner) : `Team ${winner}`}</>}
       </p>
     </div>
   );
@@ -191,24 +204,34 @@ function RematchStatus({ vote, outcome }: { vote: "YES" | "NO"; outcome: Rematch
 }
 
 /**
- * Partie-Fortschritt-Anzeige: kumulative Scores beider Teams + Ziel.
- * Hebt visuell hervor, welches Team näher dran ist und wie viele Punkte
- * fehlen.
+ * Partie-Fortschritt-Anzeige: kumulative Scores + Ziel. Bei Kreuz 2
+ * Team-Zeilen, bei Solo 4 Spieler-Zeilen.
  */
-function MatchProgress({ team0, team1, target }: { team0: number; team1: number; target: number }) {
-  const leader = team0 > team1 ? 0 : team1 > team0 ? 1 : null;
-  const closest = Math.max(team0, team1);
-  const remaining = Math.max(0, target - closest);
+function MatchProgress({
+  scores,
+  target,
+  isSolo,
+  seatLabel,
+}: {
+  scores: readonly number[];
+  target: number;
+  isSolo: boolean;
+  seatLabel: (seat: number) => string;
+}) {
+  const max = Math.max(...scores, 0);
+  const remaining = Math.max(0, target - max);
   return (
     <div className="rounded border border-jass-paperEdge bg-jass-paper px-4 py-2 text-sm">
       <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
         <span className="text-xs uppercase tracking-wide text-jass-inkSoft">Partie-Stand</span>
-        <span className={leader === 0 ? "font-bold text-jass-ink" : "text-jass-inkSoft"}>
-          Team 0: {team0}
-        </span>
-        <span className={leader === 1 ? "font-bold text-jass-ink" : "text-jass-inkSoft"}>
-          Team 1: {team1}
-        </span>
+        {scores.map((s, i) => (
+          <span
+            key={i}
+            className={s === max && max > 0 ? "font-bold text-jass-ink" : "text-jass-inkSoft"}
+          >
+            {isSolo ? seatLabel(i) : `Team ${i}`}: {s}
+          </span>
+        ))}
         <span className="ml-auto text-xs text-jass-inkSoft">
           Ziel: <strong className="text-jass-ink">{target}</strong>
           {remaining > 0 && <> · noch {remaining} Punkte</>}

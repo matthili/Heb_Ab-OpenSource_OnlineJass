@@ -21,6 +21,7 @@
  */
 import { useEffect, useMemo, useState } from "react";
 
+import type { SeatView } from "~/features/lobby/types";
 import type { FinalScore } from "./types";
 
 const AUTO_DISMISS_MS = 5000;
@@ -30,10 +31,12 @@ interface Props {
   gameId: string;
   finalScore: FinalScore | undefined;
   mySeat: number;
-  teams: readonly number[]; // [0,1,0,1] für KREUZ_4P
+  teams: readonly number[]; // [0,1,0,1] Kreuz · [0,1,2,3] Solo
+  /** Sitze des Tisches — für die Namens-Auflösung im Solo-Modus. */
+  seats?: readonly SeatView[];
 }
 
-export function MatschOverlay({ gameId, finalScore, mySeat, teams }: Props) {
+export function MatschOverlay({ gameId, finalScore, mySeat, teams, seats }: Props) {
   const [dismissed, setDismissed] = useState(false);
 
   // Wenn die gameId wechselt (Rematch), Dismiss zurücksetzen.
@@ -73,6 +76,18 @@ export function MatschOverlay({ gameId, finalScore, mySeat, teams }: Props) {
   const matschTeam = finalScore.matsch_team;
   const myTeam = teams[mySeat] ?? 0;
   const iWon = myTeam === matschTeam;
+
+  // Solo = jeder Sitz ein eigenes Team. Dann ist matsch_team eine
+  // Spieler-ID (Team-ID == Sitz) — wir zeigen den Namen statt „Team X".
+  const isSolo = new Set(teams).size === teams.length;
+  const matschLabel = isSolo
+    ? (() => {
+        const s = seats?.find((x) => x.seat === matschTeam);
+        if (s?.user) return s.user.name;
+        if (s?.aiSeatType) return `KI (Sitz ${matschTeam + 1})`;
+        return `Sitz ${matschTeam + 1}`;
+      })()
+    : `Team ${matschTeam}`;
 
   return (
     <div
@@ -116,7 +131,7 @@ export function MatschOverlay({ gameId, finalScore, mySeat, teams }: Props) {
             MATSCH!
           </div>
           <div className="mt-2 text-lg font-semibold">
-            {iWon ? "Alle 9 Stiche — Hut ab!" : `Team ${matschTeam} hat alle 9 Stiche.`}
+            {iWon ? "Alle 9 Stiche — Hut ab!" : `${matschLabel} hat alle 9 Stiche.`}
           </div>
           <div className="mt-3 text-xs text-stone-600">(klicken zum Schließen)</div>
         </div>

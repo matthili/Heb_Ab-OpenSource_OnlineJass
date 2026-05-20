@@ -242,6 +242,7 @@ export function GameBoard({
         finalScore={view.finalScore}
         mySeat={mySeat}
         teams={state.teams}
+        seats={seats}
       />
     </div>
   );

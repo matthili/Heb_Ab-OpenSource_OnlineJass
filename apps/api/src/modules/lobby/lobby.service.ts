@@ -66,10 +66,11 @@ export interface TableListEntry {
   restartMode: "WELI" | "SIEGER_GIBT";
   /** Punkteziel der Partie (kumulativ über alle Spiele). */
   targetScore: number;
-  /** Kumulative Punkte Team 0 über alle bisher beendeten Spiele. */
-  cumulativeScoreTeam0: number;
-  /** Kumulative Punkte Team 1 über alle bisher beendeten Spiele. */
-  cumulativeScoreTeam1: number;
+  /**
+   * Kumulative Punkte je Team über alle bisher beendeten Spiele.
+   * Länge 2 bei Kreuz-Jass, 4 bei Solo-Jass (ein Konto pro Spieler).
+   */
+  cumulativeScores: readonly number[];
   seatsTaken: number; // 1..4
   hasPendingRequest: boolean; // ist der Caller eingetragen?
   createdAt: Date;
@@ -249,8 +250,7 @@ export class LobbyService {
       autoFillSeconds: t.autoFillSeconds,
       restartMode: t.restartMode as "WELI" | "SIEGER_GIBT",
       targetScore: t.targetScore,
-      cumulativeScoreTeam0: t.cumulativeScoreTeam0,
-      cumulativeScoreTeam1: t.cumulativeScoreTeam1,
+      cumulativeScores: buildCumulativeScores(t),
       seatsTaken: t.seats.length,
       hasPendingRequest: t.joinRequests.length > 0,
       createdAt: t.createdAt,
@@ -294,8 +294,7 @@ export class LobbyService {
       autoFillSeconds: t.autoFillSeconds,
       restartMode: t.restartMode as "WELI" | "SIEGER_GIBT",
       targetScore: t.targetScore,
-      cumulativeScoreTeam0: t.cumulativeScoreTeam0,
-      cumulativeScoreTeam1: t.cumulativeScoreTeam1,
+      cumulativeScores: buildCumulativeScores(t),
       seatsTaken: t.seats.length,
       hasPendingRequest: t.joinRequests.length > 0,
       createdAt: t.createdAt,
@@ -361,8 +360,7 @@ export class LobbyService {
       autoFillSeconds: table.autoFillSeconds,
       restartMode: table.restartMode as "WELI" | "SIEGER_GIBT",
       targetScore: table.targetScore,
-      cumulativeScoreTeam0: table.cumulativeScoreTeam0,
-      cumulativeScoreTeam1: table.cumulativeScoreTeam1,
+      cumulativeScores: buildCumulativeScores(table),
       seatsTaken: table.seats.length,
       hasPendingRequest: callerHasPendingRequest > 0,
       createdAt: table.createdAt,
@@ -1133,6 +1131,8 @@ export class LobbyService {
         status: LobbyTableStatus.WAITING,
         cumulativeScoreTeam0: 0,
         cumulativeScoreTeam1: 0,
+        cumulativeScoreTeam2: 0,
+        cumulativeScoreTeam3: 0,
         currentGameId: null,
         lastSeatChangeAt: new Date(),
       },
@@ -1669,6 +1669,27 @@ export class LobbyService {
  */
 function variantEnumToGameType(variant: string): "kreuz" | "solo" {
   return variant === "SOLO_4P" ? "solo" : "kreuz";
+}
+
+/**
+ * Baut das `cumulativeScores`-Array für die View-Layer. Kreuz-Jass hat
+ * 2 Konten, Solo-Jass 4 (eines pro Spieler). Die DB hält immer 4 Felder;
+ * bei Kreuz sind Team2/3 konstant 0 und werden hier weggeschnitten.
+ */
+function buildCumulativeScores(t: {
+  variant: string;
+  cumulativeScoreTeam0: number;
+  cumulativeScoreTeam1: number;
+  cumulativeScoreTeam2: number;
+  cumulativeScoreTeam3: number;
+}): number[] {
+  const all = [
+    t.cumulativeScoreTeam0,
+    t.cumulativeScoreTeam1,
+    t.cumulativeScoreTeam2,
+    t.cumulativeScoreTeam3,
+  ];
+  return t.variant === "SOLO_4P" ? all : all.slice(0, 2);
 }
 
 /**

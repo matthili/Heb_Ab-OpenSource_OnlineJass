@@ -288,10 +288,15 @@ model LobbyTable {
 
   // **Kumulative Scores** über alle bisher beendeten Spiele am Tisch.
   // Wird nach jedem Game-Ende um `finalScore.team_card_points` (inkl.
-  // Matsch-Bonus) erweitert. Sobald einer der beiden Werte >= targetScore,
-  // ist die Partie gewonnen und der Tisch landet in MATCH_OVER.
+  // Matsch-Bonus) erweitert. Sobald einer der Werte >= targetScore, ist
+  // die Partie gewonnen und der Tisch landet in MATCH_OVER.
+  //
+  // Index = Team-ID. Kreuz-Jass nutzt Team0+1 (Team2/3 bleiben 0).
+  // Solo-Jass nutzt alle vier — jeder Sitz ist sein eigenes Team.
   cumulativeScoreTeam0 Int          @default(0)
   cumulativeScoreTeam1 Int          @default(0)
+  cumulativeScoreTeam2 Int          @default(0)
+  cumulativeScoreTeam3 Int          @default(0)
 
   status          LobbyTableStatus @default(WAITING)
 
