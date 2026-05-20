@@ -33,6 +33,7 @@ import { randomBytes } from "node:crypto";
 import { dealCards, isWeli, type Card, type RandomFn } from "@jass/engine";
 
 import { AuditService } from "../audit/audit.service.js";
+import { BodenseeGameService } from "../game/bodensee-game.service.js";
 import { GameService, type SeatAssignment } from "../game/game.service.js";
 import { PrismaService } from "../prisma/prisma.service.js";
 import type {
@@ -93,6 +94,7 @@ export class LobbyService {
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
     private readonly games: GameService,
+    private readonly bodenseeGames: BodenseeGameService,
     private readonly gateway: LobbyGateway
   ) {}
 
@@ -326,11 +328,11 @@ export class LobbyService {
     });
     if (!table) throw new NotFoundException(`Tisch ${tableId} nicht gefunden`);
 
-    // 4-Sitz-Layout: leere Sitze als Platzhalter zeigen, damit die UI alle
-    // Plätze rendern kann.
+    // Sitz-Layout je Spielart: leere Sitze als Platzhalter zeigen, damit die
+    // UI alle Plätze rendern kann (4 bei Kreuz/Solo, 2 bei Bodensee).
     const seatsByIndex = new Map(table.seats.map((s) => [s.seat, s]));
     const seats: SeatView[] = [];
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0; i < seatCountForVariant(table.variant); i++) {
       const s = seatsByIndex.get(i);
       if (!s) {
         seats.push({ seat: i, isEmpty: true });
@@ -1039,6 +1041,9 @@ export class LobbyService {
     if (!game.table) {
       throw new ConflictException("Game gehört zu keinem Tisch — kein Re-Match möglich.");
     }
+    if (game.table.variant === "BODENSEE_2P") {
+      throw new ConflictException("Re-Match-Voting ist für Bodensee-Jass noch nicht verfügbar.");
+    }
     if (game.table.status !== LobbyTableStatus.POST_GAME) {
       throw new ConflictException(
         `Re-Match nur in POST_GAME möglich (aktuell ${game.table.status}).`
@@ -1431,13 +1436,18 @@ export class LobbyService {
     tableId: string,
     userId: string
   ): Promise<number> {
+    const tbl = await tx.lobbyTable.findUnique({
+      where: { id: tableId },
+      select: { variant: true },
+    });
+    const seatCount = seatCountForVariant(tbl?.variant ?? "KREUZ_4P");
     const occupied = await tx.lobbyTableSeat.findMany({
       where: { tableId },
       select: { seat: true, joinOrder: true },
     });
     const taken = new Set(occupied.map((s) => s.seat));
     let seat = -1;
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0; i < seatCount; i++) {
       if (!taken.has(i)) {
         seat = i;
         break;
@@ -1511,7 +1521,7 @@ export class LobbyService {
     });
     if (!table) return null;
     if (table.status !== LobbyTableStatus.WAITING) return null;
-    if (table.seats.length < 4) return null;
+    if (table.seats.length < seatCountForVariant(table.variant)) return null;
 
     return this.startGameFromTable(table.id);
   }
@@ -1563,13 +1573,23 @@ export class LobbyService {
       where: { id: tableId },
       include: { seats: { orderBy: { seat: "asc" } } },
     });
-    if (!table || table.seats.length < 4) return null;
+    if (!table || table.seats.length < seatCountForVariant(table.variant)) return null;
 
     const seats: SeatAssignment[] = table.seats.map((s) => ({
       seat: s.seat,
       userId: s.userId,
       aiSeatType: s.aiSeatType,
     }));
+
+    // Bodensee-Jass läuft über den eigenen 2-Spieler-Service.
+    if (table.variant === "BODENSEE_2P") {
+      const { gameId } = await this.bodenseeGames.createGame({ tableId, seats });
+      this.log.log(
+        { tableId, gameId, variant: table.variant },
+        "Bodensee-Game aus Tisch gestartet (Ansage-Modus)"
+      );
+      return gameId;
+    }
 
     const { gameId } = await this.games.createGame({
       tableId,
@@ -1594,12 +1614,13 @@ export class LobbyService {
       include: { seats: { select: { seat: true, joinOrder: true } } },
     });
     if (!table) return;
+    const seatCount = seatCountForVariant(table.variant);
     const taken = new Set(table.seats.map((s) => s.seat));
-    if (taken.size >= 4) return;
+    if (taken.size >= seatCount) return;
     const maxOrder = table.seats.reduce((m, s) => Math.max(m, s.joinOrder), -1);
     let order = maxOrder + 1;
     let inserted = 0;
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0; i < seatCount; i++) {
       if (taken.has(i)) continue;
       await tx.lobbyTableSeat.create({
         data: {
@@ -1662,10 +1683,19 @@ export class LobbyService {
 }
 
 /**
- * Mappt den DB-`GameVariant`-Enum auf die `GameType` des GameService
- * (`kreuz` | `solo`). SOLO_4P → solo, alles andere → kreuz.
- * KREUZ_6P / KREUZ_STEIGERN / BODENSEE_2P sind noch nicht spielbar und
- * fallen sicherheitshalber auf `kreuz` zurück.
+ * Anzahl Sitze je Spielart. Bodensee-Jass ist ein 2-Spieler-Spiel; alle
+ * übrigen Varianten haben 4 Sitze.
+ */
+function seatCountForVariant(variant: string): number {
+  return variant === "BODENSEE_2P" ? 2 : 4;
+}
+
+/**
+ * Mappt den DB-`GameVariant`-Enum auf die `GameType` des 4-Spieler-
+ * `GameService` (`kreuz` | `solo`). SOLO_4P → solo, alles andere → kreuz.
+ * BODENSEE_2P läuft über den eigenen `BodenseeGameService` und erreicht
+ * diese Funktion gar nicht; KREUZ_6P / KREUZ_STEIGERN fallen
+ * sicherheitshalber auf `kreuz` zurück.
  */
 function variantEnumToGameType(variant: string): "kreuz" | "solo" {
   return variant === "SOLO_4P" ? "solo" : "kreuz";

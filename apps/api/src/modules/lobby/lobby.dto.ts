@@ -17,9 +17,9 @@ const AiSeatTypeSchema = z
 
 const JoinModeSchema = z.enum(["OPEN", "REQUEST", "INVITE"]);
 const RestartModeSchema = z.enum(["WELI", "SIEGER_GIBT"]);
-// Spielarten: Kreuz-Jass (4er-Team) und Solo-Jass (jeder gegen jeden).
-// KREUZ_6P / KREUZ_STEIGERN / BODENSEE_2P folgen in späteren Sprints.
-const VariantEnumSchema = z.enum(["KREUZ_4P", "SOLO_4P"]);
+// Spielarten: Kreuz-Jass (4er-Team, 4 Sitze), Solo-Jass (jeder gegen jeden,
+// 4 Sitze) und Bodensee-Jass (2 Spieler). KREUZ_6P / KREUZ_STEIGERN folgen.
+const VariantEnumSchema = z.enum(["KREUZ_4P", "SOLO_4P", "BODENSEE_2P"]);
 
 /**
  * Tisch öffnen. Eröffner sitzt auf Sitz 0. Optional können KI-Sitze direkt
@@ -68,7 +68,16 @@ export const OpenTableDtoSchema = z
         "initialAiSeats darf keine doppelten Sitz-Nummern haben"
       ),
   })
-  .strict();
+  .strict()
+  .refine(
+    (v) => {
+      // Bodensee-Jass hat nur Sitz 0 (Owner) + Sitz 1 — höhere Sitz-Nummern
+      // existieren bei dieser Spielart nicht.
+      const maxSeat = v.variant === "BODENSEE_2P" ? 1 : 3;
+      return v.initialAiSeats.every((s) => s.seat <= maxSeat);
+    },
+    { message: "initialAiSeats enthält einen Sitz, den diese Spielart nicht hat" }
+  );
 export type OpenTableDto = z.infer<typeof OpenTableDtoSchema>;
 
 /**
