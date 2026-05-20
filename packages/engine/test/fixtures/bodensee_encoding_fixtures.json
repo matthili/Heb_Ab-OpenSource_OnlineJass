@@ -630,8 +630,8 @@
       }
     },
     {
-      "id": "bfix_06_gumpf_sechs_sticht",
-      "description": "Gumpf-Eichel, Herz-Ass angespielt (Nicht-Trumpf). In Gumpf ist die Herz-6 die staerkste Herz-Karte. Bedienzwang -> Herz-Karten legal.",
+      "id": "bfix_06_gumpf_bedienen_oder_stechen",
+      "description": "Gumpf-Eichel, Herz-Ass angespielt. Hand hat Herz-Karten (Lead-Farbe), auf dem Tisch liegt sichtbar ein Trumpf (Eichel-Sieben). Grundregel bedienen ODER stechen: legal sind beide Herz-Karten UND der Tisch-Trumpf Eichel-Sieben.",
       "input": {
         "hand": [
           {
@@ -721,7 +721,7 @@
           0.0, 0.0, 0.0, 0.0, 0.666667, 0.0
         ],
         "legal_mask": [
-          0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0,
+          0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0,
           0, 0, 0, 0, 0, 0
         ],
         "state_vector_shape": [291],

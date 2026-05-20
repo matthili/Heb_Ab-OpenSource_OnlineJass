@@ -79,35 +79,10 @@ describe("Bodensee-Encoder — Fixture-Konsistenz (bodensee_1.0.0)", () => {
       }
     });
 
-    it(`${fx.id}: legal_mask`, () => {
+    it(`${fx.id}: legal_mask exakt`, () => {
       const mask = legalActionMaskBodensee(fx.input);
       expect(mask).toHaveLength(BODENSEE_ACTION_DIM);
-      const expected = expectedMaskFor(fx);
-      expect(Array.from(mask)).toEqual(expected);
+      expect(Array.from(mask)).toEqual(fx.expected.legal_mask);
     });
   }
 });
-
-/**
- * Erwartete Legal-Maske für eine Fixture.
- *
- * **Bekannte Abweichung — `bfix_06`:** Die NN-Referenz-Engine
- * (`jass_engine/rules.py`) implementiert den Bedien-/Stech-Zwang falsch:
- * sie lässt das Stechen mit einem Nicht-Buur-Trumpf weg, obwohl die
- * Jass-Grundregel „bedienen ODER stechen" das erlaubt (liegt noch kein
- * Trumpf im Stich, sticht jeder Trumpf). Das offizielle Fixture kodiert
- * diesen Bug.
- *
- * Unsere Engine ist hier bewusst korrekt — daher ergänzen wir für
- * `bfix_06` die fehlende Trumpf-Karte (EICHEL-SIEBEN, card_index 1) zur
- * erwarteten Maske. Die NN-Referenz sollte über ein Repo-Issue
- * korrigiert werden; bis dahin ist diese Liste der dokumentierte Diff.
- */
-function expectedMaskFor(fx: BodenseeFixture): number[] {
-  if (fx.id === "bfix_06_gumpf_sechs_sticht") {
-    const corrected = [...fx.expected.legal_mask];
-    corrected[1] = 1; // EICHEL-SIEBEN: Trumpf-Stechen ist erlaubt
-    return corrected;
-  }
-  return fx.expected.legal_mask;
-}
