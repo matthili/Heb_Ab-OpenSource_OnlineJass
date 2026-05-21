@@ -15,7 +15,9 @@
     "test:unit": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
+    "pretest:integration": "node scripts/clean-testcontainers.mjs",
     "test:integration": "vitest run --config vitest.integration.config.ts",
+    "pretest:integration:watch": "node scripts/clean-testcontainers.mjs",
     "test:integration:watch": "vitest --config vitest.integration.config.ts"
   },
   "dependencies": {
