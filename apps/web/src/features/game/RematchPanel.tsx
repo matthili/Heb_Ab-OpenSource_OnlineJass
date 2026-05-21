@@ -16,7 +16,7 @@
  * Eltern-Component (TableDetail) gehandhabt.
  */
 import { useMutation } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { SeatView } from "~/features/lobby/types";
 import { api, ApiError } from "~/lib/api";
@@ -49,6 +49,7 @@ export function RematchPanel({
   const [outcome, setOutcome] = useState<RematchOutcome | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [secondsLeft, setSecondsLeft] = useState(AUTO_YES_SECONDS);
+  const votedRef = useRef(false);
 
   const voteMut = useMutation({
     mutationFn: (vote: "YES" | "NO") =>
@@ -65,16 +66,26 @@ export function RematchPanel({
     },
   });
 
+  // Sendet den Vote genau einmal — egal wie oft aufgerufen.
+  const castVote = useCallback(
+    (vote: "YES" | "NO") => {
+      if (votedRef.current) return;
+      votedRef.current = true;
+      voteMut.mutate(vote);
+    },
+    [voteMut]
+  );
+
   // Auto-YES-Countdown: läuft, solange noch nicht gevotet wurde.
   useEffect(() => {
     if (myVote !== null) return;
     if (secondsLeft <= 0) {
-      voteMut.mutate("YES");
+      castVote("YES");
       return;
     }
     const t = setTimeout(() => setSecondsLeft((s) => s - 1), 1000);
     return () => clearTimeout(t);
-  }, [secondsLeft, myVote, voteMut]);
+  }, [secondsLeft, myVote, castVote]);
 
   // Solo = 4 Punkte-Konten im Final-Score.
   const isSolo = (finalScore?.team_card_points.length ?? 2) === 4;
@@ -109,7 +120,7 @@ export function RematchPanel({
           <div className="flex flex-wrap items-center gap-3">
             <button
               type="button"
-              onClick={() => voteMut.mutate("YES")}
+              onClick={() => castVote("YES")}
               disabled={voteMut.isPending}
               className="btn-jass-primary text-base"
             >
@@ -117,7 +128,7 @@ export function RematchPanel({
             </button>
             <button
               type="button"
-              onClick={() => voteMut.mutate("NO")}
+              onClick={() => castVote("NO")}
               disabled={voteMut.isPending}
               className="text-sm text-jass-inkSoft underline hover:text-jass-ink disabled:opacity-50"
             >
