@@ -3,17 +3,21 @@
  *
  * Bewusst schlank: der Endstand wird bereits vom `FinishedPanel` in der
  * `BodenseeBoard` angezeigt — dieses Panel liefert nur die Abstimmung
- * („Weiter spielen?"). Spiegelt das Verhalten von `RematchPanel` (Kreuz/
- * Solo): großer „Weiter"-Button (= YES), dezentes „Aufhören" (= NO),
- * 10-Sekunden-Auto-YES.
+ * („Weiter spielen?"). Großer „Weiter"-Button (= YES), dezentes
+ * „Aufhören" (= NO), 10-Sekunden-Auto-YES.
  *
  * Vote geht an `POST /api/games/:id/rematch-vote` (derselbe Endpoint wie
  * Kreuz/Solo). Bei All-YES startet das Backend über `BodenseeGameService`
- * ein frisches Spiel; der Tisch-State-Push wechselt die UI automatisch
- * zum neuen Game.
+ * ein frisches Spiel; der Tisch-State-Push wechselt die UI zum neuen Game.
+ *
+ * **Einmal-Guard** (`votedRef`): Der Auto-YES-Effekt kann mehrfach
+ * durchlaufen (React re-rendert das Mutation-Objekt). Ohne Guard würden
+ * zwei Votes quasi-gleichzeitig rausgehen — der zweite läuft serverseitig
+ * in einen Unique-Constraint und liefert einen 500er. `castVote` sendet
+ * darum garantiert nur einmal.
  */
 import { useMutation } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { RematchOutcome } from "~/features/game/types";
 import { api, ApiError } from "~/lib/api";
@@ -25,6 +29,7 @@ export function BodenseeRematchPanel({ gameId }: { gameId: string }) {
   const [outcome, setOutcome] = useState<RematchOutcome | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [secondsLeft, setSecondsLeft] = useState(AUTO_YES_SECONDS);
+  const votedRef = useRef(false);
 
   const voteMut = useMutation({
     mutationFn: (vote: "YES" | "NO") =>
@@ -41,16 +46,26 @@ export function BodenseeRematchPanel({ gameId }: { gameId: string }) {
     },
   });
 
+  // Sendet den Vote genau einmal — egal wie oft aufgerufen.
+  const castVote = useCallback(
+    (vote: "YES" | "NO") => {
+      if (votedRef.current) return;
+      votedRef.current = true;
+      voteMut.mutate(vote);
+    },
+    [voteMut]
+  );
+
   // Auto-YES-Countdown — läuft, solange noch nicht gevotet wurde.
   useEffect(() => {
     if (myVote !== null) return;
     if (secondsLeft <= 0) {
-      voteMut.mutate("YES");
+      castVote("YES");
       return;
     }
     const t = setTimeout(() => setSecondsLeft((s) => s - 1), 1000);
     return () => clearTimeout(t);
-  }, [secondsLeft, myVote, voteMut]);
+  }, [secondsLeft, myVote, castVote]);
 
   return (
     <section className="space-y-3 rounded-lg border border-jass-paperEdge bg-jass-cream p-4 shadow-sm">
@@ -60,7 +75,7 @@ export function BodenseeRematchPanel({ gameId }: { gameId: string }) {
           <div className="flex flex-wrap items-center gap-3">
             <button
               type="button"
-              onClick={() => voteMut.mutate("YES")}
+              onClick={() => castVote("YES")}
               disabled={voteMut.isPending}
               className="btn-jass-primary text-base"
             >
@@ -68,7 +83,7 @@ export function BodenseeRematchPanel({ gameId }: { gameId: string }) {
             </button>
             <button
               type="button"
-              onClick={() => voteMut.mutate("NO")}
+              onClick={() => castVote("NO")}
               disabled={voteMut.isPending}
               className="text-sm text-jass-inkSoft underline hover:text-jass-ink disabled:opacity-50"
             >
