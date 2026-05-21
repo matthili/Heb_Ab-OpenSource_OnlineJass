@@ -17,6 +17,7 @@
  *   - driveBodenseeAIsLoop treibt Ansage + KI-Züge bis zum Spielende
  *   - Lobby startet einen BODENSEE_2P-Tisch über BodenseeGameService
  *   - DB-Persistenz: 36 Moves (18 Stiche × 2), 18 mit User-ID, 18 ohne
+ *   - Re-Match: nach Spielende startet ein YES-Vote ein frisches Game
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { io, type Socket } from "socket.io-client";
@@ -63,7 +64,7 @@ describe("Bodensee-ws — 1 User (via WS) + 1 KI spielen eine Partie durch", () 
     /* globalTeardown */
   });
 
-  it("18 Stiche, finalScore für 2 Spieler, Hand leer, 36 Moves in DB", async () => {
+  it("18 Stiche, finalScore, 36 Moves in DB — danach Re-Match", async () => {
     const { http, userId } = await signUpAndIn(app, {
       email: "bodensee-ws@jass.local",
       password: "bodensee-test-passw0rd-12!",
@@ -181,6 +182,26 @@ describe("Bodensee-ws — 1 User (via WS) + 1 KI spielen eine Partie durch", () 
     expect(dbMoves).toHaveLength(36); // 18 Stiche × 2 Spieler
     expect(dbMoves.filter((m) => m.userId === userId)).toHaveLength(18);
     expect(dbMoves.filter((m) => m.userId === null)).toHaveLength(18);
+
+    // ─── 6. Re-Match ────────────────────────────────────────────────────
+    // Tisch steht nach Spielende auf POST_GAME. Der einzige Mensch votet
+    // YES → das Backend startet sofort ein frisches Bodensee-Game.
+    const rematch = await http.request<{ kind: string; gameId?: string }>(
+      `/api/games/${gameId}/rematch-vote`,
+      { method: "POST", body: JSON.stringify({ vote: "YES" }) }
+    );
+    expect(rematch.status, JSON.stringify(rematch.body)).toBeLessThan(300);
+    expect(rematch.body.kind).toBe("rematch-started");
+    expect(rematch.body.gameId).toBeTruthy();
+    expect(rematch.body.gameId).not.toBe(gameId);
+
+    // Der Tisch zeigt jetzt auf das neue Game und ist wieder IN_GAME.
+    const afterRematch = await http.request<{ currentGameId: string | null; status: string }>(
+      `/api/lobby/tables/${tableId}`,
+      { method: "GET" }
+    );
+    expect(afterRematch.body.currentGameId).toBe(rematch.body.gameId);
+    expect(afterRematch.body.status).toBe("IN_GAME");
   });
 });
 

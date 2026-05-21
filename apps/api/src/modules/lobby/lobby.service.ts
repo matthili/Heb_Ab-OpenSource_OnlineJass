@@ -1041,9 +1041,6 @@ export class LobbyService {
     if (!game.table) {
       throw new ConflictException("Game gehört zu keinem Tisch — kein Re-Match möglich.");
     }
-    if (game.table.variant === "BODENSEE_2P") {
-      throw new ConflictException("Re-Match-Voting ist für Bodensee-Jass noch nicht verfügbar.");
-    }
     if (game.table.status !== LobbyTableStatus.POST_GAME) {
       throw new ConflictException(
         `Re-Match nur in POST_GAME möglich (aktuell ${game.table.status}).`
@@ -1194,6 +1191,26 @@ export class LobbyService {
     }
 
     // Alle YES → neues Game starten.
+    // Bodensee: eigener 2-Spieler-Service. `createGame` teilt frisch aus und
+    // bestimmt den WELI-Halter selbst zum Ansager — kein vorab berechneter
+    // Starter / keine vorab gemischten Hände nötig wie bei Kreuz/Solo.
+    if (game.table.variant === "BODENSEE_2P") {
+      const { gameId: bodenseeGameId } = await this.bodenseeGames.createGame({
+        tableId: game.table.id,
+        seats: game.table.seats.map((s) => ({
+          seat: s.seat,
+          userId: s.userId,
+          aiSeatType: s.aiSeatType,
+        })),
+      });
+      await this.audit.record({
+        action: "game.rematch.started",
+        target: game.table.id,
+        meta: { previousGameId: gameId, newGameId: bodenseeGameId, variant: "BODENSEE_2P" },
+      });
+      return { kind: "rematch-started", gameId: bodenseeGameId, starter: -1 };
+    }
+
     const lastStarter = game.rounds[game.rounds.length - 1]?.starter ?? 0;
     const finalScore = (game.finalScore ?? null) as {
       team_card_points: number[];

@@ -17,6 +17,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { type FormEvent, useCallback, useEffect, useState } from "react";
 
 import { BodenseeBoard } from "~/features/bodensee/BodenseeBoard";
+import { BodenseeRematchPanel } from "~/features/bodensee/BodenseeRematchPanel";
 import { useBodenseeView } from "~/features/bodensee/useBodenseeView";
 import { ChatPanel } from "~/features/chat/ChatPanel";
 import { DisconnectOverlay } from "~/features/game/DisconnectOverlay";
@@ -117,6 +118,7 @@ export function TableDetail({ tableId }: Props) {
             gameId={data.currentGameId}
             tableSeats={data.seats}
             isAtTable={amIAtTable}
+            tableStatus={data.status}
           />
         ) : (
           <GameSection
@@ -699,10 +701,12 @@ function BodenseeGameSection({
   gameId,
   tableSeats,
   isAtTable,
+  tableStatus,
 }: {
   gameId: string;
   tableSeats: TableDetailView["seats"];
   isAtTable: boolean;
+  tableStatus: TableDetailView["status"];
 }) {
   const { view, error, movePending, announcePending, playCard, announce } = useBodenseeView(
     isAtTable ? gameId : null
@@ -732,6 +736,9 @@ function BodenseeGameSection({
           onPlayCard={playCard}
           onAnnounce={announce}
         />
+        {tableStatus === "POST_GAME" && view.status === "finished" && (
+          <BodenseeRematchPanel gameId={gameId} />
+        )}
       </div>
       <ChatPanel channelKey={`game:${gameId}`} title="Tisch-Chat" />
     </section>
