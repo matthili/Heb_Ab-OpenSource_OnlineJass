@@ -505,6 +505,46 @@ export class BodenseeGameService {
   }
 
   // ───────────────────────────────────────────────────────────────────
+  // Disconnect-Handling
+  // ───────────────────────────────────────────────────────────────────
+
+  /**
+   * IDs laufender Bodensee-Games, in denen der User einen noch nicht
+   * KI-ersetzten Sitz hat. Für das Disconnect-Handling im Gateway.
+   */
+  async getActiveGameIdsForUser(userId: string): Promise<string[]> {
+    const seats = await this.prisma.gameSeat.findMany({
+      where: {
+        userId,
+        replacedByAiSeatType: null,
+        game: { variant: "BODENSEE_2P", endedAt: null },
+      },
+      select: { gameId: true },
+    });
+    return seats.map((s) => s.gameId);
+  }
+
+  /**
+   * Ersetzt den Sitz eines getrennten Spielers durch eine KI. Idempotent —
+   * gibt `false` zurück, wenn der Sitz nicht (mehr) existiert oder schon
+   * ersetzt war. Der Aufrufer treibt danach die KI-Loop weiter.
+   */
+  async replaceSeatWithAi(gameId: string, userId: string): Promise<boolean> {
+    const res = await this.prisma.gameSeat.updateMany({
+      where: { gameId, userId, replacedByAiSeatType: null },
+      data: { replacedByAiSeatType: "heuristic" },
+    });
+    if (res.count > 0) {
+      await this.audit.record({
+        action: "bodensee.seat.replaced_by_ai",
+        target: gameId,
+        meta: asJson({ userId }),
+      });
+    }
+    return res.count > 0;
+  }
+
+  // ───────────────────────────────────────────────────────────────────
   // Redis-Helfer
   // ───────────────────────────────────────────────────────────────────
 

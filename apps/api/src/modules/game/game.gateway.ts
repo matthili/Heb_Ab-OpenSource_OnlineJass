@@ -223,9 +223,10 @@ export class GameGateway
       const remaining = await this.userRegistry.countSockets(userId);
       if (remaining === 0) {
         // User ist real offline — alle Tabs/Geräte weg.
-        // Wenn er an einem laufenden Game sitzt, Disconnect-Vote-Flow
-        // triggern. Sonst nichts zu tun.
+        // Wenn er an einem laufenden Game sitzt, Disconnect-Flow triggern:
+        // Kreuz/Solo via mehrstufigem Vote, Bodensee via KI-Übernahme.
         await this.triggerDisconnectVotesForUser(userId);
+        await this.triggerBodenseeDisconnectForUser(userId);
       }
     } catch (err) {
       this.log.warn({ err, userId }, "Disconnect-Handling fehlgeschlagen");
@@ -245,6 +246,33 @@ export class GameGateway
       if (seat === null) continue;
       const participants = await this.games.getDisconnectParticipants(gameId, [seat]);
       await this.disconnectVote.onSeatDisconnected(gameId, seat, userId, participants);
+    }
+  }
+
+  /**
+   * Disconnect-Handling für Bodensee-Tische. Bodensee ist 2-Spieler — ein
+   * mehrstufiges Vote wie bei Kreuz ergäbe keinen Sinn. Stattdessen wird
+   * der Sitz des getrennten Spielers sofort durch eine KI ersetzt, damit
+   * das Spiel nicht hängenbleibt; die KI-Loop spielt weiter — bzw. das
+   * Spiel zu Ende, falls dann beide Sitze KI sind.
+   */
+  private async triggerBodenseeDisconnectForUser(userId: string): Promise<void> {
+    const gameIds = await this.bodenseeGames.getActiveGameIdsForUser(userId);
+    for (const gameId of gameIds) {
+      try {
+        await this.locks.withLock(gameId, async () => {
+          const replaced = await this.bodenseeGames.replaceSeatWithAi(gameId, userId);
+          if (!replaced) return;
+          this.chatGateway.broadcastSystemMessage(
+            roomKey(gameId),
+            "Ein Spieler hat die Verbindung verloren — die KI übernimmt seinen Platz."
+          );
+          await this.broadcastBodenseeState(gameId);
+          await this.driveBodenseeAIsLoop(gameId);
+        });
+      } catch (err) {
+        this.log.warn({ err, gameId, userId }, "Bodensee-Disconnect-Handling fehlgeschlagen");
+      }
     }
   }
 

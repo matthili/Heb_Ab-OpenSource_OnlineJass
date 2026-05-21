@@ -203,6 +203,76 @@ describe("Bodensee-ws — 1 User (via WS) + 1 KI spielen eine Partie durch", () 
     expect(afterRematch.body.currentGameId).toBe(rematch.body.gameId);
     expect(afterRematch.body.status).toBe("IN_GAME");
   });
+
+  it("Disconnect mitten im Spiel — KI übernimmt, das Spiel läuft zu Ende", async () => {
+    const { http, userId } = await signUpAndIn(app, {
+      email: "bodensee-dc@jass.local",
+      password: "bodensee-dc-passw0rd-12!",
+      name: "bodensee_dc",
+    });
+
+    const create = await http.request<{ tableId: string }>("/api/lobby/tables", {
+      method: "POST",
+      body: JSON.stringify({
+        joinMode: "OPEN",
+        variant: "BODENSEE_2P",
+        aiSeatType: "random",
+        initialAiSeats: [{ seat: 1 }],
+      }),
+    });
+    expect(create.status, JSON.stringify(create.body)).toBe(201);
+    const tableId = create.body.tableId;
+
+    const tableDetail = await http.request<{ currentGameId: string | null }>(
+      `/api/lobby/tables/${tableId}`,
+      { method: "GET" }
+    );
+    const gameId = tableDetail.body.currentGameId!;
+    expect(gameId).toBeTruthy();
+
+    // WS verbinden, joinen — dann die Verbindung hart kappen.
+    const socket: Socket = io(app.baseUrl, {
+      path: "/ws",
+      transports: ["websocket"],
+      extraHeaders: { Cookie: http.cookieHeader() },
+      reconnection: false,
+    });
+    await new Promise<void>((resolve, reject) => {
+      socket.once("connect", () => resolve());
+      socket.once("connect_error", (err) => reject(new Error(`WS connect_error: ${err.message}`)));
+      setTimeout(() => reject(new Error("WS connect timeout (5s)")), 5_000);
+    });
+    socket.emit("bodensee:join", { gameId });
+    await sleep(300);
+    socket.disconnect();
+
+    // Nach dem Disconnect wird der Sitz KI-ersetzt; dann sind beide Sitze
+    // KI und die KI-Loop spielt das Spiel zu Ende.
+    const deadline = Date.now() + 30_000;
+    let ended = false;
+    while (Date.now() < deadline) {
+      const g = await app.prisma.game.findUnique({
+        where: { id: gameId },
+        select: { endedAt: true },
+      });
+      if (g?.endedAt) {
+        ended = true;
+        break;
+      }
+      await sleep(300);
+    }
+    expect(ended, "Spiel sollte nach Disconnect von der KI beendet werden").toBe(true);
+
+    const moves = await app.prisma.move.count({ where: { gameId } });
+    expect(moves).toBe(36);
+
+    // Der Sitz des getrennten Users ist als KI-ersetzt markiert.
+    const seat = await app.prisma.gameSeat.findFirst({
+      where: { gameId, userId },
+      select: { replacedByAiSeatType: true },
+    });
+    expect(seat?.replacedByAiSeatType).toBeTruthy();
+  });
 });
 
 function sleep(ms: number): Promise<void> {
