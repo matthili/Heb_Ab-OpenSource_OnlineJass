@@ -17,6 +17,13 @@
  */
 @import "tailwindcss";
 
+/* Das geteilte UI-Paket `@jass/ui` (Card, Hand, Trick, Scoreboard) liegt
+ * außerhalb des Vite-Roots `apps/web`. Tailwind 4 erkennt Content sonst
+ * nur innerhalb des Roots — ohne dieses `@source` würden die nur dort
+ * verwendeten Utilities (z.B. die Karten-Größen `h-32`/`h-48`) fehlen
+ * und Karten in Naturalgröße rendern. */
+@source "../../../packages/ui/src";
+
 @theme {
   /* PAPIER / KARTON — Hintergrund-Schichten */
   --color-jass-cardBg: #faf3e0;
