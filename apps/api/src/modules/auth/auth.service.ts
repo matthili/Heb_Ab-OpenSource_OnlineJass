@@ -17,6 +17,7 @@ import { Injectable, Logger, type OnModuleInit } from "@nestjs/common";
 import { betterAuth, type BetterAuthOptions } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 
+import { ADMIN_BOOTSTRAP_ACTION, configuredAdminEmail } from "../admin/admin-bootstrap.util.js";
 import { AuditService } from "../audit/audit.service.js";
 import { BlocklistService } from "../blocklist/blocklist.service.js";
 import { MailService } from "../mail/mail.service.js";
@@ -174,6 +175,29 @@ export class AuthService implements OnModuleInit {
                 meta: { email: user.email, name: user.name },
                 ip: extractIp(ctx),
               });
+              // ── Erst-Admin-Bootstrap ─────────────────────────────────
+              // Registriert sich der in ADMIN_EMAIL hinterlegte Account,
+              // wird er sofort befördert — ohne API-Neustart. Der Start-up-
+              // Pfad (AdminBootstrapService) greift nur für Accounts, die
+              // beim Boot schon existieren; dieser Hook deckt den Rest ab.
+              const adminEmail = configuredAdminEmail();
+              if (adminEmail && user.email.trim().toLowerCase() === adminEmail) {
+                await this.prisma.user.update({
+                  where: { id: user.id },
+                  data: { role: "ADMIN" },
+                });
+                await audit.record({
+                  action: ADMIN_BOOTSTRAP_ACTION,
+                  actorId: user.id,
+                  target: user.id,
+                  meta: { email: user.email, via: "ADMIN_EMAIL", source: "register" },
+                  ip: extractIp(ctx),
+                });
+                this.log.log(
+                  `ADMIN_EMAIL=${adminEmail}: Neu registrierter User ${user.id} ` +
+                    `wurde zum Admin befördert.`
+                );
+              }
             },
           },
           update: {

@@ -11,6 +11,7 @@
     "start": "node dist/main.js",
     "typecheck": "tsc -b --noEmit",
     "lint": "eslint src",
+    "admin:grant": "tsx scripts/grant-admin.ts",
     "test": "vitest run",
     "test:unit": "vitest run",
     "test:watch": "vitest",
