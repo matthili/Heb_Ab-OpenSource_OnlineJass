@@ -310,6 +310,7 @@ export async function setupTestApp(): Promise<TestAppHandle> {
     `"Session"`,
     `"User"`,
     `"Blocklist"`,
+    `"BannedWord"`,
     `"AdminSetting"`,
   ];
   async function resetData(): Promise<void> {

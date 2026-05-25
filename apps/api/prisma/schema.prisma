@@ -424,6 +424,23 @@ model ChatMessage {
   @@index([senderId])
 }
 
+/// Wortfilter für die Chat-Moderation (Lobby/Spiel/DM).
+///
+/// Pflege liegt im Admin-Bereich. Treffer werden im Chat-Body durch `***`
+/// maskiert (statt die Nachricht ganz abzulehnen — bessere UX, der User
+/// sieht trotzdem, was er geschrieben hat, kann umformulieren). Audit-
+/// Eintrag pro Treffer.
+///
+/// `word` ist lowercase gespeichert; Substring-Match ist case-insensitive.
+model BannedWord {
+  id        Int      @id @default(autoincrement())
+  word      String   @unique
+  reason    String?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}
+
 /// Archiv für Lobby-Chat-Nachrichten, die älter als 12 h sind.
 ///
 /// **Warum eine eigene Tabelle**: Spec verlangt eine getrennte Archiv-Tabelle

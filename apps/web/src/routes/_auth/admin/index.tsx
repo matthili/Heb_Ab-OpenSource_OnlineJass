@@ -8,7 +8,8 @@ function AdminDashboard() {
   return (
     <section className="space-y-4">
       <p className="text-stone-600">
-        Verwaltungsbereich. Tools für SMTP-Settings, User-Management, Blocklist und Audit-Log.
+        Verwaltungsbereich. Tools für SMTP-Settings, User-Management, Blocklist, Chat-Wortfilter und
+        Audit-Log.
       </p>
       <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <Link
@@ -33,6 +34,15 @@ function AdminDashboard() {
         >
           <strong>Blocklist</strong>
           <p className="text-sm text-stone-500">E-Mail-Pattern und -Domains für Register-Sperre.</p>
+        </Link>
+        <Link
+          to="/admin/banned-words"
+          className="block rounded border border-stone-200 px-4 py-3 hover:bg-stone-50"
+        >
+          <strong>Chat-Wortfilter</strong>
+          <p className="text-sm text-stone-500">
+            Wortliste, die in Chat-Nachrichten durch <code>***</code> ersetzt wird.
+          </p>
         </Link>
         <Link
           to="/admin/audit"

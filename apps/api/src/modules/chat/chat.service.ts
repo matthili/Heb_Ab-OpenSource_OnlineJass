@@ -33,6 +33,7 @@ import { ChatChannel } from "@prisma/client";
 import { AuditService } from "../audit/audit.service.js";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { RedisService } from "../redis/redis.service.js";
+import { BannedWordsService } from "./banned-words.service.js";
 import { sanitizeChatMarkdown } from "./chat.sanitize.js";
 
 const RATE_WINDOW_SECONDS = 30;
@@ -55,7 +56,8 @@ export class ChatService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly redis: RedisService,
-    private readonly audit: AuditService
+    private readonly audit: AuditService,
+    private readonly bannedWords: BannedWordsService
   ) {}
 
   /**
@@ -68,7 +70,20 @@ export class ChatService {
     await this.requireMembership(senderId, channel, channelKey);
     await this.enforceRateLimit(senderId, channelKey);
 
-    const sanitized = sanitizeChatMarkdown(rawBody);
+    // Wortfilter VOR der Markdown-Sanitization — das Rohformat ist eindeutig,
+    // HTML-Tags können die Wortgrenzen verwischen. Treffer werden durch `***`
+    // ersetzt; die Nachricht selbst geht durch.
+    const { clean: filteredRaw, matched } = await this.bannedWords.filter(rawBody);
+    if (matched.length > 0) {
+      await this.audit.record({
+        action: "chat.moderation.masked",
+        actorId: senderId,
+        target: channelKey,
+        meta: { words: matched },
+      });
+    }
+
+    const sanitized = sanitizeChatMarkdown(filteredRaw);
     if (sanitized.length === 0) {
       throw new BadRequestException("Nachricht ist nach Sanitization leer.");
     }

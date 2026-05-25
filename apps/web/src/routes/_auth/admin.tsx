@@ -65,6 +65,13 @@ function AdminLayout() {
             Blocklist
           </Link>
           <Link
+            to="/admin/banned-words"
+            activeProps={{ className: "font-semibold text-stone-900" }}
+            inactiveProps={{ className: "text-stone-600 hover:text-stone-900" }}
+          >
+            Wortfilter
+          </Link>
+          <Link
             to="/admin/audit"
             activeProps={{ className: "font-semibold text-stone-900" }}
             inactiveProps={{ className: "text-stone-600 hover:text-stone-900" }}

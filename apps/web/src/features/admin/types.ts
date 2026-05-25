@@ -18,6 +18,12 @@ export interface BlocklistEntry {
   createdAt: string;
 }
 
+export interface BannedWordEntry {
+  word: string;
+  reason: string | null;
+  createdAt: string;
+}
+
 export interface AdminUserView {
   id: string;
   email: string;

@@ -186,10 +186,13 @@ describe("M4 game-ws — 1 User (via WS) + 3 Random-KIs spielen Runde durch", ()
     expect(u.hand).toHaveLength(0);
     expect(u.finalScore).toBeDefined();
     const sum = u.finalScore!.team_card_points.reduce((a, b) => a + b, 0);
-    // 157 Grundpunkte + optional 20 Stöck + optional 100 Matsch. Wir können
-    // hier nicht deterministisch wissen, ob die KI Stöck/Matsch hatte —
-    // also testen wir die Plausibilität: sum ∈ {157, 177, 257, 277}.
-    expect([157, 177, 257, 277]).toContain(sum);
+    // 157 Grundpunkte + optional Stöck (20) + optional Matsch (100) + optional
+    // Weisen (z.B. 20/50/100/150/…). Wir können hier nicht deterministisch
+    // wissen, was die Random-KI an Boni gesammelt hat — also Plausibilität:
+    // sum ≥ Grundpunkte, < großzügige Obergrenze. (Vorher harte Liste 157/177/
+    // 257/277, die Weisen ignorierte → flake, sobald ein Weisen-3er fiel.)
+    expect(sum, `unrealistischer Punkte-Sum: ${sum}`).toBeGreaterThanOrEqual(157);
+    expect(sum, `unrealistischer Punkte-Sum: ${sum}`).toBeLessThanOrEqual(600);
 
     // ─── 5. DB-Persistenz ───────────────────────────────────────────────
     const dbMoves = await app.prisma.move.findMany({

@@ -24,13 +24,16 @@ import { Roles } from "../../common/decorators/roles.decorator.js";
 import { RolesGuard } from "../../common/guards/roles.guard.js";
 import { SessionGuard } from "../../common/guards/session.guard.js";
 import { ZodValidationPipe } from "../../common/pipes/zod.pipe.js";
+import { BannedWordsService, type BannedWordView } from "../chat/banned-words.service.js";
 import {
+  AddBannedWordDtoSchema,
   AddBlocklistDtoSchema,
   ListAuditQuerySchema,
   ListUsersQuerySchema,
   SetUserRoleDtoSchema,
   SetUserStatusDtoSchema,
   SmtpSettingsDtoSchema,
+  type AddBannedWordDto,
   type AddBlocklistDto,
   type ListAuditQuery,
   type ListUsersQuery,
@@ -49,7 +52,10 @@ import {
 @UseGuards(SessionGuard, RolesGuard)
 @Roles("ADMIN")
 export class AdminController {
-  constructor(private readonly admin: AdminService) {}
+  constructor(
+    private readonly admin: AdminService,
+    private readonly bannedWords: BannedWordsService
+  ) {}
 
   // ─── SMTP ──────────────────────────────────────────────────────────
 
@@ -92,6 +98,32 @@ export class AdminController {
     @Param("pattern") pattern: string
   ): Promise<{ ok: true }> {
     await this.admin.removeBlocklistPattern(req.user!.id, pattern);
+    return { ok: true };
+  }
+
+  // ─── Chat-Wortfilter ───────────────────────────────────────────────
+
+  @Get("banned-words")
+  async listBannedWords(): Promise<{ entries: BannedWordView[] }> {
+    const entries = await this.bannedWords.list();
+    return { entries };
+  }
+
+  @Post("banned-words")
+  async addBannedWord(
+    @Req() req: FastifyRequest,
+    @Body(new ZodValidationPipe(AddBannedWordDtoSchema)) dto: AddBannedWordDto
+  ): Promise<{ ok: true }> {
+    await this.bannedWords.add(req.user!.id, dto.word, dto.reason ?? null);
+    return { ok: true };
+  }
+
+  @Delete("banned-words/:word")
+  async removeBannedWord(
+    @Req() req: FastifyRequest,
+    @Param("word") word: string
+  ): Promise<{ ok: true }> {
+    await this.bannedWords.remove(req.user!.id, word);
     return { ok: true };
   }
 

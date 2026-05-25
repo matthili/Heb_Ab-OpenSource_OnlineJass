@@ -29,6 +29,14 @@ export const AddBlocklistDtoSchema = z
   .strict();
 export type AddBlocklistDto = z.infer<typeof AddBlocklistDtoSchema>;
 
+export const AddBannedWordDtoSchema = z
+  .object({
+    word: z.string().min(1).max(64).trim(),
+    reason: z.string().max(500).optional(),
+  })
+  .strict();
+export type AddBannedWordDto = z.infer<typeof AddBannedWordDtoSchema>;
+
 export const SetUserRoleDtoSchema = z
   .object({
     role: z.enum(["PLAYER", "MODERATOR", "ADMIN"]),
