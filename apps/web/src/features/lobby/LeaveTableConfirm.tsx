@@ -1,21 +1,17 @@
 /**
  * Bestätigungs-Dialog vor dem Tisch-Verlassen.
  *
- * **Heute**: einfacher modaler Dialog mit Warnung. Verhalten je nach
- * Tisch-Status:
+ * Verhalten je nach Tisch-Status:
  *
  *   - WAITING: Verlassen ist unkritisch — nur Hinweis, dass der Sitz
- *     freigegeben wird. Optional könnte das auch übersprungen werden,
- *     aber konsistente UI ist mir wichtiger als ein Click-Ersparnis.
- *   - IN_GAME / POST_GAME: Server blockt aktuell mit 409. Wir zeigen
- *     den Dialog trotzdem mit klarem Hinweis, dass aus laufenden Spielen
- *     aktuell nicht ausgestiegen werden kann. Wenn der Aussteig-aus-
- *     IN_GAME-Sprint durch ist, ändern wir hier Text + Verhalten.
+ *     freigegeben wird. Konsistente UI > ein Click-Ersparnis.
+ *   - IN_GAME / POST_GAME: Aussteig ist möglich (`/api/lobby/tables/:id/leave`);
+ *     der Server ersetzt den Sitz durch eine KI, das Spiel läuft weiter. Das
+ *     wird dem User klar angesagt und im Audit-Log vermerkt (Quitter-Tracking).
  *
- * **Geplant für Folge-Sprint** (in TODO im Dialog erwähnt): 60 s Lobby-
- * Ausflug ohne Aussteig (kein Verlassen-Click nötig), dann 20 s
- * „Bist du noch da?"-Modal. Wenn das durch ist, ersetzt es den
- * aktuellen Dialog.
+ * **Nicht hier**: eine passive „60 s Lobby-Ausflug + 20 s ‚Bist du noch da?'"-
+ * Mechanik (Soft-Navigation ohne Verlassen-Click) ist in `PLAN.md` §14 als
+ * Backlog-Punkt geführt — anderes Feature als die WS-Disconnect-Vote-Logik.
  */
 import { useEffect, useRef } from "react";
 
