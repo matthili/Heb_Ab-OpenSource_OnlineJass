@@ -30,6 +30,7 @@ function assertNoUnsafeFlagsInProduction(): void {
   const unsafe = [
     "DISABLE_AUTH_RATE_LIMIT",
     "DISABLE_PASSWORD_STRENGTH_CHECK",
+    "DISABLE_HIBP_CHECK",
     "DISABLE_TURNSTILE",
     "DISABLE_CSRF",
   ].filter((k) => process.env[k] === "1");

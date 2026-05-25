@@ -153,6 +153,10 @@ export async function setupTestApp(): Promise<TestAppHandle> {
   // benutzen kurze Demo-Passwörter wie "password-12-chars", die zxcvbn
   // zu Recht ablehnt. Boot in production verweigert dieses Flag.
   process.env["DISABLE_PASSWORD_STRENGTH_CHECK"] = "1";
+  // HIBP-Range-API-Aufruf in Tests deaktivieren — wäre ein echter HTTPS-
+  // Call ins Internet, flaky + langsam (~300ms × jedes Sign-up). Boot in
+  // production verweigert dieses Flag (assertNoUnsafeFlagsInProduction).
+  process.env["DISABLE_HIBP_CHECK"] = "1";
   // Turnstile in Tests deaktivieren — kein Cloudflare-Round-Trip, keine
   // Tokens. Boot in production verweigert dieses Flag.
   process.env["DISABLE_TURNSTILE"] = "1";
@@ -302,6 +306,11 @@ export async function setupTestApp(): Promise<TestAppHandle> {
   async function resetData(): Promise<void> {
     capturedMails.length = 0;
     stub.control.reset();
+    // Raw-SQL bewusst: ein typsicheres "TRUNCATE viele Tabellen mit RESTART
+    // IDENTITY CASCADE in einer Anweisung" gibt es im Prisma-Client nicht.
+    // Die Liste wird aus einem statischen Array gebaut (keine User-Inputs),
+    // also kein Injection-Risiko. Pro Test-Reset, nur Test-Code.
+    // eslint-disable-next-line no-restricted-syntax
     await prisma.$executeRawUnsafe(
       `TRUNCATE ${truncatableTables.join(", ")} RESTART IDENTITY CASCADE;`
     );

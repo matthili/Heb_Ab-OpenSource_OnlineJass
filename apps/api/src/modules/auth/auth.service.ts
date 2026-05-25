@@ -24,6 +24,7 @@ import { MailService } from "../mail/mail.service.js";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { hashPassword, verifyPassword } from "./password.js";
 import { checkPasswordStrength } from "./password-strength.js";
+import { checkPasswordBreached } from "./pwned-passwords.js";
 import { TurnstileService } from "./turnstile.service.js";
 
 // Better Auth liefert keinen stabilen `Auth`-Export-Type, der zu unserer
@@ -276,32 +277,64 @@ export class AuthService implements OnModuleInit {
             }
           }
 
-          // ── zxcvbn-Passwort-Stärke ───────────────────────────────────
+          // ── Passwort-Checks (zxcvbn + HIBP) ──────────────────────────
           // Nur auf Pfaden mit *neuem* Passwort (sign-up + reset).
           // Sign-in prüft NICHT, sonst hätten wir Lock-Out für legacy User.
-          if (needsStrengthCheck && process.env["DISABLE_PASSWORD_STRENGTH_CHECK"] !== "1") {
+          // Zwei Layer mit unterschiedlichem Zweck:
+          //   - zxcvbn = Entropie/Heuristik („Tr0ubadour!" sieht stark aus)
+          //   - HIBP   = Breach-Realität („Tr0ubadour!" steht in den Leaks)
+          // Beide einzeln per Env-Flag deaktivierbar (Tests + Boot-Hardening
+          // verweigert die Flags in production).
+          if (needsStrengthCheck) {
             const pw = body.password ?? body.newPassword;
             if (typeof pw === "string" && pw.length > 0) {
-              // Kontext-Eingaben fließen in zxcvbn ein, damit „matthias2026"
-              // als Passwort von User „matthias" abgelehnt wird.
-              const userInputs: string[] = [];
-              if (body.email) {
-                userInputs.push(body.email);
-                const local = body.email.split("@")[0];
-                if (local) userInputs.push(local);
-              }
-              if (body.name) userInputs.push(body.name);
+              // ── zxcvbn-Passwort-Stärke ──
+              if (process.env["DISABLE_PASSWORD_STRENGTH_CHECK"] !== "1") {
+                // Kontext-Eingaben fließen in zxcvbn ein, damit „matthias2026"
+                // als Passwort von User „matthias" abgelehnt wird.
+                const userInputs: string[] = [];
+                if (body.email) {
+                  userInputs.push(body.email);
+                  const local = body.email.split("@")[0];
+                  if (local) userInputs.push(local);
+                }
+                if (body.name) userInputs.push(body.name);
 
-              const check = await checkPasswordStrength(pw, userInputs);
-              if (!check.ok) {
-                const suggestion =
-                  check.feedback.warning ??
-                  check.feedback.suggestions[0] ??
-                  "Bitte ein längeres, weniger vorhersehbares Passwort wählen.";
-                throw new APIError("BAD_REQUEST", {
-                  message: `Passwort zu schwach (Score ${check.score}/4): ${suggestion}`,
-                  code: "WEAK_PASSWORD",
-                });
+                const check = await checkPasswordStrength(pw, userInputs);
+                if (!check.ok) {
+                  const suggestion =
+                    check.feedback.warning ??
+                    check.feedback.suggestions[0] ??
+                    "Bitte ein längeres, weniger vorhersehbares Passwort wählen.";
+                  throw new APIError("BAD_REQUEST", {
+                    message: `Passwort zu schwach (Score ${check.score}/4): ${suggestion}`,
+                    code: "WEAK_PASSWORD",
+                  });
+                }
+              }
+
+              // ── HIBP / Pwned-Passwords ──
+              // Fail-open bei Netzwerkfehlern (siehe pwned-passwords.ts);
+              // ein HIBP-Outage darf unsere Sign-ups nicht killen.
+              if (process.env["DISABLE_HIBP_CHECK"] !== "1") {
+                const breach = await checkPasswordBreached(pw);
+                if (breach.pwned) {
+                  await this.audit.record({
+                    action: "security.password.pwned_reject",
+                    meta: { path, count: breach.count ?? null, email: body.email ?? null },
+                    ip,
+                  });
+                  const countNote =
+                    typeof breach.count === "number"
+                      ? ` (${breach.count.toLocaleString("de-DE")} Vorkommen in bekannten Lecks)`
+                      : "";
+                  throw new APIError("BAD_REQUEST", {
+                    message:
+                      `Dieses Passwort wurde in einem Datenleck gefunden${countNote}. ` +
+                      `Bitte wähle ein anderes — auch wenn es lang aussieht.`,
+                    code: "PWNED_PASSWORD",
+                  });
+                }
               }
             }
           }
