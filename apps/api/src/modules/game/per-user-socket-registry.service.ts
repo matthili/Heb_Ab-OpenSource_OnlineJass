@@ -112,6 +112,38 @@ export class PerUserSocketRegistry {
   }
 
   /**
+   * Liefert die User-IDs aller aktuell verbundenen User (≥ 1 aktiver Socket).
+   * Genutzt von der Lobby-Präsenz-Liste. Limit deckelt ab, damit ein
+   * unrealistisch volles Redis nicht die ganze Lobby-Anfrage blockt.
+   *
+   * Verwendet `SCAN` statt `KEYS` — Production-sicher (blockt Redis nicht).
+   */
+  async listConnectedUserIds(limit: number = 200): Promise<string[]> {
+    const userIds: string[] = [];
+    const client = this.redis.client;
+    let cursor = "0";
+    const matchPattern = "ws:user:*:sockets";
+    do {
+      const [next, batch] = await client.scan(cursor, "MATCH", matchPattern, "COUNT", 200);
+      cursor = next;
+      for (const key of batch) {
+        const parts = key.split(":");
+        // "ws:user:{userId}:sockets" → parts.length === 4, parts[2] = userId.
+        if (parts.length !== 4) continue;
+        const userId = parts[2];
+        if (!userId) continue;
+        // Nur User mit ≥ 1 aktivem Socket (Set könnte durch TTL leer sein).
+        const card = await client.zcard(key);
+        if (card > 0) {
+          userIds.push(userId);
+          if (userIds.length >= limit) return userIds;
+        }
+      }
+    } while (cursor !== "0");
+    return userIds;
+  }
+
+  /**
    * Prüft das Aggregat-Limit. Returnt `true` = erlaubt, `false` =
    * Drosseln. Aufrufer ist verantwortlich, das Frame zu verwerfen.
    * Eigenes Audit-Logging hier nicht (Caller hat mehr Kontext).

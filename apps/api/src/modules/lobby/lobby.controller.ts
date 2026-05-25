@@ -34,11 +34,28 @@ import {
   type UpdateTableSettingsDto,
 } from "./lobby.dto.js";
 import { LobbyService, type TableDetailView, type TableListEntry } from "./lobby.service.js";
+import { PresenceService, type PresenceUser } from "./presence.service.js";
 
 @Controller("api/lobby")
 @UseGuards(SessionGuard)
 export class LobbyController {
-  constructor(private readonly lobby: LobbyService) {}
+  constructor(
+    private readonly lobby: LobbyService,
+    private readonly presence: PresenceService
+  ) {}
+
+  // ─── Online-Präsenz ────────────────────────────────────────────────
+
+  /**
+   * Aktuell in der App verbundene User (≥ 1 aktiver WS-Socket). Genutzt von
+   * der Lobby-UI für die „Wer ist gerade da?"-Liste. Polled vom Client
+   * (typisch ~15 s); kein WS-Push nötig, weil die Liste nicht zeitkritisch ist.
+   */
+  @Get("presence")
+  async listPresence(): Promise<{ users: PresenceUser[] }> {
+    const users = await this.presence.list();
+    return { users };
+  }
 
   // ─── Tisch-CRUD ────────────────────────────────────────────────────
 

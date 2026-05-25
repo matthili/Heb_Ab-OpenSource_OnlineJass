@@ -27,6 +27,12 @@ import { AIPlayerFactory } from "./players/ai-player.factory.js";
     AIPlayerFactory,
     SessionGuard,
   ],
-  exports: [GameService, BodenseeGameService, ReplayService, DisconnectVoteService],
+  exports: [
+    GameService,
+    BodenseeGameService,
+    ReplayService,
+    DisconnectVoteService,
+    PerUserSocketRegistry,
+  ],
 })
 export class GameModule {}

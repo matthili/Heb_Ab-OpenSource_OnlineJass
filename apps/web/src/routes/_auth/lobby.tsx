@@ -8,6 +8,7 @@ import { useTranslation } from "react-i18next";
 import { ChatPanel } from "~/features/chat/ChatPanel";
 import { LobbyList } from "~/features/lobby/LobbyList";
 import { MyActiveTables } from "~/features/lobby/MyActiveTables";
+import { OnlineUsersPanel } from "~/features/lobby/OnlineUsersPanel";
 import { OpenTableDialog } from "~/features/lobby/OpenTableDialog";
 import { CompleteProfilePrompt } from "~/features/profile/CompleteProfilePrompt";
 
@@ -34,7 +35,10 @@ function LobbyPage() {
       <MyActiveTables />
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_20rem] gap-4">
         <LobbyList />
-        <ChatPanel channelKey="lobby:global" title={t("lobby.title")} />
+        <div className="space-y-4">
+          <OnlineUsersPanel />
+          <ChatPanel channelKey="lobby:global" title={t("lobby.title")} />
+        </div>
       </div>
       <OpenTableDialog open={openDialog} onClose={() => setOpenDialog(false)} />
     </section>
