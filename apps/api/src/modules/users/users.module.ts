@@ -7,6 +7,7 @@ import { AuthModule } from "../auth/auth.module.js";
 import { FriendsService } from "./friends.service.js";
 import { GdprService } from "./gdpr.service.js";
 import { SessionsService } from "./sessions.service.js";
+import { UserStatsService } from "./user-stats.service.js";
 import { UsersController } from "./users.controller.js";
 import { UsersService } from "./users.service.js";
 
@@ -18,9 +19,10 @@ import { UsersService } from "./users.service.js";
     GdprService,
     FriendsService,
     SessionsService,
+    UserStatsService,
     SessionGuard,
     OptionalSessionGuard,
   ],
-  exports: [UsersService, GdprService, FriendsService, SessionsService],
+  exports: [UsersService, GdprService, FriendsService, SessionsService, UserStatsService],
 })
 export class UsersModule {}

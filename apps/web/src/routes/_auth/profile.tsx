@@ -17,6 +17,7 @@ import { FriendsPanel } from "~/features/profile/FriendsPanel";
 import { ProfileDataPanel } from "~/features/profile/ProfileDataPanel";
 import { ProfileEditPanel } from "~/features/profile/ProfileEditPanel";
 import { SessionsPanel } from "~/features/profile/SessionsPanel";
+import { UserStatsPanel } from "~/features/profile/UserStatsPanel";
 
 type ProfileTab = "history" | "edit" | "friends" | "sessions" | "data";
 interface ProfileSearch {
@@ -61,7 +62,8 @@ function ProfilePage() {
       </nav>
       {activeTab === "history" && (
         <>
-          <h2 className="text-lg font-semibold">{t("profile.history.title")}</h2>
+          <UserStatsPanel />
+          <h2 className="text-lg font-semibold pt-2">{t("profile.history.title")}</h2>
           <GameHistoryList />
         </>
       )}

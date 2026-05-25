@@ -27,6 +27,7 @@ import { ZodValidationPipe } from "../../common/pipes/zod.pipe.js";
 import { FriendsService, type FriendStatusOut, type FriendsList } from "./friends.service.js";
 import { GdprService } from "./gdpr.service.js";
 import { SessionsService, type SessionView } from "./sessions.service.js";
+import { UserStatsService, type UserStats } from "./user-stats.service.js";
 import { UpdateProfileDtoSchema, type UpdateProfileDto } from "./users.dto.js";
 import { UsersService, type MyProfileView, type PublicProfileView } from "./users.service.js";
 
@@ -36,7 +37,8 @@ export class UsersController {
     private readonly users: UsersService,
     private readonly gdpr: GdprService,
     private readonly friends: FriendsService,
-    private readonly sessions: SessionsService
+    private readonly sessions: SessionsService,
+    private readonly stats: UserStatsService
   ) {}
 
   @Get("me")
@@ -54,6 +56,17 @@ export class UsersController {
     @Body(new ZodValidationPipe(UpdateProfileDtoSchema)) dto: UpdateProfileDto
   ): Promise<MyProfileView> {
     return this.users.updateMyProfile(req.user!.id, dto);
+  }
+
+  /**
+   * Spiel-Statistik des eingeloggten Users. Pro Variante: Anzahl Partien,
+   * Siege, Win-Rate, Avg eigene Punkte. Ohne Zugriffsprüfung — der User
+   * sieht nur seine eigenen Zahlen.
+   */
+  @Get("me/stats")
+  @UseGuards(SessionGuard)
+  async getMyStats(@Req() req: FastifyRequest): Promise<UserStats> {
+    return this.stats.getStats(req.user!.id);
   }
 
   /**
