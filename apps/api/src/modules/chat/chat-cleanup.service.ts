@@ -3,12 +3,19 @@
  *
  * **Was passiert**: alle 5 Minuten (im Default) prüfen wir, ob es
  * Lobby-Nachrichten gibt, die älter als 12 Stunden sind. Wenn ja:
- *   1. Sammel-Eintrag im AuditLog (Anzahl + Zeitspanne) — damit der
+ *   1. Sie werden in die `ArchivedChatMessage`-Tabelle verschoben
+ *      (transaktional: INSERT + DELETE in einer Transaction, damit es
+ *      keinen Datenverlust gibt, falls die DB mittendrin abreißt).
+ *   2. Sammel-Eintrag im AuditLog (Anzahl + Zeitspanne) — damit der
  *      Cleanup nachvollziehbar bleibt, ohne dass Audit-Spam entsteht.
- *   2. DELETE der betroffenen Rows.
  *
- * Game- und DM-Chat bleiben dauerhaft (Plan-Doc §4: Replays + Profil-
- * History). Sie werden hier nicht angefasst.
+ * Game- und DM-Chat bleiben dauerhaft im `ChatMessage` (Plan-Doc §4:
+ * Replays + Profil-History). Sie werden hier nicht angefasst.
+ *
+ * **Warum archivieren statt löschen?** Spec verlangt ausdrücklich eine
+ * separate Archiv-Tabelle. Vorteil: die kommende Profil-Konversations-
+ * History kann auch alte Lobby-Beiträge anzeigen, und Audit-Spuren
+ * (z.B. „wer hat damals X gesagt") sind weiter rekonstruierbar.
  *
  * **Lifecycle**: `setInterval` im OnModuleInit, `clearInterval` im
  * OnModuleDestroy. Per env `DISABLE_CHAT_CLEANUP=1` deaktivierbar
@@ -58,13 +65,21 @@ export class ChatCleanupService implements OnModuleInit, OnModuleDestroy {
 
   /**
    * Ein Sweep-Lauf. Public für Tests (deterministisches Anstoßen).
-   * Returnt die Zahl gelöschter Nachrichten.
+   * Returnt die Zahl archivierter (= verschobener) Nachrichten.
    */
   async tick(now: Date = new Date()): Promise<number> {
     const cutoff = new Date(now.getTime() - RETENTION_HOURS * 60 * 60 * 1000);
     const candidates = await this.prisma.chatMessage.findMany({
       where: { channel: ChatChannel.LOBBY, createdAt: { lt: cutoff } },
-      select: { id: true, createdAt: true },
+      select: {
+        id: true,
+        channel: true,
+        channelKey: true,
+        senderId: true,
+        body: true,
+        createdAt: true,
+        gameId: true,
+      },
       orderBy: { createdAt: "asc" },
     });
     if (candidates.length === 0) return 0;
@@ -72,20 +87,37 @@ export class ChatCleanupService implements OnModuleInit, OnModuleDestroy {
     const oldest = candidates[0]!.createdAt;
     const newest = candidates[candidates.length - 1]!.createdAt;
 
-    const deleted = await this.prisma.chatMessage.deleteMany({
-      where: { id: { in: candidates.map((c) => c.id) } },
+    // Transaktional: erst ins Archiv kopieren, dann aus dem Live-Chat löschen.
+    // Ohne Transaction bestünde bei DB-Abriss die Gefahr von Datenverlust
+    // (gelöscht, aber nicht archiviert). createMany ist für sich atomar,
+    // aber die Zwei-Schritte-Sequenz braucht die Klammer.
+    const movedCount = await this.prisma.$transaction(async (tx) => {
+      await tx.archivedChatMessage.createMany({
+        data: candidates.map((c) => ({
+          channel: c.channel,
+          channelKey: c.channelKey,
+          senderId: c.senderId,
+          body: c.body,
+          createdAt: c.createdAt,
+          gameId: c.gameId,
+        })),
+      });
+      const deleted = await tx.chatMessage.deleteMany({
+        where: { id: { in: candidates.map((c) => c.id) } },
+      });
+      return deleted.count;
     });
 
     await this.audit.record({
-      action: "chat.lobby.cleanup",
+      action: "chat.lobby.archived",
       meta: {
-        deletedCount: deleted.count,
-        oldestRemoved: oldest.toISOString(),
-        newestRemoved: newest.toISOString(),
+        archivedCount: movedCount,
+        oldestArchived: oldest.toISOString(),
+        newestArchived: newest.toISOString(),
         retentionHours: RETENTION_HOURS,
       },
     });
-    this.log.log({ count: deleted.count }, "Lobby-Chat-Cleanup durchgeführt");
-    return deleted.count;
+    this.log.log({ count: movedCount }, "Lobby-Chat-Nachrichten ins Archiv verschoben");
+    return movedCount;
   }
 }

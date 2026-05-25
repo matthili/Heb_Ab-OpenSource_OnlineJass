@@ -39,6 +39,7 @@ import Fastify, { type FastifyInstance } from "fastify";
 
 import { AppModule } from "../../src/app.module.js";
 import { AdminService } from "../../src/modules/admin/admin.service.js";
+import { ChatCleanupService } from "../../src/modules/chat/chat-cleanup.service.js";
 import { GameService } from "../../src/modules/game/game.service.js";
 import { ReplayService } from "../../src/modules/game/replay.service.js";
 import { GdprService } from "../../src/modules/users/gdpr.service.js";
@@ -102,6 +103,9 @@ export interface TestAppHandle {
   admin: AdminService;
   /** Auto-Fill-Sweeper. In Tests stoßen wir `.tick()` manuell an. */
   autoFill: AutoFillService;
+  /** Chat-Cleanup-Service. Test-Setup setzt DISABLE_CHAT_CLEANUP=1, sodass das
+   *  Interval nicht ticked — Tests stoßen `.tick()` deterministisch manuell an. */
+  chatCleanup: ChatCleanupService;
   /** Capture-Sink des Mail-Services. */
   capturedMails: CapturedMail[];
   /** Steuerung des Inferenz-Stubs. */
@@ -181,6 +185,9 @@ export async function setupTestApp(): Promise<TestAppHandle> {
   // `AutoFillService.tick()` deterministisch manuell an, damit das nicht
   // zur Race-Condition zwischen Test und Sweeper-Tick wird.
   process.env["DISABLE_AUTO_FILL_SWEEPER"] = "1";
+  // Chat-Cleanup-Interval in Tests deaktivieren — analog zum Auto-Fill,
+  // Tests stoßen `ChatCleanupService.tick()` manuell an.
+  process.env["DISABLE_CHAT_CLEANUP"] = "1";
 
   // ─── 3. Prisma-Migrate gegen Test-DB ──────────────────────────────────
   // `prisma migrate deploy` aus apps/api/. Wir spawn'en den CLI-Subprocess statt
@@ -273,6 +280,7 @@ export async function setupTestApp(): Promise<TestAppHandle> {
   const gdprSvc = app.get(GdprService);
   const adminSvc = app.get(AdminService);
   const autoFillSvc = app.get(AutoFillService);
+  const chatCleanupSvc = app.get(ChatCleanupService);
 
   // ─── 7. Reset-Funktion ────────────────────────────────────────────────
   // TRUNCATE löscht Daten ohne Schema anzufassen. CASCADE räumt FK-Tabellen
@@ -293,6 +301,7 @@ export async function setupTestApp(): Promise<TestAppHandle> {
     `"GameSeat"`,
     `"Game"`,
     `"ChatMessage"`,
+    `"ArchivedChatMessage"`,
     `"AuditLog"`,
     `"Friendship"`,
     `"Profile"`,
@@ -344,6 +353,7 @@ export async function setupTestApp(): Promise<TestAppHandle> {
     gdpr: gdprSvc,
     admin: adminSvc,
     autoFill: autoFillSvc,
+    chatCleanup: chatCleanupSvc,
     capturedMails,
     inference: stub.control,
     resetData,

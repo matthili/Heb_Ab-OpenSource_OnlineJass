@@ -52,15 +52,16 @@ model User {
   locale    String     @default("de")
   deletedAt DateTime? // Soft-Delete (Anonymisierung in M10)
 
-  profile        Profile?
-  sessions       Session[]
-  accounts       Account[]
-  games          GameSeat[]
-  movesPlayed    Move[]
-  chatMessages   ChatMessage[]
-  friendshipsOut Friendship[]  @relation("FriendshipRequester")
-  friendshipsIn  Friendship[]  @relation("FriendshipAddressee")
-  auditActions   AuditLog[]    @relation("AuditActor")
+  profile              Profile?
+  sessions             Session[]
+  accounts             Account[]
+  games                GameSeat[]
+  movesPlayed          Move[]
+  chatMessages         ChatMessage[]
+  archivedChatMessages ArchivedChatMessage[]
+  friendshipsOut       Friendship[]          @relation("FriendshipRequester")
+  friendshipsIn        Friendship[]          @relation("FriendshipAddressee")
+  auditActions         AuditLog[]            @relation("AuditActor")
 
   // M6 — Lobby + Tisch
   ownedTables     LobbyTable[]      @relation("TableOwner")
@@ -181,11 +182,12 @@ model Game {
   tableId String?
   table   LobbyTable? @relation("TableGames", fields: [tableId], references: [id], onDelete: SetNull)
 
-  seats        GameSeat[]
-  moves        Move[]
-  rounds       RoundDecision[]
-  chatMessages ChatMessage[]
-  rematchVotes RematchVote[]
+  seats                GameSeat[]
+  moves                Move[]
+  rounds               RoundDecision[]
+  chatMessages         ChatMessage[]
+  archivedChatMessages ArchivedChatMessage[]
+  rematchVotes         RematchVote[]
 
   // 1:1-Rückseite zu LobbyTable.currentGameId — wenn dieses Game gerade
   // „das aktive" des Tischs ist, zeigt der Tisch hier zurück.
@@ -266,25 +268,25 @@ model RoundDecision {
 // ─────────────────────────────────────────────────────────────────────
 
 model LobbyTable {
-  id              String           @id @default(cuid())
+  id              String      @id @default(cuid())
   ownerId         String
-  joinMode        JoinMode         @default(OPEN)
-  variant         GameVariant      @default(KREUZ_4P)
+  joinMode        JoinMode    @default(OPEN)
+  variant         GameVariant @default(KREUZ_4P)
   // Default-KI-Typ für Auto-Fill und manuell platzierte KI-Sitze. Owner
   // konfiguriert das beim Tisch-Erstellen; einzelne Sitze können per
   // `LobbyTableSeat.aiSeatType` davon abweichen.
-  aiSeatType      String           @default("heuristic") // "random" | "heuristic" | "nn" | "nn-vX.Y.Z"
+  aiSeatType      String      @default("heuristic") // "random" | "heuristic" | "nn" | "nn-vX.Y.Z"
   // Auto-Fill-Timer in Sekunden ab letzter Sitz-Änderung. `null` = nie
   // automatisch auffüllen, Owner muss manuell starten.
-  autoFillSeconds Int?             @default(30)
+  autoFillSeconds Int?        @default(30)
   // Starter-Bestimmung bei Re-Match (Vorarlberger Tradition). Default ist
   // `SIEGER_GIBT` — Owner kann beim Tisch-Erstellen umstellen.
-  restartMode     RestartMode      @default(SIEGER_GIBT)
+  restartMode     RestartMode @default(SIEGER_GIBT)
 
   // **Punkteziel**: Die Partie ist gewonnen, sobald ein Team diese Punkte
   // kumulativ über mehrere Spiele erreicht. Vorarlberger Standard: 1000
   // oder 1200. Wird beim Tisch-Erstellen festgelegt.
-  targetScore     Int              @default(1000)
+  targetScore Int @default(1000)
 
   // **Kumulative Scores** über alle bisher beendeten Spiele am Tisch.
   // Wird nach jedem Game-Ende um `finalScore.team_card_points` (inkl.
@@ -293,12 +295,12 @@ model LobbyTable {
   //
   // Index = Team-ID. Kreuz-Jass nutzt Team0+1 (Team2/3 bleiben 0).
   // Solo-Jass nutzt alle vier — jeder Sitz ist sein eigenes Team.
-  cumulativeScoreTeam0 Int          @default(0)
-  cumulativeScoreTeam1 Int          @default(0)
-  cumulativeScoreTeam2 Int          @default(0)
-  cumulativeScoreTeam3 Int          @default(0)
+  cumulativeScoreTeam0 Int @default(0)
+  cumulativeScoreTeam1 Int @default(0)
+  cumulativeScoreTeam2 Int @default(0)
+  cumulativeScoreTeam3 Int @default(0)
 
-  status          LobbyTableStatus @default(WAITING)
+  status LobbyTableStatus @default(WAITING)
 
   // Aktuelles oder zuletzt-aktives Game am Tisch. In WAITING = null.
   // Wird beim Game-Start gesetzt, beim Re-Match auf das neue Game
@@ -419,6 +421,38 @@ model ChatMessage {
   game   Game? @relation(fields: [gameId], references: [id], onDelete: SetNull)
 
   @@index([channelKey, createdAt])
+  @@index([senderId])
+}
+
+/// Archiv für Lobby-Chat-Nachrichten, die älter als 12 h sind.
+///
+/// **Warum eine eigene Tabelle**: Spec verlangt eine getrennte Archiv-Tabelle
+/// statt purer DELETE. Vorteile: Audit-Spuren bleiben erhalten, Profil-Konversations-
+/// History kann später drüber laufen, und der Live-Lobby-Chat bleibt klein/schnell.
+/// Game- und DM-Chat werden NICHT archiviert (sie bleiben in `ChatMessage`, siehe
+/// `chat-cleanup.service.ts`).
+///
+/// Schema spiegelt `ChatMessage` 1:1 plus `archivedAt`. FKs identisch
+/// (Cascade auf User-Hard-Delete für DSGVO-Konsistenz, SetNull auf Game-Delete).
+model ArchivedChatMessage {
+  id         BigInt      @id @default(autoincrement())
+  channel    ChatChannel
+  channelKey String
+  senderId   String
+  body       String
+  /// Original-Erstellungszeit (NICHT die Archivierungszeit) — wichtig für die
+  /// chronologische Anzeige in der Profil-History.
+  createdAt  DateTime
+  /// Wann die Nachricht aus dem Live-Chat ins Archiv gewandert ist.
+  archivedAt DateTime    @default(now())
+
+  gameId String?
+
+  sender User  @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  game   Game? @relation(fields: [gameId], references: [id], onDelete: SetNull)
+
+  @@index([channelKey, createdAt])
+  @@index([archivedAt])
   @@index([senderId])
 }
 
