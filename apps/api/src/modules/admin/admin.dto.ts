@@ -37,6 +37,18 @@ export const AddBannedWordDtoSchema = z
   .strict();
 export type AddBannedWordDto = z.infer<typeof AddBannedWordDtoSchema>;
 
+export const UpdateLobbySettingsDtoSchema = z
+  .object({
+    /** Hard-Cap auf gleichzeitig aktive Tische (WAITING + IN_GAME + POST_GAME). */
+    maxOpenTables: z.number().int().min(1).max(10_000).optional(),
+    /** Cap auf Sitzzahl pro Variante (verhindert das Anlegen einer Variante mit mehr Sitzen). */
+    maxSeatsPerTable: z.number().int().min(2).max(12).optional(),
+    /** Default-Punkte-Ziel, falls der Eröffner kein eigenes targetScore mitgibt. */
+    defaultPointsTarget: z.number().int().min(500).max(5000).optional(),
+  })
+  .strict();
+export type UpdateLobbySettingsDto = z.infer<typeof UpdateLobbySettingsDtoSchema>;
+
 export const SetUserRoleDtoSchema = z
   .object({
     role: z.enum(["PLAYER", "MODERATOR", "ADMIN"]),

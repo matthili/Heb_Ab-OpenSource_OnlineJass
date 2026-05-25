@@ -8,10 +8,19 @@ function AdminDashboard() {
   return (
     <section className="space-y-4">
       <p className="text-stone-600">
-        Verwaltungsbereich. Tools für SMTP-Settings, User-Management, Blocklist, Chat-Wortfilter und
-        Audit-Log.
+        Verwaltungsbereich. Tools für globale Einstellungen, SMTP, User-Management, Blocklist,
+        Chat-Wortfilter und Audit-Log.
       </p>
       <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <Link
+          to="/admin/settings"
+          className="block rounded border border-stone-200 px-4 py-3 hover:bg-stone-50"
+        >
+          <strong>Globale Einstellungen</strong>
+          <p className="text-sm text-stone-500">
+            Max. Tische, max. Sitze pro Variante, Default-Punkte-Ziel.
+          </p>
+        </Link>
         <Link
           to="/admin/smtp"
           className="block rounded border border-stone-200 px-4 py-3 hover:bg-stone-50"

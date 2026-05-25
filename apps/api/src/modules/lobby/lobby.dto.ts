@@ -44,9 +44,11 @@ export const OpenTableDtoSchema = z
      * Spiele am Tisch diese Punkte erreicht, ist die Partie gewonnen
      * (LobbyTableStatus.MATCH_OVER). Vorarlberger Kreuz-Jass spielt
      * typischerweise auf 1000 oder 1200; wir lassen freie Wahl zwischen 500
-     * und 5000.
+     * und 5000. Wenn der Eröffner kein eigenes `targetScore` mitgibt, greift
+     * der globale Admin-Default (`LobbySettingsService.defaultPointsTarget`,
+     * Fallback 1000) — verwendet im `LobbyService.openTable`.
      */
-    targetScore: z.number().int().min(500).max(5000).default(1000),
+    targetScore: z.number().int().min(500).max(5000).optional(),
     /**
      * Optional vorbelegte KI-Sitze (für „Ich + 3 KIs"-Szenario). Sitz 0 darf
      * nicht enthalten sein — der gehört dem Owner. Doppelte Sitz-Nummern

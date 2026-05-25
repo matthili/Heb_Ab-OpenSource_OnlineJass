@@ -44,6 +44,13 @@ function AdminLayout() {
             Dashboard
           </Link>
           <Link
+            to="/admin/settings"
+            activeProps={{ className: "font-semibold text-stone-900" }}
+            inactiveProps={{ className: "text-stone-600 hover:text-stone-900" }}
+          >
+            Einstellungen
+          </Link>
+          <Link
             to="/admin/smtp"
             activeProps={{ className: "font-semibold text-stone-900" }}
             inactiveProps={{ className: "text-stone-600 hover:text-stone-900" }}

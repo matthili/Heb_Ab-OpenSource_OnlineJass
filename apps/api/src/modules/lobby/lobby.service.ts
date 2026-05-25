@@ -44,6 +44,7 @@ import type {
   UpdateTableSettingsDto,
 } from "./lobby.dto.js";
 import { LobbyGateway } from "./lobby.gateway.js";
+import { LobbySettingsService } from "./lobby-settings.service.js";
 
 /** Sitz-Zusammenfassung für die View. */
 export interface SeatView {
@@ -95,7 +96,8 @@ export class LobbyService {
     private readonly audit: AuditService,
     private readonly games: GameService,
     private readonly bodenseeGames: BodenseeGameService,
-    private readonly gateway: LobbyGateway
+    private readonly gateway: LobbyGateway,
+    private readonly settings: LobbySettingsService
   ) {}
 
   /**
@@ -126,6 +128,34 @@ export class LobbyService {
   // ───────────────────────────────────────────────────────────────────
 
   async openTable(ownerId: string, dto: OpenTableDto): Promise<{ tableId: string }> {
+    // Globale Einstellungen (Admin) laden — fließen in drei Stellen:
+    //   1. Hard-Cap auf gleichzeitig aktive Tische
+    //   2. Hard-Cap auf Sitzzahl pro Variante (heute kosmetisch, weil
+    //      alle existierenden Varianten ≤ 6 Sitze haben)
+    //   3. Fallback für `targetScore`, falls der Eröffner keinen mitschickt
+    const settings = await this.settings.getAll();
+
+    const seatCount = seatCountForVariant(dto.variant);
+    if (seatCount > settings.maxSeatsPerTable) {
+      throw new BadRequestException(
+        `Variante ${dto.variant} hat ${seatCount} Sitze, der Admin-Cap liegt bei ${settings.maxSeatsPerTable}.`
+      );
+    }
+
+    const openCount = await this.prisma.lobbyTable.count({
+      where: {
+        status: {
+          in: [LobbyTableStatus.WAITING, LobbyTableStatus.IN_GAME, LobbyTableStatus.POST_GAME],
+        },
+      },
+    });
+    if (openCount >= settings.maxOpenTables) {
+      throw new ConflictException(
+        `Maximale Anzahl gleichzeitig aktiver Tische erreicht (${settings.maxOpenTables}). ` +
+          `Bitte warte, bis ein Tisch fertig wird, oder kontaktiere einen Admin.`
+      );
+    }
+
     // Owner darf NICHT zwei aktive Tische gleichzeitig besitzen. Das schließt
     // Edge-Cases im Auto-Fill aus (welcher Tisch bekommt das nächste Spiel?).
     const existingOwned = await this.prisma.lobbyTable.findFirst({
@@ -144,6 +174,8 @@ export class LobbyService {
       });
     }
 
+    const effectiveTargetScore = dto.targetScore ?? settings.defaultPointsTarget;
+
     const table = await this.prisma.$transaction(async (tx) => {
       const created = await tx.lobbyTable.create({
         data: {
@@ -153,7 +185,7 @@ export class LobbyService {
           aiSeatType: dto.aiSeatType,
           autoFillSeconds: dto.autoFillSeconds,
           restartMode: dto.restartMode,
-          targetScore: dto.targetScore,
+          targetScore: effectiveTargetScore,
           status: LobbyTableStatus.WAITING,
         },
       });

@@ -7,6 +7,7 @@ import { AutoFillService } from "./auto-fill.service.js";
 import { LobbyController } from "./lobby.controller.js";
 import { LobbyGateway } from "./lobby.gateway.js";
 import { LobbyService } from "./lobby.service.js";
+import { LobbySettingsService } from "./lobby-settings.service.js";
 import { RematchController } from "./rematch.controller.js";
 
 @Module({
@@ -20,7 +21,8 @@ import { RematchController } from "./rematch.controller.js";
   // dann ohne Boot-Probleme. AutoFillService ist NICHT exportiert; nur als
   // Modul-intern aktiv (OnModuleInit startet den Sweeper, tick() ist nur
   // für Integration-Tests via app.get(AutoFillService) erreichbar).
-  providers: [LobbyService, AutoFillService, LobbyGateway, SessionGuard],
-  exports: [LobbyService, AutoFillService, LobbyGateway],
+  providers: [LobbyService, AutoFillService, LobbyGateway, LobbySettingsService, SessionGuard],
+  // LobbySettingsService wird auch vom AdminController genutzt → exportieren.
+  exports: [LobbyService, AutoFillService, LobbyGateway, LobbySettingsService],
 })
 export class LobbyModule {}

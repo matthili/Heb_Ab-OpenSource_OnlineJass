@@ -25,6 +25,7 @@ import { RolesGuard } from "../../common/guards/roles.guard.js";
 import { SessionGuard } from "../../common/guards/session.guard.js";
 import { ZodValidationPipe } from "../../common/pipes/zod.pipe.js";
 import { BannedWordsService, type BannedWordView } from "../chat/banned-words.service.js";
+import { LobbySettingsService, type LobbySettings } from "../lobby/lobby-settings.service.js";
 import {
   AddBannedWordDtoSchema,
   AddBlocklistDtoSchema,
@@ -33,6 +34,7 @@ import {
   SetUserRoleDtoSchema,
   SetUserStatusDtoSchema,
   SmtpSettingsDtoSchema,
+  UpdateLobbySettingsDtoSchema,
   type AddBannedWordDto,
   type AddBlocklistDto,
   type ListAuditQuery,
@@ -40,6 +42,7 @@ import {
   type SetUserRoleDto,
   type SetUserStatusDto,
   type SmtpSettingsDto,
+  type UpdateLobbySettingsDto,
 } from "./admin.dto.js";
 import {
   AdminService,
@@ -54,7 +57,8 @@ import {
 export class AdminController {
   constructor(
     private readonly admin: AdminService,
-    private readonly bannedWords: BannedWordsService
+    private readonly bannedWords: BannedWordsService,
+    private readonly lobbySettings: LobbySettingsService
   ) {}
 
   // ─── SMTP ──────────────────────────────────────────────────────────
@@ -125,6 +129,22 @@ export class AdminController {
   ): Promise<{ ok: true }> {
     await this.bannedWords.remove(req.user!.id, word);
     return { ok: true };
+  }
+
+  // ─── Globale Lobby-Einstellungen ───────────────────────────────────
+
+  @Get("lobby-settings")
+  async getLobbySettings(): Promise<LobbySettings> {
+    return this.lobbySettings.getAll();
+  }
+
+  @Put("lobby-settings")
+  async updateLobbySettings(
+    @Req() req: FastifyRequest,
+    @Body(new ZodValidationPipe(UpdateLobbySettingsDtoSchema)) dto: UpdateLobbySettingsDto
+  ): Promise<LobbySettings> {
+    await this.lobbySettings.update(req.user!.id, dto);
+    return this.lobbySettings.getAll();
   }
 
   // ─── User-Mgmt ─────────────────────────────────────────────────────

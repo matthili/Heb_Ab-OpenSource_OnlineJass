@@ -1,0 +1,156 @@
+/**
+ * Globale Lobby-Einstellungen — Admin-Tab.
+ *
+ *   - max. gleichzeitig aktive Tische (WAITING + IN_GAME + POST_GAME)
+ *   - max. Sitze pro Variante (Hard-Cap, heute > 6 wäre sinnlos)
+ *   - Default-Punkte-Ziel (Fallback wenn der Eröffner kein eigenes mitschickt)
+ */
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { createFileRoute } from "@tanstack/react-router";
+import { type FormEvent, useEffect, useState } from "react";
+
+import { api, ApiError } from "~/lib/api";
+
+interface LobbySettings {
+  maxOpenTables: number;
+  maxSeatsPerTable: number;
+  defaultPointsTarget: number;
+}
+
+export const Route = createFileRoute("/_auth/admin/settings")({
+  component: GlobalSettingsPage,
+});
+
+function GlobalSettingsPage() {
+  const queryClient = useQueryClient();
+  const queryKey = ["admin", "lobby-settings"] as const;
+  const { data, isPending } = useQuery<LobbySettings>({
+    queryKey,
+    queryFn: () => api("/api/admin/lobby-settings"),
+  });
+
+  const [draft, setDraft] = useState<LobbySettings | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [savedAt, setSavedAt] = useState<number | null>(null);
+
+  // Sync server-state in den Editor, sobald Daten ankommen oder sich der
+  // Server-State ändert (z.B. nach erfolgreichem Speichern).
+  useEffect(() => {
+    if (data) setDraft(data);
+  }, [data]);
+
+  const saveMut = useMutation({
+    mutationFn: (payload: LobbySettings) =>
+      api<LobbySettings>("/api/admin/lobby-settings", {
+        method: "PUT",
+        body: payload,
+      }),
+    onSuccess: (fresh) => {
+      setError(null);
+      setSavedAt(Date.now());
+      queryClient.setQueryData(queryKey, fresh);
+      setDraft(fresh);
+    },
+    onError: (err: unknown) => {
+      setError(err instanceof ApiError ? err.message : "Speichern fehlgeschlagen.");
+    },
+  });
+
+  if (isPending || !draft) {
+    return <p className="text-stone-500">Lade Einstellungen …</p>;
+  }
+
+  function onSave(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!draft) return;
+    saveMut.mutate(draft);
+  }
+
+  function setField<K extends keyof LobbySettings>(field: K, value: number): void {
+    setDraft((prev) => (prev ? { ...prev, [field]: value } : prev));
+  }
+
+  return (
+    <section className="space-y-4 max-w-xl">
+      <p className="text-sm text-stone-600">
+        Globale Einstellungen für die Lobby. Werte gelten ab dem nächsten Tisch — bereits bestehende
+        Tische werden nicht rückwirkend angepasst.
+      </p>
+
+      <form onSubmit={onSave} className="space-y-4">
+        <NumberRow
+          label="Max. gleichzeitig aktive Tische"
+          help="Cap auf WAITING + IN_GAME + POST_GAME. Schutz vor unkontrolliertem Wachstum."
+          value={draft.maxOpenTables}
+          min={1}
+          max={10_000}
+          onChange={(v) => setField("maxOpenTables", v)}
+        />
+        <NumberRow
+          label="Max. Sitze pro Variante"
+          help="Hard-Cap auf Sitzzahl. Heute: KREUZ_4P/SOLO_4P=4, BODENSEE_2P=2, KREUZ_6P=6 (geplant). Default 6."
+          value={draft.maxSeatsPerTable}
+          min={2}
+          max={12}
+          onChange={(v) => setField("maxSeatsPerTable", v)}
+        />
+        <NumberRow
+          label="Default-Punkte-Ziel"
+          help="Fallback, wenn der Tisch-Eröffner kein eigenes Punkteziel angibt."
+          value={draft.defaultPointsTarget}
+          min={500}
+          max={5000}
+          onChange={(v) => setField("defaultPointsTarget", v)}
+        />
+
+        <div className="flex items-center gap-3 pt-2">
+          <button
+            type="submit"
+            disabled={saveMut.isPending}
+            className="rounded bg-stone-900 px-4 py-2 text-white hover:bg-stone-700 disabled:opacity-50"
+          >
+            Speichern
+          </button>
+          {savedAt !== null && Date.now() - savedAt < 5_000 && (
+            <span className="text-sm text-emerald-700">Gespeichert.</span>
+          )}
+        </div>
+        {error && (
+          <p role="alert" className="text-sm text-rose-700">
+            {error}
+          </p>
+        )}
+      </form>
+    </section>
+  );
+}
+
+interface NumberRowProps {
+  label: string;
+  help: string;
+  value: number;
+  min: number;
+  max: number;
+  onChange: (v: number) => void;
+}
+
+function NumberRow({ label, help, value, min, max, onChange }: NumberRowProps) {
+  return (
+    <label className="block">
+      <span className="block font-medium">{label}</span>
+      <span className="block text-xs text-stone-500 mb-1">{help}</span>
+      <input
+        type="number"
+        value={value}
+        min={min}
+        max={max}
+        onChange={(e) => {
+          const v = Number.parseInt(e.target.value, 10);
+          if (Number.isFinite(v)) onChange(v);
+        }}
+        className="w-32 rounded border border-stone-300 px-3 py-2"
+        required
+      />
+    </label>
+  );
+}
