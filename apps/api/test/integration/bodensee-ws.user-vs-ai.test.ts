@@ -273,6 +273,85 @@ describe("Bodensee-ws — 1 User (via WS) + 1 KI spielen eine Partie durch", () 
     });
     expect(seat?.replacedByAiSeatType).toBeTruthy();
   });
+
+  it("Reconnect innerhalb der Schonfrist verhindert die KI-Übernahme", async () => {
+    // Test-Setup hat `DISCONNECT_PHASE_MS_SCALE=0.05` → Bodensee-Grace ist
+    // hier 30 000 ms × 0.05 = 1500 ms. Wir trennen und kommen nach ~400 ms
+    // zurück → die KI darf nicht übernommen haben.
+    const { http, userId } = await signUpAndIn(app, {
+      email: "bodensee-rc@jass.local",
+      password: "bodensee-rc-passw0rd-12!",
+      name: "bodensee_rc",
+    });
+
+    const create = await http.request<{ tableId: string }>("/api/lobby/tables", {
+      method: "POST",
+      body: JSON.stringify({
+        joinMode: "OPEN",
+        variant: "BODENSEE_2P",
+        aiSeatType: "random",
+        initialAiSeats: [{ seat: 1 }],
+      }),
+    });
+    expect(create.status, JSON.stringify(create.body)).toBe(201);
+    const tableId = create.body.tableId;
+
+    const tableDetail = await http.request<{ currentGameId: string | null }>(
+      `/api/lobby/tables/${tableId}`,
+      { method: "GET" }
+    );
+    const gameId = tableDetail.body.currentGameId!;
+    expect(gameId).toBeTruthy();
+
+    // 1) Verbinden + joinen.
+    const socket1: Socket = io(app.baseUrl, {
+      path: "/ws",
+      transports: ["websocket"],
+      extraHeaders: { Cookie: http.cookieHeader() },
+      reconnection: false,
+    });
+    await new Promise<void>((resolve, reject) => {
+      socket1.once("connect", () => resolve());
+      socket1.once("connect_error", (err) => reject(new Error(`WS connect_error: ${err.message}`)));
+      setTimeout(() => reject(new Error("WS connect timeout (5s)")), 5_000);
+    });
+    socket1.emit("bodensee:join", { gameId });
+    await sleep(200);
+
+    // 2) Verbindung kappen → Grace-Timer läuft (1500 ms).
+    socket1.disconnect();
+    await sleep(400);
+
+    // 3) Innerhalb der Schonfrist wieder verbinden — Grace muss abgebrochen
+    //    werden, der Sitz bleibt menschlich.
+    const socket2: Socket = io(app.baseUrl, {
+      path: "/ws",
+      transports: ["websocket"],
+      extraHeaders: { Cookie: http.cookieHeader() },
+      reconnection: false,
+    });
+    await new Promise<void>((resolve, reject) => {
+      socket2.once("connect", () => resolve());
+      socket2.once("connect_error", (err) =>
+        reject(new Error(`WS reconnect_error: ${err.message}`))
+      );
+      setTimeout(() => reject(new Error("WS reconnect timeout (5s)")), 5_000);
+    });
+    // Cancel läuft async in `registerUserSocket` — ein Tick warten.
+    await sleep(200);
+
+    // 4) Über die ursprüngliche Grace-Schwelle hinaus warten — falls der
+    //    Cancel nicht griff, würde der Sitz jetzt KI-ersetzt sein.
+    await sleep(1500);
+
+    const seat = await app.prisma.gameSeat.findFirst({
+      where: { gameId, userId },
+      select: { replacedByAiSeatType: true },
+    });
+    expect(seat?.replacedByAiSeatType, "Reconnect muss die KI-Übernahme verhindern").toBeNull();
+
+    socket2.disconnect();
+  });
 });
 
 function sleep(ms: number): Promise<void> {

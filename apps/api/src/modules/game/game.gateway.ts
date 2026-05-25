@@ -83,6 +83,21 @@ export class GameGateway
   private pub?: ReturnType<RedisService["duplicate"]>;
   private sub?: ReturnType<RedisService["duplicate"]>;
 
+  /**
+   * Geplante Bodensee-Sitz-Ersetzungen, indiziert per `${gameId}:${userId}`.
+   * Bei Disconnect wird ein Timer gestartet (Reconnect-Schonfrist), bei
+   * Reconnect (handleConnection) wird der Timer wieder gecancelt — der
+   * Sitz bleibt menschlich. Speicher ist in-memory bewusst: Bodensee hat
+   * nur eine Process-Instance pro Tisch (Single-Owner-Lock); ein Crash
+   * würde die Schonfrist aufheben, was die schlechteste Folge ist, mit der
+   * man leben kann (KI übernimmt sofort statt erst in 30 s — derselbe
+   * Endzustand). Kein Redis-State nötig.
+   */
+  private readonly pendingBodenseeReplacements = new Map<
+    string,
+    { timer: NodeJS.Timeout; gameId: string; userId: string }
+  >();
+
   constructor(
     private readonly games: GameService,
     private readonly bodenseeGames: BodenseeGameService,
@@ -178,6 +193,12 @@ export class GameGateway
   }
 
   async onModuleDestroy(): Promise<void> {
+    // Ausstehende Bodensee-Grace-Timer abräumen, damit Vitest-Worker beim
+    // App-Shutdown keinen Open-Handle hat.
+    for (const entry of this.pendingBodenseeReplacements.values()) {
+      clearTimeout(entry.timer);
+    }
+    this.pendingBodenseeReplacements.clear();
     await Promise.allSettled([this.pub?.quit(), this.sub?.quit()]);
   }
 
@@ -209,6 +230,10 @@ export class GameGateway
 
   private async registerUserSocket(userId: string, socket: AuthenticatedSocket): Promise<void> {
     const { evictSocketIds } = await this.userRegistry.register(userId, socket.id);
+    // Reconnect-Schonfrist für Bodensee: falls für diesen User ein Replacement-
+    // Timer läuft (Disconnect lag weniger als BODENSEE_RECONNECT_GRACE_MS
+    // zurück), abbrechen — der Spieler ist zurück.
+    this.cancelBodenseeReplacementsForUser(userId);
     if (evictSocketIds.length > 0) {
       await this.evictOldSockets(userId, evictSocketIds);
     }
@@ -258,22 +283,83 @@ export class GameGateway
    */
   private async triggerBodenseeDisconnectForUser(userId: string): Promise<void> {
     const gameIds = await this.bodenseeGames.getActiveGameIdsForUser(userId);
+    const graceMs = this.bodenseeReconnectGraceMs();
     for (const gameId of gameIds) {
-      try {
-        await this.locks.withLock(gameId, async () => {
-          const replaced = await this.bodenseeGames.replaceSeatWithAi(gameId, userId);
-          if (!replaced) return;
-          this.chatGateway.broadcastSystemMessage(
-            roomKey(gameId),
-            "Ein Spieler hat die Verbindung verloren — die KI übernimmt seinen Platz."
+      const key = `${gameId}:${userId}`;
+      // Doppel-Disconnect (sehr selten): das alte Grace-Fenster gilt weiter,
+      // wir armen nichts neu — sonst würde Reconnect-Stalking die Grace endlos
+      // verlängern können.
+      if (this.pendingBodenseeReplacements.has(key)) continue;
+
+      this.chatGateway.broadcastSystemMessage(
+        roomKey(gameId),
+        `Ein Spieler hat die Verbindung verloren. ` +
+          `Kommt er nicht binnen ${Math.round(graceMs / 1000)} s zurück, übernimmt die KI.`
+      );
+
+      const timer = setTimeout(() => {
+        void this.executeBodenseeReplacement(gameId, userId).catch((err) => {
+          this.log.warn(
+            { err, gameId, userId },
+            "Bodensee-Grace-Replacement (Timer-Ablauf) fehlgeschlagen"
           );
-          await this.broadcastBodenseeState(gameId);
-          await this.driveBodenseeAIsLoop(gameId);
         });
-      } catch (err) {
-        this.log.warn({ err, gameId, userId }, "Bodensee-Disconnect-Handling fehlgeschlagen");
-      }
+      }, graceMs);
+      this.pendingBodenseeReplacements.set(key, { timer, gameId, userId });
     }
+  }
+
+  /**
+   * Wird vom Grace-Timer aufgerufen, wenn der User nicht rechtzeitig zurück
+   * ist. Genau die Logik, die früher direkt in `triggerBodenseeDisconnectForUser`
+   * stand — der einzige Unterschied ist, dass jetzt eine Schonfrist davorliegt.
+   */
+  private async executeBodenseeReplacement(gameId: string, userId: string): Promise<void> {
+    this.pendingBodenseeReplacements.delete(`${gameId}:${userId}`);
+    try {
+      await this.locks.withLock(gameId, async () => {
+        const replaced = await this.bodenseeGames.replaceSeatWithAi(gameId, userId);
+        if (!replaced) return;
+        this.chatGateway.broadcastSystemMessage(
+          roomKey(gameId),
+          "Der Spieler ist nicht zurückgekehrt — die KI übernimmt seinen Platz."
+        );
+        await this.broadcastBodenseeState(gameId);
+        await this.driveBodenseeAIsLoop(gameId);
+      });
+    } catch (err) {
+      this.log.warn({ err, gameId, userId }, "Bodensee-Disconnect-Handling fehlgeschlagen");
+    }
+  }
+
+  /**
+   * Bricht alle ausstehenden Bodensee-Sitz-Ersetzungen für diesen User ab —
+   * pro Spiel, in dem er offline gegangen war. Wird beim Reconnect aufgerufen
+   * (jeder neue Socket des Users). Idempotent: ohne pending Einträge ein No-op.
+   */
+  private cancelBodenseeReplacementsForUser(userId: string): void {
+    for (const [key, entry] of this.pendingBodenseeReplacements) {
+      if (entry.userId !== userId) continue;
+      clearTimeout(entry.timer);
+      this.pendingBodenseeReplacements.delete(key);
+      this.chatGateway.broadcastSystemMessage(
+        roomKey(entry.gameId),
+        "Der Spieler ist zurück — das Spiel läuft normal weiter."
+      );
+    }
+  }
+
+  /**
+   * Bodensee-Reconnect-Schonfrist. Default 30 s in production; in Tests via
+   * `DISCONNECT_PHASE_MS_SCALE` skaliert (gleiche Variable wie die Kreuz/Solo-
+   * Disconnect-Vote-Phasen, um Test-Setups simpel zu halten).
+   * `main.ts:assertNoUnsafeFlagsInProduction` blockt das Scale-Flag in prod.
+   */
+  private bodenseeReconnectGraceMs(): number {
+    const base = 30_000;
+    const scale = Number(process.env["DISCONNECT_PHASE_MS_SCALE"] ?? "1");
+    const factor = Number.isFinite(scale) && scale > 0 ? scale : 1;
+    return Math.max(100, Math.floor(base * factor));
   }
 
   /**
