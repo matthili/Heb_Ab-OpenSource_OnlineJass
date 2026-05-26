@@ -13,18 +13,26 @@ import { createFileRoute, Link, useSearch } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 
 import { GameHistoryList } from "~/features/replay/GameHistoryList";
+import { ConversationsPanel } from "~/features/profile/ConversationsPanel";
 import { FriendsPanel } from "~/features/profile/FriendsPanel";
 import { ProfileDataPanel } from "~/features/profile/ProfileDataPanel";
 import { ProfileEditPanel } from "~/features/profile/ProfileEditPanel";
 import { SessionsPanel } from "~/features/profile/SessionsPanel";
 import { UserStatsPanel } from "~/features/profile/UserStatsPanel";
 
-type ProfileTab = "history" | "edit" | "friends" | "sessions" | "data";
+type ProfileTab = "history" | "messages" | "edit" | "friends" | "sessions" | "data";
 interface ProfileSearch {
   tab?: ProfileTab;
 }
 
-const VALID_TABS: readonly ProfileTab[] = ["history", "edit", "friends", "sessions", "data"];
+const VALID_TABS: readonly ProfileTab[] = [
+  "history",
+  "messages",
+  "edit",
+  "friends",
+  "sessions",
+  "data",
+];
 
 export const Route = createFileRoute("/_auth/profile")({
   validateSearch: (search: Record<string, unknown>): ProfileSearch => {
@@ -47,6 +55,9 @@ function ProfilePage() {
         <TabLink target="history" active={activeTab === "history"}>
           {t("profile.tabs.history")}
         </TabLink>
+        <TabLink target="messages" active={activeTab === "messages"}>
+          Nachrichten
+        </TabLink>
         <TabLink target="edit" active={activeTab === "edit"}>
           {t("profile.tabs.edit")}
         </TabLink>
@@ -65,6 +76,12 @@ function ProfilePage() {
           <UserStatsPanel />
           <h2 className="text-lg font-semibold pt-2">{t("profile.history.title")}</h2>
           <GameHistoryList />
+        </>
+      )}
+      {activeTab === "messages" && (
+        <>
+          <h2 className="text-lg font-semibold">Privatnachrichten</h2>
+          <ConversationsPanel />
         </>
       )}
       {activeTab === "edit" && <ProfileEditPanel />}

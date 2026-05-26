@@ -94,9 +94,28 @@ export class ChatService {
     });
     if (!sender) throw new NotFoundException(`User ${senderId} nicht gefunden`);
 
-    // Bei GAME-Channel hängen wir die gameId mit dran — für Replay-/
-    // Profil-History-Joins (Plan-Doc §4).
-    const gameId = channel === ChatChannel.GAME ? this.extractGameId(channelKey) : null;
+    // Bei GAME-Channel ist der gameId-Bezug eindeutig im Channel-Key.
+    // Bei DM-Channel setzen wir den gameId zusätzlich, wenn der Sender
+    // gerade in einem laufenden Spiel sitzt — dann hat die Profil-Konversations-
+    // History später den Spiel-Kontext für die „Während Partie #X, Mitspieler: …"-
+    // Markierung. Mehrere parallele Spiele wären für denselben User ungewöhnlich
+    // (Lobby-Check verhindert es im Normalfall); falls doch, nimmt findFirst
+    // deterministisch das erstangelegte.
+    let gameId: string | null = null;
+    if (channel === ChatChannel.GAME) {
+      gameId = this.extractGameId(channelKey);
+    } else if (channel === ChatChannel.DM) {
+      const activeSeat = await this.prisma.gameSeat.findFirst({
+        where: {
+          userId: senderId,
+          replacedByAiSeatType: null,
+          game: { endedAt: null },
+        },
+        select: { gameId: true },
+        orderBy: { gameId: "asc" },
+      });
+      if (activeSeat) gameId = activeSeat.gameId;
+    }
 
     const row = await this.prisma.chatMessage.create({
       data: {

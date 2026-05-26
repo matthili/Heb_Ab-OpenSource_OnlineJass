@@ -1,14 +1,17 @@
 /**
  * REST-Endpunkte für Chat.
  *
- *   - POST /api/chat        — Nachricht senden
- *   - GET  /api/chat        — Historie laden (channelKey + before? + limit?)
+ *   - POST /api/chat                                — Nachricht senden
+ *   - GET  /api/chat                                — Historie laden (channelKey + before? + limit?)
+ *   - GET  /api/chat/conversations                  — DM-Partner-Übersicht (Profil-History)
+ *   - GET  /api/chat/conversations/:otherUserId     — voller DM-Verlauf + Spiel-Kontext
  *
  * Nach erfolgreichem Send pusht der Controller selbst via Gateway —
  * dadurch sehen alle Subscriber die Nachricht sofort.
  */
-import { Body, Controller, Get, Post, Query, Req, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, Param, Post, Query, Req, UseGuards } from "@nestjs/common";
 import type { FastifyRequest } from "fastify";
+import { z } from "zod";
 
 import { SessionGuard } from "../../common/guards/session.guard.js";
 import { ZodValidationPipe } from "../../common/pipes/zod.pipe.js";
@@ -20,14 +23,53 @@ import {
 } from "./chat.dto.js";
 import { ChatGateway } from "./chat.gateway.js";
 import { ChatService, type ChatMessageView } from "./chat.service.js";
+import {
+  ConversationsService,
+  type ConversationPartner,
+  type ConversationView,
+} from "./conversations.service.js";
+
+const ConversationQuerySchema = z
+  .object({
+    /** „all" | „during-game" | „no-game" — Spec: Alle / Spielnachrichten / Lobby-Nachrichten. */
+    filter: z.enum(["all", "during-game", "no-game"]).default("all"),
+    limit: z.coerce.number().int().min(1).max(200).default(100),
+    before: z.string().datetime().optional(),
+  })
+  .strict();
+type ConversationQuery = z.infer<typeof ConversationQuerySchema>;
 
 @Controller("api/chat")
 @UseGuards(SessionGuard)
 export class ChatController {
   constructor(
     private readonly chat: ChatService,
-    private readonly gateway: ChatGateway
+    private readonly gateway: ChatGateway,
+    private readonly conversations: ConversationsService
   ) {}
+
+  // ─── Profil-Konversations-History ──────────────────────────────────
+
+  @Get("conversations")
+  async listConversations(
+    @Req() req: FastifyRequest
+  ): Promise<{ partners: ConversationPartner[] }> {
+    const partners = await this.conversations.listPartners(req.user!.id);
+    return { partners };
+  }
+
+  @Get("conversations/:otherUserId")
+  async getConversation(
+    @Req() req: FastifyRequest,
+    @Param("otherUserId") otherUserId: string,
+    @Query(new ZodValidationPipe(ConversationQuerySchema)) query: ConversationQuery
+  ): Promise<ConversationView> {
+    return this.conversations.getConversation(req.user!.id, otherUserId, {
+      filter: query.filter,
+      limit: query.limit,
+      ...(query.before !== undefined ? { before: query.before } : {}),
+    });
+  }
 
   @Post()
   async send(

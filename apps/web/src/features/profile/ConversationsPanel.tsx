@@ -1,0 +1,260 @@
+/**
+ * Profil-Konversations-History.
+ *
+ * Zwei-Spalten-Layout: links die DM-Partner-Liste (sortiert nach letztem
+ * Kontakt), rechts der Verlauf zur ausgewählten Person mit Filter
+ * „Alle / Spielnachrichten / Lobby-Nachrichten" und inline-Markierung
+ * „Während Partie #X, Mitspieler: …" bei DMs aus einem aktiven Spiel.
+ *
+ * Daten:
+ *   - GET /api/chat/conversations                  → Partner-Liste
+ *   - GET /api/chat/conversations/:otherUserId?filter=… → Verlauf + game-Contexts
+ *
+ * Bewusst kein Live-Push: das Profil ist ein retro-Bereich, kein Live-Chat.
+ * Bei Bedarf einfach neu laden. Die aktive Lobby-Chat-Komponente bleibt
+ * separat (`ChatPanel`).
+ */
+import { useQuery } from "@tanstack/react-query";
+import { Link } from "@tanstack/react-router";
+import { useState } from "react";
+
+import { api } from "~/lib/api";
+
+interface Partner {
+  partner: { id: string; name: string };
+  lastMessage: { body: string; createdAt: string; wasDuringGame: boolean };
+}
+interface Message {
+  id: string;
+  senderId: string;
+  senderName: string;
+  body: string;
+  createdAt: string;
+  gameId: string | null;
+}
+interface ConversationView {
+  messages: Message[];
+  gameContexts: Record<string, { mitspieler: string[] }>;
+}
+
+type Filter = "all" | "during-game" | "no-game";
+
+export function ConversationsPanel() {
+  const partners = useQuery<{ partners: Partner[] }>({
+    queryKey: ["chat", "conversations"],
+    queryFn: () => api("/api/chat/conversations"),
+    staleTime: 15_000,
+  });
+
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  if (partners.isPending) {
+    return <p className="text-stone-500 text-sm">Lade Konversationen …</p>;
+  }
+  if (partners.isError || !partners.data) {
+    return <p className="text-rose-700 text-sm">Konversationen konnten nicht geladen werden.</p>;
+  }
+  if (partners.data.partners.length === 0) {
+    return (
+      <section className="rounded border border-stone-200 p-3 text-sm text-stone-600">
+        Noch keine Privatnachrichten gewechselt. Sobald du jemandem schreibst, erscheinen die
+        Konversationen hier.
+      </section>
+    );
+  }
+
+  return (
+    <section className="grid grid-cols-1 md:grid-cols-[16rem_1fr] gap-4">
+      <PartnerList
+        partners={partners.data.partners}
+        selectedId={selectedId}
+        onSelect={setSelectedId}
+      />
+      {selectedId === null ? (
+        <p className="text-sm text-stone-500 italic">
+          Wähle links eine Person aus, um den Verlauf zu sehen.
+        </p>
+      ) : (
+        <ConversationView partnerId={selectedId} />
+      )}
+    </section>
+  );
+}
+
+function PartnerList({
+  partners,
+  selectedId,
+  onSelect,
+}: {
+  partners: Partner[];
+  selectedId: string | null;
+  onSelect: (id: string) => void;
+}) {
+  return (
+    <ul className="border border-stone-200 rounded divide-y divide-stone-100 max-h-[28rem] overflow-y-auto">
+      {partners.map((p) => {
+        const active = p.partner.id === selectedId;
+        return (
+          <li key={p.partner.id}>
+            <button
+              type="button"
+              onClick={() => onSelect(p.partner.id)}
+              className={
+                "block w-full text-left px-3 py-2 hover:bg-stone-50 " +
+                (active ? "bg-stone-100" : "")
+              }
+            >
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-medium truncate">{p.partner.name}</span>
+                <span className="text-xs text-stone-500 shrink-0">
+                  {formatRelative(p.lastMessage.createdAt)}
+                </span>
+              </div>
+              <div className="text-xs text-stone-500 flex items-center gap-1.5 mt-0.5">
+                {p.lastMessage.wasDuringGame && (
+                  <span title="aus einem Spiel" aria-label="aus einem Spiel">
+                    🎲
+                  </span>
+                )}
+                <span
+                  className="truncate"
+                  // body ist server-seitig sanitized; trotzdem nur text-only
+                  // hier (kein dangerouslySetInnerHTML) — Vorschau soll nicht
+                  // HTML-formatieren.
+                >
+                  {stripHtml(p.lastMessage.body)}
+                </span>
+              </div>
+            </button>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+function ConversationView({ partnerId }: { partnerId: string }) {
+  const [filter, setFilter] = useState<Filter>("all");
+  const conv = useQuery<ConversationView>({
+    queryKey: ["chat", "conversations", partnerId, filter],
+    queryFn: () => api(`/api/chat/conversations/${partnerId}?filter=${filter}`),
+    staleTime: 10_000,
+  });
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-2 text-sm">
+        <label htmlFor="conv-filter" className="text-stone-600">
+          Filter:
+        </label>
+        <select
+          id="conv-filter"
+          value={filter}
+          onChange={(e) => setFilter(e.target.value as Filter)}
+          className="rounded border border-stone-300 px-2 py-1"
+        >
+          <option value="all">Alle</option>
+          <option value="during-game">Nur Spielnachrichten</option>
+          <option value="no-game">Nur Lobby-Nachrichten</option>
+        </select>
+      </div>
+
+      {conv.isPending && <p className="text-sm text-stone-500">Lade Verlauf …</p>}
+      {conv.data && conv.data.messages.length === 0 && (
+        <p className="text-sm text-stone-500 italic">Keine Nachrichten zu diesem Filter.</p>
+      )}
+      {conv.data && conv.data.messages.length > 0 && <MessageList view={conv.data} />}
+    </div>
+  );
+}
+
+function MessageList({ view }: { view: ConversationView }) {
+  // Wir gruppieren aufeinanderfolgende Nachrichten mit derselben `gameId` in
+  // einen Block. Wechselt die `gameId`, kommt ein neuer Kontext-Header dazu —
+  // das ergibt die Spec-Markierung „Während Partie #X, Mitspieler: …".
+  const blocks: Array<{ gameId: string | null; messages: Message[] }> = [];
+  for (const m of view.messages) {
+    const last = blocks[blocks.length - 1];
+    if (last && last.gameId === m.gameId) {
+      last.messages.push(m);
+    } else {
+      blocks.push({ gameId: m.gameId, messages: [m] });
+    }
+  }
+
+  return (
+    <ol className="space-y-3 max-h-[28rem] overflow-y-auto">
+      {blocks.map((b, idx) => (
+        <li key={idx} className="space-y-2">
+          {b.gameId !== null && (
+            <GameContextHeader
+              gameId={b.gameId}
+              mitspieler={view.gameContexts[b.gameId]?.mitspieler ?? []}
+            />
+          )}
+          <ul className="space-y-1">
+            {b.messages.map((m) => (
+              <li key={m.id} className="text-sm">
+                <span className="font-medium">{m.senderName}</span>
+                <span className="text-xs text-stone-500 ml-2">
+                  {new Date(m.createdAt).toLocaleString()}
+                </span>
+                {/*
+                 * Body kommt sanitized vom Server (DOMPurify, allowlist).
+                 * Wir rendern als HTML, damit Markdown-Formatierung (z.B.
+                 * **fett**) sichtbar ist.
+                 */}
+                <div
+                  className="prose prose-sm max-w-none text-stone-800"
+                  dangerouslySetInnerHTML={{ __html: m.body }}
+                />
+              </li>
+            ))}
+          </ul>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+function GameContextHeader({ gameId, mitspieler }: { gameId: string; mitspieler: string[] }) {
+  const shortId = gameId.slice(-6); // CUID-Tail als Lesehilfe
+  return (
+    <div className="rounded bg-amber-50 border border-amber-200 px-2 py-1 text-xs text-amber-900 flex items-center flex-wrap gap-1">
+      <span aria-hidden="true">🎲</span>
+      <span>
+        Während Partie <code className="font-mono">#{shortId}</code>
+      </span>
+      {mitspieler.length > 0 && (
+        <span>
+          , Mitspieler: <span className="font-medium">{mitspieler.join(", ")}</span>
+        </span>
+      )}
+      <Link
+        to="/replay/$gameId"
+        params={{ gameId }}
+        className="ml-auto underline decoration-dotted hover:decoration-solid"
+      >
+        Replay öffnen
+      </Link>
+    </div>
+  );
+}
+
+function stripHtml(html: string): string {
+  // Klein-Helper für die Partner-Liste-Vorschau: nur sichtbaren Text behalten.
+  return html.replace(/<[^>]+>/g, "").trim();
+}
+
+function formatRelative(iso: string): string {
+  const d = new Date(iso);
+  const diffMs = Date.now() - d.getTime();
+  const min = Math.round(diffMs / 60_000);
+  if (min < 1) return "gerade eben";
+  if (min < 60) return `vor ${min} Min`;
+  const h = Math.round(min / 60);
+  if (h < 24) return `vor ${h} Std`;
+  const days = Math.round(h / 24);
+  if (days < 14) return `vor ${days} T`;
+  return d.toLocaleDateString();
+}
