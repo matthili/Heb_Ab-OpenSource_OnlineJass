@@ -5,10 +5,14 @@
  * Teilnehmer (oder Admins). Andere User bekommen 403 → wir rendern
  * eine freundliche Fehlermeldung statt rohem JSON.
  */
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useState } from "react";
 
 import { ReplayPlayer } from "~/features/replay/ReplayPlayer";
+import type { ReplayBundle } from "~/features/replay/types";
 import { useReplay } from "~/features/replay/useReplay";
+import { api } from "~/lib/api";
 import { useSession } from "~/lib/auth-client";
 
 export const Route = createFileRoute("/_auth/replay/$gameId")({
@@ -75,6 +79,12 @@ function ReplayPage() {
         </div>
       )}
 
+      <ShareControls
+        gameId={gameId}
+        bundle={data.bundle}
+        canShare={data.bundle.seats.some((s) => s.userId === session?.user?.id)}
+      />
+
       {data.frames.length > 0 ? (
         <ReplayPlayer bundle={data.bundle} frames={data.frames} mySeat={mySeat} />
       ) : (
@@ -89,6 +99,79 @@ function ReplayPage() {
         />
       )}
     </section>
+  );
+}
+
+function ShareControls({
+  gameId,
+  bundle,
+  canShare,
+}: {
+  gameId: string;
+  bundle: ReplayBundle;
+  canShare: boolean;
+}) {
+  const queryClient = useQueryClient();
+  const [copied, setCopied] = useState(false);
+
+  const mut = useMutation({
+    mutationFn: (isPublic: boolean) =>
+      api<{ publicReplay: boolean }>(`/api/games/${gameId}/replay/visibility`, {
+        method: "PATCH",
+        body: { isPublic },
+      }),
+    onSuccess: (result) => {
+      // Optimistic-style: lokal die Bundle-Kopie aktualisieren, damit der
+      // Toggle ohne refetch sofort den neuen Stand zeigt.
+      queryClient.setQueryData<{ bundle: ReplayBundle } | undefined>(
+        ["games", gameId, "replay"],
+        (old) =>
+          old ? { ...old, bundle: { ...old.bundle, publicReplay: result.publicReplay } } : old
+      );
+    },
+  });
+
+  const shareUrl = `${window.location.origin}/r/${gameId}`;
+
+  return (
+    <div className="rounded border border-stone-200 bg-stone-50 p-3 space-y-2 text-sm">
+      {canShare ? (
+        <label className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={bundle.publicReplay}
+            disabled={mut.isPending}
+            onChange={(e) => mut.mutate(e.target.checked)}
+            className="size-4"
+          />
+          <span>
+            <strong>Öffentlich teilbar</strong> — über die Share-URL einsehbar auch ohne Login.
+          </span>
+        </label>
+      ) : (
+        <p className="text-stone-600 text-xs">
+          Nur Teilnehmer können das Replay zum Teilen freigeben.
+        </p>
+      )}
+      {bundle.publicReplay && (
+        <div className="flex items-center gap-2 flex-wrap">
+          <code className="text-xs bg-white border border-stone-300 px-2 py-1 rounded select-all">
+            {shareUrl}
+          </code>
+          <button
+            type="button"
+            onClick={async () => {
+              await navigator.clipboard.writeText(shareUrl);
+              setCopied(true);
+              setTimeout(() => setCopied(false), 2_000);
+            }}
+            className="text-xs rounded border border-stone-300 px-2 py-1 hover:bg-stone-100"
+          >
+            {copied ? "✓ kopiert" : "Link kopieren"}
+          </button>
+        </div>
+      )}
+    </div>
   );
 }
 

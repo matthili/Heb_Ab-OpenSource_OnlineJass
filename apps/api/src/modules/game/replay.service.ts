@@ -70,6 +70,8 @@ export interface ReplayBundle {
   seats: ReplaySeat[];
   rounds: ReplayRound[];
   moves: ReplayMove[];
+  /** Spec: „Öffentliche/teilbare Replays". `true` = via /public-Endpunkt einsehbar. */
+  publicReplay: boolean;
 }
 
 @Injectable()
@@ -111,6 +113,91 @@ export class ReplayService {
       }
     }
 
+    return this.buildBundle(game);
+  }
+
+  /**
+   * Liest ein Replay **ohne Auth-Check** — funktioniert nur, wenn der
+   * `publicReplay`-Flag auf `true` steht. Für Share-Links gedacht
+   * (`/r/:gameId`). Wirft `NotFound` sowohl bei unbekannter ID als auch bei
+   * nicht-öffentlichem Game (Privatsphäre: kein Existenz-Leak).
+   */
+  async getPublicReplay(gameId: string): Promise<ReplayBundle> {
+    const game = await this.prisma.game.findUnique({
+      where: { id: gameId },
+      include: {
+        seats: {
+          include: { user: { select: { id: true, name: true } } },
+          orderBy: { seat: "asc" },
+        },
+        rounds: { orderBy: { roundIdx: "asc" } },
+        moves: { orderBy: { seq: "asc" } },
+      },
+    });
+    if (!game || !game.publicReplay) {
+      throw new NotFoundException(`Öffentliches Replay ${gameId} nicht gefunden`);
+    }
+    return this.buildBundle(game);
+  }
+
+  /**
+   * Schaltet das `publicReplay`-Flag um. Erlaubt für jeden Teilnehmer am
+   * Tisch (oder Admin). Wirft `Forbidden`, wenn der User keinen Sitz hatte.
+   */
+  async setPublicReplay(gameId: string, userId: string, isPublic: boolean): Promise<void> {
+    const game = await this.prisma.game.findUnique({
+      where: { id: gameId },
+      include: { seats: { select: { userId: true } } },
+    });
+    if (!game) throw new NotFoundException(`Game ${gameId} nicht gefunden`);
+    const isParticipant = game.seats.some((s) => s.userId !== null && s.userId === userId);
+    if (!isParticipant) {
+      const me = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { role: true },
+      });
+      if (me?.role !== "ADMIN") {
+        throw new ForbiddenException("Nur Teilnehmer dürfen ein Replay veröffentlichen.");
+      }
+    }
+    await this.prisma.game.update({
+      where: { id: gameId },
+      data: { publicReplay: isPublic },
+    });
+  }
+
+  /** Gemeinsamer Bundle-Builder für `getReplay` und `getPublicReplay`. */
+  private buildBundle(game: {
+    id: string;
+    variant: GameVariant;
+    ruleVersion: string;
+    modelVersion: string | null;
+    startedAt: Date;
+    endedAt: Date | null;
+    finalScore: unknown;
+    publicReplay: boolean;
+    seats: Array<{
+      seat: number;
+      userId: string | null;
+      aiSeatType: string | null;
+      user: { id: string; name: string } | null;
+    }>;
+    rounds: Array<{
+      roundIdx: number;
+      mode: string;
+      trumpSuit: number | null;
+      starter: number;
+      weisen: unknown;
+    }>;
+    moves: Array<{
+      seq: number;
+      seat: number;
+      cardIndex: number;
+      trickIdx: number;
+      ts: Date;
+      userId: string | null;
+    }>;
+  }): ReplayBundle {
     return {
       gameId: game.id,
       variant: game.variant,
@@ -120,6 +207,7 @@ export class ReplayService {
       endedAt: game.endedAt?.toISOString() ?? null,
       status: game.endedAt ? "finished" : "playing",
       finalScore: game.finalScore as ReplayFinalScore | null,
+      publicReplay: game.publicReplay,
       seats: game.seats.map((s) => ({
         seat: s.seat,
         userId: s.userId,

@@ -176,6 +176,11 @@ model Game {
   endedAt      DateTime?
   finalScore   Json? // { team0: 81, team1: 76, matsch: false }
 
+  /// Wenn `true`, ist das Replay über `/api/games/:id/replay/public` ohne
+  /// Login erreichbar — Spec-Feature „Öffentliche/teilbare Replays". Default
+  /// `false` (Datenschutz-Default); jeder Teilnehmer darf via PATCH umschalten.
+  publicReplay Boolean @default(false)
+
   // M6: Game gehört zu einem LobbyTable (nullable für Pre-M6-Daten und
   // potenzielle direkt-erzeugte Test-Games; ab M6-C ist es bei Neu-Anlagen
   // immer gesetzt).

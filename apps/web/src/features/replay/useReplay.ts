@@ -55,6 +55,23 @@ export function useReplay(gameId: string | undefined) {
 }
 
 /**
+ * Variante für die öffentliche Share-URL `/r/:gameId`. Schlägt mit
+ * 404 fehl, wenn das Replay nicht öffentlich ist (oder gar nicht existiert).
+ */
+export function usePublicReplay(gameId: string | undefined) {
+  return useQuery<ReplayData>({
+    queryKey: ["games", gameId, "public-replay"],
+    enabled: Boolean(gameId),
+    queryFn: async () => {
+      const bundle = await api<ReplayBundle>(`/api/games/${gameId!}/replay/public`);
+      return reconstruct(bundle);
+    },
+    staleTime: Infinity,
+    gcTime: 5 * 60_000,
+  });
+}
+
+/**
  * Liest die Hand pro Sitz aus dem Bundle, indem alle Moves dieses Sitzes
  * eingesammelt werden. Reihenfolge in der Hand spielt für die Engine
  * keine Rolle.

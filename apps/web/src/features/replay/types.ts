@@ -49,6 +49,8 @@ export interface ReplayBundle {
   seats: ReplaySeat[];
   rounds: ReplayRound[];
   moves: ReplayMove[];
+  /** Spec „teilbare Replays": `true` → via `/r/:gameId` ohne Login einsehbar. */
+  publicReplay: boolean;
 }
 
 export interface UserGameSummary {

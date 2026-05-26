@@ -11,12 +11,17 @@
  * Der Karten-Spielzug läuft über das Socket.IO-Gateway (siehe `game.gateway`);
  * REST bleibt für stateful-flow ungeeignet.
  */
-import { Controller, Get, Param, Query, Req, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, Param, Patch, Query, Req, UseGuards } from "@nestjs/common";
 import type { FastifyRequest } from "fastify";
+import { z } from "zod";
 
 import { SessionGuard } from "../../common/guards/session.guard.js";
+import { ZodValidationPipe } from "../../common/pipes/zod.pipe.js";
 import { GameService, type PlayerView } from "./game.service.js";
 import { ReplayService, type ReplayBundle, type UserGameSummary } from "./replay.service.js";
+
+const SetPublicReplayDtoSchema = z.object({ isPublic: z.boolean() }).strict();
+type SetPublicReplayDto = z.infer<typeof SetPublicReplayDtoSchema>;
 
 @Controller("api/games")
 export class GameController {
@@ -47,6 +52,31 @@ export class GameController {
   @UseGuards(SessionGuard)
   async getReplay(@Req() req: FastifyRequest, @Param("id") gameId: string): Promise<ReplayBundle> {
     return this.replay.getReplay(gameId, req.user!.id);
+  }
+
+  /**
+   * Öffentliches Replay (kein SessionGuard). 404, wenn das Spiel nicht
+   * existiert ODER `publicReplay=false` ist — kein Existenz-Leak.
+   * Shareable URL: `${frontend}/r/:gameId`.
+   */
+  @Get(":id/replay/public")
+  async getPublicReplay(@Param("id") gameId: string): Promise<ReplayBundle> {
+    return this.replay.getPublicReplay(gameId);
+  }
+
+  /**
+   * Schaltet das `publicReplay`-Flag um. Erlaubt für jeden Teilnehmer
+   * (oder Admin). Liefert den neuen Stand zurück.
+   */
+  @Patch(":id/replay/visibility")
+  @UseGuards(SessionGuard)
+  async setPublicReplay(
+    @Req() req: FastifyRequest,
+    @Param("id") gameId: string,
+    @Body(new ZodValidationPipe(SetPublicReplayDtoSchema)) dto: SetPublicReplayDto
+  ): Promise<{ publicReplay: boolean }> {
+    await this.replay.setPublicReplay(gameId, req.user!.id, dto.isPublic);
+    return { publicReplay: dto.isPublic };
   }
 
   /**
