@@ -45,6 +45,7 @@ import type {
 } from "./lobby.dto.js";
 import { LobbyGateway } from "./lobby.gateway.js";
 import { LobbySettingsService } from "./lobby-settings.service.js";
+import { PushService } from "../push/push.service.js";
 
 /** Sitz-Zusammenfassung für die View. */
 export interface SeatView {
@@ -97,7 +98,8 @@ export class LobbyService {
     private readonly games: GameService,
     private readonly bodenseeGames: BodenseeGameService,
     private readonly gateway: LobbyGateway,
-    private readonly settings: LobbySettingsService
+    private readonly settings: LobbySettingsService,
+    private readonly push: PushService
   ) {}
 
   /**
@@ -502,6 +504,15 @@ export class LobbyService {
           requestId: request.id,
           userId,
           userName: requesterName,
+        });
+        // Zusätzlich Web-Push — funktioniert auch, wenn der Owner gerade
+        // keinen Tab offen hat. Fail-open: hängt am `push.sendToUser` selbst,
+        // wir reichen den Aufruf nur an.
+        void this.push.sendToUser(tableOwner.ownerId, {
+          title: "Neue Beitritts-Anfrage",
+          body: `${requesterName} möchte an deinem Tisch mitspielen.`,
+          url: `/lobby/${tableId}`,
+          tag: `join-request-${tableId}`,
         });
       }
       await this.pushTableState(table.id);

@@ -22,6 +22,7 @@ import { InferenceModule } from "./modules/inference/inference.module.js";
 import { LobbyModule } from "./modules/lobby/lobby.module.js";
 import { MailModule } from "./modules/mail/mail.module.js";
 import { PrismaModule } from "./modules/prisma/prisma.module.js";
+import { PushModule } from "./modules/push/push.module.js";
 import { RedisModule } from "./modules/redis/redis.module.js";
 import { UsersModule } from "./modules/users/users.module.js";
 
@@ -65,6 +66,7 @@ const pinoHttp = isDev
     MailModule,
     AuditModule,
     BlocklistModule,
+    PushModule,
     InferenceModule,
     AuthModule,
     UsersModule,

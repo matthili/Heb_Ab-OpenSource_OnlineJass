@@ -74,6 +74,9 @@ export default defineConfig({
         // bekommen wir HTML zurück, wo JSON erwartet wird.
         navigateFallbackDenylist: [/^\/api\//, /^\/ws\//],
         globPatterns: ["**/*.{js,css,html,svg,woff2}"],
+        // Custom Push-/Notification-Click-Handler. Liegt unter public/
+        // und wird zur Runtime vom generierten SW per importScripts geladen.
+        importScripts: ["/push-handler.js"],
         // Karten-Bilder selbst sind nicht im Precache (zu viel Initial-
         // Bandbreite). Beim ersten Anzeigen werden sie in den
         // Runtime-Cache gelegt und sind danach offline verfügbar.

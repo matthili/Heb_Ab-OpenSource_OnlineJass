@@ -312,6 +312,7 @@ export async function setupTestApp(): Promise<TestAppHandle> {
     `"Blocklist"`,
     `"BannedWord"`,
     `"AdminSetting"`,
+    `"PushSubscription"`,
   ];
   async function resetData(): Promise<void> {
     capturedMails.length = 0;

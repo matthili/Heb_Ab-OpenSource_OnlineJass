@@ -55,6 +55,7 @@ model User {
   profile              Profile?
   sessions             Session[]
   accounts             Account[]
+  pushSubscriptions    PushSubscription[]
   games                GameSeat[]
   movesPlayed          Move[]
   chatMessages         ChatMessage[]
@@ -110,6 +111,28 @@ model Account {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([providerId, accountId])
+  @@index([userId])
+}
+
+/// Web-Push-Subscription pro Browser/Device. Eine User-Person kann mehrere
+/// haben (Desktop, Phone, Tablet). `endpoint` ist global eindeutig — kommt
+/// vom Browser-Push-Service als Subscription-URL.
+model PushSubscription {
+  id         Int       @id @default(autoincrement())
+  userId     String
+  endpoint   String    @unique
+  /// base64url-kodierter P-256-Public-Key der Client-Subscription.
+  p256dh     String
+  /// base64url-kodiertes Auth-Secret der Client-Subscription.
+  auth       String
+  /// Optionaler User-Agent zum späteren Anzeigen ("Chrome auf Windows").
+  userAgent  String?
+  createdAt  DateTime  @default(now())
+  /// Wird bei jedem erfolgreichen Push aktualisiert; bei 410/404 löschen wir die Zeile.
+  lastUsedAt DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@index([userId])
 }
 

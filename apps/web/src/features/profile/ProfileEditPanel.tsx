@@ -22,6 +22,8 @@ import { useTranslation } from "react-i18next";
 
 import { api, ApiError } from "~/lib/api";
 
+import { PushTogglePanel } from "./PushTogglePanel";
+
 const VISIBILITY_LEVELS = ["PUBLIC", "LOGGED_IN", "FRIENDS", "PRIVATE"] as const;
 type VisibilityLevel = (typeof VISIBILITY_LEVELS)[number];
 
@@ -314,6 +316,8 @@ export function ProfileEditPanel() {
           className="w-full rounded border border-stone-300 px-2 py-1 text-sm"
         />
       </FieldRow>
+
+      <PushTogglePanel />
 
       <fieldset className="border-t border-stone-200 pt-3">
         <legend className="text-sm font-medium text-stone-700">Leaderboard</legend>
