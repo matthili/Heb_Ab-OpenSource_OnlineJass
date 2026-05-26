@@ -36,6 +36,7 @@ export interface UpdateProfileInput {
   bio?: string | null | undefined;
   avatarUrl?: string | null | undefined;
   visibility?: VisibilityMap | undefined;
+  publicLeaderboard?: boolean | undefined;
 }
 
 /** Antwort von getMyProfile — voller Eigenblick. */
@@ -58,6 +59,7 @@ export interface MyProfileView {
     bio: string | null;
     avatarUrl: string | null;
     visibility: Readonly<Record<ProfileFieldName, VisibilityLevel>>;
+    publicLeaderboard: boolean;
   };
 }
 
@@ -133,6 +135,9 @@ export class UsersService {
         bio: input.bio ?? null,
         avatarUrl: input.avatarUrl ?? null,
         visibility: mergedVisibility,
+        ...(input.publicLeaderboard !== undefined && {
+          publicLeaderboard: input.publicLeaderboard,
+        }),
       },
       update: {
         ...(input.realFirstName !== undefined && { realFirstName: input.realFirstName }),
@@ -144,6 +149,9 @@ export class UsersService {
         ...(input.bio !== undefined && { bio: input.bio }),
         ...(input.avatarUrl !== undefined && { avatarUrl: input.avatarUrl }),
         visibility: mergedVisibility,
+        ...(input.publicLeaderboard !== undefined && {
+          publicLeaderboard: input.publicLeaderboard,
+        }),
       },
     });
 
@@ -195,6 +203,7 @@ function shapeMyProfile(user: User, profile: Profile | null): MyProfileView {
       bio: profile?.bio ?? null,
       avatarUrl: profile?.avatarUrl ?? null,
       visibility,
+      publicLeaderboard: profile?.publicLeaderboard ?? false,
     },
   };
 }

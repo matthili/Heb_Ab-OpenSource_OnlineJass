@@ -54,6 +54,7 @@ interface MyProfileView {
     bio: string | null;
     avatarUrl: string | null;
     visibility: Record<FieldName, VisibilityLevel>;
+    publicLeaderboard: boolean;
   };
 }
 
@@ -67,6 +68,7 @@ interface FormState {
   bio: string;
   avatarUrl: string;
   visibility: Record<FieldName, VisibilityLevel>;
+  publicLeaderboard: boolean;
 }
 
 const EMPTY_VISIBILITY: Record<FieldName, VisibilityLevel> = {
@@ -102,6 +104,7 @@ export function ProfileEditPanel() {
         bio: "",
         avatarUrl: "",
         visibility: { ...EMPTY_VISIBILITY },
+        publicLeaderboard: false,
       };
     }
     const p = data.profile;
@@ -115,6 +118,7 @@ export function ProfileEditPanel() {
       bio: p.bio ?? "",
       avatarUrl: p.avatarUrl ?? "",
       visibility: { ...p.visibility },
+      publicLeaderboard: p.publicLeaderboard,
     };
   }, [data]);
 
@@ -163,6 +167,7 @@ export function ProfileEditPanel() {
       bio: trimmedOrNull(form.bio),
       avatarUrl: trimmedOrNull(form.avatarUrl),
       visibility: form.visibility,
+      publicLeaderboard: form.publicLeaderboard,
     });
   }
 
@@ -309,6 +314,26 @@ export function ProfileEditPanel() {
           className="w-full rounded border border-stone-300 px-2 py-1 text-sm"
         />
       </FieldRow>
+
+      <fieldset className="border-t border-stone-200 pt-3">
+        <legend className="text-sm font-medium text-stone-700">Leaderboard</legend>
+        <label className="flex items-start gap-2 text-sm mt-1">
+          <input
+            type="checkbox"
+            checked={form.publicLeaderboard}
+            onChange={(e) => setField("publicLeaderboard", e.target.checked)}
+            className="mt-0.5 size-4"
+          />
+          <span>
+            Im{" "}
+            <a href="/leaderboard" className="underline" target="_blank" rel="noreferrer">
+              öffentlichen Leaderboard
+            </a>{" "}
+            erscheinen (Opt-in). Sichtbar bleibt nur dein Spitzname und die aggregierte Bilanz; ein
+            Klick reicht zum Aussteigen.
+          </span>
+        </label>
+      </fieldset>
 
       {errMsg && (
         <p role="alert" className="text-sm text-rose-700">

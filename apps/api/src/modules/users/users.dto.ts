@@ -29,6 +29,8 @@ export const UpdateProfileDtoSchema = z
     bio: trimmedString(2000).optional(),
     avatarUrl: z.url().max(2000).nullable().optional(),
     visibility: VisibilityMapSchema.optional(),
+    /** Spec „Leaderboard (Opt-in pro Nutzer)". `true` = im öffentlichen Ranking sichtbar. */
+    publicLeaderboard: z.boolean().optional(),
   })
   .strict();
 
