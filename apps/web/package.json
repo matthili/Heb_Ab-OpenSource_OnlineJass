@@ -22,6 +22,7 @@
   "dependencies": {
     "@fontsource/eb-garamond": "^5.2.7",
     "@jass/engine": "workspace:*",
+    "@jass/shared-types": "workspace:*",
     "@jass/ui": "workspace:*",
     "@tanstack/react-query": "^5.100.0",
     "@tanstack/react-router": "^1.170.0",

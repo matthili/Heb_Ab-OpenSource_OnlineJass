@@ -2,19 +2,24 @@
   "name": "@jass/shared-types",
   "version": "0.0.0",
   "private": true,
-  "description": "Geteilte Types zwischen apps/api und apps/web: OpenAPI-Client, WS-Event-Diskriminierungen, Zod-Schemas.",
+  "description": "Geteilte Zod-Schemas zwischen apps/api und apps/web. Eine Quelle der Wahrheit für DTO-Shapes; OpenAPI-Doc wird daraus per Script generiert.",
   "type": "module",
   "main": "./src/index.ts",
   "types": "./src/index.ts",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./contracts/*": "./src/contracts/*.ts"
   },
   "scripts": {
     "build": "tsc -b",
     "typecheck": "tsc -b --noEmit",
     "lint": "eslint src",
+    "gen:openapi": "tsx scripts/generate-openapi.ts",
     "test": "echo 'no tests yet'",
     "test:unit": "echo 'no tests yet'"
+  },
+  "dependencies": {
+    "zod": "^4.0.0"
   },
   "devDependencies": {
     "@jass/config": "workspace:*"

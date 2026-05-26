@@ -43,6 +43,7 @@
     "import:cards": "tsx scripts/import-cards.ts",
     "sync:nn": "tsx scripts/sync-nn.ts",
     "verify:nn": "tsx scripts/verify-nn-manifest.ts",
+    "gen:openapi": "pnpm --filter @jass/shared-types gen:openapi",
     "dev:stack": "docker compose -f infra/docker-compose.dev.yml up -d",
     "dev:stack:stop": "docker compose -f infra/docker-compose.dev.yml down",
     "dev:stack:reset": "docker compose -f infra/docker-compose.dev.yml down -v",

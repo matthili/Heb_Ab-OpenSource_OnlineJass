@@ -19,3 +19,6 @@ infra/helm/*/templates/
 # Prisma-Schema: ohne prettier-plugin-prisma kein Parser. `prisma format`
 # erledigt das Formatieren bei jedem `migrate dev`.
 *.prisma
+# OpenAPI-Output: aus den Zod-Schemas generiert (`pnpm gen:openapi`).
+# Prettier würde das Format ändern, ohne dass der Generator nachzieht.
+packages/shared-types/openapi.json

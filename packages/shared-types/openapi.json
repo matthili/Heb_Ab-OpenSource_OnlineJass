@@ -1,0 +1,775 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Heb ab! — Vorarlberger Kreuz-Jass API",
+    "version": "0.1.0",
+    "description": "Auto-generated aus den geteilten Zod-Schemas in @jass/shared-types. Stand der Migration in PLAN.md §14 — noch nicht jeder Endpunkt ist hier dokumentiert."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:3000",
+      "description": "Lokal"
+    }
+  ],
+  "paths": {
+    "/api/lobby/tables": {
+      "post": {
+        "summary": "Tisch öffnen",
+        "tags": [
+          "Lobby"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OpenTableDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Tisch angelegt",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "tableId": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "summary": "Tisch-Liste",
+        "tags": [
+          "Lobby"
+        ],
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "joinMode",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "mine",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Liste passender Tische",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "tables": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/TableListEntry"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/lobby/tables/{id}": {
+      "get": {
+        "summary": "Tisch-Detail",
+        "tags": [
+          "Lobby"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Detailansicht",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TableDetailView"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "summary": "Tisch-Settings ändern (Owner-only)",
+        "tags": [
+          "Lobby"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateTableSettingsDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Updated"
+          }
+        }
+      }
+    },
+    "/api/lobby/tables/{id}/invite": {
+      "post": {
+        "summary": "Spieler an den Tisch einladen",
+        "tags": [
+          "Lobby"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InviteUserDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Einladung erstellt"
+          }
+        }
+      }
+    },
+    "/api/games/{id}/rematch-vote": {
+      "post": {
+        "summary": "Re-Match-Vote nach Spielende",
+        "tags": [
+          "Lobby"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RematchVoteDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Vote registriert (kind beschreibt das Ergebnis)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "pending",
+                        "rematch-started",
+                        "rematch-rejected"
+                      ]
+                    },
+                    "gameId": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "OpenTableDto": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "joinMode": {
+            "default": "OPEN",
+            "type": "string",
+            "enum": [
+              "OPEN",
+              "REQUEST",
+              "INVITE"
+            ]
+          },
+          "variant": {
+            "default": "KREUZ_4P",
+            "type": "string",
+            "enum": [
+              "KREUZ_4P",
+              "SOLO_4P",
+              "BODENSEE_2P"
+            ]
+          },
+          "aiSeatType": {
+            "default": "heuristic",
+            "type": "string",
+            "pattern": "^(random|heuristic|nn(-.+)?)$"
+          },
+          "autoFillSeconds": {
+            "default": 30,
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 5,
+                "maximum": 600
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "restartMode": {
+            "default": "SIEGER_GIBT",
+            "type": "string",
+            "enum": [
+              "WELI",
+              "SIEGER_GIBT"
+            ]
+          },
+          "targetScore": {
+            "type": "integer",
+            "minimum": 500,
+            "maximum": 5000
+          },
+          "initialAiSeats": {
+            "default": [],
+            "maxItems": 3,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "seat": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 3
+                },
+                "aiSeatType": {
+                  "type": "string",
+                  "pattern": "^(random|heuristic|nn(-.+)?)$"
+                }
+              },
+              "required": [
+                "seat"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "UpdateTableSettingsDto": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "joinMode": {
+            "type": "string",
+            "enum": [
+              "OPEN",
+              "REQUEST",
+              "INVITE"
+            ]
+          },
+          "aiSeatType": {
+            "type": "string",
+            "pattern": "^(random|heuristic|nn(-.+)?)$"
+          },
+          "autoFillSeconds": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 5,
+                "maximum": 600
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "restartMode": {
+            "type": "string",
+            "enum": [
+              "WELI",
+              "SIEGER_GIBT"
+            ]
+          },
+          "targetScore": {
+            "type": "integer",
+            "minimum": 500,
+            "maximum": 5000
+          }
+        },
+        "additionalProperties": false
+      },
+      "InviteUserDto": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "inviteeUserId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "inviteeName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          }
+        },
+        "additionalProperties": false
+      },
+      "RematchVoteDto": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "vote": {
+            "type": "string",
+            "enum": [
+              "YES",
+              "NO"
+            ]
+          }
+        },
+        "required": [
+          "vote"
+        ],
+        "additionalProperties": false
+      },
+      "ListTablesQuery": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "status": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "WAITING",
+                  "IN_GAME",
+                  "POST_GAME",
+                  "MATCH_OVER",
+                  "CLOSED"
+                ]
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "WAITING",
+                    "IN_GAME",
+                    "POST_GAME",
+                    "MATCH_OVER",
+                    "CLOSED"
+                  ]
+                }
+              }
+            ]
+          },
+          "joinMode": {
+            "type": "string",
+            "enum": [
+              "OPEN",
+              "REQUEST",
+              "INVITE"
+            ]
+          },
+          "mine": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "string",
+                "enum": [
+                  "true",
+                  "false"
+                ]
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "TableListEntry": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "ownerId": {
+            "type": "string"
+          },
+          "ownerName": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "WAITING",
+              "IN_GAME",
+              "POST_GAME",
+              "MATCH_OVER",
+              "CLOSED"
+            ]
+          },
+          "joinMode": {
+            "type": "string",
+            "enum": [
+              "OPEN",
+              "REQUEST",
+              "INVITE"
+            ]
+          },
+          "variant": {
+            "type": "string",
+            "enum": [
+              "KREUZ_4P",
+              "SOLO_4P",
+              "BODENSEE_2P"
+            ]
+          },
+          "aiSeatType": {
+            "type": "string"
+          },
+          "autoFillSeconds": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "restartMode": {
+            "type": "string",
+            "enum": [
+              "WELI",
+              "SIEGER_GIBT"
+            ]
+          },
+          "targetScore": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "cumulativeScores": {
+            "readOnly": true,
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            }
+          },
+          "seatsTaken": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "hasPendingRequest": {
+            "type": "boolean"
+          },
+          "createdAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "ownerId",
+          "ownerName",
+          "status",
+          "joinMode",
+          "variant",
+          "aiSeatType",
+          "autoFillSeconds",
+          "restartMode",
+          "targetScore",
+          "cumulativeScores",
+          "seatsTaken",
+          "hasPendingRequest",
+          "createdAt"
+        ]
+      },
+      "TableDetailView": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "ownerId": {
+            "type": "string"
+          },
+          "ownerName": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "WAITING",
+              "IN_GAME",
+              "POST_GAME",
+              "MATCH_OVER",
+              "CLOSED"
+            ]
+          },
+          "joinMode": {
+            "type": "string",
+            "enum": [
+              "OPEN",
+              "REQUEST",
+              "INVITE"
+            ]
+          },
+          "variant": {
+            "type": "string",
+            "enum": [
+              "KREUZ_4P",
+              "SOLO_4P",
+              "BODENSEE_2P"
+            ]
+          },
+          "aiSeatType": {
+            "type": "string"
+          },
+          "autoFillSeconds": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "restartMode": {
+            "type": "string",
+            "enum": [
+              "WELI",
+              "SIEGER_GIBT"
+            ]
+          },
+          "targetScore": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "cumulativeScores": {
+            "readOnly": true,
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            }
+          },
+          "seatsTaken": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "hasPendingRequest": {
+            "type": "boolean"
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "seats": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "seat": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "user": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "name"
+                  ]
+                },
+                "aiSeatType": {
+                  "type": "string"
+                },
+                "isEmpty": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "seat",
+                "isEmpty"
+              ]
+            }
+          },
+          "currentGameId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "joinRequests": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "userId": {
+                  "type": "string"
+                },
+                "userName": {
+                  "type": "string"
+                },
+                "createdAt": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "userId",
+                "userName",
+                "createdAt"
+              ]
+            }
+          },
+          "invites": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "inviteeUserId": {
+                  "type": "string"
+                },
+                "inviteeName": {
+                  "type": "string"
+                },
+                "createdAt": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "inviteeUserId",
+                "inviteeName",
+                "createdAt"
+              ]
+            }
+          }
+        },
+        "required": [
+          "id",
+          "ownerId",
+          "ownerName",
+          "status",
+          "joinMode",
+          "variant",
+          "aiSeatType",
+          "autoFillSeconds",
+          "restartMode",
+          "targetScore",
+          "cumulativeScores",
+          "seatsTaken",
+          "hasPendingRequest",
+          "createdAt",
+          "seats",
+          "currentGameId"
+        ]
+      }
+    }
+  }
+}
