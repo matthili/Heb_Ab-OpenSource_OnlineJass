@@ -44,3 +44,18 @@ apps/api/prisma/generated/
 *.tmp
 *.bak
 .claude/
+
+# lokal-private Arbeitsdokumente — bleiben lokal, gehören nicht ins öffentliche Repo
+/PLAN.md
+/RECOVERED_PLAN.md
+/RECOVERED_CONVERSATION.md
+
+# TLS / Zertifikate (falls beim Self-Hosting lokal im Repo-Pfad abgelegt)
+*.pem
+*.key
+*.crt
+*.pfx
+
+# Cloudflare Tunnel — Credentials enthalten echte Tokens
+infra/cloudflared/*.json
+cloudflared-config.yml
