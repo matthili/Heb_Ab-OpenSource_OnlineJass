@@ -114,4 +114,6 @@ Siehe [`NN-CONTRACT.md`](./NN-CONTRACT.md) für die exakte Schnittstelle zum Sch
 
 ## Meilenstein-Roadmap
 
-Kurzfassung im [README](../README.md#meilenstein-roadmap).
+Kurzfassung im [README](../README.md#meilenstein-roadmap). Den erzählten
+Entwicklungs-Verlauf inkl. der bewussten Stack-Abweichungen findest du in
+[`JOURNEY.md`](./JOURNEY.md).

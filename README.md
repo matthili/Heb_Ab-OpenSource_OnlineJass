@@ -34,6 +34,7 @@ Selbst-hostbare Multiplayer-Plattform für **Vorarlberger Kreuz-Jass**, auf der 
 | Container        | Docker Compose (Dev/NAS) + Helm (k8s)                              |
 
 Vollständige Begründung pro Schicht: siehe [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md).
+Den Entwicklungs-Verlauf (inkl. bewusster Abweichungen vom Ursprungsplan) erzählt [`docs/JOURNEY.md`](./docs/JOURNEY.md).
 
 ## Quickstart (für M0-Stand)
 
