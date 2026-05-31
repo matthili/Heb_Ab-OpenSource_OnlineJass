@@ -2,9 +2,9 @@
 
 > _Der OpenSource-Jass nach vorarlberger Spielart._
 
-Selbst-hostbare Multiplayer-Plattform für **Vorarlberger Kreuz-Jass**, auf der echte Menschen gegen- und miteinander spielen können — wahlweise mit KI-Gegnern, die ein neuronales Netz aus dem Schwester-Projekt [`jass-neuronales-netz`](../jass_neuronales_netz/) nutzen.
+Selbst-hostbare Multiplayer-Plattform für **Vorarlberger Kreuz-Jass**, auf der echte Menschen gegen- und miteinander spielen können — wahlweise mit KI-Gegnern, die ein neuronales Netz aus dem Schwester-Projekt [`jass-neuronales-netz`](https://github.com/matthili/jass-neuronales-netz) nutzen.
 
-> **Status:** M3 in Arbeit — Auth-Flow (Register/Verify/Login) läuft end-to-end. Lobby + WS-Gameplay folgen mit M4+. Siehe [Meilenstein-Roadmap](#meilenstein-roadmap-kurzfassung).
+> **Status:** Drei Spielvarianten spielbar — Kreuz-Jass (4 Spieler), Solo-Jass (4 Spieler), Bodensee-Jass (2 Spieler). Basis-Plattform (Auth, Lobby, WS-Gameplay, Chat, Admin, Replays, PWA) steht. Siehe [Meilenstein-Roadmap](#meilenstein-roadmap).
 
 ## Vision
 
@@ -18,20 +18,20 @@ Selbst-hostbare Multiplayer-Plattform für **Vorarlberger Kreuz-Jass**, auf der 
 
 ## Tech-Stack (Highlights)
 
-| Schicht          | Wahl                                                       |
-| ---------------- | ---------------------------------------------------------- |
-| Monorepo         | pnpm workspaces + Turborepo                                |
-| Sprache          | TypeScript 5 strict                                        |
-| Frontend-Spiel   | React 19 + Vite + TanStack Router/Query + Tailwind + Radix |
-| Frontend-Landing | Astro 4 + React-Islands                                    |
-| Backend          | NestJS 11 + Fastify                                        |
-| API-Stil         | REST (OpenAPI) + WebSocket (Socket.IO)                     |
-| DB               | PostgreSQL 16 + Prisma 5                                   |
-| Cache/Pub-Sub    | Redis 7                                                    |
-| Auth             | Better Auth + Argon2id                                     |
-| KI-Inferenz      | eigener Microservice mit `@tensorflow/tfjs-node`           |
-| Reverse Proxy    | Caddy 2                                                    |
-| Container        | Docker Compose (Dev/NAS) + Helm (k8s)                      |
+| Schicht          | Wahl                                                               |
+| ---------------- | ------------------------------------------------------------------ |
+| Monorepo         | pnpm 10 workspaces + Turborepo                                     |
+| Sprache          | TypeScript 5 strict                                                |
+| Frontend-Spiel   | React 19 + Vite 8 + TanStack Router/Query + Tailwind 4 + Zustand 5 |
+| Frontend-Landing | Astro 6 + React-Islands                                            |
+| Backend          | NestJS 11 + Fastify 5                                              |
+| API-Stil         | REST (OpenAPI aus Zod) + WebSocket (Socket.IO)                     |
+| DB               | PostgreSQL 16 + Prisma 7                                           |
+| Cache/Pub-Sub    | Redis 7 (+ Socket.IO-Redis-Adapter)                                |
+| Auth             | Better Auth + Argon2id (`@node-rs/argon2`) + Zod 4                 |
+| KI-Inferenz      | eigener Microservice mit `@tensorflow/tfjs` (pure-JS)              |
+| Reverse Proxy    | Caddy 2                                                            |
+| Container        | Docker Compose (Dev/NAS) + Helm (k8s)                              |
 
 Vollständige Begründung pro Schicht: siehe [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md).
 
@@ -90,11 +90,16 @@ Details: siehe [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) §8.
 
 Spielregeln, Encoding-Spec und das trainierte Modell kommen aus dem unabhängigen Python-Projekt:
 
-- **Pfad lokal:** `G:\Claude_Projekte\jass_neuronales_netz\`
+- **Repo:** [`matthili/jass-neuronales-netz`](https://github.com/matthili/jass-neuronales-netz)
 - **Wie integriert:** versionierter Asset-Download (siehe [`docs/NN-CONTRACT.md`](./docs/NN-CONTRACT.md))
 
 Die Web-App **darf Spielregeln nicht duplizieren** — Single-Source-of-Truth ist `external/jass-nn/jass_rules.json`.
 
 ## Lizenz
 
-UNLICENSED — derzeit privates Projekt.
+**GNU Affero General Public License v3.0 only** (`AGPL-3.0-only`) — siehe [`LICENSE`](./LICENSE).
+
+Kurz: Nutzen, studieren, weitergeben und verändern ist erlaubt. Wer eine
+**veränderte** Version betreibt — auch als Netzwerk-Dienst (also diese Web-App
+auf einem Server) — muss seinen Nutzern den vollständigen Quellcode der
+veränderten Version unter derselben Lizenz zugänglich machen (AGPL §13).

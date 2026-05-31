@@ -1,6 +1,6 @@
 # Architektur — Heb ab!
 
-> Lebendes Dokument. Projektname: **„Heb ab!"** — der OpenSource-Jass nach vorarlberger Spielart. Quelle der konkreten Begründungen ist der vom Nutzer abgenommene Implementierungs-Plan (`C:\Users\matth\.claude\plans\projekt-vorarlberger-jass-app-vast-kahn.md`).
+> Lebendes Dokument. Projektname: **„Heb ab!"** — der OpenSource-Jass nach vorarlberger Spielart. Detaillierte Entscheidungsbegründungen stehen in den [ADRs](./ADRs/).
 
 ## Überblick
 
@@ -22,12 +22,12 @@ Drei Apps, vier Pakete, ein Reverse-Proxy:
 - **`apps/landing/`** — Astro-Site für Marketing, Regeln, Datenschutz, Impressum. Statisch gebaut, React-Islands für interaktive Demos.
 - **`apps/web/`** — React-SPA (das eigentliche Spiel + Lobby). PWA-installierbar.
 - **`apps/api/`** — NestJS-Backend (REST + Socket.IO-Gateway). Server-autoritativer Spielzustand.
-- **`apps/inference/`** — TF.js-Node-Microservice für die KI-Züge.
+- **`apps/inference/`** — Fastify-Microservice mit `@tensorflow/tfjs` (pure-JS, kein nativer tfjs-node-Build) für die KI-Züge. Lädt pro Spielart ein eigenes Modell.
 
 Geteilte Logik:
 
-- **`packages/engine/`** — TS-Port der Jass-Regeln + 132-dim State-Encoder. Quelle der Wahrheit für API _und_ Inference. Generiert aus `jass_rules.json`.
-- **`packages/shared-types/`** — OpenAPI-Client + WebSocket-Event-Discriminated-Unions + Zod-Schemas.
+- **`packages/engine/`** — TS-Port der Jass-Regeln + State-Encoder, Quelle der Wahrheit für API _und_ Inference. Variantenspezifische Encoder: Kreuz/Solo `v3.0.0` (132-dim), Bodensee `bodensee_1.0.0` (291-dim). Abgeglichen gegen die Python-Engine im Schwester-Repo.
+- **`packages/shared-types/`** — geteilte **Zod-Schemas** als Single Source of Truth für REST-DTOs (FE + BE leiten daraus ab) + Generator für ein OpenAPI-Doc (`pnpm gen:openapi`).
 - **`packages/ui/`** — Card, Hand, Trick, Scoreboard, ChatBubble.
 - **`packages/config/`** — geteilte tsconfig-/eslint-/prettier-Basis.
 
@@ -65,15 +65,35 @@ Geteilte Logik:
            ▼               ▼        ▼
 ┌────────────────┐ ┌──────────────────┐ ┌────────────────────────────────┐
 │ PostgreSQL 16  │ │ Redis 7          │ │ apps/inference                 │
-│ - User/Profile │ │ - Socket.IO Adp  │ │ - tfjs-node + Piscina-Pool     │
+│ - User/Profile │ │ - Socket.IO Adp  │ │ - @tensorflow/tfjs (pure-JS)   │
 │ - Game/Move    │ │ - Live GameState │ │ - POST /predict {state, mask}  │
-│ - ChatMessage  │ │ - Presence Sets  │ │ - Encoding-Version-Check       │
+│ - ChatMessage  │ │ - Presence Sets  │ │ - Multi-Modell + Vers.-Check   │
 │ - AuditLog     │ │ - Rate-Limit     │ │                                │
 │ - Sessions     │ │ - Chat-Stream    │ └────────────────────────────────┘
 └────────────────┘ └──────────────────┘
 ```
 
-Mehr Details (Datenmodell, Auth-Flow, KI-Integration, Tests-Pyramide) im Plan-Dokument.
+Datenmodell, Auth-Flow und KI-Integration im Detail: siehe das Prisma-Schema
+(`apps/api/prisma/schema.prisma`), die ADRs unten und [`NN-CONTRACT.md`](./NN-CONTRACT.md).
+
+## Tech-Stack (konkrete Versionen)
+
+| Schicht          | Wahl                                                                                        |
+| ---------------- | ------------------------------------------------------------------------------------------- |
+| Monorepo / Build | pnpm 10 workspaces, Turborepo, TypeScript 5.7, Node ≥22 <25                                 |
+| Backend          | NestJS 11 + Fastify 5, Socket.IO 4.8 (+ Redis-Adapter)                                      |
+| ORM / DB         | Prisma 7 (`@prisma/adapter-pg`) auf PostgreSQL 16                                           |
+| Auth             | Better Auth 1.6, Argon2id (`@node-rs/argon2`), Zod 4, HIBP-Pwned-Check                      |
+| Cache / Live     | Redis 7 (Socket.IO-Adapter, Live-GameState, Presence, Rate-Limit)                           |
+| Frontend-Spiel   | React 19, Vite 8, Tailwind 4, TanStack Router/Query, Zustand 5, i18next 26, vite-plugin-pwa |
+| Frontend-Landing | Astro 6 + React-Islands                                                                     |
+| KI-Inferenz      | Fastify + `@tensorflow/tfjs` 4 (pure-JS), ein Modell je Spielart                            |
+| Spielvarianten   | KREUZ_4P, SOLO_4P, BODENSEE_2P (KREUZ_6P / KREUZ_STEIGERN reserviert)                       |
+| Geteilte Pakete  | `engine` (Regeln + Encoder), `shared-types` (Zod + OpenAPI), `ui`, `config`                 |
+| Web-Push         | `web-push` (VAPID), optional                                                                |
+| Reverse Proxy    | Caddy 2 (Auto-TLS, HSTS, CSP)                                                               |
+| Container        | Docker Compose (Dev/NAS) + Helm-Chart (k8s)                                                 |
+| Tests            | Vitest 4 (Unit), Testcontainers 11 (Integration), Playwright (E2E)                          |
 
 ## Tech-Stack-Entscheidungen — Verweis auf ADRs
 
@@ -94,4 +114,4 @@ Siehe [`NN-CONTRACT.md`](./NN-CONTRACT.md) für die exakte Schnittstelle zum Sch
 
 ## Meilenstein-Roadmap
 
-Siehe Plan-Dokument §8. Kurzfassung im [README](../README.md).
+Kurzfassung im [README](../README.md#meilenstein-roadmap).

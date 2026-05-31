@@ -1,0 +1,33 @@
+================================================================================
+  PLATZHALTER — VOLLTEXT MUSS NOCH EINGEFÜGT WERDEN
+================================================================================
+
+Dieses Projekt steht unter der **GNU Affero General Public License v3.0 only**
+(SPDX-Bezeichner: AGPL-3.0-only).
+
+Diese Datei ist aktuell nur ein Platzhalter: der vollständige, wortgenaue
+Lizenztext konnte in der Offline-Entwicklungsumgebung nicht erzeugt werden
+(ein Rechtstext darf nicht aus dem Gedächtnis abgetippt werden). Ersetze den
+GESAMTEN Inhalt dieser Datei vor der Veröffentlichung durch den offiziellen
+AGPL-3.0-Text:
+
+  Variante A (auf einem Rechner mit Internet):
+    curl -fsSL https://www.gnu.org/licenses/agpl-3.0.txt -o LICENSE
+
+  Variante B (beim Anlegen des GitHub-Repos):
+    Im "Add a license"-Dialog "GNU Affero General Public License v3.0"
+    auswählen — GitHub fügt den exakten Text automatisch ein.
+
+Bis dahin gilt die Lizenz-Absicht über das SPDX-Feld in package.json
+("license": "AGPL-3.0-only") und diesen Hinweis. Der operative Lizenz-Grant
+ist erst mit dem eingefügten Volltext vollständig.
+
+Copyright (C) 2026  matthili
+
+--------------------------------------------------------------------------------
+Kurzfassung der AGPL-3.0 (NICHT der Lizenztext, nur zur Orientierung):
+Du darfst diese Software nutzen, studieren, weitergeben und verändern. Wenn du
+eine veränderte Version betreibst — auch als Netzwerk-Dienst (z. B. diese
+Web-App auf einem Server) — musst du deinen Nutzern den vollständigen
+Quellcode deiner veränderten Version unter derselben Lizenz zugänglich machen.
+--------------------------------------------------------------------------------

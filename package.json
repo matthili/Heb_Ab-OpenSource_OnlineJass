@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "description": "Heb ab! — der OpenSource-Jass nach vorarlberger Spielart. Selbst-hostbare Multiplayer-Plattform für Vorarlberger Kreuz-Jass mit echten und KI-Gegnern.",
-  "license": "UNLICENSED",
+  "license": "AGPL-3.0-only",
   "engines": {
     "node": ">=22 <25",
     "pnpm": ">=10"
