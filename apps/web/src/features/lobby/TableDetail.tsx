@@ -14,7 +14,7 @@
  */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
-import { type FormEvent, useCallback, useEffect, useState } from "react";
+import { type FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 
 import { BodenseeBoard } from "~/features/bodensee/BodenseeBoard";
 import { BodenseeRematchPanel } from "~/features/bodensee/BodenseeRematchPanel";
@@ -41,7 +41,13 @@ export function TableDetail({ tableId }: Props) {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 
-  const queryKey = ["lobby", "table", tableId] as const;
+  // **Stabil halten (useMemo):** `queryKey` fließt in `onWsUpdate` (useCallback)
+  // und in zwei Effect-Dependency-Listen. Ein bei jedem Render neu erzeugtes
+  // Array würde diese Effects bei jedem Render neu laufen lassen — und
+  // `useTableStateEvents` feuert im Cleanup/Setup `lobby:(un)subscribe-table`.
+  // Das ergäbe (wie früher der Chat-Hook) einen WS-Event-Sturm, der den
+  // Rate-Limiter auslöst und den Socket trennt.
+  const queryKey = useMemo(() => ["lobby", "table", tableId] as const, [tableId]);
   const { data, isPending, error } = useQuery<TableDetailView>({
     queryKey,
     queryFn: () => api<TableDetailView>(`/api/lobby/tables/${tableId}`),

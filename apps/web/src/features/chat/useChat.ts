@@ -43,6 +43,16 @@ export function useChat(channelKey: string | null): ChatHookValue {
   });
 
   // WS-Subscribe + Push-Append.
+  //
+  // **Wichtig — Dependencies:** Hier NUR `channelKey` (+ stabiler
+  // `queryClient`). Früher stand `queryKey` mit drin — das ist aber bei jedem
+  // Render eine NEUE Array-Referenz (`["chat", channelKey]`), wodurch der
+  // Effect bei jedem Render neu lief und im Cleanup `chat:unsubscribe` +
+  // danach wieder `chat:subscribe` feuerte. Bei vielen Re-Renders (z.B.
+  // laufendes Spiel, Rematch-Countdown) ergab das einen Event-Sturm, der den
+  // WS-Rate-Limiter auslöste und am Ende den Socket trennte — wodurch auch
+  // `lobby:table-state`/`game:ended` verloren gingen (Tisch wechselte nicht
+  // zur neuen Runde). Den Query-Key bilden wir darum lokal inline.
   useEffect(() => {
     if (!channelKey) return;
     const socket = getLobbySocket();
@@ -50,7 +60,7 @@ export function useChat(channelKey: string | null): ChatHookValue {
 
     function onMessage(view: ChatMessageView) {
       if (view.channelKey !== channelKey) return;
-      queryClient.setQueryData<HistoryResponse>(queryKey, (prev) => {
+      queryClient.setQueryData<HistoryResponse>(["chat", channelKey], (prev) => {
         const list = prev?.messages ?? [];
         // Dedup nach id — der Server kann via WS push UND als REST-
         // Response liefern.
@@ -64,7 +74,7 @@ export function useChat(channelKey: string | null): ChatHookValue {
       socket.off("chat:message", onMessage);
       socket.emit("chat:unsubscribe", { channelKey });
     };
-  }, [channelKey, queryClient, queryKey]);
+  }, [channelKey, queryClient]);
 
   const sendMut = useMutation({
     mutationFn: (body: string) =>
