@@ -3,7 +3,8 @@
  *
  * Layout (von oben nach unten):
  *   - Status-Leiste: Stich-Zähler, Modus/Trumpf, Punkte
- *   - Gegner-Bereich: verdeckte Hand + sichtbare Tisch-Karten
+ *   - Gegner-Bereich: verdeckte Hand + Tisch-Stapel (offene Karte mit „+1",
+ *     wenn an dieser Position noch eine verdeckte darunter liegt) — nicht klickbar
  *   - Stich-Mitte: laufender Stich, sonst der zuletzt abgeschlossene
  *   - Eigener Bereich: eigene 6 Tisch-Stapel + Hand (klickbar bei Zug)
  *   - Ansage-Panel (Phase `announcing`) bzw. End-Overlay (`finished`)
@@ -28,6 +29,10 @@ interface Props {
   onAnnounce: (announcement: BodenseeAnnouncement) => void;
 }
 
+// Für nicht-klickbare Stapel (Gegner-Tisch): nie legal, kein Klick-Handler.
+const NEVER_LEGAL = (_c: CardModel): boolean => false;
+const NOOP_PLAY = (_c: CardModel): void => {};
+
 const SUIT_LABEL: Record<Suit, string> = {
   EICHEL: "Eichel",
   SCHELLE: "Schelle",
@@ -38,8 +43,8 @@ const SUIT_LABEL: Record<Suit, string> = {
 const MODE_LABEL: Record<PlayMode, string> = {
   TRUMPF: "Trumpf",
   GUMPF: "Gumpf",
-  OBEN: "Obenabe",
-  UNTEN: "Undenufe",
+  OBEN: "Oben (Bock)",
+  UNTEN: "Unten (Geiss)",
 };
 
 function cardKey(c: CardModel): string {
@@ -100,7 +105,8 @@ export function BodenseeBoard({
         <div className="flex items-center justify-between text-sm">
           <span className="font-semibold text-jass-ink">{seatName(oppSeat)}</span>
           <span className="text-jass-inkSoft">
-            {view.opponentHandCount} Handkarten · {view.opponentHiddenCount} verdeckt am Tisch
+            {view.opponentHandCount} Handkarten ·{" "}
+            {view.opponentTable.filter((s) => s.hasHidden).length} verdeckt am Tisch
           </span>
         </div>
         <div className="flex flex-wrap items-end gap-1">
@@ -108,13 +114,16 @@ export function BodenseeBoard({
             <FaceDownCard key={`oh-${i}`} size="xs" />
           ))}
         </div>
-        {(view.opponentVisibleTable.length > 0 || view.opponentHiddenCount > 0) && (
-          <div className="flex flex-wrap items-end gap-1 border-t border-jass-paperEdge pt-2">
-            {view.opponentVisibleTable.map((c) => (
-              <Card key={`ot-${cardKey(c)}`} card={c} size="sm" />
-            ))}
-            {Array.from({ length: view.opponentHiddenCount }).map((_, i) => (
-              <FaceDownCard key={`ohid-${i}`} size="sm" />
+        {view.opponentTable.some((s) => s.visible !== null || s.hasHidden) && (
+          <div className="flex flex-wrap items-end gap-1.5 border-t border-jass-paperEdge pt-2">
+            {view.opponentTable.map((stack, i) => (
+              <TableStackSlot
+                key={`opp-stack-${i}`}
+                stack={stack}
+                playable={false}
+                isLegal={NEVER_LEGAL}
+                onPlay={NOOP_PLAY}
+              />
             ))}
           </div>
         )}
@@ -312,8 +321,8 @@ type AnnounceMode = "TRUMPF" | "GUMPF" | "OBEN" | "UNTEN" | "SLALOM";
 const ANNOUNCE_MODES: ReadonlyArray<{ value: AnnounceMode; label: string }> = [
   { value: "TRUMPF", label: "Trumpf" },
   { value: "GUMPF", label: "Gumpf" },
-  { value: "OBEN", label: "Obenabe" },
-  { value: "UNTEN", label: "Undenufe" },
+  { value: "OBEN", label: "Oben (Bock)" },
+  { value: "UNTEN", label: "Unten (Geiss)" },
   { value: "SLALOM", label: "Slalom" },
 ];
 

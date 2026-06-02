@@ -96,9 +96,15 @@ export interface BodenseePlayerView {
   hand: readonly Card[];
   /** Eigene 6 Tisch-Stapel (visible sichtbar, hidden nur als Flag). */
   ownTable: readonly TableStackView[];
-  opponentVisibleTable: readonly Card[];
+  /**
+   * Gegner-Tisch-Stapel — positionsgleich zu `ownTable`: `visible` ist
+   * öffentlich (die sichtbare Tisch-Karte), `hasHidden` markiert nur, dass an
+   * dieser Position noch eine verdeckte Karte liegt. Der Wert der verdeckten
+   * Karte bleibt geheim (wird nie übertragen). So kann das UI die Verdeckte
+   * positionsgenau unter ihre offene Karte legen — wie am echten Tisch.
+   */
+  opponentTable: readonly TableStackView[];
   opponentHandCount: number;
-  opponentHiddenCount: number;
   /** 36-Bit-Maske; leer in `announcing`. */
   legalActionMask: readonly number[];
   whoseTurnSeat: number;
@@ -271,10 +277,8 @@ export class BodenseeGameService {
         mySeat: seat,
         hand: pending.hands[seat] ?? [],
         ownTable: (pending.tables[seat] ?? []).map(toStackView),
-        opponentVisibleTable: visibleTableCards(pending.tables[1 - seat] ?? []),
+        opponentTable: (pending.tables[1 - seat] ?? []).map(toStackView),
         opponentHandCount: (pending.hands[1 - seat] ?? []).length,
-        opponentHiddenCount: (pending.tables[1 - seat] ?? []).filter((s) => s.hidden !== null)
-          .length,
         legalActionMask: [],
         whoseTurnSeat: -1,
         myTurn: false,
@@ -308,9 +312,8 @@ export class BodenseeGameService {
       mySeat: seat,
       hand,
       ownTable: ownTable.map(toStackView),
-      opponentVisibleTable: view.opponent_visible_table,
+      opponentTable: (state.tables[1 - seat] ?? []).map(toStackView),
       opponentHandCount: view.opponent_hand_count,
-      opponentHiddenCount: view.opponent_hidden_table_count,
       legalActionMask: mask,
       whoseTurnSeat: finished ? -1 : whoseTurnBodensee(state),
       myTurn: !finished && whoseTurnBodensee(state) === seat,

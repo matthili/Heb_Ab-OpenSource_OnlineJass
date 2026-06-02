@@ -22,9 +22,9 @@ export interface BodenseeView {
   mySeat: number;
   hand: readonly Card[];
   ownTable: readonly BodenseeTableStackView[];
-  opponentVisibleTable: readonly Card[];
+  /** Gegner-Stapel — positionsgleich zu `ownTable`; `hasHidden` ohne Karten-Wert. */
+  opponentTable: readonly BodenseeTableStackView[];
   opponentHandCount: number;
-  opponentHiddenCount: number;
   legalActionMask: readonly number[];
   whoseTurnSeat: number;
   myTurn: boolean;
