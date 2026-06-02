@@ -101,6 +101,6 @@ WORKDIR /app/apps/api
 # erreichbar. Wer kein health-Endpoint hat: einfacher /healthz-Endpoint
 # im HealthController liegt schon vor (siehe modules/health/).
 HEALTHCHECK --interval=10s --timeout=5s --start-period=20s --retries=3 \
-    CMD node -e "fetch('http://127.0.0.1:3000/api/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"
+    CMD node -e "fetch('http://127.0.0.1:3000/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"
 
-CMD ["node", "dist/main.js"]
+CMD ["node", "dist/src/main.js"]
