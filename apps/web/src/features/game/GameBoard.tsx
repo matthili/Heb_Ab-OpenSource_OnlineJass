@@ -20,6 +20,7 @@ import { Link } from "@tanstack/react-router";
 import { useState } from "react";
 
 import type { SeatView } from "~/features/lobby/types";
+import { seatDisplayName } from "./aiNames";
 import { AnnouncementDialog } from "./AnnouncementDialog";
 import { DealCinematic } from "./DealCinematic";
 import { MatschOverlay } from "./MatschOverlay";
@@ -67,7 +68,7 @@ export function GameBoard({
   onClickWeisen,
   onSubmitWeisen,
 }: Props) {
-  const seatNames = buildSeatNames(seats);
+  const seatNames = buildSeatNames(seats, view.gameId);
   // Hook IMMER auf gleichem Render-Level aufrufen — auch im Ansage-Modus,
   // damit React keine "different number of hooks"-Warnung wirft. Der Hook
   // toleriert `undefined` als no-op.
@@ -264,7 +265,9 @@ function StatusBanner({ view, seats }: { view: PlayerView; seats: readonly SeatV
     );
   }
   const playerSeat = seats.find((s) => s.seat === view.whoseTurnSeat);
-  const name = playerSeat?.user?.name ?? `KI (Sitz ${view.whoseTurnSeat})`;
+  const name = playerSeat
+    ? seatDisplayName(playerSeat, view.gameId, `Sitz ${view.whoseTurnSeat + 1}`)
+    : `Sitz ${view.whoseTurnSeat + 1}`;
   return (
     <div className="rounded bg-jass-paper border border-jass-paperEdge px-3 py-2 text-jass-inkSoft">
       <strong className="text-jass-ink">{name}</strong> ist dran.
@@ -313,7 +316,7 @@ function PlayingArea({
       {seats.map((s) => {
         if (s.seat === mySeat) return null;
         const slot = relativeSlot(s.seat, mySeat);
-        const label = s.user?.name ?? (s.aiSeatType ? `KI · ${s.aiSeatType}` : "—");
+        const label = seatNames.get(s.seat) ?? "—";
         const active = view.whoseTurnSeat === s.seat && view.status === "playing";
         const isLastWinner = s.seat === winnerSeat;
         const wrapperCls = [
@@ -388,10 +391,10 @@ function PlayingArea({
   );
 }
 
-function buildSeatNames(seats: readonly SeatView[]): ReadonlyMap<number, string> {
+function buildSeatNames(seats: readonly SeatView[], gameId: string): ReadonlyMap<number, string> {
   const m = new Map<number, string>();
   for (const s of seats) {
-    m.set(s.seat, s.user?.name ?? (s.aiSeatType ? "KI" : `Sitz ${s.seat}`));
+    m.set(s.seat, seatDisplayName(s, gameId, `Sitz ${s.seat}`));
   }
   return m;
 }

@@ -22,6 +22,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 import type { SeatView } from "~/features/lobby/types";
+import { seatDisplayName } from "./aiNames";
 import type { FinalScore } from "./types";
 
 const AUTO_DISMISS_MS = 5000;
@@ -83,9 +84,7 @@ export function MatschOverlay({ gameId, finalScore, mySeat, teams, seats }: Prop
   const matschLabel = isSolo
     ? (() => {
         const s = seats?.find((x) => x.seat === matschTeam);
-        if (s?.user) return s.user.name;
-        if (s?.aiSeatType) return `KI (Sitz ${matschTeam + 1})`;
-        return `Sitz ${matschTeam + 1}`;
+        return s ? seatDisplayName(s, gameId, `Sitz ${matschTeam + 1}`) : `Sitz ${matschTeam + 1}`;
       })()
     : `Team ${matschTeam}`;
 

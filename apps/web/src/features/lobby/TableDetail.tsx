@@ -20,6 +20,7 @@ import { BodenseeBoard } from "~/features/bodensee/BodenseeBoard";
 import { BodenseeRematchPanel } from "~/features/bodensee/BodenseeRematchPanel";
 import { useBodenseeView } from "~/features/bodensee/useBodenseeView";
 import { ChatPanel } from "~/features/chat/ChatPanel";
+import { aiName } from "~/features/game/aiNames";
 import { DisconnectOverlay } from "~/features/game/DisconnectOverlay";
 import { GameBoard } from "~/features/game/GameBoard";
 import { RematchPanel } from "~/features/game/RematchPanel";
@@ -113,7 +114,7 @@ export function TableDetail({ tableId }: Props) {
 
       <CumulativeScoreBar table={data} />
 
-      <SeatRow seats={data.seats} />
+      <SeatRow seats={data.seats} seed={data.currentGameId ?? data.id} />
 
       {data.currentGameId &&
         (data.status === "IN_GAME" ||
@@ -147,7 +148,7 @@ export function TableDetail({ tableId }: Props) {
   );
 }
 
-function SeatRow({ seats }: { seats: TableDetailView["seats"] }) {
+function SeatRow({ seats, seed }: { seats: TableDetailView["seats"]; seed: string }) {
   return (
     <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3" aria-label="Sitze">
       {seats.map((s) => (
@@ -163,7 +164,7 @@ function SeatRow({ seats }: { seats: TableDetailView["seats"] }) {
           ) : s.user ? (
             <span className="font-medium">{s.user.name}</span>
           ) : s.aiSeatType ? (
-            <span className="text-stone-600">KI · {s.aiSeatType}</span>
+            <span className="text-stone-600">{aiName(`${seed}:${s.seat}`, s.aiSeatType)}</span>
           ) : null}
         </li>
       ))}
@@ -205,7 +206,9 @@ function CumulativeScoreBar({ table }: { table: TableDetailView }) {
     if (isPerPlayer) {
       const seat = table.seats.find((s) => s.seat === teamIdx);
       if (seat?.user) return seat.user.name;
-      if (seat?.aiSeatType) return `KI (Sitz ${teamIdx + 1})`;
+      if (seat?.aiSeatType) {
+        return aiName(`${table.currentGameId ?? table.id}:${teamIdx}`, seat.aiSeatType);
+      }
       return `Sitz ${teamIdx + 1}`;
     }
     return teamIdx === 0 ? "Team 0 (Sitz 1 + 3)" : "Team 1 (Sitz 2 + 4)";

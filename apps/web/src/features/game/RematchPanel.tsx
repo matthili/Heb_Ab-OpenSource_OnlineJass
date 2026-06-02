@@ -20,6 +20,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { SeatView } from "~/features/lobby/types";
 import { api, ApiError } from "~/lib/api";
+import { seatDisplayName } from "./aiNames";
 import type { FinalScore, RematchOutcome } from "./types";
 
 const AUTO_YES_SECONDS = 10;
@@ -94,9 +95,7 @@ export function RematchPanel({
   function seatLabel(seat: number): string {
     if (seat === mySeat) return "Du";
     const s = seats?.find((x) => x.seat === seat);
-    if (s?.user) return s.user.name;
-    if (s?.aiSeatType) return `KI (Sitz ${seat + 1})`;
-    return `Sitz ${seat + 1}`;
+    return s ? seatDisplayName(s, gameId, `Sitz ${seat + 1}`) : `Sitz ${seat + 1}`;
   }
 
   return (

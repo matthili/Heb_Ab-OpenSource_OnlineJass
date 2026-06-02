@@ -24,6 +24,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 
 import type { SeatView } from "~/features/lobby/types";
+import { aiName } from "./aiNames";
 import { type DisconnectState, type VoteChoice, useDisconnectState } from "./useDisconnectState";
 
 interface Props {
@@ -37,17 +38,26 @@ export function DisconnectOverlay({ gameId, seats, mySeat }: Props) {
   const { state, vote, dismissResult } = useDisconnectState(gameId);
   if (!state) return null;
   return (
-    <Overlay state={state} seats={seats} mySeat={mySeat} onVote={vote} onDismiss={dismissResult} />
+    <Overlay
+      gameId={gameId}
+      state={state}
+      seats={seats}
+      mySeat={mySeat}
+      onVote={vote}
+      onDismiss={dismissResult}
+    />
   );
 }
 
 function Overlay({
+  gameId,
   state,
   seats,
   mySeat,
   onVote,
   onDismiss,
 }: {
+  gameId: string;
   state: DisconnectState;
   seats: readonly SeatView[];
   mySeat: number;
@@ -122,7 +132,7 @@ function Overlay({
         )}
 
         {(state.phase === "VOTE_1" || state.phase === "VOTE_2") && (
-          <VoteBlock state={state} seats={seats} mySeat={mySeat} onVote={onVote} />
+          <VoteBlock gameId={gameId} state={state} seats={seats} mySeat={mySeat} onVote={onVote} />
         )}
       </Card>
     </Backdrop>
@@ -178,11 +188,13 @@ function Countdown({ endsAt }: { endsAt: number }) {
 }
 
 function VoteBlock({
+  gameId,
   state,
   seats,
   mySeat,
   onVote,
 }: {
+  gameId: string;
   state: DisconnectState;
   seats: readonly SeatView[];
   mySeat: number;
@@ -224,7 +236,7 @@ function VoteBlock({
           onClick={() => onVote("FILL")}
         />
       </div>
-      <VoteTally state={state} seats={seats} mySeat={mySeat} />
+      <VoteTally gameId={gameId} state={state} seats={seats} mySeat={mySeat} />
     </div>
   );
 }
@@ -274,10 +286,12 @@ function VoteButton({
  * markiert, der eigene Sitz mit „du".
  */
 function VoteTally({
+  gameId,
   state,
   seats,
   mySeat,
 }: {
+  gameId: string;
   state: DisconnectState;
   seats: readonly SeatView[];
   mySeat: number;
@@ -302,7 +316,7 @@ function VoteTally({
       {all.map((v) => {
         const seatInfo = seats.find((s) => s.seat === v.seat);
         const name = v.isAi
-          ? `🤖 KI Sitz ${v.seat}`
+          ? aiName(`${gameId}:${v.seat}`, seatInfo?.aiSeatType)
           : v.seat === mySeat
             ? `Du (Sitz ${v.seat})`
             : (seatInfo?.user?.name ?? `Sitz ${v.seat}`);

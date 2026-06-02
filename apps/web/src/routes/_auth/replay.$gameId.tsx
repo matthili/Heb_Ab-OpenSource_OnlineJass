@@ -9,6 +9,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 
+import { aiName } from "~/features/game/aiNames";
 import { ReplayPlayer } from "~/features/replay/ReplayPlayer";
 import type { ReplayBundle } from "~/features/replay/types";
 import { useReplay } from "~/features/replay/useReplay";
@@ -93,6 +94,7 @@ function ReplayPage() {
 
       {data.bundle.finalScore && (
         <FinalScoreCard
+          gameId={gameId}
           finalScore={data.bundle.finalScore}
           seats={data.bundle.seats}
           mySeat={mySeat}
@@ -176,10 +178,12 @@ function ShareControls({
 }
 
 function FinalScoreCard({
+  gameId,
   finalScore,
   seats,
   mySeat,
 }: {
+  gameId: string;
   finalScore: { team_card_points: number[]; matsch_team: number | null };
   seats: { seat: number; displayName: string | null; aiSeatType: string | null }[];
   mySeat: number;
@@ -192,7 +196,11 @@ function FinalScoreCard({
   const seatsInTeam = (team: number): string =>
     seats
       .filter((s) => s.seat % 2 === team)
-      .map((s) => s.displayName ?? (s.aiSeatType ? `KI` : `Sitz ${s.seat}`))
+      .map(
+        (s) =>
+          s.displayName ??
+          (s.aiSeatType ? aiName(`${gameId}:${s.seat}`, s.aiSeatType) : `Sitz ${s.seat}`)
+      )
       .join(" + ");
 
   return (

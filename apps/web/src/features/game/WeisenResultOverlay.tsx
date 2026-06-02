@@ -19,6 +19,7 @@
 import { useEffect, useState } from "react";
 
 import type { SeatView } from "~/features/lobby/types";
+import { seatDisplayName } from "./aiNames";
 import type { WeisDeclarationView, WeisenView } from "./types";
 import { kindLabel } from "./WeisenPanel";
 
@@ -75,10 +76,7 @@ export function WeisenResultOverlay({ gameId, weisen, seats, mySeat }: Props) {
 
   const seatNames = new Map<number, string>();
   for (const s of seats) {
-    seatNames.set(
-      s.seat,
-      s.user?.name ?? (s.aiSeatType ? `KI · ${s.aiSeatType}` : `Sitz ${s.seat}`)
-    );
+    seatNames.set(s.seat, seatDisplayName(s, gameId, `Sitz ${s.seat}`));
   }
 
   return (

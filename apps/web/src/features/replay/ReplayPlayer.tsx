@@ -19,6 +19,7 @@ import { Trick, Scoreboard } from "@jass/ui";
 import type { Card } from "@jass/engine";
 import { trickWinner } from "@jass/engine";
 
+import { aiName } from "~/features/game/aiNames";
 import type { ReplayBundle } from "./types";
 import type { ReplayFrame } from "./useReplay";
 
@@ -80,6 +81,7 @@ export function ReplayPlayer({ bundle, frames, mySeat }: Props) {
       />
 
       <MoveList
+        gameId={bundle.gameId}
         moves={bundle.moves}
         seats={bundle.seats}
         currentSeq={frame.moveSeq}
@@ -111,7 +113,9 @@ function PlayingArea({
       {bundle.seats.map((s) => {
         if (s.seat === mySeat) return null;
         const slot = relativeSlot(s.seat, mySeat);
-        const label = s.displayName ?? (s.aiSeatType ? `KI · ${s.aiSeatType}` : `Sitz ${s.seat}`);
+        const label =
+          s.displayName ??
+          (s.aiSeatType ? aiName(`${bundle.gameId}:${s.seat}`, s.aiSeatType) : `Sitz ${s.seat}`);
         return (
           <div
             key={s.seat}
@@ -220,11 +224,13 @@ function ReplayControls({
 }
 
 function MoveList({
+  gameId,
   moves,
   seats,
   currentSeq,
   onJump,
 }: {
+  gameId: string;
   moves: ReplayBundle["moves"];
   seats: ReplayBundle["seats"];
   currentSeq: number | null;
@@ -232,7 +238,9 @@ function MoveList({
 }) {
   const nameOf = (seat: number): string => {
     const s = seats.find((x) => x.seat === seat);
-    return s?.displayName ?? (s?.aiSeatType ? `KI` : `Sitz ${seat}`);
+    return (
+      s?.displayName ?? (s?.aiSeatType ? aiName(`${gameId}:${seat}`, s.aiSeatType) : `Sitz ${seat}`)
+    );
   };
   return (
     <details className="rounded border border-stone-200 bg-white">

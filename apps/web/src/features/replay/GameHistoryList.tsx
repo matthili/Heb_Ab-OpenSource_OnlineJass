@@ -15,6 +15,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 
+import { aiName } from "~/features/game/aiNames";
 import { api, ApiError } from "~/lib/api";
 
 import type { ReplaySeat, UserGameSummary } from "./types";
@@ -76,7 +77,7 @@ function GameHistoryItem({ game }: { game: UserGameSummary }) {
               : "draw";
   const badgeClass = badgeForResult(result);
   const badgeLabel = labelForResult(result, t);
-  const partnerNames = collectPartners(game.seats, game.mySeat).join(", ");
+  const partnerNames = collectPartners(game.seats, game.mySeat, game.gameId).join(", ");
   const shortId = game.gameId.slice(-6);
 
   return (
@@ -108,11 +109,13 @@ function GameHistoryItem({ game }: { game: UserGameSummary }) {
   );
 }
 
-function collectPartners(seats: readonly ReplaySeat[], mySeat: number): string[] {
+function collectPartners(seats: readonly ReplaySeat[], mySeat: number, gameId: string): string[] {
   return seats
     .filter((s) => s.seat !== mySeat)
     .sort((a, b) => a.seat - b.seat)
-    .map((s) => s.displayName ?? (s.aiSeatType ? `KI` : `?`));
+    .map(
+      (s) => s.displayName ?? (s.aiSeatType ? aiName(`${gameId}:${s.seat}`, s.aiSeatType) : `?`)
+    );
 }
 
 type ResultKind = "running" | "won" | "lost" | "draw" | "matsch-won" | "matsch-lost";

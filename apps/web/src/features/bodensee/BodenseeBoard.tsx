@@ -16,6 +16,7 @@ import { cardIndex, type Card as CardModel, type PlayMode, type Suit } from "@ja
 import { Card } from "@jass/ui";
 import { useState } from "react";
 
+import { seatDisplayName } from "~/features/game/aiNames";
 import type { SeatView } from "~/features/lobby/types";
 import type { BodenseeAnnouncement, BodenseeView } from "./types";
 
@@ -63,9 +64,7 @@ export function BodenseeBoard({
   const oppSeat = 1 - view.mySeat;
   const seatName = (seat: number): string => {
     const s = seats.find((x) => x.seat === seat);
-    if (s?.user) return s.user.name;
-    if (s?.aiSeatType) return `KI (${s.aiSeatType})`;
-    return `Sitz ${seat + 1}`;
+    return s ? seatDisplayName(s, view.gameId, `Sitz ${seat + 1}`) : `Sitz ${seat + 1}`;
   };
 
   const isLegal = (c: CardModel): boolean => view.legalActionMask[cardIndex(c)] === 1;
