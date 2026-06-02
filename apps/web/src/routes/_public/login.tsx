@@ -63,7 +63,8 @@ function LoginPage() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             className="w-full rounded border border-stone-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500"
-            autoComplete="email"
+            name="email"
+            autoComplete="username"
           />
         </Field>
         <Field label={t("auth.login.passwordLabel")} htmlFor="password">
@@ -74,6 +75,7 @@ function LoginPage() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             className="w-full rounded border border-stone-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500"
+            name="password"
             autoComplete="current-password"
           />
         </Field>
