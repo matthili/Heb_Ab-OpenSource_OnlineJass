@@ -15,7 +15,8 @@
  *     disabled, sobald *irgendjemand* etwas anderes gewählt hat
  *     (Einstimmigkeits-Regel). System-Hinweis kommt parallel im Chat.
  *   - **CONTINUED**: Kurzes „✔ Spiel läuft weiter"-Linger, dann Overlay
- *     verschwindet automatisch (Server löscht State nach 3s).
+ *     verschwindet — primär auf das autoritative `game:disconnect-cleared`
+ *     vom Server hin, mit Client-Timer als Fallback (siehe useDisconnectState).
  *   - **CLOSED**: Result-Modal mit OK-Button → Lobby. So weiß ein User,
  *     der zwischenzeitlich was getrunken hat, was passiert ist.
  */

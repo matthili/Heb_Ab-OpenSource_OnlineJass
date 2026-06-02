@@ -207,9 +207,9 @@ export class DisconnectVoteService implements OnModuleInit {
       this.postSystem(gameId, "✔ Alle Spieler wieder verbunden — Spiel läuft weiter.");
       this.broadcast(gameId, state);
       await this.hooks?.resumeGame(gameId);
-      // Nach kurzem Linger den State löschen, damit der Overlay sich
-      // zurückzieht.
-      setTimeout(() => void this.deleteState(gameId).catch(() => undefined), 3000);
+      // Nach kurzem Info-Linger den Clients autoritativ „vorbei" melden +
+      // State löschen (siehe scheduleClear). Der Client-Timer ist nur Fallback.
+      this.scheduleClear(gameId, 3000);
       return;
     }
     await this.saveState(gameId, state);
@@ -399,7 +399,7 @@ export class DisconnectVoteService implements OnModuleInit {
         await this.hooks?.replaceSeatWithAi(gameId, ds.seat, ds.userId);
       }
       await this.hooks?.resumeGame(gameId);
-      setTimeout(() => void this.deleteState(gameId).catch(() => undefined), 3000);
+      this.scheduleClear(gameId, 3000);
       return;
     }
     if (outcome.effective === "WAIT") {
@@ -535,6 +535,37 @@ export class DisconnectVoteService implements OnModuleInit {
   private broadcast(gameId: string, state: DisconnectState): void {
     if (!this.server) return;
     this.server.to(`game:${gameId}`).emit("game:disconnect-state", state);
+  }
+
+  /**
+   * Sagt allen Clients im Game-Room AUTORITATIV „die Disconnect-Episode ist
+   * vorbei — blendet euer Overlay aus". Wird vor dem Löschen des Server-States
+   * gesendet. Ohne dieses Event müsste der Client das Ende nur erraten (Timer);
+   * mit ihm ist es ein echter Server→Client-Abgleich.
+   */
+  private broadcastCleared(gameId: string): void {
+    if (!this.server) return;
+    this.server.to(`game:${gameId}`).emit("game:disconnect-cleared", { gameId });
+  }
+
+  /**
+   * Räumt einen abgeschlossenen CONTINUED-State nach kurzem Info-Linger weg —
+   * und schickt den Clients VORHER das explizite `game:disconnect-cleared`
+   * (primärer Abgleich; der Client-Timer ist nur noch Fallback). Ein
+   * zwischenzeitlich neu gestarteter Disconnect-Flow (Phase ≠ CONTINUED) bleibt
+   * unangetastet — wir räumen nur den eigenen, lingernden Endzustand weg.
+   */
+  private scheduleClear(gameId: string, lingerMs: number): void {
+    setTimeout(() => {
+      void (async () => {
+        const cur = await this.loadState(gameId).catch(() => null);
+        // Neuer Flow zwischenzeitlich gestartet (GRACE/VOTE) oder CLOSED (wartet
+        // auf User-OK) → nicht anfassen.
+        if (cur && cur.phase !== "CONTINUED") return;
+        this.broadcastCleared(gameId);
+        if (cur) await this.deleteState(gameId).catch(() => undefined);
+      })();
+    }, lingerMs);
   }
 
   private postSystem(gameId: string, body: string): void {

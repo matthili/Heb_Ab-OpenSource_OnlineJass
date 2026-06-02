@@ -1,7 +1,7 @@
 /**
  * Hook für den Disconnect-Vote-State des aktuellen Games.
  *
- * Hört auf zwei WS-Events:
+ * Hört auf drei WS-Events:
  *   - `game:disconnect-state` — voller State-Push (Phase, Restzeit,
  *     Votes, disconnectedSeats, resultMessage). Sender: Backend bei
  *     jedem Phasen-Übergang ODER nach jedem Vote.
@@ -9,6 +9,10 @@
  *     Outcome geschlossen wurde. Im disconnect-state ist die Phase
  *     dann schon CLOSED, aber dieses Event ist ein zusätzlicher
  *     Hinweis fürs Result-Overlay.
+ *   - `game:disconnect-cleared` — autoritatives „Episode vorbei" nach dem
+ *     CONTINUED-Linger. Primärer Weg, das Overlay auszublenden; der
+ *     Client-Timer (unten) ist nur Fallback, falls dieses Event mal
+ *     verloren geht (z. B. exakt im Reload-Race).
  *
  * Returnt:
  *   - aktueller State (null wenn keine Disconnect-Session läuft)
@@ -61,13 +65,29 @@ export function useDisconnectState(gameId: string | null): UseDisconnectStateRes
           : null
       );
     };
+    // Autoritatives „Episode vorbei" vom Server — primärer Weg, das Overlay
+    // auszublenden (statt blind auf den Client-Timer unten zu hoffen).
+    const onCleared = () => setState(null);
     s.on("game:disconnect-state", onState);
     s.on("game:disconnect-closed", onClosed);
+    s.on("game:disconnect-cleared", onCleared);
     return () => {
       s.off("game:disconnect-state", onState);
       s.off("game:disconnect-closed", onClosed);
+      s.off("game:disconnect-cleared", onCleared);
     };
   }, [gameId]);
+
+  // Fallback-Timer fürs CONTINUED-Overlay: Primär blendet das Overlay auf das
+  // autoritative `game:disconnect-cleared` hin aus (siehe oben). Falls dieses
+  // Event aber mal nicht ankommt (z. B. exakt im Reload-Race), zieht sich das
+  // rein informative „alle wieder verbunden"-Overlay nach kurzem Linger selbst
+  // zurück — es hat keinen Button und darf nicht kleben bleiben.
+  useEffect(() => {
+    if (state?.phase !== "CONTINUED") return;
+    const id = setTimeout(() => setState(null), 3500);
+    return () => clearTimeout(id);
+  }, [state?.phase]);
 
   function vote(choice: VoteChoice) {
     if (!gameId) return;
