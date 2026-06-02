@@ -19,7 +19,9 @@ test-results/
 # env / secrets
 .env
 .env.*
+*.env
 !.env.example
+secrets/
 
 # editor / OS
 .vscode/
@@ -43,6 +45,7 @@ apps/api/prisma/generated/
 # misc
 *.tmp
 *.bak
+*.bundle
 .claude/
 
 # lokal-private Arbeitsdokumente — bleiben lokal, gehören nicht ins öffentliche Repo
@@ -50,11 +53,14 @@ apps/api/prisma/generated/
 /RECOVERED_PLAN.md
 /RECOVERED_CONVERSATION.md
 
-# TLS / Zertifikate (falls beim Self-Hosting lokal im Repo-Pfad abgelegt)
+# TLS / Zertifikate / Keystores (falls beim Self-Hosting lokal im Repo-Pfad abgelegt)
 *.pem
 *.key
 *.crt
 *.pfx
+*.p12
+*.jks
+*.keystore
 
 # Cloudflare Tunnel — Credentials enthalten echte Tokens
 infra/cloudflared/*.json
