@@ -76,6 +76,12 @@ export interface CreateBodenseeGameInput {
   seats: readonly BodenseeSeatAssignment[];
   rngSeed?: number;
   tableId?: string;
+  /**
+   * Expliziter Ansager (Sitz 0|1). Wird beim Re-Match innerhalb eines Matches
+   * gesetzt, damit der Ansager alterniert. Ohne Angabe bestimmt der WELI-Halter
+   * den Ansager (Match-Start, Vorarlberger Tradition).
+   */
+  announcerSeat?: number;
 }
 
 /**
@@ -156,7 +162,9 @@ export class BodenseeGameService {
     const { hands, tables } = dealBodensee(
       input.rngSeed !== undefined ? seededRng(input.rngSeed) : cryptoRng()
     );
-    const announcerIdx = findWeliHolderBodensee(hands, tables);
+    // Match-Start: der WELI-Halter sagt an. Innerhalb eines Matches übergibt
+    // der Caller den (alternierenden) Ansager explizit.
+    const announcerIdx = input.announcerSeat ?? findWeliHolderBodensee(hands, tables);
 
     const game = await this.prisma.$transaction(async (tx) => {
       const created = await tx.game.create({

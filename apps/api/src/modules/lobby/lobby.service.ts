@@ -1234,10 +1234,13 @@ export class LobbyService {
     }
 
     // Alle YES → neues Game starten.
-    // Bodensee: eigener 2-Spieler-Service. `createGame` teilt frisch aus und
-    // bestimmt den WELI-Halter selbst zum Ansager — kein vorab berechneter
-    // Starter / keine vorab gemischten Hände nötig wie bei Kreuz/Solo.
+    // Bodensee: eigener 2-Spieler-Service. Innerhalb eines Matches alterniert
+    // der Ansager (2 Spieler = „nächster im Uhrzeigersinn"); das WELI bestimmt
+    // den Ansager nur am Match-Start. Wir reichen den alternierenden Sitz
+    // explizit durch, damit `createGame` nicht wieder den WELI-Halter nimmt.
     if (game.table.variant === "BODENSEE_2P") {
+      const lastStarter = game.rounds[game.rounds.length - 1]?.starter ?? 0;
+      const nextAnnouncer = (lastStarter + 1) % 2;
       const { gameId: bodenseeGameId } = await this.bodenseeGames.createGame({
         tableId: game.table.id,
         seats: game.table.seats.map((s) => ({
@@ -1245,13 +1248,20 @@ export class LobbyService {
           userId: s.userId,
           aiSeatType: s.aiSeatType,
         })),
+        announcerSeat: nextAnnouncer,
       });
       await this.audit.record({
         action: "game.rematch.started",
         target: game.table.id,
-        meta: { previousGameId: gameId, newGameId: bodenseeGameId, variant: "BODENSEE_2P" },
+        meta: {
+          previousGameId: gameId,
+          newGameId: bodenseeGameId,
+          variant: "BODENSEE_2P",
+          starter: nextAnnouncer,
+          rule: "rotate-clockwise",
+        },
       });
-      return { kind: "rematch-started", gameId: bodenseeGameId, starter: -1 };
+      return { kind: "rematch-started", gameId: bodenseeGameId, starter: nextAnnouncer };
     }
 
     // Innerhalb eines Matches (Punkteziel noch nicht erreicht) rotiert der
