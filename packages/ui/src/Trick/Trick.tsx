@@ -43,11 +43,15 @@ export interface TrickProps {
 type Slot = "bottom" | "left" | "top" | "right";
 const SLOTS: readonly Slot[] = ["bottom", "left", "top", "right"];
 
+// Jede Karte wird per `margin` (NICHT transform — das kollidierte mit der
+// `jass-card-enter`-Einflug-Animation) leicht zur Mitte gerückt, sodass an den
+// vier Kanten Platz für die Mitspieler-Namensschilder bleibt (sonst liegen die
+// Labels über den Karten).
 const SLOT_POS: Record<Slot, string> = {
-  bottom: "row-start-3 col-start-2 self-end justify-self-center",
-  right: "row-start-2 col-start-3 self-center justify-self-end",
-  top: "row-start-1 col-start-2 self-start justify-self-center",
-  left: "row-start-2 col-start-1 self-center justify-self-start",
+  bottom: "row-start-3 col-start-2 self-end justify-self-center mb-8",
+  right: "row-start-2 col-start-3 self-center justify-self-end mr-6",
+  top: "row-start-1 col-start-2 self-start justify-self-center mt-10",
+  left: "row-start-2 col-start-1 self-center justify-self-start ml-6",
 };
 
 function relativeSlot(absolute: number, mySeat: number): Slot {

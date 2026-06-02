@@ -86,11 +86,11 @@ export function Hand({
   const sorted = sortedHand(cards);
   // Schnell-Lookup für Selection-Mode: O(1) statt O(N²) im Render-Loop.
   const selectedKeys = new Set((selected ?? []).map((c) => `${c.suit}-${c.rank}`));
-  // Überlappung dynamisch nach Kartenzahl: bei 9 Karten brauchen wir
-  // stark überlappen, bei 3 reicht moderat. Wir geben ~60 % der Karten-
-  // Breite negativen Margin — beim Hover (z-30 + translate-y) hebt sich
-  // die einzelne Karte sauber raus.
-  const overlap = sorted.length >= 7 ? "-ml-14" : sorted.length >= 5 ? "-ml-10" : "-ml-6";
+  // Überlappung ~20 % der Kartenbreite (Karte `md` ≈ 86px → ≈ 17px = 1.1rem).
+  // Bewusst moderat (User-Wunsch): die Karten liegen gut lesbar nebeneinander
+  // statt stark gefächert. Beim Hover (z-30 + translate-y) hebt sich die
+  // einzelne Karte sauber raus.
+  const overlap = "-ml-[1.1rem]";
   return (
     <div
       // Eigener Stacking-Context (`isolate`), damit die `zIndex`-Werte
