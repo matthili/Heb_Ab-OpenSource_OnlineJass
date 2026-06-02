@@ -91,10 +91,12 @@ export function GameBoard({
   // Die Variante steht ja noch gar nicht fest, das Scoreboard hätte nichts
   // sinnvolles anzuzeigen.
   if (view.status === "announcing") {
-    // WELI-Highlight: Der WELI bestimmt traditionell den Anfänger des
-    // ersten Spiels. Wenn ich der Ansager bin (= ich habe den WELI) UND
-    // der WELI ist tatsächlich in meiner Hand, zeige Reveal + Banner.
+    // WELI-Highlight: Das WELI bestimmt den Ansager NUR beim Match-Start
+    // (erste Hand → `dealCinematicMode === "full"`). Danach rotiert der
+    // Ansager im Uhrzeigersinn — dann darf die WELI-Enthüllung NICHT mehr
+    // erscheinen, auch wenn der rotierte Ansager das WELI zufällig hält.
     const iHaveWeli =
+      dealCinematicMode === "full" &&
       view.announcement?.iAmAnnouncer === true &&
       view.hand.some((c) => c.suit === "SCHELLE" && c.rank === "SECHS");
     const announcerSeat = view.announcement?.announcerSeat ?? 0;

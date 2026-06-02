@@ -3,14 +3,13 @@
  *
  * Szenarien:
  *   1. Voting in WAITING / IN_GAME → 409 (nur in POST_GAME erlaubt)
- *   2. Alle YES → neues Game startet, Sitz-Konfig identisch, starter
- *      gemäß restartMode berechnet
+ *   2. Alle YES → neues Game startet, Sitz-Konfig identisch
  *   3. Mind. 1 NO → Tisch zurück nach WAITING, NO-Voter entfernt
- *   4. SIEGER_GIBT: Starter wird aus letztem Game-Score + letztem Geber
- *      bestimmt
- *   5. WELI: Starter ist der Sitz mit dem WELI (Schelle-6)
- *   6. Vote-Idempotenz: gleicher Vote nochmal = ok, anderer Vote = 409
- *   7. Nicht-Tisch-Spieler: 403
+ *   4. Re-Match innerhalb des Matches: Ansager rotiert im Uhrzeigersinn
+ *      (nächster Sitz) — unabhängig vom `restartMode`. Der `restartMode`
+ *      (WELI / „Sieger gibt") greift NUR beim Match-Start.
+ *   5. Vote-Idempotenz: gleicher Vote nochmal = ok, anderer Vote = 409
+ *   6. Nicht-Tisch-Spieler: 403
  *
  * Vorgehensweise zum „Game beenden" in Tests: wir treiben die Random-
  * KI-Loop des GameService direkt durch — analog `game-loop.4bots.test`.
@@ -173,58 +172,45 @@ describe("M6-E rematch flow", () => {
     expect(after?.status).toBe("CLOSED");
   });
 
-  it("WELI-Mode: Starter ist der WELI-Inhaber", async () => {
+  it("WELI-Tisch, Re-Match mitten im Match: Ansager rotiert im Uhrzeigersinn (NICHT per WELI)", async () => {
     const [owner] = await makeUsers(1);
     const { gameId } = await openAndFinishSoloVsAi(owner!, "WELI");
+
+    // Vorigen Ansager (= starter der letzten Runde) lesen.
+    const prevGame = await app.prisma.game.findUnique({
+      where: { id: gameId },
+      include: { rounds: true },
+    });
+    const lastStarter = prevGame!.rounds[0]!.starter;
 
     const vote = await owner!.http.request<{ kind: string; gameId?: string; starter?: number }>(
       `/api/games/${gameId}/rematch-vote`,
       { method: "POST", body: JSON.stringify({ vote: "YES" }) }
     );
     expect(vote.body.kind).toBe("rematch-started");
-    const newGameId = vote.body.gameId!;
-    const starterSeat = vote.body.starter!;
-
-    // Verifikation: der Starter hat tatsächlich das WELI (Schelle-6) auf
-    // der Hand. Wir lesen direkt aus dem RoundState via GameService.
-    const view = await app.games.viewForSeat(newGameId, starterSeat);
-    const hasWeli = view.hand.some((c) => c.suit === "SCHELLE" && c.rank === "SECHS");
-    expect(hasWeli).toBe(true);
+    // Innerhalb des Matches: nächster Sitz im Uhrzeigersinn — das WELI
+    // bestimmt den Ansager NUR beim Match-Start, nicht zwischen den Händen.
+    expect(vote.body.starter).toBe((lastStarter + 1) % 4);
   });
 
-  it("SIEGER_GIBT: Starter wird aus Sieger-Team + lastDealer berechnet", async () => {
+  it("SIEGER_GIBT-Tisch, Re-Match mitten im Match: Ansager rotiert ebenfalls im Uhrzeigersinn", async () => {
     const [owner] = await makeUsers(1);
     const { tableId, gameId } = await openAndFinishSoloVsAi(owner!, "SIEGER_GIBT");
 
-    // Letztes Game: starter=0 (aus M6-C Default), Dealer = (0-1+4)%4 = 3.
-    // Aus der DB den finalScore + RoundDecision laden, das Sieger-Team
-    // berechnen und den erwarteten Starter spiegeln.
     const dbGame = await app.prisma.game.findUnique({
       where: { id: gameId },
       include: { rounds: true },
     });
-    const score = dbGame!.finalScore as { team_card_points: number[] };
-    const winningTeam =
-      (score.team_card_points[0] ?? 0) >= (score.team_card_points[1] ?? 0) ? 0 : 1;
-    const TEAMS = [0, 1, 0, 1];
     const lastStarter = dbGame!.rounds[0]!.starter;
-    const lastDealer = (lastStarter - 1 + 4) % 4;
-    let expectedDealer = lastDealer;
-    for (let i = 1; i <= 4; i++) {
-      const c = (lastDealer + i) % 4;
-      if (TEAMS[c] === winningTeam) {
-        expectedDealer = c;
-        break;
-      }
-    }
-    const expectedStarter = (expectedDealer + 1) % 4;
 
     const vote = await owner!.http.request<{ kind: string; starter?: number }>(
       `/api/games/${gameId}/rematch-vote`,
       { method: "POST", body: JSON.stringify({ vote: "YES" }) }
     );
     expect(vote.body.kind).toBe("rematch-started");
-    expect(vote.body.starter).toBe(expectedStarter);
+    // `restartMode` (Sieger gibt) greift nur am Match-Start — innerhalb des
+    // Matches wird einfach im Uhrzeigersinn weitergerückt.
+    expect(vote.body.starter).toBe((lastStarter + 1) % 4);
 
     // Sanity: Tisch ist IN_GAME mit neuem Game.
     const after = await app.prisma.lobbyTable.findUnique({ where: { id: tableId } });

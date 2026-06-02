@@ -30,7 +30,7 @@ import {
 
 import { randomBytes } from "node:crypto";
 
-import { dealCards, isWeli, type Card, type RandomFn } from "@jass/engine";
+import { dealCards, type Card, type RandomFn } from "@jass/engine";
 
 import { AuditService } from "../audit/audit.service.js";
 import { BodenseeGameService } from "../game/bodensee-game.service.js";
@@ -1254,15 +1254,16 @@ export class LobbyService {
       return { kind: "rematch-started", gameId: bodenseeGameId, starter: -1 };
     }
 
+    // Innerhalb eines Matches (Punkteziel noch nicht erreicht) rotiert der
+    // Ansager im Uhrzeigersinn zum nächsten Sitz. Der `restartMode`
+    // (WELI / „Sieger gibt") gilt NUR beim Match-Start, NICHT zwischen den
+    // Händen — Vorarlberger Regel: das WELI bestimmt nur den allerersten
+    // Ansager, danach gibt einfach der Nächste. Frisch austeilen, Ansager
+    // explizit setzen (sonst liefe `createGame` in den WELI-Fallback).
     const lastStarter = game.rounds[game.rounds.length - 1]?.starter ?? 0;
-    const finalScore = (game.finalScore ?? null) as {
-      team_card_points: number[];
-    } | null;
-    const { newStarter, newHands } = this.computeRematchStartAndHands(
-      game.table.restartMode as "WELI" | "SIEGER_GIBT",
-      lastStarter,
-      finalScore
-    );
+    const seatCount = seatCountForVariant(game.table.variant);
+    const newStarter = (lastStarter + 1) % seatCount;
+    const newHands = dealCards(rematchRng());
     const newGameId = await this.startRematchGame(
       game.table.id,
       game.table.seats.map((s) => ({
@@ -1280,8 +1281,8 @@ export class LobbyService {
       meta: {
         previousGameId: gameId,
         newGameId,
-        restartMode: game.table.restartMode,
         starter: newStarter,
+        rule: "rotate-clockwise", // restartMode greift nur am Match-Start
       },
     });
     return { kind: "rematch-started", gameId: newGameId, starter: newStarter };
@@ -1358,18 +1359,11 @@ export class LobbyService {
 
   /**
    * Startet das neue Game am Tisch nach einem erfolgreichen YES-Vote.
-   * Die Sitz-Konfiguration ist identisch (User-Entscheidung 3), Karten
-   * sind frisch, der Ansager folgt dem `restartMode`:
-   *
-   *   - **WELI**: der Sitz mit dem WELI in der neuen Hand sagt an
-   *     (das hat der Caller bereits via `computeRematchStartAndHands`
-   *     ermittelt, und mit `starter` an uns geschickt).
-   *   - **SIEGER_GIBT**: `starter` wurde aus letztem Geber + Sieger-
-   *     Team berechnet — auch der wird zum Ansager.
-   *
-   * Wir übergeben dem GameService dann nur die Hände + den
-   * `announcerSeat`; die Variant bleibt offen, das Frontend zeigt
-   * dem Ansager den Dialog.
+   * Die Sitz-Konfiguration ist identisch, Karten sind frisch. Der Ansager
+   * (`starter`) wird vom Caller bestimmt — innerhalb eines Matches der
+   * nächste Sitz im Uhrzeigersinn (siehe `evaluateRematchVotes`). Wir
+   * übergeben dem GameService nur Hände + `announcerSeat`; die Variante
+   * bleibt offen, das Frontend zeigt dem Ansager den Dialog.
    */
   private async startRematchGame(
     tableId: string,
@@ -1386,56 +1380,6 @@ export class LobbyService {
       gameType,
     });
     return gameId;
-  }
-
-  /**
-   * Berechnet Starter und neue Hände nach `restartMode`.
-   *
-   * **WELI**: Karten werden gemischt; wer das WELI (Schelle-6) bekommt,
-   * ist Starter. Das ist effektiv eine zufällige Wahl mit
-   * WELI-Inhaber-Probability, deterministisch aus dem Mischen ableitbar.
-   *
-   * **SIEGER_GIBT**: Hände werden ebenfalls gemischt, aber der Starter wird
-   * nicht aus den Karten gelesen, sondern aus dem letzten Game-Ergebnis:
-   *   - Geber des letzten Spiels: `(lastStarter - 1 + 4) % 4`
-   *   - Neuer Geber: der nächste im Uhrzeigersinn nach lastDealer, der zum
-   *     Sieger-Team gehört
-   *   - Starter: `(newDealer + 1) % 4`
-   *
-   * Bei Gleichstand der Teams (unwahrscheinlich, weil Punktesumme 157
-   * ungerade ist) gewinnt Team 0 — pragma, deterministisch.
-   */
-  private computeRematchStartAndHands(
-    mode: "WELI" | "SIEGER_GIBT",
-    lastStarter: number,
-    finalScore: { team_card_points: number[] } | null
-  ): { newStarter: number; newHands: Card[][] } {
-    // Standard-Kreuz-Jass-Teams: Sitz 0+2 = Team 0, Sitz 1+3 = Team 1.
-    const TEAMS = [0, 1, 0, 1];
-    const hands = dealCards(rematchRng());
-    if (mode === "WELI") {
-      for (let seat = 0; seat < 4; seat++) {
-        if (hands[seat]!.some((c) => isWeli(c))) {
-          return { newStarter: seat, newHands: hands };
-        }
-      }
-      // WELI muss irgendwo sein (es ist im Deck) — defensiv.
-      throw new Error("WELI-Modus: WELI-Karte nicht in den Händen gefunden");
-    }
-    // SIEGER_GIBT
-    const points = finalScore?.team_card_points ?? [0, 0];
-    const winningTeam = (points[0] ?? 0) >= (points[1] ?? 0) ? 0 : 1;
-    const lastDealer = (lastStarter - 1 + 4) % 4;
-    let newDealer = lastDealer;
-    for (let i = 1; i <= 4; i++) {
-      const candidate = (lastDealer + i) % 4;
-      if (TEAMS[candidate] === winningTeam) {
-        newDealer = candidate;
-        break;
-      }
-    }
-    const newStarter = (newDealer + 1) % 4;
-    return { newStarter, newHands: hands };
   }
 
   // ───────────────────────────────────────────────────────────────────
