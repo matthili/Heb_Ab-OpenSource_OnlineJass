@@ -45,6 +45,7 @@ import type {
 } from "./lobby.dto.js";
 import { LobbyGateway } from "./lobby.gateway.js";
 import { LobbySettingsService } from "./lobby-settings.service.js";
+import { matchStartAnnouncerSiegerGibt } from "./match-start.js";
 import { PushService } from "../push/push.service.js";
 
 /** Sitz-Zusammenfassung für die View. */
@@ -1170,6 +1171,14 @@ export class LobbyService {
         `Neue Partie nur nach MATCH_OVER möglich (aktuell ${table.status}).`
       );
     }
+
+    // „Sieger gibt": Ansager der ersten Hand der neuen Partie aus dem
+    // Match-Endstand bestimmen — VOR dem Zurücksetzen der kumulativen Scores.
+    // Bei WELI bleibt das undefined → WELI-Halter sagt am Match-Start an.
+    // Greift nur, wenn die neue Partie hier sofort startet (Tisch voll). Wird
+    // der Tisch erst später wieder voll, fällt es auf WELI zurück.
+    const nextAnnouncer = await this.computeMatchStartAnnouncer(tableId);
+
     await this.prisma.lobbyTable.update({
       where: { id: tableId },
       data: {
@@ -1187,13 +1196,50 @@ export class LobbyService {
       actorId: ownerId,
       target: tableId,
     });
-    // Falls der Tisch noch 4-voll ist (alle Sitze besetzt), starten wir
+    // Falls der Tisch noch voll ist (alle Sitze besetzt), starten wir
     // gleich das nächste Game. Sonst wartet der Tisch im normalen
     // Auto-Fill-Flow.
-    await this.tryAutoStartGame(tableId);
+    await this.tryAutoStartGame(tableId, nextAnnouncer);
     this.gateway.broadcastLobbyListUpdate("new-match", tableId);
     await this.pushTableState(tableId);
     return { tableId };
+  }
+
+  /**
+   * Ansager der ersten Hand einer NEUEN Partie. Nur bei `restartMode =
+   * SIEGER_GIBT` gesetzt — sonst `undefined` (→ WELI-Halter am Match-Start).
+   * MUSS vor dem Score-Reset in `startNewMatch` aufgerufen werden, weil es die
+   * Match-Endstände + den letzten Geber braucht.
+   */
+  private async computeMatchStartAnnouncer(tableId: string): Promise<number | undefined> {
+    const t = await this.prisma.lobbyTable.findUnique({
+      where: { id: tableId },
+      select: {
+        variant: true,
+        restartMode: true,
+        currentGameId: true,
+        cumulativeScoreTeam0: true,
+        cumulativeScoreTeam1: true,
+        cumulativeScoreTeam2: true,
+        cumulativeScoreTeam3: true,
+      },
+    });
+    if (!t || t.restartMode !== "SIEGER_GIBT" || !t.currentGameId) return undefined;
+    const lastGame = await this.prisma.game.findUnique({
+      where: { id: t.currentGameId },
+      include: { rounds: { orderBy: { roundIdx: "asc" } } },
+    });
+    const lastStarter = lastGame?.rounds[lastGame.rounds.length - 1]?.starter ?? 0;
+    return matchStartAnnouncerSiegerGibt(
+      t.variant,
+      [
+        t.cumulativeScoreTeam0,
+        t.cumulativeScoreTeam1,
+        t.cumulativeScoreTeam2,
+        t.cumulativeScoreTeam3,
+      ],
+      lastStarter
+    );
   }
 
   /**
@@ -1526,7 +1572,7 @@ export class LobbyService {
    * Auto-Fill) aufgerufen. Idempotent — wenn der Tisch schon IN_GAME ist,
    * passiert nichts.
    */
-  async tryAutoStartGame(tableId: string): Promise<string | null> {
+  async tryAutoStartGame(tableId: string, announcerOverride?: number): Promise<string | null> {
     const table = await this.prisma.lobbyTable.findUnique({
       where: { id: tableId },
       include: {
@@ -1537,7 +1583,7 @@ export class LobbyService {
     if (table.status !== LobbyTableStatus.WAITING) return null;
     if (table.seats.length < seatCountForVariant(table.variant)) return null;
 
-    return this.startGameFromTable(table.id);
+    return this.startGameFromTable(table.id, announcerOverride);
   }
 
   /**
@@ -1577,12 +1623,16 @@ export class LobbyService {
    * Vorbedingung: Tisch ist 4 voll und in WAITING. Caller hat das geprüft.
    *
    * **Sprint C**: kein hard-coded Trumpf mehr. Das Game startet im
-   * Ansage-Modus; `createGame` ohne `variant` teilt die Karten aus und
-   * sucht selbst den WELI-Inhaber als Ansager (Vorarlberger Tradition
-   * Spiel 1). Das Frontend zeigt dem Announcer den Ansage-Dialog,
+   * Ansage-Modus; `createGame` teilt die Karten aus. Ohne `announcerOverride`
+   * sagt der WELI-Inhaber an (Vorarlberger Tradition, Match-Start). Mit
+   * `announcerOverride` (nur „Sieger gibt", siehe `startNewMatch`) wird der
+   * Ansager explizit gesetzt. Das Frontend zeigt dem Ansager den Dialog;
    * KI-Sitze antworten via `HeuristicPlayer.chooseAnnouncement`.
    */
-  private async startGameFromTable(tableId: string): Promise<string | null> {
+  private async startGameFromTable(
+    tableId: string,
+    announcerOverride?: number
+  ): Promise<string | null> {
     const table = await this.prisma.lobbyTable.findUnique({
       where: { id: tableId },
       include: { seats: { orderBy: { seat: "asc" } } },
@@ -1597,7 +1647,11 @@ export class LobbyService {
 
     // Bodensee-Jass läuft über den eigenen 2-Spieler-Service.
     if (table.variant === "BODENSEE_2P") {
-      const { gameId } = await this.bodenseeGames.createGame({ tableId, seats });
+      const { gameId } = await this.bodenseeGames.createGame({
+        tableId,
+        seats,
+        ...(announcerOverride !== undefined ? { announcerSeat: announcerOverride } : {}),
+      });
       this.log.log(
         { tableId, gameId, variant: table.variant },
         "Bodensee-Game aus Tisch gestartet (Ansage-Modus)"
@@ -1609,6 +1663,7 @@ export class LobbyService {
       tableId,
       seats,
       gameType: variantEnumToGameType(table.variant),
+      ...(announcerOverride !== undefined ? { announcerSeat: announcerOverride } : {}),
     });
     this.log.log(
       { tableId, gameId, variant: table.variant },
