@@ -12,6 +12,7 @@
  *   - Markdown-Hint („**fett** *kursiv* `code`")
  */
 import { type FormEvent, type KeyboardEvent, useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import { useSession } from "~/lib/auth-client";
 import { ApiError } from "~/lib/api";
@@ -26,6 +27,7 @@ interface Props {
 }
 
 export function ChatPanel({ channelKey, title, className = "" }: Props) {
+  const { t } = useTranslation();
   const { data: session } = useSession();
   const myUserId = session?.user?.id;
   const { messages, isLoading, error, sendMessage, isSending, sendError } = useChat(channelKey);
@@ -58,7 +60,7 @@ export function ChatPanel({ channelKey, title, className = "" }: Props) {
   }
 
   const sendErrMsg =
-    sendError instanceof ApiError ? sendError.message : sendError ? "Senden fehlgeschlagen." : null;
+    sendError instanceof ApiError ? sendError.message : sendError ? t("chat.sendFailed") : null;
 
   return (
     <section className={`flex flex-col rounded border border-stone-200 bg-white ${className}`}>
@@ -79,7 +81,7 @@ export function ChatPanel({ channelKey, title, className = "" }: Props) {
           </p>
         )}
         {!isLoading && !error && messages.length === 0 && (
-          <p className="text-sm text-stone-400 italic">Noch keine Nachrichten.</p>
+          <p className="text-sm text-stone-400 italic">{t("chat.empty")}</p>
         )}
         {messages.map((m) => (
           <ChatBubble key={m.id} message={m} isOwn={m.senderId === myUserId} />
@@ -91,22 +93,23 @@ export function ChatPanel({ channelKey, title, className = "" }: Props) {
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={onKeyDown}
-          placeholder="Nachricht … (Enter zum Senden, Shift+Enter für Umbruch)"
+          placeholder={t("chat.composerPlaceholder")}
           rows={2}
           maxLength={2000}
           className="w-full rounded border border-stone-300 px-2 py-1 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-amber-500"
-          aria-label="Nachricht verfassen"
+          aria-label={t("chat.composerAria")}
         />
         <div className="flex items-center justify-between gap-2">
           <span className="text-xs text-stone-400">
-            <code>**fett**</code> · <code>*kursiv*</code> · <code>`code`</code>
+            <code>{t("chat.markdownHintBold")}</code> · <code>{t("chat.markdownHintItalic")}</code>{" "}
+            · <code>{t("chat.markdownHintCode")}</code>
           </span>
           <button
             type="submit"
             disabled={isSending || draft.trim().length === 0}
             className="rounded bg-stone-900 px-3 py-1 text-sm text-white hover:bg-stone-700 disabled:opacity-50"
           >
-            {isSending ? "…" : "Senden"}
+            {isSending ? "…" : t("chat.send")}
           </button>
         </div>
         {sendErrMsg && (

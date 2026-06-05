@@ -7,7 +7,9 @@
  */
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
+import type { TFunction } from "i18next";
 import { useState } from "react";
+import { Trans, useTranslation } from "react-i18next";
 
 import { aiName } from "~/features/game/aiNames";
 import { ReplayPlayer } from "~/features/replay/ReplayPlayer";
@@ -21,30 +23,31 @@ export const Route = createFileRoute("/_auth/replay/$gameId")({
 });
 
 function ReplayPage() {
+  const { t } = useTranslation();
   const { gameId } = Route.useParams();
   const { data: session } = useSession();
   const { data, isLoading, error } = useReplay(gameId);
 
   if (isLoading) {
-    return <p className="text-stone-500">Replay wird geladen…</p>;
+    return <p className="text-stone-500">{t("replay.loading")}</p>;
   }
   if (error) {
     return (
       <section className="space-y-3">
-        <h1 className="text-2xl font-bold">Replay nicht verfügbar</h1>
+        <h1 className="text-2xl font-bold">{t("replay.unavailableTitle")}</h1>
         <p className="text-stone-700">
-          {error instanceof Error ? error.message : "Unbekannter Fehler."}
+          {error instanceof Error ? error.message : t("replay.unknownError")}
         </p>
         <p>
           <Link to="/lobby" className="text-sm text-stone-600 underline">
-            Zurück zur Lobby
+            {t("replay.backToLobby")}
           </Link>
         </p>
       </section>
     );
   }
   if (!data) {
-    return <p className="text-stone-500">Kein Replay-Bundle empfangen.</p>;
+    return <p className="text-stone-500">{t("replay.noBundle")}</p>;
   }
 
   // Eigenen Sitz finden, sonst Sitz 0 als Default (Admin-View).
@@ -55,19 +58,21 @@ function ReplayPage() {
   return (
     <section className="space-y-4">
       <header className="flex flex-wrap items-baseline gap-3">
-        <h1 className="text-2xl font-bold">Replay</h1>
+        <h1 className="text-2xl font-bold">{t("replay.title")}</h1>
         <span className="text-sm text-stone-600">
           {new Date(data.bundle.startedAt).toLocaleString("de-AT")}
           {data.bundle.endedAt
             ? ` – ${new Date(data.bundle.endedAt).toLocaleTimeString("de-AT")}`
-            : " (läuft noch)"}
+            : ` (${t("replay.running")})`}
         </span>
         <span className="text-xs rounded bg-stone-100 px-2 py-0.5 text-stone-700">
-          Spec {data.bundle.ruleVersion}
-          {data.bundle.modelVersion ? ` · Modell ${data.bundle.modelVersion}` : ""}
+          {t("replay.specBadge", { ruleVersion: data.bundle.ruleVersion })}
+          {data.bundle.modelVersion
+            ? t("replay.modelBadge", { modelVersion: data.bundle.modelVersion })
+            : ""}
         </span>
         <Link to="/lobby" className="ml-auto text-sm text-stone-600 underline">
-          Zurück zur Lobby
+          {t("replay.backToLobby")}
         </Link>
       </header>
 
@@ -89,7 +94,7 @@ function ReplayPage() {
       {data.frames.length > 0 ? (
         <ReplayPlayer bundle={data.bundle} frames={data.frames} mySeat={mySeat} />
       ) : (
-        <p className="text-stone-500">Keine abspielbaren Frames.</p>
+        <p className="text-stone-500">{t("replay.noFrames")}</p>
       )}
 
       {data.bundle.finalScore && (
@@ -98,6 +103,7 @@ function ReplayPage() {
           finalScore={data.bundle.finalScore}
           seats={data.bundle.seats}
           mySeat={mySeat}
+          t={t}
         />
       )}
     </section>
@@ -113,6 +119,7 @@ function ShareControls({
   bundle: ReplayBundle;
   canShare: boolean;
 }) {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [copied, setCopied] = useState(false);
 
@@ -147,13 +154,11 @@ function ShareControls({
             className="size-4"
           />
           <span>
-            <strong>Öffentlich teilbar</strong> — über die Share-URL einsehbar auch ohne Login.
+            <Trans i18nKey="replay.share.publicToggle" components={{ strong: <strong /> }} />
           </span>
         </label>
       ) : (
-        <p className="text-stone-600 text-xs">
-          Nur Teilnehmer können das Replay zum Teilen freigeben.
-        </p>
+        <p className="text-stone-600 text-xs">{t("replay.share.onlyParticipants")}</p>
       )}
       {bundle.publicReplay && (
         <div className="flex items-center gap-2 flex-wrap">
@@ -169,7 +174,7 @@ function ShareControls({
             }}
             className="text-xs rounded border border-stone-300 px-2 py-1 hover:bg-stone-100"
           >
-            {copied ? "✓ kopiert" : "Link kopieren"}
+            {copied ? t("replay.share.copied") : t("replay.share.copyLink")}
           </button>
         </div>
       )}
@@ -182,11 +187,13 @@ function FinalScoreCard({
   finalScore,
   seats,
   mySeat,
+  t,
 }: {
   gameId: string;
   finalScore: { team_card_points: number[]; matsch_team: number | null };
   seats: { seat: number; displayName: string | null; aiSeatType: string | null }[];
   mySeat: number;
+  t: TFunction;
 }) {
   const myTeam = mySeat % 2;
   const teams: [number, number] = [
@@ -199,22 +206,26 @@ function FinalScoreCard({
       .map(
         (s) =>
           s.displayName ??
-          (s.aiSeatType ? aiName(`${gameId}:${s.seat}`, s.aiSeatType) : `Sitz ${s.seat}`)
+          (s.aiSeatType
+            ? aiName(`${gameId}:${s.seat}`, s.aiSeatType)
+            : t("replay.player.seatFallback", { n: s.seat }))
       )
       .join(" + ");
 
   return (
     <div className="rounded border border-stone-200 bg-white p-4">
-      <h2 className="text-lg font-semibold mb-2">Endstand</h2>
+      <h2 className="text-lg font-semibold mb-2">{t("replay.finalScore.title")}</h2>
       <table className="text-sm w-full">
         <tbody>
-          {[0, 1].map((t) => (
-            <tr key={t} className={t === myTeam ? "font-medium" : ""}>
+          {[0, 1].map((team) => (
+            <tr key={team} className={team === myTeam ? "font-medium" : ""}>
               <td className="py-1 pr-2">
-                Team {t} ({seatsInTeam(t)})
+                {t("replay.finalScore.teamRow", { team, players: seatsInTeam(team) })}
               </td>
-              <td className="py-1 text-right tabular-nums">{teams[t]}</td>
-              <td className="py-1 pl-2">{finalScore.matsch_team === t ? "Matsch!" : ""}</td>
+              <td className="py-1 text-right tabular-nums">{teams[team]}</td>
+              <td className="py-1 pl-2">
+                {finalScore.matsch_team === team ? t("replay.finalScore.matsch") : ""}
+              </td>
             </tr>
           ))}
         </tbody>

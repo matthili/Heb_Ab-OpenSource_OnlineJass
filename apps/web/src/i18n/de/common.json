@@ -623,6 +623,72 @@
     "toDefault": "Zurück zum Standard-Look"
   },
 
+  "replay": {
+    "title": "Replay",
+    "titleShared": "Replay (geteilt)",
+    "loading": "Replay wird geladen…",
+    "noBundle": "Kein Replay-Bundle empfangen.",
+    "noFrames": "Keine abspielbaren Frames.",
+    "noPlayerFrames": "Keine Replay-Frames verfügbar.",
+    "backToLobby": "Zurück zur Lobby",
+    "running": "läuft noch",
+    "specBadge": "Spec {{ruleVersion}}",
+    "modelBadge": " · Modell {{modelVersion}}",
+    "unavailableTitle": "Replay nicht verfügbar",
+    "unknownError": "Unbekannter Fehler.",
+    "notPublicTitle": "Replay nicht öffentlich",
+    "notPublicBody": "Dieses Replay existiert entweder nicht, oder die Teilnehmer haben es noch nicht zum Teilen freigegeben.",
+    "loginToSeeOwn": "Einloggen, um eigene Replays zu sehen",
+    "rank": {
+      "SECHS": "Sechs",
+      "SIEBEN": "Sieben",
+      "ACHT": "Acht",
+      "NEUN": "Neun",
+      "ZEHN": "Zehn",
+      "UNTER": "Unter",
+      "OBER": "Ober",
+      "KOENIG": "König",
+      "ASS": "Ass"
+    },
+    "share": {
+      "publicToggle": "<strong>Öffentlich teilbar</strong> — über die Share-URL einsehbar auch ohne Login.",
+      "onlyParticipants": "Nur Teilnehmer können das Replay zum Teilen freigeben.",
+      "copyLink": "Link kopieren",
+      "copied": "✓ kopiert"
+    },
+    "player": {
+      "areaAria": "Replay-Spielfläche",
+      "seatFallback": "Sitz {{n}}",
+      "youSuffix": "{{name}} (du)",
+      "toStart": "An den Anfang",
+      "stepBack": "Schritt zurück",
+      "framePosition": "Frame-Position",
+      "stepForward": "Schritt vor",
+      "toEnd": "An das Ende",
+      "initialState": "Initialstand — vor dem ersten Zug.",
+      "moveProgress": "Zug {{seq}} / {{total}}",
+      "movePlays": " — Sitz {{seat}} spielt {{suit}}-{{rank}}",
+      "moveListSummary": "Zug-Liste ({{count}})",
+      "moveListItem": "#{{seq}} — Stich {{trick}}, {{name}}: Karte-Index {{cardIndex}}"
+    },
+    "finalScore": {
+      "title": "Endstand",
+      "teamRow": "Team {{team}} ({{players}})",
+      "matsch": "Matsch!"
+    }
+  },
+
+  "chat": {
+    "empty": "Noch keine Nachrichten.",
+    "composerPlaceholder": "Nachricht … (Enter zum Senden, Shift+Enter für Umbruch)",
+    "composerAria": "Nachricht verfassen",
+    "markdownHintBold": "**fett**",
+    "markdownHintItalic": "*kursiv*",
+    "markdownHintCode": "`code`",
+    "send": "Senden",
+    "sendFailed": "Senden fehlgeschlagen."
+  },
+
   "admin": {
     "layout": {
       "title": "Admin",

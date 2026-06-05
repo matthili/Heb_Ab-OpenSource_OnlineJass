@@ -15,6 +15,8 @@
  *   - Weisen-Anzeige (kommt mit der Weisen-Implementation)
  */
 import { useState } from "react";
+import type { TFunction } from "i18next";
+import { useTranslation } from "react-i18next";
 import { Trick, Scoreboard } from "@jass/ui";
 import type { Card } from "@jass/engine";
 import { trickWinner } from "@jass/engine";
@@ -31,11 +33,12 @@ interface Props {
 }
 
 export function ReplayPlayer({ bundle, frames, mySeat }: Props) {
+  const { t } = useTranslation();
   const [frameIdx, setFrameIdx] = useState(frames.length - 1); // Start beim Endstand
   const frame = frames[frameIdx];
 
   if (!frame) {
-    return <div className="text-sm text-stone-600">Keine Replay-Frames verfügbar.</div>;
+    return <div className="text-sm text-stone-600">{t("replay.noPlayerFrames")}</div>;
   }
 
   const variant = frame.state.variant;
@@ -69,6 +72,7 @@ export function ReplayPlayer({ bundle, frames, mySeat }: Props) {
         trickCards={trickCards}
         trickStarter={trickStarter}
         mySeat={mySeat}
+        t={t}
         {...(winnerSeat !== undefined ? { winnerSeat } : {})}
       />
 
@@ -78,6 +82,7 @@ export function ReplayPlayer({ bundle, frames, mySeat }: Props) {
         currentMove={frame.played}
         currentMoveSeq={frame.moveSeq}
         onChange={setFrameIdx}
+        t={t}
       />
 
       <MoveList
@@ -86,6 +91,7 @@ export function ReplayPlayer({ bundle, frames, mySeat }: Props) {
         seats={bundle.seats}
         currentSeq={frame.moveSeq}
         onJump={(seq) => setFrameIdx(seq)}
+        t={t}
       />
     </div>
   );
@@ -97,25 +103,29 @@ function PlayingArea({
   trickStarter,
   mySeat,
   winnerSeat,
+  t,
 }: {
   bundle: ReplayBundle;
   trickCards: readonly Card[];
   trickStarter: number;
   mySeat: number;
   winnerSeat?: number;
+  t: TFunction;
 }) {
   return (
     <div
       className="grid grid-cols-3 grid-rows-3 gap-2 min-h-[20rem] bg-emerald-50 border border-emerald-200 rounded-lg p-4 relative"
       role="region"
-      aria-label="Replay-Spielfläche"
+      aria-label={t("replay.player.areaAria")}
     >
       {bundle.seats.map((s) => {
         if (s.seat === mySeat) return null;
         const slot = relativeSlot(s.seat, mySeat);
         const label =
           s.displayName ??
-          (s.aiSeatType ? aiName(`${bundle.gameId}:${s.seat}`, s.aiSeatType) : `Sitz ${s.seat}`);
+          (s.aiSeatType
+            ? aiName(`${bundle.gameId}:${s.seat}`, s.aiSeatType)
+            : t("replay.player.seatFallback", { n: s.seat }));
         return (
           <div
             key={s.seat}
@@ -129,7 +139,11 @@ function PlayingArea({
       <div
         className={`${SEAT_SLOT_CLASS.bottom} text-sm rounded bg-stone-900 text-white px-2 py-1 z-10`}
       >
-        {bundle.seats.find((s) => s.seat === mySeat)?.displayName ?? `Sitz ${mySeat}`} (du)
+        {t("replay.player.youSuffix", {
+          name:
+            bundle.seats.find((s) => s.seat === mySeat)?.displayName ??
+            t("replay.player.seatFallback", { n: mySeat }),
+        })}
       </div>
 
       <div className="row-start-1 row-end-4 col-start-1 col-end-4 pointer-events-none">
@@ -150,12 +164,14 @@ function ReplayControls({
   currentMove,
   currentMoveSeq,
   onChange,
+  t,
 }: {
   frameIdx: number;
   totalFrames: number;
   currentMove: { seat: number; card: Card } | null;
   currentMoveSeq: number | null;
   onChange: (i: number) => void;
+  t: TFunction;
 }) {
   return (
     <div className="rounded border border-stone-200 bg-white p-3 space-y-2">
@@ -165,7 +181,7 @@ function ReplayControls({
           onClick={() => onChange(0)}
           disabled={frameIdx === 0}
           className="rounded border border-stone-300 px-2 py-1 text-sm disabled:opacity-40"
-          aria-label="An den Anfang"
+          aria-label={t("replay.player.toStart")}
         >
           ⏮
         </button>
@@ -174,7 +190,7 @@ function ReplayControls({
           onClick={() => onChange(Math.max(0, frameIdx - 1))}
           disabled={frameIdx === 0}
           className="rounded border border-stone-300 px-2 py-1 text-sm disabled:opacity-40"
-          aria-label="Schritt zurück"
+          aria-label={t("replay.player.stepBack")}
         >
           ◀
         </button>
@@ -186,14 +202,14 @@ function ReplayControls({
           value={frameIdx}
           onChange={(e) => onChange(parseInt(e.currentTarget.value, 10))}
           className="flex-1"
-          aria-label="Frame-Position"
+          aria-label={t("replay.player.framePosition")}
         />
         <button
           type="button"
           onClick={() => onChange(Math.min(totalFrames - 1, frameIdx + 1))}
           disabled={frameIdx === totalFrames - 1}
           className="rounded border border-stone-300 px-2 py-1 text-sm disabled:opacity-40"
-          aria-label="Schritt vor"
+          aria-label={t("replay.player.stepForward")}
         >
           ▶
         </button>
@@ -202,19 +218,23 @@ function ReplayControls({
           onClick={() => onChange(totalFrames - 1)}
           disabled={frameIdx === totalFrames - 1}
           className="rounded border border-stone-300 px-2 py-1 text-sm disabled:opacity-40"
-          aria-label="An das Ende"
+          aria-label={t("replay.player.toEnd")}
         >
           ⏭
         </button>
       </div>
       <div className="text-xs text-stone-600">
         {currentMoveSeq === null ? (
-          <span>Initialstand — vor dem ersten Zug.</span>
+          <span>{t("replay.player.initialState")}</span>
         ) : (
           <span>
-            Zug {currentMoveSeq} / {totalFrames - 1}
+            {t("replay.player.moveProgress", { seq: currentMoveSeq, total: totalFrames - 1 })}
             {currentMove
-              ? ` — Sitz ${currentMove.seat} spielt ${currentMove.card.suit}-${currentMove.card.rank}`
+              ? t("replay.player.movePlays", {
+                  seat: currentMove.seat,
+                  suit: t(`game.announce.suit.${currentMove.card.suit}`),
+                  rank: t(`replay.rank.${currentMove.card.rank}`),
+                })
               : ""}
           </span>
         )}
@@ -229,23 +249,28 @@ function MoveList({
   seats,
   currentSeq,
   onJump,
+  t,
 }: {
   gameId: string;
   moves: ReplayBundle["moves"];
   seats: ReplayBundle["seats"];
   currentSeq: number | null;
   onJump: (frameIdx: number) => void;
+  t: TFunction;
 }) {
   const nameOf = (seat: number): string => {
     const s = seats.find((x) => x.seat === seat);
     return (
-      s?.displayName ?? (s?.aiSeatType ? aiName(`${gameId}:${seat}`, s.aiSeatType) : `Sitz ${seat}`)
+      s?.displayName ??
+      (s?.aiSeatType
+        ? aiName(`${gameId}:${seat}`, s.aiSeatType)
+        : t("replay.player.seatFallback", { n: seat }))
     );
   };
   return (
     <details className="rounded border border-stone-200 bg-white">
       <summary className="cursor-pointer px-3 py-2 text-sm font-medium">
-        Zug-Liste ({moves.length})
+        {t("replay.player.moveListSummary", { count: moves.length })}
       </summary>
       <ol className="divide-y divide-stone-100 max-h-80 overflow-auto">
         {moves.map((m) => {
@@ -259,7 +284,12 @@ function MoveList({
                   isCurrent ? "bg-amber-50 font-medium" : ""
                 }`}
               >
-                #{m.seq} — Trick {m.trickIdx + 1}, {nameOf(m.seat)}: Karte-Index {m.cardIndex}
+                {t("replay.player.moveListItem", {
+                  seq: m.seq,
+                  trick: m.trickIdx + 1,
+                  name: nameOf(m.seat),
+                  cardIndex: m.cardIndex,
+                })}
               </button>
             </li>
           );

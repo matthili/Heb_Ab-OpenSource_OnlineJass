@@ -623,6 +623,72 @@
     "toDefault": "Switch back to default look"
   },
 
+  "replay": {
+    "title": "Replay",
+    "titleShared": "Replay (shared)",
+    "loading": "Loading replay…",
+    "noBundle": "No replay bundle received.",
+    "noFrames": "No playable frames.",
+    "noPlayerFrames": "No replay frames available.",
+    "backToLobby": "Back to lobby",
+    "running": "in progress",
+    "specBadge": "Spec {{ruleVersion}}",
+    "modelBadge": " · Model {{modelVersion}}",
+    "unavailableTitle": "Replay not available",
+    "unknownError": "Unknown error.",
+    "notPublicTitle": "Replay not public",
+    "notPublicBody": "This replay either does not exist, or the participants have not shared it yet.",
+    "loginToSeeOwn": "Sign in to see your own replays",
+    "rank": {
+      "SECHS": "Six",
+      "SIEBEN": "Seven",
+      "ACHT": "Eight",
+      "NEUN": "Nine",
+      "ZEHN": "Ten",
+      "UNTER": "Under",
+      "OBER": "Over",
+      "KOENIG": "King",
+      "ASS": "Ace"
+    },
+    "share": {
+      "publicToggle": "<strong>Publicly shareable</strong> — viewable via the share URL even without a login.",
+      "onlyParticipants": "Only participants can share the replay.",
+      "copyLink": "Copy link",
+      "copied": "✓ copied"
+    },
+    "player": {
+      "areaAria": "Replay playing area",
+      "seatFallback": "Seat {{n}}",
+      "youSuffix": "{{name}} (you)",
+      "toStart": "To the start",
+      "stepBack": "Step back",
+      "framePosition": "Frame position",
+      "stepForward": "Step forward",
+      "toEnd": "To the end",
+      "initialState": "Initial state — before the first move.",
+      "moveProgress": "Move {{seq}} / {{total}}",
+      "movePlays": " — seat {{seat}} plays {{suit}}-{{rank}}",
+      "moveListSummary": "Move list ({{count}})",
+      "moveListItem": "#{{seq}} — Trick {{trick}}, {{name}}: card index {{cardIndex}}"
+    },
+    "finalScore": {
+      "title": "Final score",
+      "teamRow": "Team {{team}} ({{players}})",
+      "matsch": "Matsch!"
+    }
+  },
+
+  "chat": {
+    "empty": "No messages yet.",
+    "composerPlaceholder": "Message … (Enter to send, Shift+Enter for a line break)",
+    "composerAria": "Compose a message",
+    "markdownHintBold": "**bold**",
+    "markdownHintItalic": "*italic*",
+    "markdownHintCode": "`code`",
+    "send": "Send",
+    "sendFailed": "Sending failed."
+  },
+
   "admin": {
     "layout": {
       "title": "Admin",
