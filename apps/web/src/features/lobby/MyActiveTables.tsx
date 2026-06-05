@@ -11,6 +11,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { useCallback } from "react";
+import { useTranslation } from "react-i18next";
 
 import { api } from "~/lib/api";
 import { useLobbyListEvents } from "~/lib/ws";
@@ -18,6 +19,7 @@ import { useLobbyListEvents } from "~/lib/ws";
 import type { TableListEntry } from "./types";
 
 export function MyActiveTables() {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const { data } = useQuery<{ tables: TableListEntry[] }>({
     queryKey: ["lobby", "my-tables"],
@@ -41,28 +43,28 @@ export function MyActiveTables() {
   return (
     <section
       className="rounded-lg border border-jass-yellow bg-jass-cream p-3 shadow-sm"
-      aria-label="Mein aktiver Tisch"
+      aria-label={t("lobby.myTables.label")}
     >
       <h2 className="text-sm font-semibold text-jass-ink mb-2">
-        {tables.length === 1 ? "Dein aktiver Tisch" : "Deine aktiven Tische"}
+        {tables.length === 1 ? t("lobby.myTables.headingOne") : t("lobby.myTables.headingMany")}
       </h2>
       <ul className="space-y-1.5">
-        {tables.map((t) => (
-          <li key={t.id} className="flex items-center gap-3 text-sm">
-            <StatusPill status={t.status} />
+        {tables.map((tbl) => (
+          <li key={tbl.id} className="flex items-center gap-3 text-sm">
+            <StatusPill status={tbl.status} />
             <span className="text-jass-inkSoft">
-              <span className="text-jass-ink">#{t.id.slice(-6)}</span>
+              <span className="text-jass-ink">#{tbl.id.slice(-6)}</span>
               {" · "}
-              Owner: {t.ownerName}
+              {t("lobby.myTables.owner", { name: tbl.ownerName })}
               {" · "}
-              Sitze: {t.seatsTaken}/4
+              {t("lobby.myTables.seats", { taken: tbl.seatsTaken })}
             </span>
             <Link
               to="/table/$id"
-              params={{ id: t.id }}
+              params={{ id: tbl.id }}
               className="ml-auto rounded bg-jass-ink px-3 py-1 text-xs text-jass-cream hover:bg-jass-brownDark"
             >
-              Zum Tisch →
+              {t("lobby.myTables.goToTable")}
             </Link>
           </li>
         ))}
@@ -72,16 +74,17 @@ export function MyActiveTables() {
 }
 
 function StatusPill({ status }: { status: TableListEntry["status"] }) {
-  const map: Record<TableListEntry["status"], { label: string; cls: string }> = {
-    WAITING: { label: "wartet", cls: "bg-jass-paper text-jass-inkSoft" },
-    IN_GAME: { label: "Spiel läuft", cls: "bg-jass-green text-jass-cream" },
-    POST_GAME: { label: "Re-Match", cls: "bg-jass-yellow text-jass-ink" },
-    MATCH_OVER: {
-      label: "Partie gewonnen",
-      cls: "bg-jass-yellow text-jass-ink border border-jass-yellowDark",
-    },
-    CLOSED: { label: "geschlossen", cls: "bg-jass-paperEdge text-jass-inkSoft" },
+  const { t } = useTranslation();
+  const clsMap: Record<TableListEntry["status"], string> = {
+    WAITING: "bg-jass-paper text-jass-inkSoft",
+    IN_GAME: "bg-jass-green text-jass-cream",
+    POST_GAME: "bg-jass-yellow text-jass-ink",
+    MATCH_OVER: "bg-jass-yellow text-jass-ink border border-jass-yellowDark",
+    CLOSED: "bg-jass-paperEdge text-jass-inkSoft",
   };
-  const { label, cls } = map[status];
-  return <span className={`rounded px-2 py-0.5 text-xs font-medium ${cls}`}>{label}</span>;
+  return (
+    <span className={`rounded px-2 py-0.5 text-xs font-medium ${clsMap[status]}`}>
+      {t(`lobby.myTables.status.${status}`)}
+    </span>
+  );
 }

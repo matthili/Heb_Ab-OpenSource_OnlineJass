@@ -155,6 +155,174 @@
       "pending": "Anfrage läuft",
       "inGame": "Spiel läuft",
       "closed": "Geschlossen"
+    },
+    "onlineUsers": {
+      "loading": "Lade Online-Liste …",
+      "heading": "Gerade online",
+      "none": "Niemand außer dir online."
+    },
+    "myTables": {
+      "label": "Mein aktiver Tisch",
+      "headingOne": "Dein aktiver Tisch",
+      "headingMany": "Deine aktiven Tische",
+      "owner": "Owner: {{name}}",
+      "seats": "Sitze: {{taken}}/4",
+      "goToTable": "Zum Tisch →",
+      "status": {
+        "WAITING": "wartet",
+        "IN_GAME": "Spiel läuft",
+        "POST_GAME": "Re-Match",
+        "MATCH_OVER": "Partie gewonnen",
+        "CLOSED": "geschlossen"
+      }
+    },
+    "leave": {
+      "confirmTitle": "Tisch verlassen?",
+      "inGameIntro": "Das Spiel <strong>läuft gerade</strong>. Wenn du jetzt aussteigst, übernimmt eine KI deinen Sitz und das Spiel läuft ohne dich weiter — deine Mitspieler werden nicht unterbrochen.",
+      "inGameWarning": "<strong>Bedenke:</strong> Wenn echte Mitspieler dabei sind, verderben Aussteiger ihnen den Spaß. Das wird auch im Audit-Log vermerkt.",
+      "inGameAlternative": "Alternative: einfach kurz woanders hin navigieren — du findest den Tisch unter <em>„Dein aktiver Tisch“</em> in der Lobby wieder.",
+      "waitingIntro": "Du gibst deinen Sitz frei. Falls du Owner bist, wird der Tisch geschlossen, sobald der letzte Mensch weg ist.",
+      "waitingConfirm": "Bist du sicher?",
+      "cancel": "Abbrechen",
+      "leaving": "Verlasse…",
+      "confirmInGame": "Trotzdem aussteigen (KI übernimmt)",
+      "confirmWaiting": "Tisch verlassen"
+    },
+    "openTable": {
+      "title": "Neuen Tisch öffnen",
+      "subtitle": "Lege Beitritts-Regeln, Gegner und Punkteziel fest.",
+      "close": "Schließen",
+      "solo": {
+        "headingMulti": "🎯 Direkt allein gegen 3 KI starten",
+        "headingSingle": "🎯 Direkt allein gegen die KI starten",
+        "hint": "Klick und los — Tisch ist privat, freie Sitze werden mit der gewählten KI belegt."
+      },
+      "sections": {
+        "variant": "Spielart",
+        "joinMode": "Wer darf an den Tisch?",
+        "aiType": "Welche KI füllt freie Sitze?",
+        "autoFill": "Auto-Fill leerer Sitze",
+        "targetScore": "Punkteziel der Partie",
+        "restart": "Wer beginnt das nächste Spiel?"
+      },
+      "variant": {
+        "KREUZ_4P": {
+          "title": "Kreuz-Jass",
+          "hint": "Klassisch: 2 Teams (Sitz 1+3 gegen 2+4), Schieben erlaubt. Ziel 1000."
+        },
+        "SOLO_4P": {
+          "title": "Solo-Jass",
+          "hint": "Jeder gegen jeden — kein Partner, kein Schieben. Ziel 500."
+        },
+        "BODENSEE_2P": {
+          "title": "Bodensee-Jass",
+          "hint": "Zwei Spieler, Tisch-Stapel mit verdeckten Karten. Ziel 500."
+        }
+      },
+      "joinMode": {
+        "OPEN": {
+          "title": "Offen",
+          "hint": "Jeder darf reinkommen — Plätze füllen sich von allein."
+        },
+        "REQUEST": {
+          "title": "Auf Anfrage",
+          "hint": "Beitritte erst nach deiner Zustimmung."
+        },
+        "INVITE": {
+          "title": "Nur Einladung",
+          "hint": "Nur deine Freunde sehen den Tisch."
+        }
+      },
+      "aiType": {
+        "heuristic": {
+          "title": "Heuristik",
+          "hint": "Schnelle, solide Standard-KI — der Default für die meisten Tische."
+        },
+        "nn": {
+          "title": "Neuronales Netz",
+          "hint": "Stärkster Gegner; braucht den Inferenz-Microservice."
+        },
+        "random": {
+          "title": "Zufall",
+          "hint": "Spielt nur legale Karten zufällig — zum Üben oder für Tests."
+        }
+      },
+      "autoFillPreset": {
+        "off": "Aus",
+        "seconds": "{{seconds}} s",
+        "minute": "1 min",
+        "minutes": "{{minutes}} min"
+      },
+      "autoFillHintOff": "Sitze bleiben offen, bis Spieler beitreten.",
+      "autoFillHint": "Nach {{seconds}}s ohne weiteren Beitritt werden offene Sitze automatisch von KI besetzt.",
+      "targetScoreCustom": "eigenes:",
+      "targetScoreAria": "Eigenes Punkteziel",
+      "targetScoreHint": "Vorarlberger Standard: 1000 oder 1200. Erstes Team über dem Ziel gewinnt.",
+      "restart": {
+        "SIEGER_GIBT": {
+          "title": "Sieger gibt",
+          "hint": "Klassisch: wer das letzte Spiel gewonnen hat, gibt das nächste."
+        },
+        "WELI": {
+          "title": "WELI ausspielen",
+          "hint": "Karten austeilen — wer das WELI hat, beginnt das nächste Spiel."
+        }
+      },
+      "summary": {
+        "heading": "Zusammenfassung",
+        "soloMulti": "Solo gegen 3 KI",
+        "soloSingle": "Solo gegen 1 KI",
+        "noAutoFill": "kein Auto-Fill",
+        "autoFill": "Auto-Fill nach {{seconds}}s",
+        "target": "Ziel"
+      },
+      "error": "Tisch konnte nicht geöffnet werden.",
+      "goToExisting": "Zum bestehenden Tisch →",
+      "cancel": "Abbrechen",
+      "opening": "Öffne …",
+      "submit": "Tisch öffnen"
+    },
+    "tableDetail": {
+      "loading": "Lade Tisch …",
+      "loadError": "Konnte Tisch nicht laden: {{message}}",
+      "heading": "Tisch von {{name}}",
+      "meta": "Modus: {{mode}} · KI: {{ai}} · Re-Match: {{restart}} · Ziel: {{target}}",
+      "status": {
+        "WAITING": "wartet",
+        "IN_GAME": "läuft",
+        "POST_GAME": "Re-Match-Vote",
+        "MATCH_OVER": "Partie gewonnen",
+        "CLOSED": "geschlossen"
+      },
+      "seatsLabel": "Sitze",
+      "seat": "Sitz {{n}}",
+      "seatEmpty": "frei",
+      "scoreLabel": "Kumulativer Punktestand",
+      "scoreProgress": "Partie-Stand (Ziel: <strong>{{target}}</strong>)",
+      "scoreWinner": "{{name}} hat die Partie gewonnen!",
+      "teamLabel": "Sitz {{n}}",
+      "team0": "Team 0 (Sitz 1 + 3)",
+      "team1": "Team 1 (Sitz 2 + 4)",
+      "ownerActions": "Owner-Aktionen",
+      "starting": "Starte…",
+      "startGame": "Jetzt starten (mit KI auffüllen)",
+      "startingMatch": "Starte …",
+      "newMatch": "Neue Partie starten",
+      "leaveTable": "Tisch verlassen",
+      "requests": "Anfragen ({{count}})",
+      "approve": "Annehmen",
+      "deny": "Ablehnen",
+      "openInvites": "Offene Einladungen ({{count}})",
+      "withdrawInvite": "Zurückziehen",
+      "inviteSent": "Einladung an {{name}} verschickt.",
+      "inviteFailed": "Einladung fehlgeschlagen.",
+      "invitePlayer": "Spieler einladen",
+      "inviteNamePlaceholder": "Spielername",
+      "inviteEnterName": "Bitte einen Spielernamen eingeben.",
+      "inviteSubmit": "Einladen",
+      "gameRunningNotAtTable": "Spiel läuft — du sitzt aber nicht am Tisch.",
+      "loadingGame": "Lade Spiel …",
+      "tableChat": "Tisch-Chat"
     }
   },
 

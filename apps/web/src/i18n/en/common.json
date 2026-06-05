@@ -155,6 +155,174 @@
       "pending": "Request pending",
       "inGame": "Playing",
       "closed": "Closed"
+    },
+    "onlineUsers": {
+      "loading": "Loading who's online …",
+      "heading": "Online now",
+      "none": "No one but you is online."
+    },
+    "myTables": {
+      "label": "My active table",
+      "headingOne": "Your active table",
+      "headingMany": "Your active tables",
+      "owner": "Owner: {{name}}",
+      "seats": "Seats: {{taken}}/4",
+      "goToTable": "Go to table →",
+      "status": {
+        "WAITING": "waiting",
+        "IN_GAME": "playing",
+        "POST_GAME": "Rematch",
+        "MATCH_OVER": "Match won",
+        "CLOSED": "closed"
+      }
+    },
+    "leave": {
+      "confirmTitle": "Leave table?",
+      "inGameIntro": "The game is <strong>currently in progress</strong>. If you bail out now, an AI takes over your seat and the game continues without you — your fellow players won't be interrupted.",
+      "inGameWarning": "<strong>Keep in mind:</strong> if real players are at the table, quitters spoil the fun for them. This is also recorded in the audit log.",
+      "inGameAlternative": "Alternative: just navigate away for a moment — you'll find the table again under <em>“Your active table”</em> in the lobby.",
+      "waitingIntro": "You're giving up your seat. If you're the owner, the table is closed once the last human leaves.",
+      "waitingConfirm": "Are you sure?",
+      "cancel": "Cancel",
+      "leaving": "Leaving…",
+      "confirmInGame": "Leave anyway (AI takes over)",
+      "confirmWaiting": "Leave table"
+    },
+    "openTable": {
+      "title": "Open a new table",
+      "subtitle": "Set the join rules, opponents and target score.",
+      "close": "Close",
+      "solo": {
+        "headingMulti": "🎯 Start solo against 3 AI right away",
+        "headingSingle": "🎯 Start solo against the AI right away",
+        "hint": "Click and go — the table is private, free seats are filled with the chosen AI."
+      },
+      "sections": {
+        "variant": "Game type",
+        "joinMode": "Who may join the table?",
+        "aiType": "Which AI fills free seats?",
+        "autoFill": "Auto-fill empty seats",
+        "targetScore": "Target score of the match",
+        "restart": "Who starts the next game?"
+      },
+      "variant": {
+        "KREUZ_4P": {
+          "title": "Kreuz-Jass",
+          "hint": "Classic: 2 teams (seats 1+3 vs 2+4), passing (to partner) allowed. Target 1000."
+        },
+        "SOLO_4P": {
+          "title": "Solo Jass",
+          "hint": "Everyone for themselves — no partner, no passing. Target 500."
+        },
+        "BODENSEE_2P": {
+          "title": "Bodensee Jass",
+          "hint": "Two players, a table stack of face-down cards. Target 500."
+        }
+      },
+      "joinMode": {
+        "OPEN": {
+          "title": "Open",
+          "hint": "Anyone can join — seats fill up on their own."
+        },
+        "REQUEST": {
+          "title": "By request",
+          "hint": "Players join only after your approval."
+        },
+        "INVITE": {
+          "title": "Invite only",
+          "hint": "Only your friends can see the table."
+        }
+      },
+      "aiType": {
+        "heuristic": {
+          "title": "Heuristic",
+          "hint": "Fast, solid default AI — the default for most tables."
+        },
+        "nn": {
+          "title": "Neural network",
+          "hint": "Strongest opponent; needs the inference microservice."
+        },
+        "random": {
+          "title": "Random",
+          "hint": "Plays only legal cards at random — for practice or tests."
+        }
+      },
+      "autoFillPreset": {
+        "off": "Off",
+        "seconds": "{{seconds}} s",
+        "minute": "1 min",
+        "minutes": "{{minutes}} min"
+      },
+      "autoFillHintOff": "Seats stay open until players join.",
+      "autoFillHint": "After {{seconds}}s with no further join, open seats are filled automatically by AI.",
+      "targetScoreCustom": "custom:",
+      "targetScoreAria": "Custom target score",
+      "targetScoreHint": "Vorarlberg standard: 1000 or 1200. The first team over the target wins.",
+      "restart": {
+        "SIEGER_GIBT": {
+          "title": "Winner deals",
+          "hint": "Classic: whoever won the last game deals the next."
+        },
+        "WELI": {
+          "title": "Play for the WELI",
+          "hint": "Deal out the cards — whoever holds the WELI starts the next game."
+        }
+      },
+      "summary": {
+        "heading": "Summary",
+        "soloMulti": "Solo against 3 AI",
+        "soloSingle": "Solo against 1 AI",
+        "noAutoFill": "no auto-fill",
+        "autoFill": "Auto-fill after {{seconds}}s",
+        "target": "Target"
+      },
+      "error": "Couldn't open the table.",
+      "goToExisting": "Go to the existing table →",
+      "cancel": "Cancel",
+      "opening": "Opening …",
+      "submit": "Open table"
+    },
+    "tableDetail": {
+      "loading": "Loading table …",
+      "loadError": "Couldn't load the table: {{message}}",
+      "heading": "{{name}}'s table",
+      "meta": "Mode: {{mode}} · AI: {{ai}} · Rematch: {{restart}} · Target: {{target}}",
+      "status": {
+        "WAITING": "waiting",
+        "IN_GAME": "playing",
+        "POST_GAME": "Rematch vote",
+        "MATCH_OVER": "Match won",
+        "CLOSED": "closed"
+      },
+      "seatsLabel": "Seats",
+      "seat": "Seat {{n}}",
+      "seatEmpty": "empty",
+      "scoreLabel": "Cumulative score",
+      "scoreProgress": "Match standing (target: <strong>{{target}}</strong>)",
+      "scoreWinner": "{{name}} has won the match!",
+      "teamLabel": "Seat {{n}}",
+      "team0": "Team 0 (seats 1 + 3)",
+      "team1": "Team 1 (seats 2 + 4)",
+      "ownerActions": "Owner actions",
+      "starting": "Starting…",
+      "startGame": "Start now (fill with AI)",
+      "startingMatch": "Starting …",
+      "newMatch": "Start a new match",
+      "leaveTable": "Leave table",
+      "requests": "Requests ({{count}})",
+      "approve": "Accept",
+      "deny": "Decline",
+      "openInvites": "Open invites ({{count}})",
+      "withdrawInvite": "Withdraw",
+      "inviteSent": "Invite sent to {{name}}.",
+      "inviteFailed": "Invite failed.",
+      "invitePlayer": "Invite a player",
+      "inviteNamePlaceholder": "Player name",
+      "inviteEnterName": "Please enter a player name.",
+      "inviteSubmit": "Invite",
+      "gameRunningNotAtTable": "Game in progress — but you're not seated at the table.",
+      "loadingGame": "Loading game …",
+      "tableChat": "Table chat"
     }
   },
 

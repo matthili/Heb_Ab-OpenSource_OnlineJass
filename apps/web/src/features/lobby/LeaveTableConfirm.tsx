@@ -14,6 +14,7 @@
  * Backlog-Punkt geführt — anderes Feature als die WS-Disconnect-Vote-Logik.
  */
 import { useEffect, useRef } from "react";
+import { Trans, useTranslation } from "react-i18next";
 
 import type { LobbyStatus } from "./types";
 
@@ -26,6 +27,7 @@ interface Props {
 }
 
 export function LeaveTableConfirm({ open, tableStatus, pending, onCancel, onConfirm }: Props) {
+  const { t } = useTranslation();
   const ref = useRef<HTMLDialogElement>(null);
 
   useEffect(() => {
@@ -44,31 +46,24 @@ export function LeaveTableConfirm({ open, tableStatus, pending, onCancel, onConf
       className="rounded-lg p-0 backdrop:bg-stone-900/40 w-full max-w-md"
     >
       <div className="p-6 space-y-4">
-        <h2 className="text-xl font-bold text-jass-ink">Tisch verlassen?</h2>
+        <h2 className="text-xl font-bold text-jass-ink">{t("lobby.leave.confirmTitle")}</h2>
 
         {isInGame ? (
           <>
             <p className="text-sm text-jass-inkSoft">
-              Das Spiel <strong>läuft gerade</strong>. Wenn du jetzt aussteigst, übernimmt eine KI
-              deinen Sitz und das Spiel läuft ohne dich weiter — deine Mitspieler werden nicht
-              unterbrochen.
+              <Trans i18nKey="lobby.leave.inGameIntro" components={{ strong: <strong /> }} />
             </p>
             <p className="text-sm text-rose-900">
-              <strong>Bedenke:</strong> Wenn echte Mitspieler dabei sind, verderben Aussteiger ihnen
-              den Spaß. Das wird auch im Audit-Log vermerkt.
+              <Trans i18nKey="lobby.leave.inGameWarning" components={{ strong: <strong /> }} />
             </p>
             <p className="text-sm text-jass-inkSoft">
-              Alternative: einfach kurz woanders hin navigieren — du findest den Tisch unter{" "}
-              <em>„Dein aktiver Tisch"</em> in der Lobby wieder.
+              <Trans i18nKey="lobby.leave.inGameAlternative" components={{ em: <em /> }} />
             </p>
           </>
         ) : (
           <>
-            <p className="text-sm text-jass-inkSoft">
-              Du gibst deinen Sitz frei. Falls du Owner bist, wird der Tisch geschlossen, sobald der
-              letzte Mensch weg ist.
-            </p>
-            <p className="text-sm text-jass-inkSoft">Bist du sicher?</p>
+            <p className="text-sm text-jass-inkSoft">{t("lobby.leave.waitingIntro")}</p>
+            <p className="text-sm text-jass-inkSoft">{t("lobby.leave.waitingConfirm")}</p>
           </>
         )}
 
@@ -78,7 +73,7 @@ export function LeaveTableConfirm({ open, tableStatus, pending, onCancel, onConf
             onClick={onCancel}
             className="rounded border border-jass-paperEdge px-4 py-2 text-jass-ink hover:bg-jass-paper"
           >
-            Abbrechen
+            {t("lobby.leave.cancel")}
           </button>
           <button
             type="button"
@@ -87,10 +82,10 @@ export function LeaveTableConfirm({ open, tableStatus, pending, onCancel, onConf
             className="rounded bg-jass-red px-4 py-2 text-jass-cream hover:bg-jass-redDark disabled:opacity-50"
           >
             {pending
-              ? "Verlasse…"
+              ? t("lobby.leave.leaving")
               : isInGame
-                ? "Trotzdem aussteigen (KI übernimmt)"
-                : "Tisch verlassen"}
+                ? t("lobby.leave.confirmInGame")
+                : t("lobby.leave.confirmWaiting")}
           </button>
         </div>
       </div>

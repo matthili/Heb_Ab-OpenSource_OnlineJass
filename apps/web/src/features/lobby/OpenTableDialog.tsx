@@ -27,7 +27,9 @@
  */
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
+import type { TFunction } from "i18next";
 import { type FormEvent, useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import { api, ApiError } from "~/lib/api";
 import type { JoinMode, OpenTableDto, RestartMode, TableVariant } from "./types";
@@ -39,63 +41,21 @@ interface Props {
 
 type AiSeatType = "random" | "heuristic" | "nn";
 
-const JOIN_MODE_OPTIONS: ReadonlyArray<{
-  value: JoinMode;
-  title: string;
-  hint: string;
-}> = [
-  { value: "OPEN", title: "Offen", hint: "Jeder darf reinkommen — Plätze füllen sich von allein." },
-  { value: "REQUEST", title: "Auf Anfrage", hint: "Beitritte erst nach deiner Zustimmung." },
-  { value: "INVITE", title: "Nur Einladung", hint: "Nur deine Freunde sehen den Tisch." },
-];
+const JOIN_MODE_OPTIONS: readonly JoinMode[] = ["OPEN", "REQUEST", "INVITE"];
 
-const AI_TYPE_OPTIONS: ReadonlyArray<{
-  value: AiSeatType;
-  title: string;
-  hint: string;
-}> = [
-  {
-    value: "heuristic",
-    title: "Heuristik",
-    hint: "Schnelle, solide Standard-KI — der Default für die meisten Tische.",
-  },
-  {
-    value: "nn",
-    title: "Neuronales Netz",
-    hint: "Stärkster Gegner; braucht den Inferenz-Microservice.",
-  },
-  {
-    value: "random",
-    title: "Zufall",
-    hint: "Spielt nur legale Karten zufällig — zum Üben oder für Tests.",
-  },
-];
+const AI_TYPE_OPTIONS: readonly AiSeatType[] = ["heuristic", "nn", "random"];
 
-const RESTART_OPTIONS: ReadonlyArray<{
-  value: RestartMode;
-  title: string;
-  hint: string;
-}> = [
-  {
-    value: "SIEGER_GIBT",
-    title: "Sieger gibt",
-    hint: "Klassisch: wer das letzte Spiel gewonnen hat, gibt das nächste.",
-  },
-  {
-    value: "WELI",
-    title: "WELI ausspielen",
-    hint: "Karten austeilen — wer das WELI hat, beginnt das nächste Spiel.",
-  },
-];
+const RESTART_OPTIONS: readonly RestartMode[] = ["SIEGER_GIBT", "WELI"];
 
 // Auto-Fill als diskrete Presets — exakte Werte, die auch der Slider
-// sinnvoll abbilden konnte. „Aus" wird intern zu `null`.
+// sinnvoll abbilden konnte. „Aus" wird intern zu `null`. Der `label` ist nur
+// ein stabiler React-Key; die sichtbare Beschriftung kommt aus i18n.
 const AUTO_FILL_PRESETS: ReadonlyArray<{ label: string; value: number | null }> = [
-  { label: "Aus", value: null },
-  { label: "15 s", value: 15 },
-  { label: "30 s", value: 30 },
-  { label: "1 min", value: 60 },
-  { label: "2 min", value: 120 },
+  { label: "off", value: null },
+  { label: "15s", value: 15 },
+  { label: "30s", value: 30 },
+  { label: "1min", value: 60 },
+  { label: "2min", value: 120 },
 ];
 
 const SCORE_PRESETS: readonly number[] = [500, 1000, 1200, 2500];
@@ -107,27 +67,7 @@ const DEFAULT_SCORE: Record<TableVariant, number> = {
   BODENSEE_2P: 500,
 };
 
-const VARIANT_OPTIONS: ReadonlyArray<{
-  value: TableVariant;
-  title: string;
-  hint: string;
-}> = [
-  {
-    value: "KREUZ_4P",
-    title: "Kreuz-Jass",
-    hint: "Klassisch: 2 Teams (Sitz 1+3 gegen 2+4), Schieben erlaubt. Ziel 1000.",
-  },
-  {
-    value: "SOLO_4P",
-    title: "Solo-Jass",
-    hint: "Jeder gegen jeden — kein Partner, kein Schieben. Ziel 500.",
-  },
-  {
-    value: "BODENSEE_2P",
-    title: "Bodensee-Jass",
-    hint: "Zwei Spieler, Tisch-Stapel mit verdeckten Karten. Ziel 500.",
-  },
-];
+const VARIANT_OPTIONS: readonly TableVariant[] = ["KREUZ_4P", "SOLO_4P", "BODENSEE_2P"];
 
 /** KI-Sitze für den „allein gegen KI"-Shortcut — bei Bodensee nur Sitz 1. */
 function soloAiSeats(variant: TableVariant): { seat: number }[] {
@@ -135,6 +75,7 @@ function soloAiSeats(variant: TableVariant): { seat: number }[] {
 }
 
 export function OpenTableDialog({ open, onClose }: Props) {
+  const { t } = useTranslation();
   const dialogRef = useRef<HTMLDialogElement>(null);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -194,7 +135,7 @@ export function OpenTableDialog({ open, onClose }: Props) {
           setExistingTableId(null);
         }
       } else {
-        setError("Tisch konnte nicht geöffnet werden.");
+        setError(t("lobby.openTable.error"));
         setExistingTableId(null);
       }
     },
@@ -239,15 +180,13 @@ export function OpenTableDialog({ open, onClose }: Props) {
         {/* Header */}
         <header className="flex items-center justify-between px-6 py-4 border-b border-jass-paperEdge">
           <div>
-            <h2 className="text-xl font-bold text-jass-ink">Neuen Tisch öffnen</h2>
-            <p className="text-xs text-jass-inkSoft mt-0.5">
-              Lege Beitritts-Regeln, Gegner und Punkteziel fest.
-            </p>
+            <h2 className="text-xl font-bold text-jass-ink">{t("lobby.openTable.title")}</h2>
+            <p className="text-xs text-jass-inkSoft mt-0.5">{t("lobby.openTable.subtitle")}</p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            aria-label="Schließen"
+            aria-label={t("lobby.openTable.close")}
             className="text-jass-inkSoft hover:text-jass-ink text-2xl leading-none"
           >
             ×
@@ -268,10 +207,12 @@ export function OpenTableDialog({ open, onClose }: Props) {
             <div className="flex items-center justify-between gap-3">
               <div>
                 <div className="font-semibold text-jass-ink">
-                  🎯 Direkt allein gegen {variant === "BODENSEE_2P" ? "die KI" : "3 KI"} starten
+                  {variant === "BODENSEE_2P"
+                    ? t("lobby.openTable.solo.headingSingle")
+                    : t("lobby.openTable.solo.headingMulti")}
                 </div>
                 <div className="text-xs text-jass-inkSoft mt-0.5">
-                  Klick und los — Tisch ist privat, freie Sitze werden mit der gewählten KI belegt.
+                  {t("lobby.openTable.solo.hint")}
                 </div>
               </div>
               <input
@@ -286,71 +227,71 @@ export function OpenTableDialog({ open, onClose }: Props) {
           </button>
 
           {/* Spielart */}
-          <Section title="Spielart">
+          <Section title={t("lobby.openTable.sections.variant")}>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {VARIANT_OPTIONS.map((opt) => (
                 <Tile
-                  key={opt.value}
-                  selected={variant === opt.value}
-                  onClick={() => changeVariant(opt.value)}
-                  title={opt.title}
-                  hint={opt.hint}
+                  key={opt}
+                  selected={variant === opt}
+                  onClick={() => changeVariant(opt)}
+                  title={t(`lobby.openTable.variant.${opt}.title`)}
+                  hint={t(`lobby.openTable.variant.${opt}.hint`)}
                 />
               ))}
             </div>
           </Section>
 
           {/* Wer darf rein */}
-          <Section title="Wer darf an den Tisch?">
+          <Section title={t("lobby.openTable.sections.joinMode")}>
             <TileGrid>
               {JOIN_MODE_OPTIONS.map((opt) => (
                 <Tile
-                  key={opt.value}
-                  selected={joinMode === opt.value}
-                  onClick={() => setJoinMode(opt.value)}
-                  title={opt.title}
-                  hint={opt.hint}
+                  key={opt}
+                  selected={joinMode === opt}
+                  onClick={() => setJoinMode(opt)}
+                  title={t(`lobby.openTable.joinMode.${opt}.title`)}
+                  hint={t(`lobby.openTable.joinMode.${opt}.hint`)}
                 />
               ))}
             </TileGrid>
           </Section>
 
           {/* Gegner-Typ */}
-          <Section title="Welche KI füllt freie Sitze?">
+          <Section title={t("lobby.openTable.sections.aiType")}>
             <TileGrid>
               {AI_TYPE_OPTIONS.map((opt) => (
                 <Tile
-                  key={opt.value}
-                  selected={aiSeatType === opt.value}
-                  onClick={() => setAiSeatType(opt.value)}
-                  title={opt.title}
-                  hint={opt.hint}
+                  key={opt}
+                  selected={aiSeatType === opt}
+                  onClick={() => setAiSeatType(opt)}
+                  title={t(`lobby.openTable.aiType.${opt}.title`)}
+                  hint={t(`lobby.openTable.aiType.${opt}.hint`)}
                 />
               ))}
             </TileGrid>
           </Section>
 
           {/* Auto-Fill */}
-          <Section title="Auto-Fill leerer Sitze">
+          <Section title={t("lobby.openTable.sections.autoFill")}>
             <div className="flex flex-wrap gap-2">
               {AUTO_FILL_PRESETS.map((p) => (
                 <Pill
                   key={p.label}
                   selected={autoFill === p.value}
                   onClick={() => setAutoFill(p.value)}
-                  label={p.label}
+                  label={autoFillPresetLabel(t, p.value)}
                 />
               ))}
             </div>
             <p className="text-xs text-jass-inkSoft mt-2">
               {autoFill === null
-                ? "Sitze bleiben offen, bis Spieler beitreten."
-                : `Nach ${autoFill}s ohne weiteren Beitritt werden offene Sitze automatisch von KI besetzt.`}
+                ? t("lobby.openTable.autoFillHintOff")
+                : t("lobby.openTable.autoFillHint", { seconds: autoFill })}
             </p>
           </Section>
 
           {/* Punkteziel */}
-          <Section title="Punkteziel der Partie">
+          <Section title={t("lobby.openTable.sections.targetScore")}>
             <div className="flex flex-wrap items-center gap-2">
               {SCORE_PRESETS.map((preset) => (
                 <Pill
@@ -361,7 +302,7 @@ export function OpenTableDialog({ open, onClose }: Props) {
                 />
               ))}
               <label className="flex items-center gap-1 text-sm text-jass-inkSoft">
-                eigenes:
+                {t("lobby.openTable.targetScoreCustom")}
                 <input
                   type="number"
                   min={500}
@@ -373,25 +314,23 @@ export function OpenTableDialog({ open, onClose }: Props) {
                     if (Number.isFinite(n)) setTargetScore(n);
                   }}
                   className="w-24 rounded border border-jass-paperEdge bg-jass-cream px-2 py-1 text-sm"
-                  aria-label="Eigenes Punkteziel"
+                  aria-label={t("lobby.openTable.targetScoreAria")}
                 />
               </label>
             </div>
-            <p className="text-xs text-jass-inkSoft mt-2">
-              Vorarlberger Standard: 1000 oder 1200. Erstes Team über dem Ziel gewinnt.
-            </p>
+            <p className="text-xs text-jass-inkSoft mt-2">{t("lobby.openTable.targetScoreHint")}</p>
           </Section>
 
           {/* Re-Match-Modus */}
-          <Section title="Wer beginnt das nächste Spiel?">
+          <Section title={t("lobby.openTable.sections.restart")}>
             <TileGrid>
               {RESTART_OPTIONS.map((opt) => (
                 <Tile
-                  key={opt.value}
-                  selected={restartMode === opt.value}
-                  onClick={() => setRestartMode(opt.value)}
-                  title={opt.title}
-                  hint={opt.hint}
+                  key={opt}
+                  selected={restartMode === opt}
+                  onClick={() => setRestartMode(opt)}
+                  title={t(`lobby.openTable.restart.${opt}.title`)}
+                  hint={t(`lobby.openTable.restart.${opt}.hint`)}
                 />
               ))}
             </TileGrid>
@@ -424,7 +363,7 @@ export function OpenTableDialog({ open, onClose }: Props) {
                     }}
                     className="underline font-medium hover:no-underline"
                   >
-                    Zum bestehenden Tisch →
+                    {t("lobby.openTable.goToExisting")}
                   </button>
                 </p>
               )}
@@ -435,10 +374,10 @@ export function OpenTableDialog({ open, onClose }: Props) {
         {/* Footer */}
         <div className="flex gap-2 justify-end px-6 py-4 border-t border-jass-paperEdge bg-jass-cream">
           <button type="button" onClick={onClose} className="btn-jass-secondary">
-            Abbrechen
+            {t("lobby.openTable.cancel")}
           </button>
           <button type="submit" disabled={openMut.isPending} className="btn-jass-primary">
-            {openMut.isPending ? "Öffne …" : "Tisch öffnen"}
+            {openMut.isPending ? t("lobby.openTable.opening") : t("lobby.openTable.submit")}
           </button>
         </div>
       </form>
@@ -533,20 +472,41 @@ function SummaryRow({
   targetScore: number;
   soloVsAi: boolean;
 }) {
-  const variantLabel = VARIANT_OPTIONS.find((o) => o.value === variant)?.title ?? variant;
-  const joinLabel = JOIN_MODE_OPTIONS.find((o) => o.value === joinMode)?.title ?? joinMode;
-  const aiLabel = AI_TYPE_OPTIONS.find((o) => o.value === aiSeatType)?.title ?? aiSeatType;
-  const restartLabel = RESTART_OPTIONS.find((o) => o.value === restartMode)?.title ?? restartMode;
+  const { t } = useTranslation();
+  const variantLabel = t(`lobby.openTable.variant.${variant}.title`);
+  const joinLabel = t(`lobby.openTable.joinMode.${joinMode}.title`);
+  const aiLabel = t(`lobby.openTable.aiType.${aiSeatType}.title`);
+  const restartLabel = t(`lobby.openTable.restart.${restartMode}.title`);
   return (
     <div className="rounded-lg bg-jass-cream border border-jass-paperEdge px-4 py-3 text-sm">
-      <div className="text-xs font-semibold uppercase text-jass-inkSoft mb-1">Zusammenfassung</div>
+      <div className="text-xs font-semibold uppercase text-jass-inkSoft mb-1">
+        {t("lobby.openTable.summary.heading")}
+      </div>
       <div className="text-jass-ink leading-relaxed">
         <span className="font-semibold">{variantLabel}</span> ·{" "}
-        {soloVsAi ? (variant === "BODENSEE_2P" ? "Solo gegen 1 KI" : "Solo gegen 3 KI") : joinLabel}{" "}
+        {soloVsAi
+          ? variant === "BODENSEE_2P"
+            ? t("lobby.openTable.summary.soloSingle")
+            : t("lobby.openTable.summary.soloMulti")
+          : joinLabel}{" "}
         · <span className="font-semibold">{aiLabel}</span> ·{" "}
-        {autoFill === null ? "kein Auto-Fill" : `Auto-Fill nach ${autoFill}s`} · Ziel{" "}
-        <span className="font-semibold">{targetScore}</span> · {restartLabel}
+        {autoFill === null
+          ? t("lobby.openTable.summary.noAutoFill")
+          : t("lobby.openTable.summary.autoFill", { seconds: autoFill })}{" "}
+        · {t("lobby.openTable.summary.target")} <span className="font-semibold">{targetScore}</span>{" "}
+        · {restartLabel}
       </div>
     </div>
   );
+}
+
+/**
+ * Auto-Fill-Preset-Label aus i18n. Die Preset-Werte sind exakt 4 Stufen
+ * (15s, 30s, 1min, 2min) + „Aus"; nur diese werden hier abgebildet.
+ */
+function autoFillPresetLabel(t: TFunction, value: number | null): string {
+  if (value === null) return t("lobby.openTable.autoFillPreset.off");
+  if (value === 60) return t("lobby.openTable.autoFillPreset.minute");
+  if (value < 60) return t("lobby.openTable.autoFillPreset.seconds", { seconds: value });
+  return t("lobby.openTable.autoFillPreset.minutes", { minutes: Math.round(value / 60) });
 }

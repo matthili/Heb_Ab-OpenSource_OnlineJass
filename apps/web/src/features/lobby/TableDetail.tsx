@@ -15,6 +15,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { type FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { Trans, useTranslation } from "react-i18next";
 
 import { BodenseeBoard } from "~/features/bodensee/BodenseeBoard";
 import { BodenseeRematchPanel } from "~/features/bodensee/BodenseeRematchPanel";
@@ -37,6 +38,7 @@ interface Props {
 }
 
 export function TableDetail({ tableId }: Props) {
+  const { t } = useTranslation();
   const { data: session } = useSession();
   const myUserId = session?.user?.id;
   const queryClient = useQueryClient();
@@ -87,11 +89,11 @@ export function TableDetail({ tableId }: Props) {
     };
   }, [queryClient, queryKey]);
 
-  if (isPending) return <p className="text-stone-500">Lade Tisch …</p>;
+  if (isPending) return <p className="text-stone-500">{t("lobby.tableDetail.loading")}</p>;
   if (error) {
     return (
       <p role="alert" className="text-rose-700">
-        Konnte Tisch nicht laden: {error.message}
+        {t("lobby.tableDetail.loadError", { message: error.message })}
       </p>
     );
   }
@@ -103,12 +105,19 @@ export function TableDetail({ tableId }: Props) {
     <section className="space-y-6">
       <header className="space-y-1">
         <div className="flex items-center gap-3">
-          <h1 className="text-2xl font-bold">Tisch von {data.ownerName}</h1>
+          <h1 className="text-2xl font-bold">
+            {t("lobby.tableDetail.heading", { name: data.ownerName })}
+          </h1>
           <StatusBadge status={data.status} />
         </div>
         <p className="text-sm text-stone-500">
-          Modus: {data.joinMode} · KI: {data.aiSeatType} · Re-Match:{" "}
-          {data.restartMode === "WELI" ? "WELI" : "Sieger gibt"} · Ziel: {data.targetScore}
+          {t("lobby.tableDetail.meta", {
+            mode: data.joinMode,
+            ai: data.aiSeatType,
+            restart:
+              data.restartMode === "WELI" ? t("lobby.restartWeli") : t("lobby.restartSiegerGibt"),
+            target: data.targetScore,
+          })}
         </p>
       </header>
 
@@ -151,18 +160,24 @@ export function TableDetail({ tableId }: Props) {
 }
 
 function SeatRow({ seats, nameSeed }: { seats: TableDetailView["seats"]; nameSeed: string }) {
+  const { t } = useTranslation();
   return (
-    <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3" aria-label="Sitze">
+    <ul
+      className="grid grid-cols-1 sm:grid-cols-2 gap-3"
+      aria-label={t("lobby.tableDetail.seatsLabel")}
+    >
       {seats.map((s) => (
         <li
           key={s.seat}
           className="rounded border border-stone-200 px-3 py-2 flex items-center gap-3"
         >
           <span className="rounded bg-stone-100 text-stone-600 px-2 py-0.5 text-xs">
-            Sitz {s.seat}
+            {t("lobby.tableDetail.seat", { n: s.seat })}
           </span>
           {s.isEmpty ? (
-            <span className="text-stone-400 text-sm italic">frei</span>
+            <span className="text-stone-400 text-sm italic">
+              {t("lobby.tableDetail.seatEmpty")}
+            </span>
           ) : s.user ? (
             <span className="font-medium">{s.user.name}</span>
           ) : s.aiSeatType ? (
@@ -175,18 +190,16 @@ function SeatRow({ seats, nameSeed }: { seats: TableDetailView["seats"]; nameSee
 }
 
 function StatusBadge({ status }: { status: TableDetailView["status"] }) {
-  const labels: Record<TableDetailView["status"], string> = {
-    WAITING: "wartet",
-    IN_GAME: "läuft",
-    POST_GAME: "Re-Match-Vote",
-    MATCH_OVER: "Partie gewonnen",
-    CLOSED: "geschlossen",
-  };
+  const { t } = useTranslation();
   const colorClass =
     status === "MATCH_OVER"
       ? "bg-jass-yellow text-jass-ink border border-jass-yellowDark"
       : "bg-stone-100 text-stone-600";
-  return <span className={`rounded px-2 py-0.5 text-xs ${colorClass}`}>{labels[status]}</span>;
+  return (
+    <span className={`rounded px-2 py-0.5 text-xs ${colorClass}`}>
+      {t(`lobby.tableDetail.status.${status}`)}
+    </span>
+  );
 }
 
 /**
@@ -195,6 +208,7 @@ function StatusBadge({ status }: { status: TableDetailView["status"] }) {
  * Ziel erreicht, wird goldgelb hervorgehoben.
  */
 function CumulativeScoreBar({ table }: { table: TableDetailView }) {
+  const { t } = useTranslation();
   const scores = table.cumulativeScores;
   const target = table.targetScore;
   // Falls noch kein Game gespielt wurde: Balken weglassen.
@@ -211,23 +225,27 @@ function CumulativeScoreBar({ table }: { table: TableDetailView }) {
       if (seat?.aiSeatType) {
         return aiName(`${table.id}:${teamIdx}`, seat.aiSeatType);
       }
-      return `Sitz ${teamIdx + 1}`;
+      return t("lobby.tableDetail.teamLabel", { n: teamIdx + 1 });
     }
-    return teamIdx === 0 ? "Team 0 (Sitz 1 + 3)" : "Team 1 (Sitz 2 + 4)";
+    return teamIdx === 0 ? t("lobby.tableDetail.team0") : t("lobby.tableDetail.team1");
   };
 
   return (
     <section
       className="rounded-lg border border-jass-paperEdge bg-jass-paper p-3 space-y-2"
-      aria-label="Kumulativer Punktestand"
+      aria-label={t("lobby.tableDetail.scoreLabel")}
     >
       <div className="flex items-baseline justify-between text-sm text-jass-inkSoft">
         <span>
-          Partie-Stand (Ziel: <strong className="text-jass-ink">{target}</strong>)
+          <Trans
+            i18nKey="lobby.tableDetail.scoreProgress"
+            values={{ target }}
+            components={{ strong: <strong className="text-jass-ink" /> }}
+          />
         </span>
         {winner >= 0 && (
           <span className="text-jass-yellowDark font-semibold">
-            {labelFor(winner)} hat die Partie gewonnen!
+            {t("lobby.tableDetail.scoreWinner", { name: labelFor(winner) })}
           </span>
         )}
       </div>
@@ -275,6 +293,7 @@ function ScoreRow({
 }
 
 function OwnerPanel(props: { table: TableDetailView; queryKey: readonly unknown[] }) {
+  const { t } = useTranslation();
   const { table, queryKey } = props;
   const queryClient = useQueryClient();
   const navigate = useNavigate();
@@ -336,7 +355,7 @@ function OwnerPanel(props: { table: TableDetailView; queryKey: readonly unknown[
 
   return (
     <div className="space-y-4 border-t border-stone-200 pt-4">
-      <h2 className="font-semibold text-stone-700">Owner-Aktionen</h2>
+      <h2 className="font-semibold text-stone-700">{t("lobby.tableDetail.ownerActions")}</h2>
 
       <div className="flex gap-2 flex-wrap">
         {table.status === "WAITING" && (
@@ -346,7 +365,9 @@ function OwnerPanel(props: { table: TableDetailView; queryKey: readonly unknown[
             disabled={startMut.isPending}
             className="rounded bg-stone-900 px-4 py-2 text-white hover:bg-stone-700 disabled:opacity-50"
           >
-            {startMut.isPending ? "Starte…" : "Jetzt starten (mit KI auffüllen)"}
+            {startMut.isPending
+              ? t("lobby.tableDetail.starting")
+              : t("lobby.tableDetail.startGame")}
           </button>
         )}
         {table.status === "MATCH_OVER" && (
@@ -356,7 +377,9 @@ function OwnerPanel(props: { table: TableDetailView; queryKey: readonly unknown[
             disabled={newMatchMut.isPending}
             className="btn-jass-primary disabled:opacity-50"
           >
-            {newMatchMut.isPending ? "Starte …" : "Neue Partie starten"}
+            {newMatchMut.isPending
+              ? t("lobby.tableDetail.startingMatch")
+              : t("lobby.tableDetail.newMatch")}
           </button>
         )}
         <button
@@ -365,7 +388,7 @@ function OwnerPanel(props: { table: TableDetailView; queryKey: readonly unknown[
           disabled={leaveMut.isPending}
           className="rounded border border-stone-300 px-4 py-2 text-stone-700 hover:bg-stone-100"
         >
-          Tisch verlassen
+          {t("lobby.tableDetail.leaveTable")}
         </button>
       </div>
       <LeaveTableConfirm
@@ -384,7 +407,7 @@ function OwnerPanel(props: { table: TableDetailView; queryKey: readonly unknown[
       {table.joinRequests && table.joinRequests.length > 0 && (
         <section className="space-y-2">
           <h3 className="text-sm font-medium text-stone-700">
-            Anfragen ({table.joinRequests.length})
+            {t("lobby.tableDetail.requests", { count: table.joinRequests.length })}
           </h3>
           <ul className="space-y-1">
             {table.joinRequests.map((r) => (
@@ -399,7 +422,7 @@ function OwnerPanel(props: { table: TableDetailView; queryKey: readonly unknown[
                   disabled={approveMut.isPending}
                   className="rounded bg-emerald-600 px-3 py-1 text-sm text-white hover:bg-emerald-500"
                 >
-                  Annehmen
+                  {t("lobby.tableDetail.approve")}
                 </button>
                 <button
                   type="button"
@@ -407,7 +430,7 @@ function OwnerPanel(props: { table: TableDetailView; queryKey: readonly unknown[
                   disabled={denyMut.isPending}
                   className="rounded border border-stone-300 px-3 py-1 text-sm hover:bg-stone-100"
                 >
-                  Ablehnen
+                  {t("lobby.tableDetail.deny")}
                 </button>
               </li>
             ))}
@@ -420,7 +443,7 @@ function OwnerPanel(props: { table: TableDetailView; queryKey: readonly unknown[
       {table.invites && table.invites.length > 0 && (
         <section className="space-y-2">
           <h3 className="text-sm font-medium text-stone-700">
-            Offene Einladungen ({table.invites.length})
+            {t("lobby.tableDetail.openInvites", { count: table.invites.length })}
           </h3>
           <ul className="space-y-1">
             {table.invites.map((i) => (
@@ -445,6 +468,7 @@ function OwnerPanel(props: { table: TableDetailView; queryKey: readonly unknown[
  * Erfolg → Tisch-View invalidaten, die neue Invite taucht in der Liste auf.
  */
 function InviteForm({ tableId, queryKey }: { tableId: string; queryKey: readonly unknown[] }) {
+  const { t } = useTranslation();
   const [name, setName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -457,14 +481,14 @@ function InviteForm({ tableId, queryKey }: { tableId: string; queryKey: readonly
         body: { inviteeName },
       }),
     onSuccess: (_data, inviteeName) => {
-      setSuccess(`Einladung an ${inviteeName} verschickt.`);
+      setSuccess(t("lobby.tableDetail.inviteSent", { name: inviteeName }));
       setName("");
       queryClient.invalidateQueries({ queryKey });
       // Erfolgs-Meldung auto-versteckt nach 4 s.
       setTimeout(() => setSuccess(null), 4_000);
     },
     onError: (err: unknown) => {
-      setError(err instanceof ApiError ? err.message : "Einladung fehlgeschlagen.");
+      setError(err instanceof ApiError ? err.message : t("lobby.tableDetail.inviteFailed"));
     },
   });
 
@@ -474,7 +498,7 @@ function InviteForm({ tableId, queryKey }: { tableId: string; queryKey: readonly
     setSuccess(null);
     const trimmed = name.trim();
     if (!trimmed) {
-      setError("Bitte einen Spielernamen eingeben.");
+      setError(t("lobby.tableDetail.inviteEnterName"));
       return;
     }
     inviteMut.mutate(trimmed);
@@ -484,16 +508,18 @@ function InviteForm({ tableId, queryKey }: { tableId: string; queryKey: readonly
     <form
       onSubmit={onSubmit}
       className="space-y-2 border-t border-stone-200 pt-3"
-      aria-label="Spieler einladen"
+      aria-label={t("lobby.tableDetail.invitePlayer")}
     >
       <label className="block">
-        <span className="block text-sm font-medium text-stone-700 mb-1">Spieler einladen</span>
+        <span className="block text-sm font-medium text-stone-700 mb-1">
+          {t("lobby.tableDetail.invitePlayer")}
+        </span>
         <div className="flex gap-2">
           <input
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="Spielername"
+            placeholder={t("lobby.tableDetail.inviteNamePlaceholder")}
             className="flex-1 rounded border border-stone-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500"
           />
           <button
@@ -501,7 +527,7 @@ function InviteForm({ tableId, queryKey }: { tableId: string; queryKey: readonly
             disabled={inviteMut.isPending}
             className="rounded bg-stone-900 px-4 py-2 text-sm text-white hover:bg-stone-700 disabled:opacity-50"
           >
-            {inviteMut.isPending ? "…" : "Einladen"}
+            {inviteMut.isPending ? "…" : t("lobby.tableDetail.inviteSubmit")}
           </button>
         </div>
       </label>
@@ -533,6 +559,7 @@ function InviteRow({
   inviteeName: string;
   queryKey: readonly unknown[];
 }) {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const cancelMut = useMutation({
     mutationFn: () =>
@@ -548,7 +575,7 @@ function InviteRow({
         disabled={cancelMut.isPending}
         className="rounded border border-stone-300 px-3 py-1 text-sm hover:bg-stone-100"
       >
-        Zurückziehen
+        {t("lobby.tableDetail.withdrawInvite")}
       </button>
     </li>
   );
@@ -563,6 +590,7 @@ function PlayerPanel({
   tableStatus: TableDetailView["status"];
   queryKey: readonly unknown[];
 }) {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [confirmLeave, setConfirmLeave] = useState(false);
@@ -598,7 +626,7 @@ function PlayerPanel({
         disabled={leaveMut.isPending}
         className="rounded border border-stone-300 px-4 py-2 text-stone-700 hover:bg-stone-100"
       >
-        Tisch verlassen
+        {t("lobby.tableDetail.leaveTable")}
       </button>
       <LeaveTableConfirm
         open={confirmLeave}
@@ -640,6 +668,7 @@ function GameSection({
   /** Seed für stabile KI-Namen — die Tisch-ID (über die ganze Partie konstant). */
   nameSeed: string;
 }) {
+  const { t } = useTranslation();
   const {
     view,
     error,
@@ -656,13 +685,13 @@ function GameSection({
   if (!isAtTable) {
     return (
       <div className="rounded border border-stone-200 bg-stone-50 px-4 py-3 text-sm text-stone-600">
-        Spiel läuft — du sitzt aber nicht am Tisch.
+        {t("lobby.tableDetail.gameRunningNotAtTable")}
       </div>
     );
   }
 
   if (!view) {
-    return <p className="text-stone-500">Lade Spiel …</p>;
+    return <p className="text-stone-500">{t("lobby.tableDetail.loadingGame")}</p>;
   }
 
   return (
@@ -706,7 +735,7 @@ function GameSection({
           nameSeed={nameSeed}
         />
       </div>
-      <ChatPanel channelKey={`game:${gameId}`} title="Tisch-Chat" />
+      <ChatPanel channelKey={`game:${gameId}`} title={t("lobby.tableDetail.tableChat")} />
     </section>
   );
 }
@@ -732,6 +761,7 @@ function BodenseeGameSection({
   /** Seed für stabile KI-Namen — die Tisch-ID. */
   nameSeed: string;
 }) {
+  const { t } = useTranslation();
   const { view, error, movePending, announcePending, playCard, announce } = useBodenseeView(
     isAtTable ? gameId : null
   );
@@ -739,13 +769,13 @@ function BodenseeGameSection({
   if (!isAtTable) {
     return (
       <div className="rounded border border-stone-200 bg-stone-50 px-4 py-3 text-sm text-stone-600">
-        Spiel läuft — du sitzt aber nicht am Tisch.
+        {t("lobby.tableDetail.gameRunningNotAtTable")}
       </div>
     );
   }
 
   if (!view) {
-    return <p className="text-stone-500">Lade Spiel …</p>;
+    return <p className="text-stone-500">{t("lobby.tableDetail.loadingGame")}</p>;
   }
 
   return (
@@ -765,7 +795,7 @@ function BodenseeGameSection({
           <BodenseeRematchPanel gameId={gameId} />
         )}
       </div>
-      <ChatPanel channelKey={`game:${gameId}`} title="Tisch-Chat" />
+      <ChatPanel channelKey={`game:${gameId}`} title={t("lobby.tableDetail.tableChat")} />
     </section>
   );
 }
