@@ -16,6 +16,7 @@
  */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import { api, ApiError } from "~/lib/api";
 
@@ -25,6 +26,7 @@ interface PushInfo {
 }
 
 export function PushTogglePanel() {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const info = useQuery<PushInfo>({
     queryKey: ["push", "info"],
@@ -57,9 +59,9 @@ export function PushTogglePanel() {
 
   const subMut = useMutation({
     mutationFn: async () => {
-      if (!info.data?.publicKey) throw new Error("Push ist serverseitig nicht konfiguriert.");
+      if (!info.data?.publicKey) throw new Error(t("profile.push.errorNotConfigured"));
       const permission = await Notification.requestPermission();
-      if (permission !== "granted") throw new Error("Benachrichtigungen wurden nicht erlaubt.");
+      if (permission !== "granted") throw new Error(t("profile.push.errorNotAllowed"));
       const reg = await navigator.serviceWorker.ready;
       // Cast notwendig, weil `Uint8Array<ArrayBufferLike>` in neueren TS-
       // Targets nicht mehr automatisch zu `ArrayBuffer` aliasiert — die
@@ -70,7 +72,7 @@ export function PushTogglePanel() {
       });
       const json = sub.toJSON() as { endpoint?: string; keys?: { p256dh?: string; auth?: string } };
       if (!json.endpoint || !json.keys?.p256dh || !json.keys?.auth) {
-        throw new Error("Push-Subscription unvollständig — Browser-Fehler?");
+        throw new Error(t("profile.push.errorIncomplete"));
       }
       await api("/api/push/subscribe", {
         method: "POST",
@@ -115,35 +117,23 @@ export function PushTogglePanel() {
   const supported = "serviceWorker" in navigator && "PushManager" in window;
 
   if (!supported) {
-    return (
-      <p className="text-sm text-stone-600 italic">
-        Dieser Browser unterstützt keine Push-Benachrichtigungen.
-      </p>
-    );
+    return <p className="text-sm text-stone-600 italic">{t("profile.push.unsupported")}</p>;
   }
   if (info.isPending) {
-    return <p className="text-sm text-stone-500">Lade Push-Konfiguration …</p>;
+    return <p className="text-sm text-stone-500">{t("profile.push.loading")}</p>;
   }
   if (!info.data?.enabled) {
-    return (
-      <p className="text-sm text-stone-600 italic">
-        Der Server hat noch keine VAPID-Schlüssel konfiguriert — Push ist aktuell deaktiviert.
-      </p>
-    );
+    return <p className="text-sm text-stone-600 italic">{t("profile.push.notConfigured")}</p>;
   }
 
   return (
     <fieldset className="border-t border-stone-200 pt-3 space-y-2">
-      <legend className="text-sm font-medium text-stone-700">Push-Benachrichtigungen</legend>
-      <p className="text-xs text-stone-500">
-        Erhalte Browser-Push, wenn jemand an deinem Tisch beitreten möchte (auch wenn dein Tab
-        gerade geschlossen ist). Pro Browser/Gerät separat — die Einstellung gilt nicht
-        Account-weit.
-      </p>
+      <legend className="text-sm font-medium text-stone-700">{t("profile.push.legend")}</legend>
+      <p className="text-xs text-stone-500">{t("profile.push.intro")}</p>
       {subscribed ? (
         <div className="flex items-center gap-3 text-sm">
           <span className="inline-flex items-center gap-1 text-emerald-700">
-            <span aria-hidden="true">●</span> Aktiv auf diesem Gerät
+            <span aria-hidden="true">●</span> {t("profile.push.activeOnDevice")}
           </span>
           <button
             type="button"
@@ -151,7 +141,7 @@ export function PushTogglePanel() {
             disabled={unsubMut.isPending}
             className="rounded border border-stone-300 px-3 py-1 text-xs hover:bg-stone-100 disabled:opacity-50"
           >
-            Deaktivieren
+            {t("profile.push.disable")}
           </button>
         </div>
       ) : (
@@ -161,7 +151,7 @@ export function PushTogglePanel() {
           disabled={subMut.isPending}
           className="rounded bg-stone-900 px-3 py-1.5 text-sm text-white hover:bg-stone-700 disabled:opacity-50"
         >
-          {subMut.isPending ? "Aktiviere …" : "Push aktivieren"}
+          {subMut.isPending ? t("profile.push.activating") : t("profile.push.enable")}
         </button>
       )}
       {error && (

@@ -16,6 +16,7 @@
  */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useTranslation } from "react-i18next";
 
 import { StatsTable, type UserStatsData } from "~/features/profile/UserStatsPanel";
 import { api, ApiError } from "~/lib/api";
@@ -47,6 +48,7 @@ interface FriendStatusView {
 }
 
 function PublicProfilePage() {
+  const { t } = useTranslation();
   const { id } = Route.useParams();
   const { data: session } = useSession();
   const myId = session?.user?.id;
@@ -61,7 +63,7 @@ function PublicProfilePage() {
   if (error) {
     return (
       <p role="alert" className="text-rose-700">
-        Profil nicht gefunden: {(error as Error).message}
+        {t("profile.publicProfile.notFound", { message: (error as Error).message })}
       </p>
     );
   }
@@ -95,7 +97,7 @@ function PublicProfilePage() {
         <div className="ml-auto">
           {isSelf ? (
             <Link to="/profile" search={{ tab: "edit" }} className="btn-jass-secondary text-sm">
-              Profil bearbeiten
+              {t("profile.publicProfile.editProfile")}
             </Link>
           ) : myId ? (
             <FriendButton targetId={id} />
@@ -105,11 +107,13 @@ function PublicProfilePage() {
 
       <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 text-sm">
         {data.birthDate && (
-          <Row label="Geburtsdatum">{new Date(data.birthDate).toLocaleDateString("de-AT")}</Row>
+          <Row label={t("profile.publicProfile.birthDate")}>
+            {new Date(data.birthDate).toLocaleDateString("de-AT")}
+          </Row>
         )}
-        {data.hobbies && <Row label="Hobbys">{data.hobbies}</Row>}
+        {data.hobbies && <Row label={t("profile.publicProfile.hobbies")}>{data.hobbies}</Row>}
         {data.bio && (
-          <Row label="Über mich" full>
+          <Row label={t("profile.publicProfile.bio")} full>
             <p className="whitespace-pre-wrap">{data.bio}</p>
           </Row>
         )}
@@ -124,7 +128,7 @@ function PublicProfilePage() {
         !data.bio &&
         !(data.stats && data.stats.totals.gamesPlayed > 0) && (
           <p className="text-sm italic text-jass-inkSoft">
-            Dieses Profil hat keine öffentlich sichtbaren Felder.
+            {t("profile.publicProfile.noPublicFields")}
           </p>
         )}
     </article>
@@ -153,6 +157,7 @@ function Row({
  * Aktionen invalidieren beide Queries (eigener Status + Counter im Profil-Tab).
  */
 function FriendButton({ targetId }: { targetId: string }) {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const statusKey = ["friends", "status", targetId] as const;
 
@@ -199,7 +204,9 @@ function FriendButton({ targetId }: { targetId: string }) {
           disabled={request.isPending}
           className="btn-jass-primary text-sm"
         >
-          {request.isPending ? "Sende …" : "Freundschaft anfragen"}
+          {request.isPending
+            ? t("profile.publicProfile.sending")
+            : t("profile.publicProfile.requestFriendship")}
         </button>
       )}
       {data.status === "PENDING_OUT" && (
@@ -209,7 +216,7 @@ function FriendButton({ targetId }: { targetId: string }) {
           disabled={remove.isPending}
           className="btn-jass-secondary text-sm"
         >
-          {remove.isPending ? "…" : "Anfrage zurückziehen"}
+          {remove.isPending ? "…" : t("profile.publicProfile.withdrawRequest")}
         </button>
       )}
       {data.status === "PENDING_IN" && (
@@ -220,7 +227,7 @@ function FriendButton({ targetId }: { targetId: string }) {
             disabled={accept.isPending}
             className="btn-jass-primary text-sm"
           >
-            {accept.isPending ? "…" : "Annehmen"}
+            {accept.isPending ? "…" : t("profile.publicProfile.accept")}
           </button>
           <button
             type="button"
@@ -228,7 +235,7 @@ function FriendButton({ targetId }: { targetId: string }) {
             disabled={remove.isPending}
             className="btn-jass-secondary text-sm"
           >
-            Ablehnen
+            {t("profile.publicProfile.decline")}
           </button>
         </div>
       )}
@@ -239,7 +246,7 @@ function FriendButton({ targetId }: { targetId: string }) {
           disabled={remove.isPending}
           className="btn-jass-secondary text-sm"
         >
-          {remove.isPending ? "…" : "Entfreunden"}
+          {remove.isPending ? "…" : t("profile.publicProfile.unfriend")}
         </button>
       )}
       {errMsg && (

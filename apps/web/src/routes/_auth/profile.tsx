@@ -51,12 +51,15 @@ function ProfilePage() {
   return (
     <section className="space-y-4">
       <h1 className="text-2xl font-bold">{t("profile.title")}</h1>
-      <nav className="border-b border-stone-200 flex gap-2 text-sm" aria-label="Profil-Bereiche">
+      <nav
+        className="border-b border-stone-200 flex gap-2 text-sm"
+        aria-label={t("profile.areasAria")}
+      >
         <TabLink target="history" active={activeTab === "history"}>
           {t("profile.tabs.history")}
         </TabLink>
         <TabLink target="messages" active={activeTab === "messages"}>
-          Nachrichten
+          {t("profile.messages")}
         </TabLink>
         <TabLink target="edit" active={activeTab === "edit"}>
           {t("profile.tabs.edit")}
@@ -80,7 +83,7 @@ function ProfilePage() {
       )}
       {activeTab === "messages" && (
         <>
-          <h2 className="text-lg font-semibold">Privatnachrichten</h2>
+          <h2 className="text-lg font-semibold">{t("profile.privateMessages")}</h2>
           <ConversationsPanel />
         </>
       )}

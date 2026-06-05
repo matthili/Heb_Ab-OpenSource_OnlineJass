@@ -14,6 +14,7 @@
  */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
+import { useTranslation } from "react-i18next";
 
 import { api } from "~/lib/api";
 
@@ -31,6 +32,7 @@ interface FriendsList {
 }
 
 export function FriendsPanel() {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const queryKey = ["friends", "list"] as const;
   const { data, isPending, error } = useQuery<FriendsList>({
@@ -57,7 +59,7 @@ export function FriendsPanel() {
   if (error) {
     return (
       <p role="alert" className="text-rose-700">
-        Konnte Freundesliste nicht laden: {(error as Error).message}
+        {t("profile.friends.loadError", { message: (error as Error).message })}
       </p>
     );
   }
@@ -69,7 +71,7 @@ export function FriendsPanel() {
   return (
     <div className="space-y-6">
       {data.pendingIn.length > 0 && (
-        <Section title={`Anfragen an dich (${data.pendingIn.length})`}>
+        <Section title={t("profile.friends.pendingInTitle", { count: data.pendingIn.length })}>
           <ul className="space-y-2">
             {data.pendingIn.map((u) => (
               <li
@@ -91,7 +93,7 @@ export function FriendsPanel() {
                     disabled={accept.isPending}
                     className="btn-jass-primary text-sm"
                   >
-                    Annehmen
+                    {t("profile.friends.accept")}
                   </button>
                   <button
                     type="button"
@@ -99,7 +101,7 @@ export function FriendsPanel() {
                     disabled={remove.isPending}
                     className="btn-jass-secondary text-sm"
                   >
-                    Ablehnen
+                    {t("profile.friends.decline")}
                   </button>
                 </div>
               </li>
@@ -108,11 +110,9 @@ export function FriendsPanel() {
         </Section>
       )}
 
-      <Section title={`Freunde (${data.accepted.length})`}>
+      <Section title={t("profile.friends.acceptedTitle", { count: data.accepted.length })}>
         {data.accepted.length === 0 ? (
-          <p className="text-sm italic text-jass-inkSoft">
-            Noch keine Freunde. Klick im Spiel auf einen Mitspieler-Namen → „Freundschaft anfragen".
-          </p>
+          <p className="text-sm italic text-jass-inkSoft">{t("profile.friends.noFriendsHint")}</p>
         ) : (
           <ul className="space-y-2">
             {data.accepted.map((u) => (
@@ -129,7 +129,9 @@ export function FriendsPanel() {
                   {u.name}
                 </Link>
                 <span className="text-xs text-jass-inkSoft ml-2">
-                  seit {new Date(u.since).toLocaleDateString("de-AT")}
+                  {t("profile.friends.since", {
+                    date: new Date(u.since).toLocaleDateString("de-AT"),
+                  })}
                 </span>
                 <button
                   type="button"
@@ -137,7 +139,7 @@ export function FriendsPanel() {
                   disabled={remove.isPending}
                   className="ml-auto btn-jass-secondary text-sm"
                 >
-                  Entfreunden
+                  {t("profile.friends.unfriend")}
                 </button>
               </li>
             ))}
@@ -146,7 +148,7 @@ export function FriendsPanel() {
       </Section>
 
       {data.pendingOut.length > 0 && (
-        <Section title={`Von dir gesendet (${data.pendingOut.length})`}>
+        <Section title={t("profile.friends.pendingOutTitle", { count: data.pendingOut.length })}>
           <ul className="space-y-2">
             {data.pendingOut.map((u) => (
               <li
@@ -167,7 +169,7 @@ export function FriendsPanel() {
                   disabled={remove.isPending}
                   className="ml-auto btn-jass-secondary text-sm"
                 >
-                  Zurückziehen
+                  {t("profile.friends.withdraw")}
                 </button>
               </li>
             ))}
@@ -176,10 +178,7 @@ export function FriendsPanel() {
       )}
 
       {empty && (
-        <p className="text-sm italic text-jass-inkSoft">
-          Du hast noch keine Freunde oder offene Anfragen. Klick im Spiel auf einen Mitspieler-Namen
-          → „Freundschaft anfragen".
-        </p>
+        <p className="text-sm italic text-jass-inkSoft">{t("profile.friends.emptyHint")}</p>
       )}
     </div>
   );

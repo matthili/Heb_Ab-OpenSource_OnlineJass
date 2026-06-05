@@ -18,7 +18,7 @@
  */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
-import { useTranslation } from "react-i18next";
+import { Trans, useTranslation } from "react-i18next";
 
 import { api, ApiError } from "~/lib/api";
 
@@ -194,9 +194,12 @@ export function ProfileEditPanel() {
         <h2 className="text-lg font-semibold">{t("profile.edit.title")}</h2>
         <p className="text-sm text-stone-600">{t("profile.edit.intro")}</p>
         <p className="text-xs text-stone-500">
-          {t("profile.edit.realFirstName")}, {t("profile.edit.realLastName")} &amp; Co. sind alle
-          freiwillig — Spielername ({data.name}) und E-Mail ({data.email}) änderst du über die
-          Konto-Verwaltung.
+          {t("profile.edit.namesHint", {
+            firstName: t("profile.edit.realFirstName"),
+            lastName: t("profile.edit.realLastName"),
+            name: data.name,
+            email: data.email,
+          })}
         </p>
       </header>
 
@@ -323,12 +326,11 @@ export function ProfileEditPanel() {
       <PushTogglePanel />
 
       <fieldset className="border-t border-stone-200 pt-3">
-        <legend className="text-sm font-medium text-stone-700">Spielstatistik</legend>
+        <legend className="text-sm font-medium text-stone-700">
+          {t("profile.edit.statsLegend")}
+        </legend>
         <div className="grid grid-cols-1 sm:grid-cols-[1fr_14rem] gap-2 sm:gap-3 items-start mt-1">
-          <p className="text-sm text-stone-600">
-            Wer darf deine Spiel-Statistik (Partien, Siege, Siegesrate, Ø-Punkte je Variante) in
-            deinem Profil sehen?
-          </p>
+          <p className="text-sm text-stone-600">{t("profile.edit.statsVisibilityQuestion")}</p>
           <label className="block space-y-1">
             <span className="block text-xs text-stone-500">
               {t("profile.edit.visibility.label")}
@@ -349,7 +351,9 @@ export function ProfileEditPanel() {
       </fieldset>
 
       <fieldset className="border-t border-stone-200 pt-3">
-        <legend className="text-sm font-medium text-stone-700">Leaderboard</legend>
+        <legend className="text-sm font-medium text-stone-700">
+          {t("profile.edit.leaderboardLegend")}
+        </legend>
         <label className="flex items-start gap-2 text-sm mt-1">
           <input
             type="checkbox"
@@ -358,12 +362,14 @@ export function ProfileEditPanel() {
             className="mt-0.5 size-4"
           />
           <span>
-            Im{" "}
-            <a href="/leaderboard" className="underline" target="_blank" rel="noreferrer">
-              öffentlichen Leaderboard
-            </a>{" "}
-            erscheinen (Opt-in). Sichtbar bleibt nur dein Spitzname und die aggregierte Bilanz; ein
-            Klick reicht zum Aussteigen.
+            <Trans
+              i18nKey="profile.edit.leaderboardOptIn"
+              components={{
+                link: (
+                  <a href="/leaderboard" className="underline" target="_blank" rel="noreferrer" />
+                ),
+              }}
+            />
           </span>
         </label>
       </fieldset>

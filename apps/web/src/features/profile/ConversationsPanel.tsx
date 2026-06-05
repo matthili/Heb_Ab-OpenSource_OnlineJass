@@ -17,6 +17,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
+import { Trans, useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 
 import { api } from "~/lib/api";
 
@@ -40,6 +42,7 @@ interface ConversationView {
 type Filter = "all" | "during-game" | "no-game";
 
 export function ConversationsPanel() {
+  const { t } = useTranslation();
   const partners = useQuery<{ partners: Partner[] }>({
     queryKey: ["chat", "conversations"],
     queryFn: () => api("/api/chat/conversations"),
@@ -49,16 +52,15 @@ export function ConversationsPanel() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   if (partners.isPending) {
-    return <p className="text-stone-500 text-sm">Lade Konversationen …</p>;
+    return <p className="text-stone-500 text-sm">{t("profile.conversations.loading")}</p>;
   }
   if (partners.isError || !partners.data) {
-    return <p className="text-rose-700 text-sm">Konversationen konnten nicht geladen werden.</p>;
+    return <p className="text-rose-700 text-sm">{t("profile.conversations.loadError")}</p>;
   }
   if (partners.data.partners.length === 0) {
     return (
       <section className="rounded border border-stone-200 p-3 text-sm text-stone-600">
-        Noch keine Privatnachrichten gewechselt. Sobald du jemandem schreibst, erscheinen die
-        Konversationen hier.
+        {t("profile.conversations.empty")}
       </section>
     );
   }
@@ -71,9 +73,7 @@ export function ConversationsPanel() {
         onSelect={setSelectedId}
       />
       {selectedId === null ? (
-        <p className="text-sm text-stone-500 italic">
-          Wähle links eine Person aus, um den Verlauf zu sehen.
-        </p>
+        <p className="text-sm text-stone-500 italic">{t("profile.conversations.selectHint")}</p>
       ) : (
         <ConversationView partnerId={selectedId} />
       )}
@@ -90,6 +90,7 @@ function PartnerList({
   selectedId: string | null;
   onSelect: (id: string) => void;
 }) {
+  const { t } = useTranslation();
   return (
     <ul className="border border-stone-200 rounded divide-y divide-stone-100 max-h-[28rem] overflow-y-auto">
       {partners.map((p) => {
@@ -107,12 +108,15 @@ function PartnerList({
               <div className="flex items-center justify-between gap-2">
                 <span className="font-medium truncate">{p.partner.name}</span>
                 <span className="text-xs text-stone-500 shrink-0">
-                  {formatRelative(p.lastMessage.createdAt)}
+                  {formatRelative(p.lastMessage.createdAt, t)}
                 </span>
               </div>
               <div className="text-xs text-stone-500 flex items-center gap-1.5 mt-0.5">
                 {p.lastMessage.wasDuringGame && (
-                  <span title="aus einem Spiel" aria-label="aus einem Spiel">
+                  <span
+                    title={t("profile.conversations.fromGame")}
+                    aria-label={t("profile.conversations.fromGame")}
+                  >
                     🎲
                   </span>
                 )}
@@ -134,6 +138,7 @@ function PartnerList({
 }
 
 function ConversationView({ partnerId }: { partnerId: string }) {
+  const { t } = useTranslation();
   const [filter, setFilter] = useState<Filter>("all");
   const conv = useQuery<ConversationView>({
     queryKey: ["chat", "conversations", partnerId, filter],
@@ -145,7 +150,7 @@ function ConversationView({ partnerId }: { partnerId: string }) {
     <div className="space-y-3">
       <div className="flex items-center gap-2 text-sm">
         <label htmlFor="conv-filter" className="text-stone-600">
-          Filter:
+          {t("profile.conversations.filterLabel")}
         </label>
         <select
           id="conv-filter"
@@ -153,15 +158,19 @@ function ConversationView({ partnerId }: { partnerId: string }) {
           onChange={(e) => setFilter(e.target.value as Filter)}
           className="rounded border border-stone-300 px-2 py-1"
         >
-          <option value="all">Alle</option>
-          <option value="during-game">Nur Spielnachrichten</option>
-          <option value="no-game">Nur Lobby-Nachrichten</option>
+          <option value="all">{t("profile.conversations.filterAll")}</option>
+          <option value="during-game">{t("profile.conversations.filterDuringGame")}</option>
+          <option value="no-game">{t("profile.conversations.filterNoGame")}</option>
         </select>
       </div>
 
-      {conv.isPending && <p className="text-sm text-stone-500">Lade Verlauf …</p>}
+      {conv.isPending && (
+        <p className="text-sm text-stone-500">{t("profile.conversations.loadingHistory")}</p>
+      )}
       {conv.data && conv.data.messages.length === 0 && (
-        <p className="text-sm text-stone-500 italic">Keine Nachrichten zu diesem Filter.</p>
+        <p className="text-sm text-stone-500 italic">
+          {t("profile.conversations.noMessagesForFilter")}
+        </p>
       )}
       {conv.data && conv.data.messages.length > 0 && <MessageList view={conv.data} />}
     </div>
@@ -218,16 +227,25 @@ function MessageList({ view }: { view: ConversationView }) {
 }
 
 function GameContextHeader({ gameId, mitspieler }: { gameId: string; mitspieler: string[] }) {
+  const { t } = useTranslation();
   const shortId = gameId.slice(-6); // CUID-Tail als Lesehilfe
   return (
     <div className="rounded bg-amber-50 border border-amber-200 px-2 py-1 text-xs text-amber-900 flex items-center flex-wrap gap-1">
       <span aria-hidden="true">🎲</span>
       <span>
-        Während Partie <code className="font-mono">#{shortId}</code>
+        <Trans
+          i18nKey="profile.conversations.duringGame"
+          values={{ shortId }}
+          components={{ code: <code className="font-mono" /> }}
+        />
       </span>
       {mitspieler.length > 0 && (
         <span>
-          , Mitspieler: <span className="font-medium">{mitspieler.join(", ")}</span>
+          <Trans
+            i18nKey="profile.conversations.withPlayers"
+            values={{ players: mitspieler.join(", ") }}
+            components={{ name: <span className="font-medium" /> }}
+          />
         </span>
       )}
       <Link
@@ -235,7 +253,7 @@ function GameContextHeader({ gameId, mitspieler }: { gameId: string; mitspieler:
         params={{ gameId }}
         className="ml-auto underline decoration-dotted hover:decoration-solid"
       >
-        Replay öffnen
+        {t("profile.conversations.openReplay")}
       </Link>
     </div>
   );
@@ -246,15 +264,15 @@ function stripHtml(html: string): string {
   return html.replace(/<[^>]+>/g, "").trim();
 }
 
-function formatRelative(iso: string): string {
+function formatRelative(iso: string, t: TFunction): string {
   const d = new Date(iso);
   const diffMs = Date.now() - d.getTime();
   const min = Math.round(diffMs / 60_000);
-  if (min < 1) return "gerade eben";
-  if (min < 60) return `vor ${min} Min`;
+  if (min < 1) return t("profile.conversations.relativeJustNow");
+  if (min < 60) return t("profile.conversations.relativeMinutes", { count: min });
   const h = Math.round(min / 60);
-  if (h < 24) return `vor ${h} Std`;
+  if (h < 24) return t("profile.conversations.relativeHours", { count: h });
   const days = Math.round(h / 24);
-  if (days < 14) return `vor ${days} T`;
+  if (days < 14) return t("profile.conversations.relativeDays", { count: days });
   return d.toLocaleDateString();
 }

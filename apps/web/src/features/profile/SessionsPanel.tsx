@@ -15,6 +15,7 @@
  */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
+import { Trans, useTranslation } from "react-i18next";
 
 import { api } from "~/lib/api";
 
@@ -29,6 +30,7 @@ interface SessionView {
 }
 
 export function SessionsPanel() {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const queryKey = ["users", "me", "sessions"] as const;
   const { data, isPending, error } = useQuery<{ sessions: SessionView[] }>({
@@ -56,7 +58,7 @@ export function SessionsPanel() {
   if (error) {
     return (
       <p role="alert" className="text-rose-700">
-        Konnte Sitzungen nicht laden: {(error as Error).message}
+        {t("profile.sessions.loadError", { message: (error as Error).message })}
       </p>
     );
   }
@@ -67,11 +69,8 @@ export function SessionsPanel() {
   return (
     <div className="space-y-5">
       <header className="space-y-1">
-        <h2 className="text-lg font-semibold">Aktive Sitzungen</h2>
-        <p className="text-sm text-stone-600">
-          Hier siehst du alle Geräte/Browser, bei denen dein Konto eingeloggt ist. Bei Verdacht auf
-          unbefugten Zugriff: „Alle anderen abmelden" beendet sofort alle anderen Sitzungen.
-        </p>
+        <h2 className="text-lg font-semibold">{t("profile.sessions.title")}</h2>
+        <p className="text-sm text-stone-600">{t("profile.sessions.intro")}</p>
       </header>
 
       <ul className="space-y-2">
@@ -88,18 +87,23 @@ export function SessionsPanel() {
               <div className="flex-1 space-y-0.5">
                 <div className="flex items-center gap-2">
                   <span className="font-medium text-jass-ink">
-                    {s.userAgent ?? "Unbekanntes Gerät"}
+                    {s.userAgent ?? t("profile.sessions.unknownDevice")}
                   </span>
                   {s.current && (
                     <span className="rounded bg-jass-yellow border border-jass-yellowDark px-2 py-0.5 text-xs">
-                      diese Sitzung
+                      {t("profile.sessions.thisSession")}
                     </span>
                   )}
                 </div>
                 <p className="text-xs text-jass-inkSoft">
-                  {s.ipPrefix ?? "IP unbekannt"} · zuletzt aktiv{" "}
-                  {new Date(s.updatedAt).toLocaleString("de-AT")} · läuft ab{" "}
-                  {new Date(s.expiresAt).toLocaleDateString("de-AT")}
+                  {s.ipPrefix ?? t("profile.sessions.ipUnknown")} ·{" "}
+                  {t("profile.sessions.lastActive", {
+                    date: new Date(s.updatedAt).toLocaleString("de-AT"),
+                  })}{" "}
+                  ·{" "}
+                  {t("profile.sessions.expires", {
+                    date: new Date(s.expiresAt).toLocaleDateString("de-AT"),
+                  })}
                 </p>
               </div>
               {!s.current && (
@@ -109,7 +113,7 @@ export function SessionsPanel() {
                   disabled={revoke.isPending}
                   className="btn-jass-secondary text-sm"
                 >
-                  Abmelden
+                  {t("profile.sessions.signOut")}
                 </button>
               )}
             </div>
@@ -125,12 +129,16 @@ export function SessionsPanel() {
               onClick={() => setConfirmAll(true)}
               className="rounded border border-rose-300 bg-rose-50 px-3 py-1.5 text-sm text-rose-800 hover:bg-rose-100"
             >
-              Alle anderen abmelden ({others.length})
+              {t("profile.sessions.signOutOthers", { count: others.length })}
             </button>
           ) : (
             <div className="rounded border border-rose-300 bg-rose-50 p-3 space-y-2">
               <p className="text-sm text-rose-900">
-                Wirklich alle anderen <strong>{others.length}</strong> Sitzungen beenden?
+                <Trans
+                  i18nKey="profile.sessions.confirmAll"
+                  values={{ count: others.length }}
+                  components={{ strong: <strong /> }}
+                />
               </p>
               <div className="flex gap-2">
                 <button
@@ -142,14 +150,14 @@ export function SessionsPanel() {
                   disabled={revokeAll.isPending}
                   className="rounded bg-rose-600 px-3 py-1.5 text-sm text-white hover:bg-rose-700"
                 >
-                  Ja, alle abmelden
+                  {t("profile.sessions.confirmAllYes")}
                 </button>
                 <button
                   type="button"
                   onClick={() => setConfirmAll(false)}
                   className="btn-jass-secondary text-sm"
                 >
-                  Abbrechen
+                  {t("profile.sessions.cancel")}
                 </button>
               </div>
             </div>
