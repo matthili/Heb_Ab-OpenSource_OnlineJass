@@ -15,14 +15,18 @@ import { Injectable, NotFoundException } from "@nestjs/common";
 import type { Profile, User } from "@prisma/client";
 
 import { PrismaService } from "../prisma/prisma.service.js";
+import { UserStatsService, type UserStats } from "./user-stats.service.js";
 import {
   DEFAULT_VISIBILITY,
+  STATS_VISIBILITY_KEY,
   VISIBLE_PROFILE_FIELDS,
+  type ConfigurableVisibilityKey,
   type ProfileFieldName,
   type VisibilityLevel,
   type VisibilityMap,
   type ViewerContext,
   canSeeField,
+  resolveStatsVisibility,
   resolveVisibility,
 } from "./visibility.js";
 
@@ -58,7 +62,7 @@ export interface MyProfileView {
     hobbies: string | null;
     bio: string | null;
     avatarUrl: string | null;
-    visibility: Readonly<Record<ProfileFieldName, VisibilityLevel>>;
+    visibility: Readonly<Record<ConfigurableVisibilityKey, VisibilityLevel>>;
     publicLeaderboard: boolean;
   };
 }
@@ -82,11 +86,16 @@ export interface PublicProfileView {
   hobbies: string | null;
   bio: string | null;
   avatarUrl: string | null;
+  /** Spiel-Statistik — nur gesetzt, wenn die `stats`-Visibility es dem Viewer erlaubt. */
+  stats: UserStats | null;
 }
 
 @Injectable()
 export class UsersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly userStats: UserStatsService
+  ) {}
 
   async getMyProfile(userId: string): Promise<MyProfileView> {
     const user = await this.prisma.user.findUnique({
@@ -110,7 +119,14 @@ export class UsersService {
       isSelf: viewerId === targetId,
       areFriends: viewerId !== null ? await this.areFriends(viewerId, targetId) : false,
     };
-    return shapePublicProfile(user, user.profile, ctx);
+    const base = shapePublicProfile(user, user.profile, ctx);
+    // Statistik nur laden + ausliefern, wenn die `stats`-Sichtbarkeit es dem
+    // Viewer erlaubt (gleiche 4 Stufen wie die Profil-Felder).
+    const vis = (user.profile?.visibility ?? {}) as VisibilityMap;
+    const stats = canSeeField(resolveStatsVisibility(vis), ctx)
+      ? await this.userStats.getStats(targetId)
+      : null;
+    return { ...base, stats };
   }
 
   async updateMyProfile(userId: string, input: UpdateProfileInput): Promise<MyProfileView> {
@@ -180,7 +196,10 @@ export class UsersService {
 
 function shapeMyProfile(user: User, profile: Profile | null): MyProfileView {
   const userVisibility = (profile?.visibility ?? {}) as VisibilityMap;
-  const visibility: Record<ProfileFieldName, VisibilityLevel> = { ...DEFAULT_VISIBILITY };
+  const visibility: Record<ConfigurableVisibilityKey, VisibilityLevel> = {
+    ...DEFAULT_VISIBILITY,
+    [STATS_VISIBILITY_KEY]: resolveStatsVisibility(userVisibility),
+  };
   for (const f of VISIBLE_PROFILE_FIELDS) {
     visibility[f] = resolveVisibility(f, userVisibility);
   }
@@ -237,5 +256,7 @@ export function shapePublicProfile(
     hobbies: pick("hobbies", profile?.hobbies),
     bio: pick("bio", profile?.bio),
     avatarUrl: pick("avatarUrl", profile?.avatarUrl),
+    // Statistik füllt `getPublicProfile` nach (async, gated). Pure-Shaper: null.
+    stats: null,
   };
 }

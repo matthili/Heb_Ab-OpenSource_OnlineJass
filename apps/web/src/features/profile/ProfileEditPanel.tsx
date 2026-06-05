@@ -35,7 +35,9 @@ type FieldName =
   | "country"
   | "hobbies"
   | "bio"
-  | "avatarUrl";
+  | "avatarUrl"
+  // Pseudo-Feld: steuert die Sichtbarkeit der Spiel-Statistik (kein Eingabe-Feld).
+  | "stats";
 
 interface MyProfileView {
   id: string;
@@ -82,6 +84,7 @@ const EMPTY_VISIBILITY: Record<FieldName, VisibilityLevel> = {
   hobbies: "LOGGED_IN",
   bio: "PUBLIC",
   avatarUrl: "PUBLIC",
+  stats: "LOGGED_IN",
 };
 
 export function ProfileEditPanel() {
@@ -318,6 +321,32 @@ export function ProfileEditPanel() {
       </FieldRow>
 
       <PushTogglePanel />
+
+      <fieldset className="border-t border-stone-200 pt-3">
+        <legend className="text-sm font-medium text-stone-700">Spielstatistik</legend>
+        <div className="grid grid-cols-1 sm:grid-cols-[1fr_14rem] gap-2 sm:gap-3 items-start mt-1">
+          <p className="text-sm text-stone-600">
+            Wer darf deine Spiel-Statistik (Partien, Siege, Siegesrate, Ø-Punkte je Variante) in
+            deinem Profil sehen?
+          </p>
+          <label className="block space-y-1">
+            <span className="block text-xs text-stone-500">
+              {t("profile.edit.visibility.label")}
+            </span>
+            <select
+              value={form.visibility.stats}
+              onChange={(e) => setVisibility("stats", e.currentTarget.value as VisibilityLevel)}
+              className="w-full rounded border border-stone-300 px-2 py-1 text-sm bg-white"
+            >
+              {VISIBILITY_LEVELS.map((lvl) => (
+                <option key={lvl} value={lvl}>
+                  {t(`profile.edit.visibility.${lvl}`)}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+      </fieldset>
 
       <fieldset className="border-t border-stone-200 pt-3">
         <legend className="text-sm font-medium text-stone-700">Leaderboard</legend>

@@ -1,15 +1,18 @@
 /**
- * Spiel-Statistik des eingeloggten Users.
+ * Spiel-Statistik.
  *
- * Zeigt pro Variante: Anzahl Partien, Siege, Win-Rate (%) und Avg eigene
- * Punkte. Daten vom Endpunkt `GET /api/users/me/stats` — keine Live-Updates,
- * `staleTime: 30s` reicht für Profil-Seite.
+ * `UserStatsPanel` = eigene Statistik (Endpunkt `GET /api/users/me/stats`).
+ * `StatsTable` = reine Darstellung (Totals + Tabelle pro Variante), damit auch
+ * das öffentliche Fremdprofil dieselbe Anzeige nutzen kann (Daten kommen dort
+ * eingebettet im Profil, gated über die `stats`-Sichtbarkeit).
+ *
+ * Zeigt pro Variante: Anzahl Partien, Siege, Win-Rate (%) und Ø eigene Punkte.
  */
 import { useQuery } from "@tanstack/react-query";
 
 import { api } from "~/lib/api";
 
-interface VariantStat {
+export interface VariantStat {
   variant: string;
   gamesPlayed: number;
   gamesWon: number;
@@ -17,7 +20,7 @@ interface VariantStat {
   avgOwnPoints: number;
 }
 
-interface UserStatsResponse {
+export interface UserStatsData {
   perVariant: VariantStat[];
   totals: { gamesPlayed: number; gamesWon: number };
 }
@@ -31,7 +34,7 @@ const VARIANT_LABEL: Record<string, string> = {
 };
 
 export function UserStatsPanel() {
-  const { data, isPending, isError } = useQuery<UserStatsResponse>({
+  const { data, isPending, isError } = useQuery<UserStatsData>({
     queryKey: ["me", "stats"],
     queryFn: () => api("/api/users/me/stats"),
     staleTime: 30_000,
@@ -52,13 +55,18 @@ export function UserStatsPanel() {
     );
   }
 
+  return <StatsTable stats={data} />;
+}
+
+/** Reine Darstellung der Statistik. Annahme: `stats.totals.gamesPlayed > 0`. */
+export function StatsTable({ stats }: { stats: UserStatsData }) {
   return (
     <section className="space-y-2">
       <h3 className="text-base font-semibold">Statistik</h3>
       <div className="text-sm text-stone-600">
-        Insgesamt: <strong>{data.totals.gamesPlayed}</strong> Partien ·{" "}
-        <strong>{data.totals.gamesWon}</strong> Siege ·{" "}
-        {formatRate(data.totals.gamesWon, data.totals.gamesPlayed)}
+        Insgesamt: <strong>{stats.totals.gamesPlayed}</strong> Partien ·{" "}
+        <strong>{stats.totals.gamesWon}</strong> Siege ·{" "}
+        {formatRate(stats.totals.gamesWon, stats.totals.gamesPlayed)}
       </div>
       <table className="w-full text-sm border-collapse">
         <thead>
@@ -71,7 +79,7 @@ export function UserStatsPanel() {
           </tr>
         </thead>
         <tbody>
-          {data.perVariant.map((v) => (
+          {stats.perVariant.map((v) => (
             <tr key={v.variant} className="border-b border-stone-100">
               <td className="py-2 pr-3">{VARIANT_LABEL[v.variant] ?? v.variant}</td>
               <td className="py-2 pr-3 text-right tabular-nums">{v.gamesPlayed}</td>

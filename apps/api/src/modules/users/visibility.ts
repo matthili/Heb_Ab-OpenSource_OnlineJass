@@ -50,11 +50,34 @@ export const DEFAULT_VISIBILITY: Readonly<Record<ProfileFieldName, VisibilityLev
   avatarUrl: "PUBLIC",
 };
 
+/**
+ * Pseudo-Feld „stats": steuert, wer die Spiel-Statistik (Partien, Siege,
+ * Siegesrate, Ø-Punkte je Variante) im öffentlichen Profil sieht. Wird in
+ * derselben `visibility`-Map gespeichert wie die Profil-Felder, ist aber KEIN
+ * Profil-DB-Feld (daher separat von `VISIBLE_PROFILE_FIELDS`).
+ */
+export const STATS_VISIBILITY_KEY = "stats" as const;
+export const DEFAULT_STATS_VISIBILITY: VisibilityLevel = "LOGGED_IN";
+
+/** Alle konfigurierbaren Visibility-Schlüssel: Profil-Felder + `stats`. */
+export const CONFIGURABLE_VISIBILITY_KEYS = [
+  ...VISIBLE_PROFILE_FIELDS,
+  STATS_VISIBILITY_KEY,
+] as const;
+export type ConfigurableVisibilityKey = (typeof CONFIGURABLE_VISIBILITY_KEYS)[number];
+
 export const VisibilityMapSchema = z.partialRecord(
-  z.enum(VISIBLE_PROFILE_FIELDS),
+  z.enum(CONFIGURABLE_VISIBILITY_KEYS),
   VisibilityLevelSchema
 );
 export type VisibilityMap = z.infer<typeof VisibilityMapSchema>;
+
+/** Resolved Visibility für die Statistik (`stats`-Pseudo-Feld). */
+export function resolveStatsVisibility(
+  userVisibility: VisibilityMap | null | undefined
+): VisibilityLevel {
+  return userVisibility?.[STATS_VISIBILITY_KEY] ?? DEFAULT_STATS_VISIBILITY;
+}
 
 export interface ViewerContext {
   /** User-ID des Anfragers; null = anonym (nicht eingeloggt). */

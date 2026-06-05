@@ -17,6 +17,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 
+import { StatsTable, type UserStatsData } from "~/features/profile/UserStatsPanel";
 import { api, ApiError } from "~/lib/api";
 import { useSession } from "~/lib/auth-client";
 
@@ -35,6 +36,8 @@ interface PublicProfileView {
   hobbies: string | null;
   bio: string | null;
   avatarUrl: string | null;
+  /** Spiel-Statistik — nur gesetzt, wenn die Sichtbarkeit es erlaubt. */
+  stats: UserStatsData | null;
 }
 
 type FriendStatus = "NONE" | "PENDING_OUT" | "PENDING_IN" | "ACCEPTED" | "BLOCKED";
@@ -112,11 +115,18 @@ function PublicProfilePage() {
         )}
       </dl>
 
-      {!realName && !place && !data.birthDate && !data.hobbies && !data.bio && (
-        <p className="text-sm italic text-jass-inkSoft">
-          Dieses Profil hat keine öffentlich sichtbaren Felder.
-        </p>
-      )}
+      {data.stats && data.stats.totals.gamesPlayed > 0 && <StatsTable stats={data.stats} />}
+
+      {!realName &&
+        !place &&
+        !data.birthDate &&
+        !data.hobbies &&
+        !data.bio &&
+        !(data.stats && data.stats.totals.gamesPlayed > 0) && (
+          <p className="text-sm italic text-jass-inkSoft">
+            Dieses Profil hat keine öffentlich sichtbaren Felder.
+          </p>
+        )}
     </article>
   );
 }
