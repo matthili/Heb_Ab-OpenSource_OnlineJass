@@ -18,6 +18,7 @@ import { Hand, Scoreboard, Trick } from "@jass/ui";
 import type { Card } from "@jass/engine";
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
+import { Trans, useTranslation } from "react-i18next";
 
 import type { SeatView } from "~/features/lobby/types";
 import { seatDisplayName } from "./aiNames";
@@ -71,7 +72,8 @@ export function GameBoard({
   onClickWeisen,
   onSubmitWeisen,
 }: Props) {
-  const seatNames = buildSeatNames(seats, nameSeed);
+  const { t } = useTranslation();
+  const seatNames = buildSeatNames(seats, nameSeed, (n) => t("game.seatFallback", { n }));
   // Hook IMMER auf gleichem Render-Level aufrufen — auch im Ansage-Modus,
   // damit React keine "different number of hooks"-Warnung wirft. Der Hook
   // toleriert `undefined` als no-op.
@@ -136,7 +138,7 @@ export function GameBoard({
             aria-live="polite"
             className="jass-weli-banner rounded-lg border-2 border-jass-yellowDark bg-gradient-to-r from-jass-yellow/30 via-jass-yellow/50 to-jass-yellow/30 px-4 py-3 text-center text-jass-ink font-bold shadow-md"
           >
-            ✨ Du hast den WELI — du sagst an!
+            {t("game.weli.youHaveWeli")}
           </div>
         )}
         {!dealActive && (
@@ -165,7 +167,10 @@ export function GameBoard({
   const soloPlayers =
     isSolo && state.team_card_points
       ? state.teams.map((teamId, seat) => ({
-          label: seat === mySeat ? "Du" : (seatNames.get(seat) ?? `Sitz ${seat + 1}`),
+          label:
+            seat === mySeat
+              ? t("game.you")
+              : (seatNames.get(seat) ?? t("game.seatFallback", { n: seat + 1 })),
           points: state.team_card_points![teamId] ?? 0,
           isMe: seat === mySeat,
         }))
@@ -188,7 +193,7 @@ export function GameBoard({
           onClick={onAnnounceStoeck}
           className="w-full rounded-lg bg-jass-yellow border-2 border-jass-yellowDark px-4 py-3 text-jass-ink font-bold text-lg shadow-md hover:bg-jass-yellow/90 jass-your-turn-glow"
         >
-          ★ Stöck rufen (+20)
+          {t("game.stoeck.call")}
         </button>
       )}
       {error && (
@@ -265,27 +270,32 @@ function StatusBanner({
   seats: readonly SeatView[];
   nameSeed: string;
 }) {
+  const { t } = useTranslation();
   if (view.status === "finished") {
     return (
       <div className="rounded bg-jass-cream border border-jass-paperEdge px-3 py-2 text-jass-ink">
-        Spiel beendet — siehe Final-Score unten.
+        {t("game.finished")}
       </div>
     );
   }
   if (view.myTurn) {
     return (
       <div className="jass-your-turn-glow rounded bg-jass-yellow border border-jass-yellowDark px-3 py-2 text-jass-ink font-semibold">
-        Du bist dran.
+        {t("game.yourTurn")}
       </div>
     );
   }
   const playerSeat = seats.find((s) => s.seat === view.whoseTurnSeat);
   const name = playerSeat
-    ? seatDisplayName(playerSeat, nameSeed, `Sitz ${view.whoseTurnSeat + 1}`)
-    : `Sitz ${view.whoseTurnSeat + 1}`;
+    ? seatDisplayName(playerSeat, nameSeed, t("game.seatFallback", { n: view.whoseTurnSeat + 1 }))
+    : t("game.seatFallback", { n: view.whoseTurnSeat + 1 });
   return (
     <div className="rounded bg-jass-paper border border-jass-paperEdge px-3 py-2 text-jass-inkSoft">
-      <strong className="text-jass-ink">{name}</strong> ist dran.
+      <Trans
+        i18nKey="game.otherTurn"
+        values={{ name }}
+        components={{ strong: <strong className="text-jass-ink" /> }}
+      />
     </div>
   );
 }
@@ -316,6 +326,7 @@ function PlayingArea({
   seatNames: ReadonlyMap<number, string>;
   lingering: boolean;
 }) {
+  const { t } = useTranslation();
   return (
     <div
       // Spielfläche mit Filz-Textur (bg-jass-felt — CSS-Pattern aus
@@ -325,7 +336,7 @@ function PlayingArea({
       className="grid grid-cols-3 grid-rows-[auto_1fr_auto] gap-2 min-h-[32rem] h-[clamp(32rem,65vh,48rem)] rounded-lg p-4 relative shadow-inner bg-jass-felt"
       style={{ border: "2px solid var(--color-jass-brownDark)" }}
       role="region"
-      aria-label="Spielfläche"
+      aria-label={t("game.playingArea")}
     >
       {/* Sitz-Labels der 3 Mitspieler */}
       {seats.map((s) => {
@@ -406,10 +417,14 @@ function PlayingArea({
   );
 }
 
-function buildSeatNames(seats: readonly SeatView[], nameSeed: string): ReadonlyMap<number, string> {
+function buildSeatNames(
+  seats: readonly SeatView[],
+  nameSeed: string,
+  seatFallback: (n: number) => string
+): ReadonlyMap<number, string> {
   const m = new Map<number, string>();
   for (const s of seats) {
-    m.set(s.seat, seatDisplayName(s, nameSeed, `Sitz ${s.seat}`));
+    m.set(s.seat, seatDisplayName(s, nameSeed, seatFallback(s.seat)));
   }
   return m;
 }

@@ -17,6 +17,7 @@
  * „Spieler X muss ansagen…" mit Spinner.
  */
 import { useState } from "react";
+import { Trans, useTranslation } from "react-i18next";
 import type { PlayMode, Suit } from "@jass/engine";
 
 import type { AnnouncementDecision, PlayerView } from "./types";
@@ -31,34 +32,44 @@ interface Props {
 
 type ModeChoice = "TRUMPF" | "GUMPF" | "OBEN" | "UNTEN" | "SLALOM";
 
-const SUITS: readonly { id: Suit; label: string; color: string }[] = [
-  { id: "EICHEL", label: "Eichel", color: "bg-jass-brown text-jass-cream" },
-  { id: "SCHELLE", label: "Schelle", color: "bg-jass-yellow text-jass-ink" },
-  { id: "HERZ", label: "Herz", color: "bg-jass-red text-jass-cream" },
-  { id: "LAUB", label: "Laub", color: "bg-jass-green text-jass-cream" },
+const SUITS: readonly { id: Suit; color: string }[] = [
+  { id: "EICHEL", color: "bg-jass-brown text-jass-cream" },
+  { id: "SCHELLE", color: "bg-jass-yellow text-jass-ink" },
+  { id: "HERZ", color: "bg-jass-red text-jass-cream" },
+  { id: "LAUB", color: "bg-jass-green text-jass-cream" },
 ];
 
 export function AnnouncementDialog({ view, seatNames, pending, onAnnounce }: Props) {
+  const { t } = useTranslation();
   const ann = view.announcement!;
   const [mode, setMode] = useState<ModeChoice | null>(null);
   const [trumpSuit, setTrumpSuit] = useState<Suit | null>(null);
   const [slalomStart, setSlalomStart] = useState<"OBEN" | "UNTEN">("OBEN");
 
   if (!ann.iAmAnnouncer) {
-    const name = seatNames.get(ann.announcerSeat) ?? `Sitz ${ann.announcerSeat}`;
+    const name =
+      seatNames.get(ann.announcerSeat) ?? t("game.seatFallback", { n: ann.announcerSeat });
     return (
       <div
         className="rounded-lg border border-jass-paperEdge bg-jass-cream p-6 text-center space-y-2"
         role="status"
         aria-live="polite"
       >
-        <p className="text-jass-inkSoft text-sm">Trumpf-Ansage läuft</p>
+        <p className="text-jass-inkSoft text-sm">{t("game.announce.running")}</p>
         <p className="text-lg font-semibold text-jass-ink">
-          <strong>{name}</strong> wählt die Variante…
+          <Trans
+            i18nKey="game.announce.picking"
+            values={{ name }}
+            components={{ strong: <strong /> }}
+          />
         </p>
         {ann.pushedFromSeat !== null && (
           <p className="text-xs text-jass-inkSoft">
-            {seatNames.get(ann.pushedFromSeat) ?? `Sitz ${ann.pushedFromSeat}`} hat geschoben.
+            {t("game.announce.pushedFrom", {
+              name:
+                seatNames.get(ann.pushedFromSeat) ??
+                t("game.seatFallback", { n: ann.pushedFromSeat }),
+            })}
           </p>
         )}
       </div>
@@ -83,17 +94,23 @@ export function AnnouncementDialog({ view, seatNames, pending, onAnnounce }: Pro
   return (
     <div className="rounded-lg border border-jass-paperEdge bg-jass-cream p-4 space-y-4">
       <header>
-        <h3 className="font-semibold text-jass-ink">Du musst ansagen.</h3>
+        <h3 className="font-semibold text-jass-ink">{t("game.announce.title")}</h3>
         <p className="text-sm text-jass-inkSoft">
           {ann.pushedFromSeat !== null
-            ? `${seatNames.get(ann.pushedFromSeat) ?? `Sitz ${ann.pushedFromSeat}`} hat an dich geschoben — du musst wählen.`
-            : "Such dir eine Variante aus, oder schiebe an deinen Partner."}
+            ? t("game.announce.pushedToYou", {
+                name:
+                  seatNames.get(ann.pushedFromSeat) ??
+                  t("game.seatFallback", { n: ann.pushedFromSeat }),
+              })
+            : t("game.announce.chooseOrPush")}
         </p>
       </header>
 
       {/* Modus-Auswahl */}
       <fieldset className="space-y-2">
-        <legend className="text-xs uppercase tracking-wide text-jass-inkSoft">Variante</legend>
+        <legend className="text-xs uppercase tracking-wide text-jass-inkSoft">
+          {t("game.announce.variant")}
+        </legend>
         <div className="grid grid-cols-2 gap-2">
           {(["TRUMPF", "GUMPF", "OBEN", "UNTEN", "SLALOM"] as const).map((m) => (
             <button
@@ -109,11 +126,7 @@ export function AnnouncementDialog({ view, seatNames, pending, onAnnounce }: Pro
                   : "border-jass-paperEdge bg-jass-paper text-jass-ink hover:bg-jass-cream"
               }`}
             >
-              {m === "TRUMPF" && "Trumpf"}
-              {m === "GUMPF" && "Gumpf"}
-              {m === "OBEN" && "Oben (Bock)"}
-              {m === "UNTEN" && "Unten (Geiss)"}
-              {m === "SLALOM" && "Slalom"}
+              {t(`game.announce.mode.${m}`)}
             </button>
           ))}
         </div>
@@ -123,7 +136,7 @@ export function AnnouncementDialog({ view, seatNames, pending, onAnnounce }: Pro
       {(mode === "TRUMPF" || mode === "GUMPF") && (
         <fieldset className="space-y-2">
           <legend className="text-xs uppercase tracking-wide text-jass-inkSoft">
-            Trumpf-Farbe
+            {t("game.announce.trumpSuit")}
           </legend>
           <div className="grid grid-cols-4 gap-2">
             {SUITS.map((s) => (
@@ -137,7 +150,7 @@ export function AnnouncementDialog({ view, seatNames, pending, onAnnounce }: Pro
                     : "border-jass-paperEdge bg-jass-paper text-jass-ink hover:bg-jass-cream"
                 }`}
               >
-                {s.label}
+                {t(`game.announce.suit.${s.id}`)}
               </button>
             ))}
           </div>
@@ -148,7 +161,7 @@ export function AnnouncementDialog({ view, seatNames, pending, onAnnounce }: Pro
       {mode === "SLALOM" && (
         <fieldset className="space-y-2">
           <legend className="text-xs uppercase tracking-wide text-jass-inkSoft">
-            Slalom startet mit
+            {t("game.announce.slalomStartsWith")}
           </legend>
           <div className="grid grid-cols-2 gap-2">
             {(["OBEN", "UNTEN"] as const).map((s) => (
@@ -162,7 +175,7 @@ export function AnnouncementDialog({ view, seatNames, pending, onAnnounce }: Pro
                     : "border-jass-paperEdge bg-jass-paper text-jass-ink hover:bg-jass-cream"
                 }`}
               >
-                {s === "OBEN" ? "Oben → Unten → Oben …" : "Unten → Oben → Unten …"}
+                {s === "OBEN" ? t("game.announce.slalomOben") : t("game.announce.slalomUnten")}
               </button>
             ))}
           </div>
@@ -178,7 +191,7 @@ export function AnnouncementDialog({ view, seatNames, pending, onAnnounce }: Pro
             disabled={pending}
             className="rounded border border-jass-paperEdge bg-jass-paper px-3 py-2 text-sm text-jass-ink hover:bg-jass-cream disabled:opacity-50"
           >
-            An Partner schieben
+            {t("game.announce.push")}
           </button>
         )}
         <button
@@ -189,7 +202,7 @@ export function AnnouncementDialog({ view, seatNames, pending, onAnnounce }: Pro
           disabled={!canConfirm}
           className="ml-auto rounded bg-jass-ink px-4 py-2 text-sm text-jass-cream hover:bg-jass-brownDark disabled:opacity-40"
         >
-          {pending ? "Sende…" : "Ansage bestätigen"}
+          {pending ? t("game.announce.sending") : t("game.announce.confirm")}
         </button>
       </div>
     </div>

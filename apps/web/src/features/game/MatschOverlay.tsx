@@ -20,6 +20,7 @@
  * Re-Match kommt ein neues gameId und das Overlay läuft wieder an.
  */
 import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import type { SeatView } from "~/features/lobby/types";
 import { seatDisplayName } from "./aiNames";
@@ -40,6 +41,7 @@ interface Props {
 }
 
 export function MatschOverlay({ gameId, finalScore, mySeat, teams, seats, nameSeed }: Props) {
+  const { t } = useTranslation();
   const [dismissed, setDismissed] = useState(false);
 
   // Wenn die gameId wechselt (Rematch), Dismiss zurücksetzen.
@@ -87,10 +89,10 @@ export function MatschOverlay({ gameId, finalScore, mySeat, teams, seats, nameSe
     ? (() => {
         const s = seats?.find((x) => x.seat === matschTeam);
         return s
-          ? seatDisplayName(s, nameSeed, `Sitz ${matschTeam + 1}`)
-          : `Sitz ${matschTeam + 1}`;
+          ? seatDisplayName(s, nameSeed, t("game.seatFallback", { n: matschTeam + 1 }))
+          : t("game.seatFallback", { n: matschTeam + 1 });
       })()
-    : `Team ${matschTeam}`;
+    : t("rematch.team", { team: matschTeam });
 
   return (
     <div
@@ -131,12 +133,12 @@ export function MatschOverlay({ gameId, finalScore, mySeat, teams, seats, nameSe
             id="matsch-title"
             className={`text-5xl font-black tracking-wide ${iWon ? "text-jass-ink" : "text-rose-700"}`}
           >
-            MATSCH!
+            {t("game.matsch.banner")}
           </div>
           <div className="mt-2 text-lg font-semibold">
-            {iWon ? "Alle 9 Stiche — Hut ab!" : `${matschLabel} hat alle 9 Stiche.`}
+            {iWon ? t("game.matsch.wonByYou") : t("game.matsch.wonByOther", { name: matschLabel })}
           </div>
-          <div className="mt-3 text-xs text-stone-600">(klicken zum Schließen)</div>
+          <div className="mt-3 text-xs text-stone-600">{t("game.matsch.clickToClose")}</div>
         </div>
       </div>
     </div>

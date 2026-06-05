@@ -21,6 +21,7 @@
  *     der zwischenzeitlich was getrunken hat, was passiert ist.
  */
 import { useEffect, useState } from "react";
+import { Trans, useTranslation } from "react-i18next";
 import { useNavigate } from "@tanstack/react-router";
 
 import type { SeatView } from "~/features/lobby/types";
@@ -66,9 +67,13 @@ function Overlay({
   onVote: (c: VoteChoice) => void;
   onDismiss: () => void;
 }) {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const disconnectedNames = state.disconnectedSeats
-    .map((d) => seats.find((s) => s.seat === d.seat)?.user?.name ?? `Sitz ${d.seat}`)
+    .map(
+      (d) =>
+        seats.find((s) => s.seat === d.seat)?.user?.name ?? t("game.seatFallback", { n: d.seat })
+    )
     .join(", ");
 
   // CLOSED → Result-Modal mit OK → Lobby
@@ -76,9 +81,9 @@ function Overlay({
     return (
       <Backdrop>
         <Card>
-          <h2 className="text-xl font-bold text-jass-ink">Tisch wurde aufgelöst</h2>
+          <h2 className="text-xl font-bold text-jass-ink">{t("game.disconnect.closedTitle")}</h2>
           <p className="text-sm text-jass-inkSoft">
-            {state.resultMessage ?? "Eine Mehrheit hat fürs Beenden gestimmt."}
+            {state.resultMessage ?? t("game.disconnect.closedDefault")}
           </p>
           <div className="flex justify-end pt-2">
             <button
@@ -89,7 +94,7 @@ function Overlay({
                 void navigate({ to: "/lobby" });
               }}
             >
-              OK — zur Lobby
+              {t("game.disconnect.toLobby")}
             </button>
           </div>
         </Card>
@@ -103,7 +108,7 @@ function Overlay({
       <Backdrop>
         <Card>
           <h2 className="text-lg font-semibold text-emerald-700">
-            ✔ Alle Spieler wieder verbunden
+            {t("game.disconnect.continuedTitle")}
           </h2>
           <p className="text-sm text-jass-inkSoft">{state.resultMessage}</p>
         </Card>
@@ -116,10 +121,13 @@ function Overlay({
     <Backdrop>
       <Card>
         <header className="space-y-1">
-          <h2 className="text-lg font-bold text-jass-ink">Verbindung verloren</h2>
+          <h2 className="text-lg font-bold text-jass-ink">{t("game.disconnect.lostTitle")}</h2>
           <p className="text-sm text-jass-inkSoft">
-            <strong className="text-jass-ink">{disconnectedNames}</strong> hat die Verbindung zum
-            Server verloren.
+            <Trans
+              i18nKey="game.disconnect.lostBody"
+              values={{ names: disconnectedNames }}
+              components={{ strong: <strong className="text-jass-ink" /> }}
+            />
           </p>
         </header>
 
@@ -127,9 +135,7 @@ function Overlay({
 
         {(state.phase === "GRACE_1" || state.phase === "GRACE_2") && (
           <p className="text-sm text-jass-inkSoft">
-            {state.phase === "GRACE_1"
-              ? "Wir warten 2 Minuten auf einen Reconnect. Sollte das nicht klappen, beginnt eine kurze Abstimmung."
-              : "Noch 1 Minute Wartezeit — vielleicht kommt er ja gleich zurück."}
+            {state.phase === "GRACE_1" ? t("game.disconnect.grace1") : t("game.disconnect.grace2")}
           </p>
         )}
 
@@ -208,6 +214,7 @@ function VoteBlock({
   mySeat: number;
   onVote: (c: VoteChoice) => void;
 }) {
+  const { t } = useTranslation();
   const myVote = state.votes[mySeat];
   const isVote2 = state.phase === "VOTE_2";
   const waitAgainStillAllowed = !isVote2 || !Object.values(state.votes).some((v) => v !== "WAIT");
@@ -215,21 +222,25 @@ function VoteBlock({
   return (
     <div className="space-y-3">
       <p className="text-sm font-medium text-jass-ink">
-        {isVote2 ? "Zweite Abstimmung — wie weiter?" : "Wie soll's weitergehen?"}
+        {isVote2 ? t("game.disconnect.vote2Prompt") : t("game.disconnect.votePrompt")}
       </p>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
         <VoteButton
           choice="STOP"
-          label="Beenden"
-          subtitle="Lobby"
+          label={t("game.disconnect.voteStop")}
+          subtitle={t("game.disconnect.voteStopSub")}
           color="rose"
           selected={myVote === "STOP"}
           onClick={() => onVote("STOP")}
         />
         <VoteButton
           choice="WAIT"
-          label={isVote2 ? "1 Min warten" : "1 Min warten"}
-          subtitle={isVote2 ? "(Einstimmigkeit nötig)" : "auf Reconnect"}
+          label={t("game.disconnect.voteWait")}
+          subtitle={
+            isVote2
+              ? t("game.disconnect.voteWaitSubUnanimous")
+              : t("game.disconnect.voteWaitSubReconnect")
+          }
           color="amber"
           selected={myVote === "WAIT"}
           disabled={isVote2 && !waitAgainStillAllowed && myVote !== "WAIT"}
@@ -237,8 +248,8 @@ function VoteBlock({
         />
         <VoteButton
           choice="FILL"
-          label="Mit KI weiter"
-          subtitle="zu Ende spielen"
+          label={t("game.disconnect.voteFill")}
+          subtitle={t("game.disconnect.voteFillSub")}
           color="emerald"
           selected={myVote === "FILL"}
           onClick={() => onVote("FILL")}
@@ -304,6 +315,7 @@ function VoteTally({
   seats: readonly SeatView[];
   mySeat: number;
 }) {
+  const { t } = useTranslation();
   // Map alle Stimmen (Mensch + KI) zu einer flachen Liste.
   const all: Array<{ seat: number; choice: VoteChoice; isAi: boolean }> = [];
   for (const seatId in state.votes) {
@@ -326,21 +338,23 @@ function VoteTally({
         const name = v.isAi
           ? aiName(`${nameSeed}:${v.seat}`, seatInfo?.aiSeatType)
           : v.seat === mySeat
-            ? `Du (Sitz ${v.seat})`
-            : (seatInfo?.user?.name ?? `Sitz ${v.seat}`);
+            ? t("game.youSeat", { n: v.seat })
+            : (seatInfo?.user?.name ?? t("game.seatFallback", { n: v.seat }));
         return (
           <li key={`v-${v.seat}-${v.isAi}`}>
-            {name}: <strong className="text-jass-ink">{labelFor(v.choice)}</strong>
+            {name}: <strong className="text-jass-ink">{labelFor(v.choice, t)}</strong>
           </li>
         );
       })}
       {pending.map((p) => {
         const seatInfo = seats.find((s) => s.seat === p.seat);
         const name =
-          p.seat === mySeat ? `Du (Sitz ${p.seat})` : (seatInfo?.user?.name ?? `Sitz ${p.seat}`);
+          p.seat === mySeat
+            ? t("game.youSeat", { n: p.seat })
+            : (seatInfo?.user?.name ?? t("game.seatFallback", { n: p.seat }));
         return (
           <li key={`p-${p.seat}`} className="italic">
-            {name}: noch keine Stimme
+            {name}: {t("game.disconnect.noVoteYet")}
           </li>
         );
       })}
@@ -348,13 +362,13 @@ function VoteTally({
   );
 }
 
-function labelFor(c: VoteChoice): string {
+function labelFor(c: VoteChoice, t: (key: string) => string): string {
   switch (c) {
     case "STOP":
-      return "Beenden";
+      return t("game.disconnect.voteStop");
     case "WAIT":
-      return "1 Min warten";
+      return t("game.disconnect.voteWait");
     case "FILL":
-      return "Mit KI weiter";
+      return t("game.disconnect.voteFill");
   }
 }

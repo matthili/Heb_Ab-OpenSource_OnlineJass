@@ -27,6 +27,7 @@
  * kommt in einer späteren Iteration.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import { relativeSlot, type ScreenSlot } from "./seat-layout";
 
@@ -211,13 +212,15 @@ export function DealCinematic({
 // ─────────────────────────────────────────────────────────────────────
 
 function DealBanner({ phase, iAmCutter }: { phase: Phase; iAmCutter: boolean }) {
+  const { t } = useTranslation();
   let text: string | null = null;
-  if (phase === "mix") text = "Karten werden gemischt …";
-  else if (phase === "slide") text = "Stapel wandert zum Abheber …";
-  else if (phase === "wait-cut") text = iAmCutter ? "Heb ab! ✋" : "Wartet aufs Abheben …";
-  else if (phase === "cut") text = "Abgehoben!";
-  else if (phase === "deal") text = "Karten werden gegeben …";
-  else if (phase === "weli") text = "Das WELI! ✨";
+  if (phase === "mix") text = t("game.deal.mixing");
+  else if (phase === "slide") text = t("game.deal.sliding");
+  else if (phase === "wait-cut")
+    text = iAmCutter ? t("game.deal.cutNow") : t("game.deal.waitingCut");
+  else if (phase === "cut") text = t("game.deal.cutDone");
+  else if (phase === "deal") text = t("game.deal.dealing");
+  else if (phase === "weli") text = t("game.deal.weli");
   if (!text) return null;
   return (
     <div className="absolute top-4 left-1/2 -translate-x-1/2 rounded-full bg-jass-ink/80 text-jass-cream px-4 py-1.5 text-sm font-semibold shadow-lg backdrop-blur">

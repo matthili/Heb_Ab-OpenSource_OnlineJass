@@ -333,7 +333,130 @@
     "trick": "Stich {{n}} / 9",
     "scoreOwn": "Eigenes Team: <strong>{{score}}</strong>",
     "scoreOpp": "Gegner: <strong>{{score}}</strong>",
-    "emptyHand": "Keine Karten mehr in der Hand."
+    "emptyHand": "Keine Karten mehr in der Hand.",
+    "seatFallback": "Sitz {{n}}",
+    "you": "Du",
+    "youSeat": "Du (Sitz {{n}})",
+    "playingArea": "Spielfläche",
+    "stoeck": {
+      "call": "★ Stöck rufen (+20)"
+    },
+    "announce": {
+      "running": "Trumpf-Ansage läuft",
+      "picking": "<strong>{{name}}</strong> wählt die Variante…",
+      "pushedFrom": "{{name}} hat geschoben.",
+      "title": "Du musst ansagen.",
+      "pushedToYou": "{{name}} hat an dich geschoben — du musst wählen.",
+      "chooseOrPush": "Such dir eine Variante aus, oder schiebe an deinen Partner.",
+      "variant": "Variante",
+      "mode": {
+        "TRUMPF": "Trumpf",
+        "GUMPF": "Gumpf",
+        "OBEN": "Oben (Bock)",
+        "UNTEN": "Unten (Geiss)",
+        "SLALOM": "Slalom"
+      },
+      "trumpSuit": "Trumpf-Farbe",
+      "suit": {
+        "EICHEL": "Eichel",
+        "SCHELLE": "Schelle",
+        "HERZ": "Herz",
+        "LAUB": "Laub"
+      },
+      "slalomStartsWith": "Slalom startet mit",
+      "slalomOben": "Oben → Unten → Oben …",
+      "slalomUnten": "Unten → Oben → Unten …",
+      "push": "An Partner schieben",
+      "sending": "Sende…",
+      "confirm": "Ansage bestätigen"
+    },
+    "deal": {
+      "mixing": "Karten werden gemischt …",
+      "sliding": "Stapel wandert zum Abheber …",
+      "cutNow": "Heb ab! ✋",
+      "waitingCut": "Wartet aufs Abheben …",
+      "cutDone": "Abgehoben!",
+      "dealing": "Karten werden gegeben …",
+      "weli": "Das WELI! ✨"
+    },
+    "weli": {
+      "youHaveWeli": "✨ Du hast den WELI — du sagst an!"
+    },
+    "trickMini": {
+      "first": "Erster Stich",
+      "last": "Letzter Stich",
+      "wonByYou": "→ du",
+      "wonByName": "→ {{name}}",
+      "wonByAria": "{{label}} gewonnen von {{name}}"
+    },
+    "weisen": {
+      "announce": "✋ Weise ansagen",
+      "announceAria": "Weise ansagen",
+      "yoursAnnounced": "Deine Weise sind angesagt:",
+      "pointsAfterFirst": "Punkte werden nach dem ersten Spiel verteilt (höchstes Weis gewinnt fürs ganze Team).",
+      "selectAria": "Weise auswählen",
+      "selectTitle": "Weise auswählen",
+      "tapCardsPoints": "Karten in der Hand antippen • {{points}} Pkt",
+      "preselected": "Vorgemerkt",
+      "groupSummary": "{{kind}} — {{points}} Pkt",
+      "points": "{{points}} Pkt",
+      "remove": "entfernen",
+      "declarationLabel": "<strong>{{kind}}</strong> — {{points}} Pkt",
+      "tapHint": "Tippe in deiner Hand die Karten an, die du als Weis ansagen willst.",
+      "selectedCount_one": "<strong>{{count}}</strong> Karte ausgewählt",
+      "selectedCount_other": "<strong>{{count}}</strong> Karten ausgewählt",
+      "validOk": "✓ {{kind}} ({{points}} Pkt)",
+      "validReason": "— {{reason}}",
+      "addAnother": "+ weiterer Weis",
+      "submit": "Weise ansagen",
+      "discard": "Doch nix",
+      "kindFourOfAKind": "Vier Gleiche",
+      "kindSequence": "{{n}}-Blatt",
+      "reason": {
+        "minThree": "Mindestens 3 Karten auswählen",
+        "tooFew": "Mindestens 3 Karten",
+        "tooMany": "Höchstens 9 Karten",
+        "duplicate": "Karten doppelt ausgewählt",
+        "notInHand": "Karte nicht in deiner Hand",
+        "noPattern": "Kein gültiger Weis (weder Sequenz noch 4-gleiche)",
+        "invalid": "Ungültiger Weis"
+      },
+      "result": {
+        "title": "Auswertung der Weise",
+        "teamWins": "<strong>Team {{team}} gewinnt</strong> und kassiert <points>{{points}} Pkt</points>.",
+        "noneReported": "Keine Weise gemeldet.",
+        "you": "(du)",
+        "team": "Team {{team}}",
+        "winner": "★ Sieger",
+        "continue": "Weiter spielen"
+      }
+    },
+    "matsch": {
+      "banner": "MATSCH!",
+      "wonByYou": "Alle 9 Stiche — Hut ab!",
+      "wonByOther": "{{name}} hat alle 9 Stiche.",
+      "clickToClose": "(klicken zum Schließen)"
+    },
+    "disconnect": {
+      "closedTitle": "Tisch wurde aufgelöst",
+      "closedDefault": "Eine Mehrheit hat fürs Beenden gestimmt.",
+      "toLobby": "OK — zur Lobby",
+      "continuedTitle": "✔ Alle Spieler wieder verbunden",
+      "lostTitle": "Verbindung verloren",
+      "lostBody": "<strong>{{names}}</strong> hat die Verbindung zum Server verloren.",
+      "grace1": "Wir warten 2 Minuten auf einen Reconnect. Sollte das nicht klappen, beginnt eine kurze Abstimmung.",
+      "grace2": "Noch 1 Minute Wartezeit — vielleicht kommt er ja gleich zurück.",
+      "vote2Prompt": "Zweite Abstimmung — wie weiter?",
+      "votePrompt": "Wie soll's weitergehen?",
+      "voteStop": "Beenden",
+      "voteStopSub": "Lobby",
+      "voteWait": "1 Min warten",
+      "voteWaitSubUnanimous": "(Einstimmigkeit nötig)",
+      "voteWaitSubReconnect": "auf Reconnect",
+      "voteFill": "Mit KI weiter",
+      "voteFillSub": "zu Ende spielen",
+      "noVoteYet": "noch keine Stimme"
+    }
   },
 
   "rematch": {
@@ -344,7 +467,30 @@
     "waitingFor_one": "Warten auf {{count}} weiteren Spieler …",
     "waitingFor_other": "Warten auf {{count}} weitere Spieler …",
     "started": "Alle dabei — neue Runde startet. (Tisch wechselt automatisch zum neuen Game.)",
-    "declined": "Nicht alle wollen weiterspielen. Der Tisch geht zurück in die Warte-Phase."
+    "declined": "Nicht alle wollen weiterspielen. Der Tisch geht zurück in die Warte-Phase.",
+    "ready": "Bereit für die nächste Runde?",
+    "continue": "▶ Weiter",
+    "stop": "Aufhören",
+    "autoStart": "Auto-Start in <strong>{{seconds}}</strong> s",
+    "teamKreuz0": "Team 0 (Sitz 1+3)",
+    "teamKreuz1": "Team 1 (Sitz 2+4)",
+    "sum": "Summe: {{sum}}",
+    "matschFor": " · Matsch für {{name}}!",
+    "winFor": " · Sieg: {{name}}",
+    "team": "Team {{team}}",
+    "matchStanding": "Partie-Stand",
+    "target": "Ziel: <strong>{{target}}</strong>",
+    "remainingPoints": " · noch {{remaining}} Punkte",
+    "status": {
+      "votedYes": "weiter",
+      "votedNo": "aufhören",
+      "pending": "Du hast „{{vote}}\" gewählt. Warten auf {{count}} {{players}} …",
+      "playerOne": "weiteren Spieler",
+      "playerOther": "weitere Spieler",
+      "started": "Nächste Runde startet. (Tisch wechselt automatisch zum neuen Game.)",
+      "declined": "Nicht alle wollen weiterspielen. Der Tisch geht zurück in die Warte-Phase."
+    },
+    "voteFailed": "Vote fehlgeschlagen."
   },
 
   "language": {

@@ -17,6 +17,7 @@
  */
 import { useMutation } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Trans, useTranslation } from "react-i18next";
 
 import type { SeatView } from "~/features/lobby/types";
 import { api, ApiError } from "~/lib/api";
@@ -49,6 +50,7 @@ export function RematchPanel({
   mySeat,
   nameSeed,
 }: Props) {
+  const { t } = useTranslation();
   const [myVote, setMyVote] = useState<"YES" | "NO" | null>(null);
   const [outcome, setOutcome] = useState<RematchOutcome | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -66,7 +68,7 @@ export function RematchPanel({
       setOutcome(result);
     },
     onError: (err: unknown) => {
-      setError(err instanceof ApiError ? err.message : "Vote fehlgeschlagen.");
+      setError(err instanceof ApiError ? err.message : t("rematch.voteFailed"));
     },
   });
 
@@ -96,14 +98,16 @@ export function RematchPanel({
 
   /** Namens-Auflösung für einen Sitz (Solo: Team-ID == Sitz). */
   function seatLabel(seat: number): string {
-    if (seat === mySeat) return "Du";
+    if (seat === mySeat) return t("game.you");
     const s = seats?.find((x) => x.seat === seat);
-    return s ? seatDisplayName(s, nameSeed, `Sitz ${seat + 1}`) : `Sitz ${seat + 1}`;
+    return s
+      ? seatDisplayName(s, nameSeed, t("game.seatFallback", { n: seat + 1 }))
+      : t("game.seatFallback", { n: seat + 1 });
   }
 
   return (
     <section className="space-y-4 rounded-lg border border-jass-paperEdge bg-jass-cream p-4 shadow-sm">
-      <h2 className="text-xl font-bold text-jass-ink">Spiel beendet</h2>
+      <h2 className="text-xl font-bold text-jass-ink">{t("rematch.title")}</h2>
 
       {finalScore && <FinalScoreView score={finalScore} isSolo={isSolo} seatLabel={seatLabel} />}
 
@@ -118,7 +122,7 @@ export function RematchPanel({
 
       {!myVote ? (
         <div className="space-y-2">
-          <p className="text-jass-ink">Bereit für die nächste Runde?</p>
+          <p className="text-jass-ink">{t("rematch.ready")}</p>
           <div className="flex flex-wrap items-center gap-3">
             <button
               type="button"
@@ -126,7 +130,7 @@ export function RematchPanel({
               disabled={voteMut.isPending}
               className="btn-jass-primary text-base"
             >
-              ▶ Weiter
+              {t("rematch.continue")}
             </button>
             <button
               type="button"
@@ -134,10 +138,14 @@ export function RematchPanel({
               disabled={voteMut.isPending}
               className="text-sm text-jass-inkSoft underline hover:text-jass-ink disabled:opacity-50"
             >
-              Aufhören
+              {t("rematch.stop")}
             </button>
             <span className="ml-auto text-xs text-jass-inkSoft tabular-nums">
-              Auto-Start in <strong>{secondsLeft}</strong> s
+              <Trans
+                i18nKey="rematch.autoStart"
+                values={{ seconds: secondsLeft }}
+                components={{ strong: <strong /> }}
+              />
             </span>
           </div>
         </div>
@@ -163,6 +171,7 @@ function FinalScoreView({
   isSolo: boolean;
   seatLabel: (seat: number) => string;
 }) {
+  const { t } = useTranslation();
   const pts = score.team_card_points;
   const sum = pts.reduce((a, b) => a + b, 0);
   // Sieger = Konto mit den meisten Punkten (eindeutig oder null bei Gleichstand).
@@ -175,43 +184,55 @@ function FinalScoreView({
       <div className="flex flex-wrap gap-x-4 gap-y-1 font-medium text-jass-ink">
         {pts.map((p, i) => (
           <span key={i} className={winner === i ? "font-bold" : undefined}>
-            {isSolo ? seatLabel(i) : i === 0 ? "Team 0 (Sitz 1+3)" : "Team 1 (Sitz 2+4)"}:{" "}
+            {isSolo ? seatLabel(i) : i === 0 ? t("rematch.teamKreuz0") : t("rematch.teamKreuz1")}:{" "}
             <strong>{p}</strong>
           </span>
         ))}
       </div>
       <p className="text-sm text-jass-inkSoft">
-        Summe: {sum}{" "}
-        {score.matsch_team !== null && (
-          <>· Matsch für {isSolo ? seatLabel(score.matsch_team) : `Team ${score.matsch_team}`}!</>
-        )}
-        {winner !== null && <> · Sieg: {isSolo ? seatLabel(winner) : `Team ${winner}`}</>}
+        {t("rematch.sum", { sum })}{" "}
+        {score.matsch_team !== null &&
+          t("rematch.matschFor", {
+            name: isSolo
+              ? seatLabel(score.matsch_team)
+              : t("rematch.team", { team: score.matsch_team }),
+          })}
+        {winner !== null &&
+          t("rematch.winFor", {
+            name: isSolo ? seatLabel(winner) : t("rematch.team", { team: winner }),
+          })}
       </p>
     </div>
   );
 }
 
 function RematchStatus({ vote, outcome }: { vote: "YES" | "NO"; outcome: RematchOutcome | null }) {
+  const { t } = useTranslation();
   if (!outcome) return null;
   if (outcome.kind === "pending") {
     return (
       <div className="rounded bg-jass-paper border border-jass-paperEdge px-3 py-2 text-sm text-jass-ink">
-        Du hast „{vote === "YES" ? "weiter" : "aufhören"}" gewählt. Warten auf{" "}
-        {outcome.remainingVotes}{" "}
-        {outcome.remainingVotes === 1 ? "weiteren Spieler" : "weitere Spieler"} …
+        {t("rematch.status.pending", {
+          vote: vote === "YES" ? t("rematch.status.votedYes") : t("rematch.status.votedNo"),
+          count: outcome.remainingVotes,
+          players:
+            outcome.remainingVotes === 1
+              ? t("rematch.status.playerOne")
+              : t("rematch.status.playerOther"),
+        })}
       </div>
     );
   }
   if (outcome.kind === "rematch-started") {
     return (
       <div className="rounded bg-emerald-50 border border-emerald-200 px-3 py-2 text-sm text-emerald-900">
-        Nächste Runde startet. (Tisch wechselt automatisch zum neuen Game.)
+        {t("rematch.status.started")}
       </div>
     );
   }
   return (
     <div className="rounded bg-violet-50 border border-violet-200 px-3 py-2 text-sm text-violet-900">
-      Nicht alle wollen weiterspielen. Der Tisch geht zurück in die Warte-Phase.
+      {t("rematch.status.declined")}
     </div>
   );
 }
@@ -231,23 +252,30 @@ function MatchProgress({
   isSolo: boolean;
   seatLabel: (seat: number) => string;
 }) {
+  const { t } = useTranslation();
   const max = Math.max(...scores, 0);
   const remaining = Math.max(0, target - max);
   return (
     <div className="rounded border border-jass-paperEdge bg-jass-paper px-4 py-2 text-sm">
       <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-        <span className="text-xs uppercase tracking-wide text-jass-inkSoft">Partie-Stand</span>
+        <span className="text-xs uppercase tracking-wide text-jass-inkSoft">
+          {t("rematch.matchStanding")}
+        </span>
         {scores.map((s, i) => (
           <span
             key={i}
             className={s === max && max > 0 ? "font-bold text-jass-ink" : "text-jass-inkSoft"}
           >
-            {isSolo ? seatLabel(i) : `Team ${i}`}: {s}
+            {isSolo ? seatLabel(i) : t("rematch.team", { team: i })}: {s}
           </span>
         ))}
         <span className="ml-auto text-xs text-jass-inkSoft">
-          Ziel: <strong className="text-jass-ink">{target}</strong>
-          {remaining > 0 && <> · noch {remaining} Punkte</>}
+          <Trans
+            i18nKey="rematch.target"
+            values={{ target }}
+            components={{ strong: <strong className="text-jass-ink" /> }}
+          />
+          {remaining > 0 && t("rematch.remainingPoints", { remaining })}
         </span>
       </div>
     </div>

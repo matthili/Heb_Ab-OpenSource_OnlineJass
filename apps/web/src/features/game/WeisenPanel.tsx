@@ -21,6 +21,8 @@
  * normale Schelle-Sechs.
  */
 import { useMemo } from "react";
+import type { TFunction } from "i18next";
+import { Trans, useTranslation } from "react-i18next";
 import type { Card } from "@jass/engine";
 import { RANK_ID, SUIT_ID, cardsEqual, validateDeclaration } from "@jass/engine";
 
@@ -53,6 +55,7 @@ interface Props {
 }
 
 export function WeisenPanel(props: Props) {
+  const { t } = useTranslation();
   const {
     weisen,
     hand,
@@ -82,9 +85,9 @@ export function WeisenPanel(props: Props) {
         }}
         disabled={weisenPending}
         className="w-full rounded-lg bg-jass-yellow border-2 border-jass-yellowDark px-4 py-3 text-jass-ink font-bold text-lg shadow-md hover:bg-jass-yellow/90 disabled:opacity-50 jass-your-turn-glow"
-        aria-label="Weise ansagen"
+        aria-label={t("game.weisen.announceAria")}
       >
-        ✋ Weise ansagen
+        {t("game.weisen.announce")}
       </button>
     );
   }
@@ -118,17 +121,15 @@ export function WeisenPanel(props: Props) {
   if (weisen.myStatus === "SUBMITTED" && weisen.myDeclarations.length > 0) {
     return (
       <div className="rounded border border-jass-paperEdge bg-jass-paper px-3 py-2 text-sm text-jass-ink">
-        <div className="font-semibold mb-1">Deine Weise sind angesagt:</div>
+        <div className="font-semibold mb-1">{t("game.weisen.yoursAnnounced")}</div>
         <ul className="space-y-0.5">
           {weisen.myDeclarations.map((d, i) => (
             <li key={i}>
-              <DeclarationLabel d={d} />
+              <DeclarationLabel d={d} t={t} />
             </li>
           ))}
         </ul>
-        <p className="text-xs text-jass-inkSoft mt-1">
-          Punkte werden nach dem ersten Spiel verteilt (höchstes Weis gewinnt fürs ganze Team).
-        </p>
+        <p className="text-xs text-jass-inkSoft mt-1">{t("game.weisen.pointsAfterFirst")}</p>
       </div>
     );
   }
@@ -153,6 +154,7 @@ interface SelectionProps {
 }
 
 function SelectionPanel(props: SelectionProps) {
+  const { t } = useTranslation();
   const {
     hand,
     weisenPending,
@@ -178,21 +180,21 @@ function SelectionPanel(props: SelectionProps) {
   const validation: Validation | null = useMemo(() => {
     if (currentGroup.length === 0) return null;
     if (currentGroup.length < 3) {
-      return { ok: false, reason: "Mindestens 3 Karten auswählen" };
+      return { ok: false, reason: t("game.weisen.reason.minThree") };
     }
     const result = validateDeclaration(currentGroup, remainingHand);
     if ("invalid" in result) {
       return {
         ok: false,
-        reason: invalidReasonLabel(result.reason),
+        reason: invalidReasonLabel(result.reason, t),
       };
     }
     return {
       ok: true,
       points: result.points,
-      kindLabel: kindLabel(result.kind),
+      kindLabel: kindLabel(result.kind, t),
     };
-  }, [currentGroup, remainingHand]);
+  }, [currentGroup, remainingHand, t]);
 
   const totalPoints =
     finalizedGroups.reduce((sum, g) => {
@@ -229,19 +231,21 @@ function SelectionPanel(props: SelectionProps) {
     <div
       className="rounded-lg border-2 border-jass-yellowDark bg-jass-cream p-3 space-y-3 shadow-md"
       role="region"
-      aria-label="Weise auswählen"
+      aria-label={t("game.weisen.selectAria")}
     >
       <div className="flex items-baseline justify-between">
-        <h3 className="font-bold text-jass-ink">Weise auswählen</h3>
+        <h3 className="font-bold text-jass-ink">{t("game.weisen.selectTitle")}</h3>
         <span className="text-sm text-jass-inkSoft">
-          Karten in der Hand antippen • {totalPoints} Pkt
+          {t("game.weisen.tapCardsPoints", { points: totalPoints })}
         </span>
       </div>
 
       {/* Bereits gesammelte Gruppen */}
       {finalizedGroups.length > 0 && (
         <div className="space-y-1">
-          <div className="text-xs font-semibold text-jass-inkSoft uppercase">Vorgemerkt</div>
+          <div className="text-xs font-semibold text-jass-inkSoft uppercase">
+            {t("game.weisen.preselected")}
+          </div>
           <ul className="space-y-1">
             {finalizedGroups.map((g, i) => {
               const r = validateDeclaration(g, hand);
@@ -252,14 +256,17 @@ function SelectionPanel(props: SelectionProps) {
                   className="flex items-center justify-between rounded bg-jass-paper px-2 py-1 text-sm"
                 >
                   <span>
-                    {kindLabel(r.kind)} — {r.points} Pkt
+                    {t("game.weisen.groupSummary", {
+                      kind: kindLabel(r.kind, t),
+                      points: r.points,
+                    })}
                   </span>
                   <button
                     type="button"
                     className="text-xs text-jass-red hover:underline"
                     onClick={() => removeFinalized(i)}
                   >
-                    entfernen
+                    {t("game.weisen.remove")}
                   </button>
                 </li>
               );
@@ -271,19 +278,26 @@ function SelectionPanel(props: SelectionProps) {
       {/* Aktuelle Auswahl */}
       <div className="text-sm">
         {currentGroup.length === 0 ? (
-          <p className="text-jass-inkSoft italic">
-            Tippe in deiner Hand die Karten an, die du als Weis ansagen willst.
-          </p>
+          <p className="text-jass-inkSoft italic">{t("game.weisen.tapHint")}</p>
         ) : (
           <p>
-            <strong>{currentGroup.length}</strong> Karte
-            {currentGroup.length === 1 ? "" : "n"} ausgewählt
+            <Trans
+              i18nKey="game.weisen.selectedCount"
+              count={currentGroup.length}
+              values={{ count: currentGroup.length }}
+              components={{ strong: <strong /> }}
+            />
             {validation?.ok ? (
               <span className="text-jass-green ml-1">
-                ✓ {validation.kindLabel} ({validation.points} Pkt)
+                {t("game.weisen.validOk", {
+                  kind: validation.kindLabel,
+                  points: validation.points,
+                })}
               </span>
             ) : validation ? (
-              <span className="text-jass-red ml-1">— {validation.reason}</span>
+              <span className="text-jass-red ml-1">
+                {t("game.weisen.validReason", { reason: validation.reason })}
+              </span>
             ) : null}
           </p>
         )}
@@ -297,7 +311,7 @@ function SelectionPanel(props: SelectionProps) {
           disabled={!validation?.ok || weisenPending}
           className="rounded bg-jass-paper border border-jass-paperEdge px-3 py-1.5 text-sm font-semibold text-jass-ink hover:bg-jass-paper/70 disabled:opacity-40 disabled:cursor-not-allowed"
         >
-          + weiterer Weis
+          {t("game.weisen.addAnother")}
         </button>
         <button
           type="button"
@@ -305,7 +319,7 @@ function SelectionPanel(props: SelectionProps) {
           disabled={weisenPending || (finalizedGroups.length === 0 && !validation?.ok)}
           className="rounded bg-jass-yellow border-2 border-jass-yellowDark px-3 py-1.5 text-sm font-bold text-jass-ink hover:bg-jass-yellow/90 disabled:opacity-40 disabled:cursor-not-allowed"
         >
-          Weise ansagen
+          {t("game.weisen.submit")}
         </button>
         <button
           type="button"
@@ -313,7 +327,7 @@ function SelectionPanel(props: SelectionProps) {
           disabled={weisenPending}
           className="rounded bg-transparent border border-jass-paperEdge px-3 py-1.5 text-sm text-jass-inkSoft hover:bg-jass-paper disabled:opacity-40"
         >
-          Doch nix
+          {t("game.weisen.discard")}
         </button>
       </div>
     </div>
@@ -341,34 +355,36 @@ export function toggleCardInGroup(group: readonly Card[], card: Card): readonly 
 // Label-Helpers (auch vom Result-Overlay genutzt)
 // ─────────────────────────────────────────────────────────────────────
 
-export function kindLabel(kind: string): string {
-  if (kind === "FOUR_OF_A_KIND") return "Vier Gleiche";
+export function kindLabel(kind: string, t: TFunction): string {
+  if (kind === "FOUR_OF_A_KIND") return t("game.weisen.kindFourOfAKind");
   const m = /^SEQUENCE_(\d+)$/.exec(kind);
-  if (m) return `${m[1]}-Blatt`;
+  if (m) return t("game.weisen.kindSequence", { n: m[1] });
   return kind;
 }
 
-function invalidReasonLabel(reason: string): string {
+function invalidReasonLabel(reason: string, t: TFunction): string {
   switch (reason) {
     case "TOO_FEW_CARDS":
-      return "Mindestens 3 Karten";
+      return t("game.weisen.reason.tooFew");
     case "TOO_MANY_CARDS":
-      return "Höchstens 9 Karten";
+      return t("game.weisen.reason.tooMany");
     case "DUPLICATE_CARDS":
-      return "Karten doppelt ausgewählt";
+      return t("game.weisen.reason.duplicate");
     case "CARD_NOT_IN_HAND":
-      return "Karte nicht in deiner Hand";
+      return t("game.weisen.reason.notInHand");
     case "NOT_A_VALID_PATTERN":
-      return "Kein gültiger Weis (weder Sequenz noch 4-gleiche)";
+      return t("game.weisen.reason.noPattern");
     default:
-      return "Ungültiger Weis";
+      return t("game.weisen.reason.invalid");
   }
 }
 
-function DeclarationLabel({ d }: { d: WeisDeclarationView }) {
+function DeclarationLabel({ d, t }: { d: WeisDeclarationView; t: TFunction }) {
   return (
-    <span>
-      <strong>{kindLabel(d.kind)}</strong> — {d.points} Pkt
-    </span>
+    <Trans
+      i18nKey="game.weisen.declarationLabel"
+      values={{ kind: kindLabel(d.kind, t), points: d.points }}
+      components={{ strong: <strong /> }}
+    />
   );
 }

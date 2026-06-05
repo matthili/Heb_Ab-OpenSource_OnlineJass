@@ -17,6 +17,8 @@
  * hängt am `dismissedFor`-Set, das in `useWeisenResultDismiss` lebt.
  */
 import { useEffect, useState } from "react";
+import type { TFunction } from "i18next";
+import { Trans, useTranslation } from "react-i18next";
 
 import type { SeatView } from "~/features/lobby/types";
 import { seatDisplayName } from "./aiNames";
@@ -62,6 +64,7 @@ interface Props {
 }
 
 export function WeisenResultOverlay({ gameId, weisen, seats, mySeat, nameSeed }: Props) {
+  const { t } = useTranslation();
   const [dismissed, setDismissed] = useState(false);
 
   // Wenn die gameId wechselt (z.B. nach Rematch), Dismiss-State zurücksetzen.
@@ -78,7 +81,7 @@ export function WeisenResultOverlay({ gameId, weisen, seats, mySeat, nameSeed }:
 
   const seatNames = new Map<number, string>();
   for (const s of seats) {
-    seatNames.set(s.seat, seatDisplayName(s, nameSeed, `Sitz ${s.seat}`));
+    seatNames.set(s.seat, seatDisplayName(s, nameSeed, t("game.seatFallback", { n: s.seat })));
   }
 
   return (
@@ -91,15 +94,21 @@ export function WeisenResultOverlay({ gameId, weisen, seats, mySeat, nameSeed }:
       <div className="max-w-xl w-full my-auto rounded-lg bg-jass-paper border border-jass-paperEdge shadow-xl p-5 space-y-4">
         <header className="text-center">
           <h2 id="weisen-result-title" className="text-xl font-bold text-jass-ink">
-            Auswertung der Weise
+            {t("game.weisen.result.title")}
           </h2>
           {winningTeam !== null ? (
             <p className="mt-1 text-jass-inkSoft">
-              <strong className="text-jass-ink">Team {winningTeam} gewinnt</strong> und kassiert{" "}
-              <span className="font-bold text-jass-green">{points} Pkt</span>.
+              <Trans
+                i18nKey="game.weisen.result.teamWins"
+                values={{ team: winningTeam, points }}
+                components={{
+                  strong: <strong className="text-jass-ink" />,
+                  points: <span className="font-bold text-jass-green" />,
+                }}
+              />
             </p>
           ) : (
-            <p className="mt-1 text-jass-inkSoft">Keine Weise gemeldet.</p>
+            <p className="mt-1 text-jass-inkSoft">{t("game.weisen.result.noneReported")}</p>
           )}
         </header>
 
@@ -120,21 +129,25 @@ export function WeisenResultOverlay({ gameId, weisen, seats, mySeat, nameSeed }:
               >
                 <div className="flex items-baseline justify-between mb-2">
                   <div className="font-semibold text-jass-ink">
-                    {seatNames.get(seat) ?? `Sitz ${seat}`}
+                    {seatNames.get(seat) ?? t("game.seatFallback", { n: seat })}
                     {seat === mySeat && (
-                      <span className="ml-1 text-xs text-jass-inkSoft">(du)</span>
+                      <span className="ml-1 text-xs text-jass-inkSoft">
+                        {t("game.weisen.result.you")}
+                      </span>
                     )}
                   </div>
                   <div className="text-xs text-jass-inkSoft">
-                    Team {teamOfSeat}
+                    {t("game.weisen.result.team", { team: teamOfSeat })}
                     {isWinner && (
-                      <span className="ml-2 text-jass-yellowDark font-bold">★ Sieger</span>
+                      <span className="ml-2 text-jass-yellowDark font-bold">
+                        {t("game.weisen.result.winner")}
+                      </span>
                     )}
                   </div>
                 </div>
                 <ul className="space-y-2">
                   {declarations.map((d, i) => (
-                    <DeclarationRow key={i} d={d} />
+                    <DeclarationRow key={i} d={d} t={t} />
                   ))}
                 </ul>
               </li>
@@ -148,7 +161,7 @@ export function WeisenResultOverlay({ gameId, weisen, seats, mySeat, nameSeed }:
             onClick={() => setDismissed(true)}
             className="rounded bg-jass-yellow border-2 border-jass-yellowDark px-4 py-2 text-sm font-bold text-jass-ink hover:bg-jass-yellow/90"
           >
-            Weiter spielen
+            {t("game.weisen.result.continue")}
           </button>
         </div>
       </div>
@@ -156,7 +169,7 @@ export function WeisenResultOverlay({ gameId, weisen, seats, mySeat, nameSeed }:
   );
 }
 
-function DeclarationRow({ d }: { d: WeisDeclarationView }) {
+function DeclarationRow({ d, t }: { d: WeisDeclarationView; t: TFunction }) {
   return (
     <div className="flex items-center gap-3">
       <div className="flex flex-wrap gap-1">
@@ -175,8 +188,8 @@ function DeclarationRow({ d }: { d: WeisDeclarationView }) {
         ))}
       </div>
       <div className="text-sm">
-        <div className="font-semibold text-jass-ink">{kindLabel(d.kind)}</div>
-        <div className="text-jass-inkSoft">{d.points} Pkt</div>
+        <div className="font-semibold text-jass-ink">{kindLabel(d.kind, t)}</div>
+        <div className="text-jass-inkSoft">{t("game.weisen.points", { points: d.points })}</div>
       </div>
     </div>
   );

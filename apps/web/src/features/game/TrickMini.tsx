@@ -19,6 +19,7 @@
  */
 import type { Card, GameState } from "@jass/engine";
 import { trickWinner } from "@jass/engine";
+import { useTranslation } from "react-i18next";
 
 import { Card as CardView } from "@jass/ui";
 
@@ -44,6 +45,7 @@ export function TrickMini({
   which,
   hideBecauseLingering = false,
 }: Props) {
+  const { t } = useTranslation();
   const completed = state.completed_tricks;
   if (completed.length === 0) return null;
 
@@ -61,19 +63,21 @@ export function TrickMini({
 
   const winnerIdx = trickWinner(trick.cards as Card[], state.variant);
   const winnerSeat = (trick.starter + winnerIdx) % 4;
-  const winnerName = seatNames.get(winnerSeat) ?? `Sitz ${winnerSeat}`;
+  const winnerName = seatNames.get(winnerSeat) ?? t("game.seatFallback", { n: winnerSeat });
   const isMyWin = winnerSeat === mySeat;
-  const label = which === "first" ? "Erster Stich" : "Letzter Stich";
+  const label = which === "first" ? t("game.trickMini.first") : t("game.trickMini.last");
 
   return (
     <aside
       className="rounded-lg bg-stone-100/90 backdrop-blur p-2 shadow-md border border-stone-200 max-w-[16rem]"
-      aria-label={`${label} gewonnen von ${winnerName}`}
+      aria-label={t("game.trickMini.wonByAria", { label, name: winnerName })}
     >
       <div className="text-[10px] uppercase tracking-wide text-stone-500 mb-1 flex items-center justify-between gap-2">
         <span>{label}</span>
         <span className={isMyWin ? "text-emerald-700 font-semibold" : "text-stone-700"}>
-          {isMyWin ? "→ du" : `→ ${winnerName}`}
+          {isMyWin
+            ? t("game.trickMini.wonByYou")
+            : t("game.trickMini.wonByName", { name: winnerName })}
         </span>
       </div>
       <ol className="flex items-center gap-0.5">

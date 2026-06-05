@@ -333,7 +333,130 @@
     "trick": "Trick {{n}} / 9",
     "scoreOwn": "Your team: <strong>{{score}}</strong>",
     "scoreOpp": "Opponents: <strong>{{score}}</strong>",
-    "emptyHand": "No more cards in hand."
+    "emptyHand": "No more cards in hand.",
+    "seatFallback": "Seat {{n}}",
+    "you": "You",
+    "youSeat": "You (seat {{n}})",
+    "playingArea": "Playing area",
+    "stoeck": {
+      "call": "★ Call Peers (Stöcke) (+20)"
+    },
+    "announce": {
+      "running": "Trump announcement in progress",
+      "picking": "<strong>{{name}}</strong> is choosing the mode…",
+      "pushedFrom": "{{name}} passed (to partner).",
+      "title": "You have to announce.",
+      "pushedToYou": "{{name}} passed to you — you have to choose.",
+      "chooseOrPush": "Pick a mode, or pass to your partner.",
+      "variant": "Mode",
+      "mode": {
+        "TRUMPF": "Trump",
+        "GUMPF": "Gumpf",
+        "OBEN": "Top-down (Bock)",
+        "UNTEN": "Bottom-up (Geiss)",
+        "SLALOM": "Slalom"
+      },
+      "trumpSuit": "Trump suit",
+      "suit": {
+        "EICHEL": "Acorns",
+        "SCHELLE": "Bells",
+        "HERZ": "Hearts",
+        "LAUB": "Leaves"
+      },
+      "slalomStartsWith": "Slalom starts with",
+      "slalomOben": "Top-down → Bottom-up → Top-down …",
+      "slalomUnten": "Bottom-up → Top-down → Bottom-up …",
+      "push": "Pass to partner",
+      "sending": "Sending…",
+      "confirm": "Confirm announcement"
+    },
+    "deal": {
+      "mixing": "Shuffling the cards …",
+      "sliding": "The deck slides to the cutter …",
+      "cutNow": "Cut the deck! ✋",
+      "waitingCut": "Waiting for the cut …",
+      "cutDone": "Cut!",
+      "dealing": "Dealing the cards …",
+      "weli": "The WELI! ✨"
+    },
+    "weli": {
+      "youHaveWeli": "✨ You hold the WELI — you announce!"
+    },
+    "trickMini": {
+      "first": "First trick",
+      "last": "Last trick",
+      "wonByYou": "→ you",
+      "wonByName": "→ {{name}}",
+      "wonByAria": "{{label}} won by {{name}}"
+    },
+    "weisen": {
+      "announce": "✋ Make a declaration",
+      "announceAria": "Make a declaration",
+      "yoursAnnounced": "Your declarations are in:",
+      "pointsAfterFirst": "Points are awarded after the first game (the highest declaration wins for the whole team).",
+      "selectAria": "Select declaration",
+      "selectTitle": "Select declaration",
+      "tapCardsPoints": "Tap cards in your hand • {{points}} pts",
+      "preselected": "Pending",
+      "groupSummary": "{{kind}} — {{points}} pts",
+      "points": "{{points}} pts",
+      "remove": "remove",
+      "declarationLabel": "<strong>{{kind}}</strong> — {{points}} pts",
+      "tapHint": "Tap the cards in your hand that you want to declare as a Weis.",
+      "selectedCount_one": "<strong>{{count}}</strong> card selected",
+      "selectedCount_other": "<strong>{{count}}</strong> cards selected",
+      "validOk": "✓ {{kind}} ({{points}} pts)",
+      "validReason": "— {{reason}}",
+      "addAnother": "+ another declaration",
+      "submit": "Make declaration",
+      "discard": "Never mind",
+      "kindFourOfAKind": "Four of a kind",
+      "kindSequence": "{{n}}-card run",
+      "reason": {
+        "minThree": "Select at least 3 cards",
+        "tooFew": "At least 3 cards",
+        "tooMany": "At most 9 cards",
+        "duplicate": "Cards selected twice",
+        "notInHand": "Card not in your hand",
+        "noPattern": "Not a valid declaration (neither a sequence nor four of a kind)",
+        "invalid": "Invalid declaration"
+      },
+      "result": {
+        "title": "Declarations (Weisen) result",
+        "teamWins": "<strong>Team {{team}} wins</strong> and takes <points>{{points}} pts</points>.",
+        "noneReported": "No declarations reported.",
+        "you": "(you)",
+        "team": "Team {{team}}",
+        "winner": "★ Winner",
+        "continue": "Continue playing"
+      }
+    },
+    "matsch": {
+      "banner": "SWEEP!",
+      "wonByYou": "All 9 tricks — hats off!",
+      "wonByOther": "{{name}} took all 9 tricks.",
+      "clickToClose": "(click to close)"
+    },
+    "disconnect": {
+      "closedTitle": "Table was dissolved",
+      "closedDefault": "A majority voted to end the game.",
+      "toLobby": "OK — back to lobby",
+      "continuedTitle": "✔ All players reconnected",
+      "lostTitle": "Connection lost",
+      "lostBody": "<strong>{{names}}</strong> lost the connection to the server.",
+      "grace1": "We'll wait 2 minutes for a reconnect. If that doesn't work, a short vote begins.",
+      "grace2": "1 more minute of waiting — maybe they'll be right back.",
+      "vote2Prompt": "Second vote — how to continue?",
+      "votePrompt": "How should we continue?",
+      "voteStop": "End",
+      "voteStopSub": "Lobby",
+      "voteWait": "Wait 1 min",
+      "voteWaitSubUnanimous": "(unanimity required)",
+      "voteWaitSubReconnect": "for a reconnect",
+      "voteFill": "Continue with AI",
+      "voteFillSub": "play to the end",
+      "noVoteYet": "no vote yet"
+    }
   },
 
   "rematch": {
@@ -344,7 +467,30 @@
     "waitingFor_one": "Waiting for {{count}} more player…",
     "waitingFor_other": "Waiting for {{count}} more players…",
     "started": "Everyone in — new round starts. (Table switches automatically to the new game.)",
-    "declined": "Not everyone wants to continue. The table goes back to the waiting phase."
+    "declined": "Not everyone wants to continue. The table goes back to the waiting phase.",
+    "ready": "Ready for the next round?",
+    "continue": "▶ Continue",
+    "stop": "Quit",
+    "autoStart": "Auto-start in <strong>{{seconds}}</strong> s",
+    "teamKreuz0": "Team 0 (seats 1+3)",
+    "teamKreuz1": "Team 1 (seats 2+4)",
+    "sum": "Total: {{sum}}",
+    "matschFor": " · Sweep (Matsch) for {{name}}!",
+    "winFor": " · Win: {{name}}",
+    "team": "Team {{team}}",
+    "matchStanding": "Match standing",
+    "target": "Target: <strong>{{target}}</strong>",
+    "remainingPoints": " · {{remaining}} points to go",
+    "status": {
+      "votedYes": "continue",
+      "votedNo": "quit",
+      "pending": "You chose “{{vote}}”. Waiting for {{count}} {{players}} …",
+      "playerOne": "more player",
+      "playerOther": "more players",
+      "started": "Next round starts. (Table switches automatically to the new game.)",
+      "declined": "Not everyone wants to continue. The table goes back to the waiting phase."
+    },
+    "voteFailed": "Vote failed."
   },
 
   "language": {
