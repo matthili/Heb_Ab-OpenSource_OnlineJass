@@ -41,6 +41,19 @@ import {
   SUITS,
 } from "./types.js";
 
+/**
+ * Effektive Variante für einen Stich. Bei **Slalom** alterniert der Modus pro
+ * Stich, beginnend mit dem angesagten Startmodus (OBEN oder UNTEN): Stich 0 =
+ * Start, Stich 1 = geflippt, Stich 2 = Start, … Ohne Slalom ist es immer die
+ * angesagte Variante. (4-Spieler-Pendant zu `bodenseeEffectiveVariant`.)
+ */
+export function effectiveVariant(ann: Announcement, trickIdx: number): Variant {
+  if (!ann.slalom) return ann.variant;
+  const start = ann.variant.mode;
+  const flipped = start === "OBEN" ? "UNTEN" : "OBEN";
+  return { mode: trickIdx % 2 === 0 ? start : flipped };
+}
+
 // ---------------------------------------------------------------------
 // RoundState — Server-vollständige Sicht
 // ---------------------------------------------------------------------
@@ -336,6 +349,13 @@ export function applyMove(state: RoundState, move: Move): RoundState {
     ...state,
     hands: newHands,
     trick_idx: state.trick_idx + 1,
+    // Bei Slalom alterniert die effektive Variante pro Stich — den nächsten
+    // Stich auf die (ggf. geflippte) Variante setzen, sonst bliebe der
+    // Startmodus stehen und der Stich würde falsch ausgewertet (Gewinner +
+    // Punkte). Ohne Slalom unverändert.
+    variant: state.announcement.slalom
+      ? effectiveVariant(state.announcement, state.trick_idx + 1)
+      : state.variant,
     current_trick_starter: winnerSeat,
     current_trick_cards: [],
     completed_tricks: [...state.completed_tricks, completed],
