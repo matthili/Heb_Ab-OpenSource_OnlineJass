@@ -26,6 +26,8 @@ interface Props {
   movePending: boolean;
   announcePending: boolean;
   error: string | null;
+  /** Seed für stabile KI-Namen (Tisch-ID, konstant über die Partie). */
+  nameSeed: string;
   onPlayCard: (card: CardModel) => void;
   onAnnounce: (announcement: BodenseeAnnouncement) => void;
 }
@@ -58,13 +60,14 @@ export function BodenseeBoard({
   movePending,
   announcePending,
   error,
+  nameSeed,
   onPlayCard,
   onAnnounce,
 }: Props) {
   const oppSeat = 1 - view.mySeat;
   const seatName = (seat: number): string => {
     const s = seats.find((x) => x.seat === seat);
-    return s ? seatDisplayName(s, view.gameId, `Sitz ${seat + 1}`) : `Sitz ${seat + 1}`;
+    return s ? seatDisplayName(s, nameSeed, `Sitz ${seat + 1}`) : `Sitz ${seat + 1}`;
   };
 
   const isLegal = (c: CardModel): boolean => view.legalActionMask[cardIndex(c)] === 1;

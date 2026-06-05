@@ -57,9 +57,11 @@ interface Props {
   seats: readonly SeatView[];
   /** Eigene Sitz-Nummer — der Sitz wird mit „du" markiert. */
   mySeat: number;
+  /** Seed für stabile KI-Namen (Tisch-ID). */
+  nameSeed: string;
 }
 
-export function WeisenResultOverlay({ gameId, weisen, seats, mySeat }: Props) {
+export function WeisenResultOverlay({ gameId, weisen, seats, mySeat, nameSeed }: Props) {
   const [dismissed, setDismissed] = useState(false);
 
   // Wenn die gameId wechselt (z.B. nach Rematch), Dismiss-State zurücksetzen.
@@ -76,7 +78,7 @@ export function WeisenResultOverlay({ gameId, weisen, seats, mySeat }: Props) {
 
   const seatNames = new Map<number, string>();
   for (const s of seats) {
-    seatNames.set(s.seat, seatDisplayName(s, gameId, `Sitz ${s.seat}`));
+    seatNames.set(s.seat, seatDisplayName(s, nameSeed, `Sitz ${s.seat}`));
   }
 
   return (

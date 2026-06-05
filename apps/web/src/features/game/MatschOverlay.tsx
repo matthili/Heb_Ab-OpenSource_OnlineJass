@@ -35,9 +35,11 @@ interface Props {
   teams: readonly number[]; // [0,1,0,1] Kreuz · [0,1,2,3] Solo
   /** Sitze des Tisches — für die Namens-Auflösung im Solo-Modus. */
   seats?: readonly SeatView[];
+  /** Seed für stabile KI-Namen (Tisch-ID). */
+  nameSeed: string;
 }
 
-export function MatschOverlay({ gameId, finalScore, mySeat, teams, seats }: Props) {
+export function MatschOverlay({ gameId, finalScore, mySeat, teams, seats, nameSeed }: Props) {
   const [dismissed, setDismissed] = useState(false);
 
   // Wenn die gameId wechselt (Rematch), Dismiss zurücksetzen.
@@ -84,7 +86,9 @@ export function MatschOverlay({ gameId, finalScore, mySeat, teams, seats }: Prop
   const matschLabel = isSolo
     ? (() => {
         const s = seats?.find((x) => x.seat === matschTeam);
-        return s ? seatDisplayName(s, gameId, `Sitz ${matschTeam + 1}`) : `Sitz ${matschTeam + 1}`;
+        return s
+          ? seatDisplayName(s, nameSeed, `Sitz ${matschTeam + 1}`)
+          : `Sitz ${matschTeam + 1}`;
       })()
     : `Team ${matschTeam}`;
 

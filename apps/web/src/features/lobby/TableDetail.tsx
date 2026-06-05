@@ -114,7 +114,7 @@ export function TableDetail({ tableId }: Props) {
 
       <CumulativeScoreBar table={data} />
 
-      <SeatRow seats={data.seats} seed={data.currentGameId ?? data.id} />
+      <SeatRow seats={data.seats} nameSeed={data.id} />
 
       {data.currentGameId &&
         (data.status === "IN_GAME" ||
@@ -126,6 +126,7 @@ export function TableDetail({ tableId }: Props) {
             tableSeats={data.seats}
             isAtTable={amIAtTable}
             tableStatus={data.status}
+            nameSeed={data.id}
           />
         ) : (
           <GameSection
@@ -136,6 +137,7 @@ export function TableDetail({ tableId }: Props) {
             isFirstGame={data.cumulativeScores.every((s) => s === 0)}
             cumulativeScores={data.cumulativeScores}
             targetScore={data.targetScore}
+            nameSeed={data.id}
           />
         ))}
 
@@ -148,7 +150,7 @@ export function TableDetail({ tableId }: Props) {
   );
 }
 
-function SeatRow({ seats, seed }: { seats: TableDetailView["seats"]; seed: string }) {
+function SeatRow({ seats, nameSeed }: { seats: TableDetailView["seats"]; nameSeed: string }) {
   return (
     <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3" aria-label="Sitze">
       {seats.map((s) => (
@@ -164,7 +166,7 @@ function SeatRow({ seats, seed }: { seats: TableDetailView["seats"]; seed: strin
           ) : s.user ? (
             <span className="font-medium">{s.user.name}</span>
           ) : s.aiSeatType ? (
-            <span className="text-stone-600">{aiName(`${seed}:${s.seat}`, s.aiSeatType)}</span>
+            <span className="text-stone-600">{aiName(`${nameSeed}:${s.seat}`, s.aiSeatType)}</span>
           ) : null}
         </li>
       ))}
@@ -207,7 +209,7 @@ function CumulativeScoreBar({ table }: { table: TableDetailView }) {
       const seat = table.seats.find((s) => s.seat === teamIdx);
       if (seat?.user) return seat.user.name;
       if (seat?.aiSeatType) {
-        return aiName(`${table.currentGameId ?? table.id}:${teamIdx}`, seat.aiSeatType);
+        return aiName(`${table.id}:${teamIdx}`, seat.aiSeatType);
       }
       return `Sitz ${teamIdx + 1}`;
     }
@@ -624,6 +626,7 @@ function GameSection({
   isFirstGame,
   cumulativeScores,
   targetScore,
+  nameSeed,
 }: {
   gameId: string;
   tableSeats: TableDetailView["seats"];
@@ -634,6 +637,8 @@ function GameSection({
   /** Kumulative Partie-Stände (2 bei Kreuz, 4 bei Solo) für RematchPanel. */
   cumulativeScores: readonly number[];
   targetScore: number;
+  /** Seed für stabile KI-Namen — die Tisch-ID (über die ganze Partie konstant). */
+  nameSeed: string;
 }) {
   const {
     view,
@@ -676,6 +681,7 @@ function GameSection({
           weisenPending={weisenPending}
           error={error}
           dealCinematicMode={isFirstGame ? "full" : "short"}
+          nameSeed={nameSeed}
           onPlayCard={playCard}
           onAnnounce={announce}
           onAnnounceStoeck={announceStoeck}
@@ -690,9 +696,15 @@ function GameSection({
             targetScore={targetScore}
             seats={tableSeats}
             mySeat={view.mySeat}
+            nameSeed={nameSeed}
           />
         )}
-        <DisconnectOverlay gameId={gameId} seats={tableSeats} mySeat={view.mySeat} />
+        <DisconnectOverlay
+          gameId={gameId}
+          seats={tableSeats}
+          mySeat={view.mySeat}
+          nameSeed={nameSeed}
+        />
       </div>
       <ChatPanel channelKey={`game:${gameId}`} title="Tisch-Chat" />
     </section>
@@ -711,11 +723,14 @@ function BodenseeGameSection({
   tableSeats,
   isAtTable,
   tableStatus,
+  nameSeed,
 }: {
   gameId: string;
   tableSeats: TableDetailView["seats"];
   isAtTable: boolean;
   tableStatus: TableDetailView["status"];
+  /** Seed für stabile KI-Namen — die Tisch-ID. */
+  nameSeed: string;
 }) {
   const { view, error, movePending, announcePending, playCard, announce } = useBodenseeView(
     isAtTable ? gameId : null
@@ -742,6 +757,7 @@ function BodenseeGameSection({
           movePending={movePending}
           announcePending={announcePending}
           error={error}
+          nameSeed={nameSeed}
           onPlayCard={playCard}
           onAnnounce={announce}
         />

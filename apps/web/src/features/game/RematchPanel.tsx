@@ -36,6 +36,8 @@ interface Props {
   seats?: readonly SeatView[];
   /** Eigener Sitz — wird im Solo-Final-Score mit „du" markiert. */
   mySeat?: number;
+  /** Seed für stabile KI-Namen (Tisch-ID). */
+  nameSeed: string;
 }
 
 export function RematchPanel({
@@ -45,6 +47,7 @@ export function RematchPanel({
   targetScore,
   seats,
   mySeat,
+  nameSeed,
 }: Props) {
   const [myVote, setMyVote] = useState<"YES" | "NO" | null>(null);
   const [outcome, setOutcome] = useState<RematchOutcome | null>(null);
@@ -95,7 +98,7 @@ export function RematchPanel({
   function seatLabel(seat: number): string {
     if (seat === mySeat) return "Du";
     const s = seats?.find((x) => x.seat === seat);
-    return s ? seatDisplayName(s, gameId, `Sitz ${seat + 1}`) : `Sitz ${seat + 1}`;
+    return s ? seatDisplayName(s, nameSeed, `Sitz ${seat + 1}`) : `Sitz ${seat + 1}`;
   }
 
   return (

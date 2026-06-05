@@ -32,17 +32,19 @@ interface Props {
   seats: readonly SeatView[];
   /** Mein Sitz, um „mein eigener Vote"-Highlighting zu zeigen. */
   mySeat: number;
+  /** Seed für stabile KI-Namen (Tisch-ID). */
+  nameSeed: string;
 }
 
-export function DisconnectOverlay({ gameId, seats, mySeat }: Props) {
+export function DisconnectOverlay({ gameId, seats, mySeat, nameSeed }: Props) {
   const { state, vote, dismissResult } = useDisconnectState(gameId);
   if (!state) return null;
   return (
     <Overlay
-      gameId={gameId}
       state={state}
       seats={seats}
       mySeat={mySeat}
+      nameSeed={nameSeed}
       onVote={vote}
       onDismiss={dismissResult}
     />
@@ -50,17 +52,17 @@ export function DisconnectOverlay({ gameId, seats, mySeat }: Props) {
 }
 
 function Overlay({
-  gameId,
   state,
   seats,
   mySeat,
+  nameSeed,
   onVote,
   onDismiss,
 }: {
-  gameId: string;
   state: DisconnectState;
   seats: readonly SeatView[];
   mySeat: number;
+  nameSeed: string;
   onVote: (c: VoteChoice) => void;
   onDismiss: () => void;
 }) {
@@ -132,7 +134,13 @@ function Overlay({
         )}
 
         {(state.phase === "VOTE_1" || state.phase === "VOTE_2") && (
-          <VoteBlock gameId={gameId} state={state} seats={seats} mySeat={mySeat} onVote={onVote} />
+          <VoteBlock
+            nameSeed={nameSeed}
+            state={state}
+            seats={seats}
+            mySeat={mySeat}
+            onVote={onVote}
+          />
         )}
       </Card>
     </Backdrop>
@@ -188,13 +196,13 @@ function Countdown({ endsAt }: { endsAt: number }) {
 }
 
 function VoteBlock({
-  gameId,
+  nameSeed,
   state,
   seats,
   mySeat,
   onVote,
 }: {
-  gameId: string;
+  nameSeed: string;
   state: DisconnectState;
   seats: readonly SeatView[];
   mySeat: number;
@@ -236,7 +244,7 @@ function VoteBlock({
           onClick={() => onVote("FILL")}
         />
       </div>
-      <VoteTally gameId={gameId} state={state} seats={seats} mySeat={mySeat} />
+      <VoteTally nameSeed={nameSeed} state={state} seats={seats} mySeat={mySeat} />
     </div>
   );
 }
@@ -286,12 +294,12 @@ function VoteButton({
  * markiert, der eigene Sitz mit „du".
  */
 function VoteTally({
-  gameId,
+  nameSeed,
   state,
   seats,
   mySeat,
 }: {
-  gameId: string;
+  nameSeed: string;
   state: DisconnectState;
   seats: readonly SeatView[];
   mySeat: number;
@@ -316,7 +324,7 @@ function VoteTally({
       {all.map((v) => {
         const seatInfo = seats.find((s) => s.seat === v.seat);
         const name = v.isAi
-          ? aiName(`${gameId}:${v.seat}`, seatInfo?.aiSeatType)
+          ? aiName(`${nameSeed}:${v.seat}`, seatInfo?.aiSeatType)
           : v.seat === mySeat
             ? `Du (Sitz ${v.seat})`
             : (seatInfo?.user?.name ?? `Sitz ${v.seat}`);

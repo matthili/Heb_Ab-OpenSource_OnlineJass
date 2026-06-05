@@ -46,6 +46,8 @@ interface Props {
    * Default `full` für Backwards-Kompat.
    */
   dealCinematicMode?: "full" | "short";
+  /** Seed für stabile KI-Namen (= Tisch-ID, konstant über die ganze Partie). */
+  nameSeed: string;
   onPlayCard: (card: Card) => void;
   onAnnounce: (decision: AnnouncementDecision) => void;
   onAnnounceStoeck: () => void;
@@ -62,13 +64,14 @@ export function GameBoard({
   weisenPending,
   error,
   dealCinematicMode = "full",
+  nameSeed,
   onPlayCard,
   onAnnounce,
   onAnnounceStoeck,
   onClickWeisen,
   onSubmitWeisen,
 }: Props) {
-  const seatNames = buildSeatNames(seats, view.gameId);
+  const seatNames = buildSeatNames(seats, nameSeed);
   // Hook IMMER auf gleichem Render-Level aufrufen — auch im Ansage-Modus,
   // damit React keine "different number of hooks"-Warnung wirft. Der Hook
   // toleriert `undefined` als no-op.
@@ -178,7 +181,7 @@ export function GameBoard({
         {...(variant.trump_suit !== undefined ? { trumpSuit: variant.trump_suit } : {})}
         {...(soloPlayers ? { soloPlayers } : {})}
       />
-      <StatusBanner view={view} seats={seats} />
+      <StatusBanner view={view} seats={seats} nameSeed={nameSeed} />
       {view.stoeckEligible && (
         <button
           type="button"
@@ -239,6 +242,7 @@ export function GameBoard({
         weisen={view.weisen}
         seats={seats}
         mySeat={mySeat}
+        nameSeed={nameSeed}
       />
       <MatschOverlay
         gameId={view.gameId}
@@ -246,12 +250,21 @@ export function GameBoard({
         mySeat={mySeat}
         teams={state.teams}
         seats={seats}
+        nameSeed={nameSeed}
       />
     </div>
   );
 }
 
-function StatusBanner({ view, seats }: { view: PlayerView; seats: readonly SeatView[] }) {
+function StatusBanner({
+  view,
+  seats,
+  nameSeed,
+}: {
+  view: PlayerView;
+  seats: readonly SeatView[];
+  nameSeed: string;
+}) {
   if (view.status === "finished") {
     return (
       <div className="rounded bg-jass-cream border border-jass-paperEdge px-3 py-2 text-jass-ink">
@@ -268,7 +281,7 @@ function StatusBanner({ view, seats }: { view: PlayerView; seats: readonly SeatV
   }
   const playerSeat = seats.find((s) => s.seat === view.whoseTurnSeat);
   const name = playerSeat
-    ? seatDisplayName(playerSeat, view.gameId, `Sitz ${view.whoseTurnSeat + 1}`)
+    ? seatDisplayName(playerSeat, nameSeed, `Sitz ${view.whoseTurnSeat + 1}`)
     : `Sitz ${view.whoseTurnSeat + 1}`;
   return (
     <div className="rounded bg-jass-paper border border-jass-paperEdge px-3 py-2 text-jass-inkSoft">
@@ -393,10 +406,10 @@ function PlayingArea({
   );
 }
 
-function buildSeatNames(seats: readonly SeatView[], gameId: string): ReadonlyMap<number, string> {
+function buildSeatNames(seats: readonly SeatView[], nameSeed: string): ReadonlyMap<number, string> {
   const m = new Map<number, string>();
   for (const s of seats) {
-    m.set(s.seat, seatDisplayName(s, gameId, `Sitz ${s.seat}`));
+    m.set(s.seat, seatDisplayName(s, nameSeed, `Sitz ${s.seat}`));
   }
   return m;
 }
