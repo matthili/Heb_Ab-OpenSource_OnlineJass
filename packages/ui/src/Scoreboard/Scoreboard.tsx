@@ -133,8 +133,8 @@ export function Scoreboard({
           <SoloScoreEntry key={i} label={p.label} points={p.points} isMe={p.isMe} />
         ))}
         {modeText && (
-          <span className="rounded bg-jass-yellow px-2 py-0.5 text-xs text-jass-ink font-medium">
-            {modeText}
+          <span className="jass-mode-glow rounded bg-jass-yellow px-2.5 py-1 text-sm text-jass-ink font-bold ring-1 ring-jass-yellowDark">
+            Modus: {modeText}
           </span>
         )}
         <span className="ml-auto text-jass-inkSoft">Stich {trickIdx + 1} / 9</span>
@@ -194,8 +194,8 @@ function TeamScoreboard({
         )}
       </span>
       {modeText && (
-        <span className="rounded bg-jass-yellow px-2 py-0.5 text-xs text-jass-ink font-medium">
-          {modeText}
+        <span className="jass-mode-glow rounded bg-jass-yellow px-2.5 py-1 text-sm text-jass-ink font-bold ring-1 ring-jass-yellowDark">
+          Modus: {modeText}
         </span>
       )}
       <span className="ml-auto text-jass-inkSoft">Stich {trickIdx + 1} / 9</span>

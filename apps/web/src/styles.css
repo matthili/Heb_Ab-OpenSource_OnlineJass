@@ -276,6 +276,22 @@ h1 {
   animation: jass-your-turn-glow 2s ease-in-out infinite;
 }
 
+/* Hervorhebung der Spielart-/Modus-Anzeige — sanftes goldenes Schimmern,
+ * damit man auf einen Blick sieht, was gerade gespielt wird. */
+@keyframes jass-mode-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(230, 179, 36, 0);
+  }
+  50% {
+    box-shadow: 0 0 10px 1px rgba(230, 179, 36, 0.55);
+  }
+}
+
+.jass-mode-glow {
+  animation: jass-mode-glow 2.2s ease-in-out infinite;
+}
+
 /* Sitz-Highlight für den Spieler, der gerade am Zug ist — etwas
  * unauffälliger als der Banner-Glow, damit man die KIs „atmen" sieht
  * statt sie zu übersehen. */

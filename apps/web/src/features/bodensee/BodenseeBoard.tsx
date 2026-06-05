@@ -80,12 +80,9 @@ export function BodenseeBoard({
         <span className="text-jass-inkSoft">
           Stich <strong className="text-jass-ink">{Math.min(view.trickIdx + 1, 18)}</strong> / 18
         </span>
-        <span className="text-jass-inkSoft">
-          Modus:{" "}
-          <strong className="text-jass-ink">
-            {view.playMode ? MODE_LABEL[view.playMode] : "—"}
-            {view.trumpSuit ? ` ${SUIT_LABEL[view.trumpSuit]}` : ""}
-          </strong>
+        <span className="jass-mode-glow rounded bg-jass-yellow px-2.5 py-1 text-sm font-bold text-jass-ink ring-1 ring-jass-yellowDark">
+          Modus: {view.playMode ? MODE_LABEL[view.playMode] : "—"}
+          {view.trumpSuit ? ` ${SUIT_LABEL[view.trumpSuit]}` : ""}
         </span>
         <span className="text-jass-inkSoft">
           Du <strong className="text-jass-ink">{view.ownScore}</strong> :{" "}
@@ -275,8 +272,9 @@ function TableStackSlot({
   onPlay: (c: CardModel) => void;
 }) {
   if (!stack.visible) {
+    // Leerer Stapel-Platzhalter — gleiche Größe wie eine `md`-Karte (= Handkarte).
     return (
-      <div className="h-24 w-16 rounded-md border border-dashed border-jass-paperEdge bg-jass-cream/50" />
+      <div className="h-32 w-[5.4rem] rounded-md border border-dashed border-jass-paperEdge bg-jass-cream/50" />
     );
   }
   const legal = isLegal(stack.visible);
@@ -284,7 +282,7 @@ function TableStackSlot({
     <div className="relative">
       <Card
         card={stack.visible}
-        size="sm"
+        size="md"
         {...(playable && legal ? { onClick: onPlay } : {})}
         disabled={playable && !legal}
       />
