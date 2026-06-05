@@ -14,6 +14,7 @@
 import { useMutation } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { type FormEvent, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import { api, ApiError } from "~/lib/api";
 
@@ -22,6 +23,7 @@ export const Route = createFileRoute("/_auth/setup")({
 });
 
 function SetupPage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -37,7 +39,7 @@ function SetupPage() {
       void navigate({ to: "/lobby", replace: true });
     },
     onError: (err: unknown) => {
-      setError(err instanceof ApiError ? err.message : "Konnte nicht speichern.");
+      setError(err instanceof ApiError ? err.message : t("setup.saveError"));
     },
   });
 
@@ -47,7 +49,7 @@ function SetupPage() {
     const fn = firstName.trim();
     const ln = lastName.trim();
     if (fn.length === 0 || ln.length === 0) {
-      setError("Bitte gib Vor- und Nachnamen ein.");
+      setError(t("setup.missingNames"));
       return;
     }
     saveMut.mutate({ realFirstName: fn, realLastName: ln });
@@ -56,16 +58,14 @@ function SetupPage() {
   return (
     <section className="max-w-md mx-auto space-y-5">
       <header className="space-y-2">
-        <h1 className="text-2xl font-bold text-jass-ink">Willkommen!</h1>
-        <p className="text-sm text-jass-inkSoft">
-          Damit deine Mitspieler wissen, wer du bist, brauchen wir einmalig deinen Vor- und
-          Nachnamen. Standardmäßig sehen den nur eingeloggte Spieler, nicht das offene Internet —
-          das kannst du jederzeit im Profil ändern.
-        </p>
+        <h1 className="text-2xl font-bold text-jass-ink">{t("setup.title")}</h1>
+        <p className="text-sm text-jass-inkSoft">{t("setup.intro")}</p>
       </header>
       <form onSubmit={onSubmit} className="space-y-3">
         <label className="block">
-          <span className="block text-sm font-medium text-jass-ink mb-1">Vorname</span>
+          <span className="block text-sm font-medium text-jass-ink mb-1">
+            {t("setup.firstName")}
+          </span>
           <input
             type="text"
             value={firstName}
@@ -77,7 +77,9 @@ function SetupPage() {
           />
         </label>
         <label className="block">
-          <span className="block text-sm font-medium text-jass-ink mb-1">Nachname</span>
+          <span className="block text-sm font-medium text-jass-ink mb-1">
+            {t("setup.lastName")}
+          </span>
           <input
             type="text"
             value={lastName}
@@ -94,7 +96,7 @@ function SetupPage() {
         )}
         <div className="flex justify-end">
           <button type="submit" disabled={saveMut.isPending} className="btn-jass-primary">
-            {saveMut.isPending ? "Speichere…" : "Weiter zur Lobby"}
+            {saveMut.isPending ? t("setup.saving") : t("setup.submit")}
           </button>
         </div>
       </form>

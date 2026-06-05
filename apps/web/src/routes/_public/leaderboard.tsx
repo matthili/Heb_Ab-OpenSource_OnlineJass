@@ -7,6 +7,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import { api } from "~/lib/api";
 
@@ -24,11 +25,7 @@ interface LeaderboardResponse {
   entries: LeaderboardEntry[];
 }
 
-const VARIANTS = [
-  { id: "KREUZ_4P", label: "Kreuz (4 Spieler)" },
-  { id: "SOLO_4P", label: "Solo (4 Spieler)" },
-  { id: "BODENSEE_2P", label: "Bodensee (2 Spieler)" },
-] as const;
+const VARIANTS = [{ id: "KREUZ_4P" }, { id: "SOLO_4P" }, { id: "BODENSEE_2P" }] as const;
 type VariantId = (typeof VARIANTS)[number]["id"];
 
 export const Route = createFileRoute("/_public/leaderboard")({
@@ -36,6 +33,7 @@ export const Route = createFileRoute("/_public/leaderboard")({
 });
 
 function LeaderboardPage() {
+  const { t } = useTranslation();
   const [variant, setVariant] = useState<VariantId>("KREUZ_4P");
   const { data, isPending } = useQuery<LeaderboardResponse>({
     queryKey: ["leaderboard", variant],
@@ -46,15 +44,12 @@ function LeaderboardPage() {
   return (
     <section className="space-y-4 max-w-3xl mx-auto p-4">
       <header className="flex items-baseline gap-3">
-        <h1 className="text-2xl font-bold">Leaderboard</h1>
+        <h1 className="text-2xl font-bold">{t("leaderboard.title")}</h1>
         <Link to="/lobby" className="ml-auto text-sm text-stone-600 underline">
-          Zur Lobby
+          {t("leaderboard.toLobby")}
         </Link>
       </header>
-      <p className="text-sm text-stone-600">
-        Globales Ranking — sortiert nach Win-Rate (mind. 5 Partien). Du erscheinst nur, wenn du im
-        Profil das Opt-in aktiviert hast.
-      </p>
+      <p className="text-sm text-stone-600">{t("leaderboard.intro")}</p>
 
       <nav className="flex gap-1 border-b border-stone-200 text-sm">
         {VARIANTS.map((v) => (
@@ -69,27 +64,25 @@ function LeaderboardPage() {
                 : "border-transparent text-stone-600 hover:text-stone-900")
             }
           >
-            {v.label}
+            {t(`leaderboard.variant.${v.id}`)}
           </button>
         ))}
       </nav>
 
-      {isPending && <p className="text-stone-500 text-sm">Lade …</p>}
+      {isPending && <p className="text-stone-500 text-sm">{t("leaderboard.loading")}</p>}
       {data && data.entries.length === 0 && (
-        <p className="text-sm text-stone-500 italic">
-          Noch keine Spieler haben sich für das Leaderboard dieser Variante freigeschaltet.
-        </p>
+        <p className="text-sm text-stone-500 italic">{t("leaderboard.empty")}</p>
       )}
       {data && data.entries.length > 0 && (
         <table className="w-full text-sm border-collapse">
           <thead>
             <tr className="border-b border-stone-300 text-left text-stone-600">
-              <th className="py-2 pr-3 w-12">#</th>
-              <th className="py-2 pr-3">Spieler</th>
-              <th className="py-2 pr-3 text-right">Partien</th>
-              <th className="py-2 pr-3 text-right">Siege</th>
-              <th className="py-2 pr-3 text-right">Win-Rate</th>
-              <th className="py-2 pr-3 text-right">Ø Punkte</th>
+              <th className="py-2 pr-3 w-12">{t("leaderboard.colRank")}</th>
+              <th className="py-2 pr-3">{t("leaderboard.colPlayer")}</th>
+              <th className="py-2 pr-3 text-right">{t("leaderboard.colMatches")}</th>
+              <th className="py-2 pr-3 text-right">{t("leaderboard.colWins")}</th>
+              <th className="py-2 pr-3 text-right">{t("leaderboard.colWinRate")}</th>
+              <th className="py-2 pr-3 text-right">{t("leaderboard.colAvgPoints")}</th>
             </tr>
           </thead>
           <tbody>

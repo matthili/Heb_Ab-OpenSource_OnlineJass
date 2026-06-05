@@ -18,6 +18,7 @@
  * pre-consent").
  */
 import { useEffect, useState } from "react";
+import { Trans, useTranslation } from "react-i18next";
 
 const STORAGE_KEY = "heb-ab.consent.v1";
 type ConsentValue = "accepted" | null;
@@ -60,36 +61,39 @@ export function useHasConsent(): boolean {
 }
 
 export function ConsentBanner() {
+  const { t } = useTranslation();
   const accepted = useHasConsent();
   if (accepted) return null;
 
   return (
     <div
       role="region"
-      aria-label="Cookie-Hinweis"
+      aria-label={t("consent.ariaLabel")}
       className="fixed inset-x-0 bottom-0 z-50 bg-stone-900 text-white shadow-lg"
     >
       <div className="mx-auto max-w-5xl px-4 py-3 flex flex-col gap-2 sm:flex-row sm:items-center">
         <p className="text-sm flex-1">
-          Wir setzen nur <strong>technisch notwendige Cookies</strong> — für deinen Login und um
-          diesen Hinweis zu merken. Kein Tracking, keine Werbung, keine Drittanbieter-Analytics.
-          Details:{" "}
-          <a
-            href="/privacy"
-            className="underline hover:no-underline"
-            target="_blank"
-            rel="noreferrer"
-          >
-            Datenschutz
-          </a>
-          .
+          <Trans
+            i18nKey="consent.text"
+            components={{
+              strong: <strong />,
+              privacy: (
+                <a
+                  href="/privacy"
+                  className="underline hover:no-underline"
+                  target="_blank"
+                  rel="noreferrer"
+                />
+              ),
+            }}
+          />
         </p>
         <button
           type="button"
           onClick={() => writeConsent()}
           className="rounded bg-emerald-500 px-3 py-1.5 text-sm font-medium hover:bg-emerald-400"
         >
-          OK, verstanden
+          {t("consent.accept")}
         </button>
       </div>
     </div>

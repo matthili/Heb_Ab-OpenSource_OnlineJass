@@ -7,7 +7,17 @@
     "signUp": "Registrieren",
     "signOut": "Abmelden",
     "greeting": "Servus, {{name}}",
-    "profile": "Profil"
+    "profile": "Profil",
+    "admin": "Admin",
+    "toLink": "Zum Tisch",
+    "toasts": {
+      "inviteReceived": "Neue Einladung zum Tisch. <link>Zum Tisch</link>",
+      "requestApproved": "Deine Anfrage wurde angenommen. <link>Zum Tisch</link>",
+      "requestApprovedNoLink": "Deine Anfrage wurde angenommen.",
+      "requestDenied": "Deine Anfrage wurde abgelehnt.",
+      "ownerChanged": "Tisch-Verwalter hat gewechselt zu {{name}}.",
+      "ownerChangedFallback": "einem anderen Spieler"
+    }
   },
 
   "profile": {
@@ -223,7 +233,8 @@
       "emailLabel": "E-Mail",
       "submit": "Reset-Link schicken",
       "submitting": "Sende…",
-      "sent": "Wenn die E-Mail-Adresse bei uns registriert ist, ist der Link unterwegs."
+      "sent": "Wenn die E-Mail-Adresse bei uns registriert ist, ist der Link unterwegs.",
+      "genericError": "Fehler."
     },
     "reset": {
       "title": "Neues Passwort setzen",
@@ -232,6 +243,12 @@
       "submitting": "Speichere…",
       "success": "Passwort geändert. Du kannst dich jetzt anmelden.",
       "invalidToken": "Reset-Link ist abgelaufen oder ungültig. Bitte neu anfordern."
+    },
+    "sessionSuperseded": {
+      "title": "Sitzung beendet",
+      "defaultReason": "Diese Verbindung wurde durch eine andere ersetzt.",
+      "stayHere": "Hier weitermachen",
+      "toLogin": "Zur Anmeldung"
     }
   },
 
@@ -240,6 +257,42 @@
     "body": "Spiel Vorarlberger Kreuz-Jass gegen echte Menschen oder KI-Gegner — auf deinem eigenen Server, ohne Werbung, ohne Tracking.",
     "ctaSignIn": "Anmelden",
     "ctaSignUp": "Konto anlegen"
+  },
+
+  "setup": {
+    "title": "Willkommen!",
+    "intro": "Damit deine Mitspieler wissen, wer du bist, brauchen wir einmalig deinen Vor- und Nachnamen. Standardmäßig sehen den nur eingeloggte Spieler, nicht das offene Internet — das kannst du jederzeit im Profil ändern.",
+    "firstName": "Vorname",
+    "lastName": "Nachname",
+    "missingNames": "Bitte gib Vor- und Nachnamen ein.",
+    "saveError": "Konnte nicht speichern.",
+    "saving": "Speichere…",
+    "submit": "Weiter zur Lobby"
+  },
+
+  "leaderboard": {
+    "title": "Leaderboard",
+    "toLobby": "Zur Lobby",
+    "intro": "Globales Ranking — sortiert nach Win-Rate (mind. 5 Partien). Du erscheinst nur, wenn du im Profil das Opt-in aktiviert hast.",
+    "loading": "Lade …",
+    "empty": "Noch keine Spieler haben sich für das Leaderboard dieser Variante freigeschaltet.",
+    "variant": {
+      "KREUZ_4P": "Kreuz (4 Spieler)",
+      "SOLO_4P": "Solo (4 Spieler)",
+      "BODENSEE_2P": "Bodensee (2 Spieler)"
+    },
+    "colRank": "#",
+    "colPlayer": "Spieler",
+    "colMatches": "Partien",
+    "colWins": "Siege",
+    "colWinRate": "Win-Rate",
+    "colAvgPoints": "Ø Punkte"
+  },
+
+  "consent": {
+    "ariaLabel": "Cookie-Hinweis",
+    "text": "Wir setzen nur <strong>technisch notwendige Cookies</strong> — für deinen Login und um diesen Hinweis zu merken. Kein Tracking, keine Werbung, keine Drittanbieter-Analytics. Details: <privacy>Datenschutz</privacy>.",
+    "accept": "OK, verstanden"
   },
 
   "lobby": {

@@ -9,7 +9,7 @@
 import { useQuery, type QueryClient } from "@tanstack/react-query";
 import { createRootRouteWithContext, Link, Outlet, useNavigate } from "@tanstack/react-router";
 import { useCallback } from "react";
-import { useTranslation } from "react-i18next";
+import { Trans, useTranslation } from "react-i18next";
 
 import { ConsentBanner } from "~/features/consent/ConsentBanner";
 import type { MeProfileResponse } from "~/features/admin/types";
@@ -48,6 +48,7 @@ function RootLayout() {
 function UserEventToasts() {
   const { data } = useSession();
   const { showToast } = useToast();
+  const { t } = useTranslation();
 
   const onInvite = useCallback(
     (payload: unknown) => {
@@ -55,10 +56,10 @@ function UserEventToasts() {
       if (!p?.tableId) return;
       showToast(
         <span>
-          Neue Einladung zum Tisch.{" "}
-          <a href={`/table/${p.tableId}`} className="underline">
-            Zum Tisch
-          </a>
+          <Trans
+            i18nKey="nav.toasts.inviteReceived"
+            components={{ link: <a href={`/table/${p.tableId}`} className="underline" /> }}
+          />
         </span>,
         { variant: "info", duration: 8_000 }
       );
@@ -72,31 +73,35 @@ function UserEventToasts() {
       if (p?.approved) {
         showToast(
           <span>
-            Deine Anfrage wurde angenommen.{" "}
-            {p.tableId && (
-              <a href={`/table/${p.tableId}`} className="underline">
-                Zum Tisch
-              </a>
+            {p.tableId ? (
+              <Trans
+                i18nKey="nav.toasts.requestApproved"
+                components={{ link: <a href={`/table/${p.tableId}`} className="underline" /> }}
+              />
+            ) : (
+              t("nav.toasts.requestApprovedNoLink")
             )}
           </span>,
           { variant: "success", duration: 8_000 }
         );
       } else {
-        showToast("Deine Anfrage wurde abgelehnt.", { variant: "warning" });
+        showToast(t("nav.toasts.requestDenied"), { variant: "warning" });
       }
     },
-    [showToast]
+    [showToast, t]
   );
 
   const onOwnerChanged = useCallback(
     (payload: unknown) => {
       const p = payload as { newOwnerName?: string };
       showToast(
-        `Tisch-Verwalter hat gewechselt zu ${p?.newOwnerName ?? "einem anderen Spieler"}.`,
+        t("nav.toasts.ownerChanged", {
+          name: p?.newOwnerName ?? t("nav.toasts.ownerChangedFallback"),
+        }),
         { variant: "info" }
       );
     },
-    [showToast]
+    [showToast, t]
   );
 
   // Wir registrieren die Listener immer; sie feuern nur, wenn man
@@ -142,7 +147,7 @@ function Header() {
                   to="/admin"
                   className="rounded bg-jass-yellow px-2 py-1 text-xs font-semibold text-jass-ink hover:bg-jass-yellowDark hover:text-jass-cream transition-colors"
                 >
-                  Admin
+                  {t("nav.admin")}
                 </Link>
               )}
               <Link

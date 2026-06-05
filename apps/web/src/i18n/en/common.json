@@ -7,7 +7,17 @@
     "signUp": "Register",
     "signOut": "Sign out",
     "greeting": "Hi, {{name}}",
-    "profile": "Profile"
+    "profile": "Profile",
+    "admin": "Admin",
+    "toLink": "Go to table",
+    "toasts": {
+      "inviteReceived": "New table invite. <link>Go to table</link>",
+      "requestApproved": "Your request was accepted. <link>Go to table</link>",
+      "requestApprovedNoLink": "Your request was accepted.",
+      "requestDenied": "Your request was declined.",
+      "ownerChanged": "Table host changed to {{name}}.",
+      "ownerChangedFallback": "another player"
+    }
   },
 
   "profile": {
@@ -223,7 +233,8 @@
       "emailLabel": "E-mail",
       "submit": "Send reset link",
       "submitting": "Sending…",
-      "sent": "If that e-mail is registered, the link is on its way."
+      "sent": "If that e-mail is registered, the link is on its way.",
+      "genericError": "Error."
     },
     "reset": {
       "title": "Set a new password",
@@ -232,6 +243,12 @@
       "submitting": "Saving…",
       "success": "Password changed. You can sign in now.",
       "invalidToken": "Reset link is expired or invalid. Please request a new one."
+    },
+    "sessionSuperseded": {
+      "title": "Session ended",
+      "defaultReason": "This connection was replaced by another one.",
+      "stayHere": "Stay here",
+      "toLogin": "Go to sign-in"
     }
   },
 
@@ -240,6 +257,42 @@
     "body": "Play Vorarlberger Kreuz-Jass against real people or AI opponents — on your own server, ad-free, tracker-free.",
     "ctaSignIn": "Sign in",
     "ctaSignUp": "Create account"
+  },
+
+  "setup": {
+    "title": "Welcome!",
+    "intro": "So your fellow players know who you are, we need your first and last name once. By default only signed-in players see it, not the open internet — you can change that anytime in your profile.",
+    "firstName": "First name",
+    "lastName": "Last name",
+    "missingNames": "Please enter your first and last name.",
+    "saveError": "Could not save.",
+    "saving": "Saving…",
+    "submit": "Continue to the lobby"
+  },
+
+  "leaderboard": {
+    "title": "Leaderboard",
+    "toLobby": "Go to lobby",
+    "intro": "Global ranking — sorted by win rate (min. 5 matches). You only appear if you've enabled the opt-in in your profile.",
+    "loading": "Loading …",
+    "empty": "No players have opted into the leaderboard for this variant yet.",
+    "variant": {
+      "KREUZ_4P": "Kreuz (4 players)",
+      "SOLO_4P": "Solo (4 players)",
+      "BODENSEE_2P": "Bodensee (2 players)"
+    },
+    "colRank": "#",
+    "colPlayer": "Player",
+    "colMatches": "Matches",
+    "colWins": "Wins",
+    "colWinRate": "Win rate",
+    "colAvgPoints": "Avg points"
+  },
+
+  "consent": {
+    "ariaLabel": "Cookie notice",
+    "text": "We only set <strong>technically necessary cookies</strong> — for your login and to remember this notice. No tracking, no ads, no third-party analytics. Details: <privacy>Privacy</privacy>.",
+    "accept": "OK, got it"
   },
 
   "lobby": {

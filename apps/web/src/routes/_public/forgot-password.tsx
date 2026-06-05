@@ -54,7 +54,7 @@ function ForgotPasswordPage() {
       });
       setSent(true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Fehler.");
+      setError(err instanceof Error ? err.message : t("auth.forgot.genericError"));
       setCaptchaToken(null);
       setResetCounter((n) => n + 1);
     } finally {

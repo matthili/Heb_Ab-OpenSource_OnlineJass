@@ -16,22 +16,24 @@
  * „Zur Login-Seite" → sauberer Logout-Flow.
  */
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import { getLobbySocket } from "~/lib/ws";
 
 export function SessionSupersededBanner() {
+  const { t } = useTranslation();
   const [reason, setReason] = useState<string | null>(null);
 
   useEffect(() => {
     const s = getLobbySocket();
     const handler = (payload: { message?: string }) => {
-      setReason(payload?.message ?? "Diese Verbindung wurde durch eine andere ersetzt.");
+      setReason(payload?.message ?? t("auth.sessionSuperseded.defaultReason"));
     };
     s.on("auth:session-superseded", handler);
     return () => {
       s.off("auth:session-superseded", handler);
     };
-  }, []);
+  }, [t]);
 
   if (!reason) return null;
 
@@ -44,7 +46,7 @@ export function SessionSupersededBanner() {
     >
       <div className="max-w-md w-full rounded-lg bg-jass-paper border border-jass-paperEdge shadow-xl p-6 space-y-3">
         <h2 id="superseded-title" className="text-lg font-bold text-jass-ink">
-          Sitzung beendet
+          {t("auth.sessionSuperseded.title")}
         </h2>
         <p className="text-sm text-jass-inkSoft">{reason}</p>
         <div className="flex gap-2 justify-end">
@@ -53,7 +55,7 @@ export function SessionSupersededBanner() {
             onClick={() => window.location.reload()}
             className="btn-jass-secondary"
           >
-            Hier weitermachen
+            {t("auth.sessionSuperseded.stayHere")}
           </button>
           <button
             type="button"
@@ -62,7 +64,7 @@ export function SessionSupersededBanner() {
             }}
             className="btn-jass-primary"
           >
-            Zur Anmeldung
+            {t("auth.sessionSuperseded.toLogin")}
           </button>
         </div>
       </div>
