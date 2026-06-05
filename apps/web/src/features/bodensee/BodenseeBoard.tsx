@@ -14,7 +14,9 @@
  */
 import { cardIndex, type Card as CardModel, type PlayMode, type Suit } from "@jass/engine";
 import { Card } from "@jass/ui";
+import type { TFunction } from "i18next";
 import { useState } from "react";
+import { Trans, useTranslation } from "react-i18next";
 
 import { seatDisplayName } from "~/features/game/aiNames";
 import type { SeatView } from "~/features/lobby/types";
@@ -36,19 +38,19 @@ interface Props {
 const NEVER_LEGAL = (_c: CardModel): boolean => false;
 const NOOP_PLAY = (_c: CardModel): void => {};
 
-const SUIT_LABEL: Record<Suit, string> = {
-  EICHEL: "Eichel",
-  SCHELLE: "Schelle",
-  HERZ: "Herz",
-  LAUB: "Laub",
-};
+/** Übersetzt eine Farbe über den geteilten `game.announce.suit.*`-Namespace. */
+function suitLabel(t: TFunction, suit: Suit): string {
+  return t(`game.announce.suit.${suit}`);
+}
 
-const MODE_LABEL: Record<PlayMode, string> = {
-  TRUMPF: "Trumpf",
-  GUMPF: "Gumpf",
-  OBEN: "Oben (Bock)",
-  UNTEN: "Unten (Geiss)",
-};
+/**
+ * Übersetzt einen Spielmodus über den geteilten `game.announce.mode.*`-Namespace.
+ * `PlayMode | "SLALOM"`, weil das Ansage-Panel zusätzlich Slalom anbietet — der
+ * `mode.*`-Namespace deckt alle fünf Werte ab.
+ */
+function modeLabel(t: TFunction, mode: PlayMode | "SLALOM"): string {
+  return t(`game.announce.mode.${mode}`);
+}
 
 function cardKey(c: CardModel): string {
   return `${c.suit}-${c.rank}`;
@@ -64,10 +66,12 @@ export function BodenseeBoard({
   onPlayCard,
   onAnnounce,
 }: Props) {
+  const { t } = useTranslation();
   const oppSeat = 1 - view.mySeat;
   const seatName = (seat: number): string => {
+    const fallback = t("game.seatFallback", { n: seat + 1 });
     const s = seats.find((x) => x.seat === seat);
-    return s ? seatDisplayName(s, nameSeed, `Sitz ${seat + 1}`) : `Sitz ${seat + 1}`;
+    return s ? seatDisplayName(s, nameSeed, fallback) : fallback;
   };
 
   const isLegal = (c: CardModel): boolean => view.legalActionMask[cardIndex(c)] === 1;
@@ -78,15 +82,24 @@ export function BodenseeBoard({
       {/* Status-Leiste */}
       <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-jass-paperEdge bg-jass-cream px-4 py-2 text-sm">
         <span className="text-jass-inkSoft">
-          Stich <strong className="text-jass-ink">{Math.min(view.trickIdx + 1, 18)}</strong> / 18
+          <Trans
+            i18nKey="bodensee.status.trick"
+            values={{ n: Math.min(view.trickIdx + 1, 18) }}
+            components={{ strong: <strong className="text-jass-ink" /> }}
+          />
         </span>
         <span className="jass-mode-glow rounded bg-jass-yellow px-2.5 py-1 text-sm font-bold text-jass-ink ring-1 ring-jass-yellowDark">
-          Modus: {view.playMode ? MODE_LABEL[view.playMode] : "—"}
-          {view.trumpSuit ? ` ${SUIT_LABEL[view.trumpSuit]}` : ""}
+          {t("bodensee.status.mode", {
+            mode: view.playMode ? modeLabel(t, view.playMode) : "—",
+          })}
+          {view.trumpSuit ? ` ${suitLabel(t, view.trumpSuit)}` : ""}
         </span>
         <span className="text-jass-inkSoft">
-          Du <strong className="text-jass-ink">{view.ownScore}</strong> :{" "}
-          <strong className="text-jass-ink">{view.oppScore}</strong> {seatName(oppSeat)}
+          <Trans
+            i18nKey="bodensee.status.score"
+            values={{ own: view.ownScore, opp: view.oppScore, name: seatName(oppSeat) }}
+            components={{ strong: <strong className="text-jass-ink" /> }}
+          />
         </span>
       </div>
 
@@ -104,8 +117,10 @@ export function BodenseeBoard({
         <div className="flex items-center justify-between text-sm">
           <span className="font-semibold text-jass-ink">{seatName(oppSeat)}</span>
           <span className="text-jass-inkSoft">
-            {view.opponentHandCount} Handkarten ·{" "}
-            {view.opponentTable.filter((s) => s.hasHidden).length} verdeckt am Tisch
+            {t("bodensee.opponent.handAndHidden", {
+              hand: view.opponentHandCount,
+              hidden: view.opponentTable.filter((s) => s.hasHidden).length,
+            })}
           </span>
         </div>
         <div className="flex flex-wrap items-end gap-1">
@@ -138,15 +153,19 @@ export function BodenseeBoard({
         <div className="text-sm">
           {view.status === "playing" &&
             (view.myTurn ? (
-              <span className="font-semibold text-emerald-700">Du bist am Zug.</span>
+              <span className="font-semibold text-emerald-700">{t("bodensee.turn.you")}</span>
             ) : (
-              <span className="text-jass-inkSoft">{seatName(oppSeat)} ist am Zug …</span>
+              <span className="text-jass-inkSoft">
+                {t("bodensee.turn.other", { name: seatName(oppSeat) })}
+              </span>
             ))}
         </div>
 
         {/* Eigene Tisch-Stapel */}
         <div>
-          <p className="text-xs uppercase tracking-wide text-jass-inkSoft mb-1">Dein Tisch</p>
+          <p className="text-xs uppercase tracking-wide text-jass-inkSoft mb-1">
+            {t("bodensee.yourTable")}
+          </p>
           <div className="flex flex-wrap items-end gap-1.5">
             {view.ownTable.map((stack, i) => (
               <TableStackSlot
@@ -162,10 +181,12 @@ export function BodenseeBoard({
 
         {/* Eigene Hand */}
         <div>
-          <p className="text-xs uppercase tracking-wide text-jass-inkSoft mb-1">Deine Hand</p>
+          <p className="text-xs uppercase tracking-wide text-jass-inkSoft mb-1">
+            {t("bodensee.yourHand")}
+          </p>
           <div className="flex flex-wrap items-end gap-1">
             {view.hand.length === 0 && (
-              <span className="text-sm text-jass-inkSoft italic">keine Handkarten mehr</span>
+              <span className="text-sm text-jass-inkSoft italic">{t("bodensee.noHandCards")}</span>
             )}
             {view.hand.map((c) => {
               const legal = isLegal(c);
@@ -189,7 +210,9 @@ export function BodenseeBoard({
           <AnnouncePanel pending={announcePending} onAnnounce={onAnnounce} />
         ) : (
           <p className="rounded-lg border border-jass-paperEdge bg-jass-cream px-4 py-3 text-sm text-jass-inkSoft">
-            {seatName(view.announcement?.announcerSeat ?? oppSeat)} wählt gerade die Variante …
+            {t("bodensee.announce.otherChoosing", {
+              name: seatName(view.announcement?.announcerSeat ?? oppSeat),
+            })}
           </p>
         ))}
 
@@ -206,11 +229,14 @@ export function BodenseeBoard({
 // ─────────────────────────────────────────────────────────────────────
 
 function TrickArea({ view, seatName }: { view: BodenseeView; seatName: (seat: number) => string }) {
+  const { t } = useTranslation();
   const live = view.currentTrick;
   if (live.cards.length > 0) {
     return (
       <div>
-        <p className="text-xs uppercase tracking-wide text-emerald-200 mb-2">Laufender Stich</p>
+        <p className="text-xs uppercase tracking-wide text-emerald-200 mb-2">
+          {t("bodensee.trick.running")}
+        </p>
         <div className="flex items-end justify-center gap-4">
           {live.cards.map((c, i) => {
             const seat = i === 0 ? live.starter : 1 - live.starter;
@@ -218,7 +244,7 @@ function TrickArea({ view, seatName }: { view: BodenseeView; seatName: (seat: nu
               <div key={`ct-${i}`} className="space-y-1">
                 <Card card={c} size="md" />
                 <p className="text-xs text-emerald-100">
-                  {seat === view.mySeat ? "Du" : seatName(seat)}
+                  {seat === view.mySeat ? t("game.you") : seatName(seat)}
                 </p>
               </div>
             );
@@ -233,8 +259,9 @@ function TrickArea({ view, seatName }: { view: BodenseeView; seatName: (seat: nu
     return (
       <div>
         <p className="text-xs uppercase tracking-wide text-emerald-200 mb-2">
-          Letzter Stich — {last.winner === view.mySeat ? "du hast" : `${seatName(last.winner)} hat`}{" "}
-          gewonnen
+          {last.winner === view.mySeat
+            ? t("bodensee.trick.lastWonByYou")
+            : t("bodensee.trick.lastWonByOther", { name: seatName(last.winner) })}
         </p>
         <div className="flex items-end justify-center gap-4 opacity-80">
           {last.cards.map((c, i) => {
@@ -243,7 +270,7 @@ function TrickArea({ view, seatName }: { view: BodenseeView; seatName: (seat: nu
               <div key={`lt-${i}`} className="space-y-1">
                 <Card card={c} size="sm" />
                 <p className="text-xs text-emerald-100">
-                  {seat === view.mySeat ? "Du" : seatName(seat)}
+                  {seat === view.mySeat ? t("game.you") : seatName(seat)}
                 </p>
               </div>
             );
@@ -253,7 +280,7 @@ function TrickArea({ view, seatName }: { view: BodenseeView; seatName: (seat: nu
     );
   }
 
-  return <p className="text-sm text-emerald-100">Der Stich beginnt …</p>;
+  return <p className="text-sm text-emerald-100">{t("bodensee.trick.starting")}</p>;
 }
 
 // ─────────────────────────────────────────────────────────────────────
@@ -271,6 +298,7 @@ function TableStackSlot({
   isLegal: (c: CardModel) => boolean;
   onPlay: (c: CardModel) => void;
 }) {
+  const { t } = useTranslation();
   if (!stack.visible) {
     // Leerer Stapel-Platzhalter — gleiche Größe wie eine `md`-Karte (= Handkarte).
     return (
@@ -289,7 +317,7 @@ function TableStackSlot({
       {stack.hasHidden && (
         <span
           className="absolute -bottom-1 -right-1 rounded-full bg-jass-brownDark px-1.5 py-0.5 text-[10px] font-semibold text-jass-cream"
-          title="Eine verdeckte Karte liegt darunter"
+          title={t("bodensee.hiddenBelow")}
         >
           +1
         </span>
@@ -318,13 +346,7 @@ function FaceDownCard({ size }: { size: "xs" | "sm" }) {
 
 type AnnounceMode = "TRUMPF" | "GUMPF" | "OBEN" | "UNTEN" | "SLALOM";
 
-const ANNOUNCE_MODES: ReadonlyArray<{ value: AnnounceMode; label: string }> = [
-  { value: "TRUMPF", label: "Trumpf" },
-  { value: "GUMPF", label: "Gumpf" },
-  { value: "OBEN", label: "Oben (Bock)" },
-  { value: "UNTEN", label: "Unten (Geiss)" },
-  { value: "SLALOM", label: "Slalom" },
-];
+const ANNOUNCE_MODES: readonly AnnounceMode[] = ["TRUMPF", "GUMPF", "OBEN", "UNTEN", "SLALOM"];
 
 const SUITS: readonly Suit[] = ["EICHEL", "SCHELLE", "HERZ", "LAUB"];
 
@@ -335,6 +357,7 @@ function AnnouncePanel({
   pending: boolean;
   onAnnounce: (a: BodenseeAnnouncement) => void;
 }) {
+  const { t } = useTranslation();
   const [mode, setMode] = useState<AnnounceMode>("TRUMPF");
   const [suit, setSuit] = useState<Suit>("EICHEL");
   const needsSuit = mode === "TRUMPF" || mode === "GUMPF";
@@ -353,21 +376,21 @@ function AnnouncePanel({
 
   return (
     <section className="rounded-lg border-2 border-jass-yellowDark bg-jass-yellow/15 p-4 space-y-3">
-      <h3 className="font-semibold text-jass-ink">Du bist am Ansagen — wähle die Variante</h3>
+      <h3 className="font-semibold text-jass-ink">{t("bodensee.announce.title")}</h3>
       <div className="flex flex-wrap gap-2">
         {ANNOUNCE_MODES.map((m) => (
           <button
-            key={m.value}
+            key={m}
             type="button"
-            onClick={() => setMode(m.value)}
-            aria-pressed={mode === m.value}
+            onClick={() => setMode(m)}
+            aria-pressed={mode === m}
             className={`rounded-full border px-3 py-1 text-sm transition ${
-              mode === m.value
+              mode === m
                 ? "border-jass-yellowDark bg-jass-yellow font-semibold text-jass-ink"
                 : "border-jass-paperEdge bg-jass-cream text-jass-inkSoft hover:bg-jass-yellow/20"
             }`}
           >
-            {m.label}
+            {modeLabel(t, m)}
           </button>
         ))}
       </div>
@@ -385,7 +408,7 @@ function AnnouncePanel({
                   : "border-jass-paperEdge bg-jass-cream text-jass-inkSoft hover:bg-jass-yellow/20"
               }`}
             >
-              {SUIT_LABEL[s]}
+              {suitLabel(t, s)}
             </button>
           ))}
         </div>
@@ -396,7 +419,7 @@ function AnnouncePanel({
         disabled={pending}
         className="btn-jass-primary disabled:opacity-50"
       >
-        {pending ? "Sage an …" : "Ansagen"}
+        {pending ? t("bodensee.announce.sending") : t("bodensee.announce.submit")}
       </button>
     </section>
   );
@@ -407,6 +430,7 @@ function AnnouncePanel({
 // ─────────────────────────────────────────────────────────────────────
 
 function FinishedPanel({ view, oppName }: { view: BodenseeView; oppName: string }) {
+  const { t } = useTranslation();
   const points = view.finalScore!.player_total_points;
   const mine = points[view.mySeat] ?? 0;
   const theirs = points[1 - view.mySeat] ?? 0;
@@ -417,14 +441,24 @@ function FinishedPanel({ view, oppName }: { view: BodenseeView; oppName: string 
   return (
     <section className="rounded-lg border-2 border-jass-yellowDark bg-jass-yellow/20 p-4 text-center space-y-1">
       <h3 className="text-lg font-bold text-jass-ink">
-        {draw ? "Unentschieden!" : iWon ? "Du hast gewonnen!" : `${oppName} hat gewonnen.`}
+        {draw
+          ? t("bodensee.finished.draw")
+          : iWon
+            ? t("bodensee.finished.youWon")
+            : t("bodensee.finished.otherWon", { name: oppName })}
       </h3>
       <p className="text-jass-ink">
-        Du <strong>{mine}</strong> : <strong>{theirs}</strong> {oppName}
+        <Trans
+          i18nKey="bodensee.finished.score"
+          values={{ own: mine, opp: theirs, name: oppName }}
+          components={{ strong: <strong /> }}
+        />
       </p>
       {view.finalScore!.matsch_player !== null && (
         <p className="text-sm text-jass-yellowDark font-semibold">
-          {matschMe ? "Matsch — alle 18 Stiche!" : `${oppName} hat einen Matsch gemacht.`}
+          {matschMe
+            ? t("bodensee.finished.matschYou")
+            : t("bodensee.finished.matschOther", { name: oppName })}
         </p>
       )}
     </section>

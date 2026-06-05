@@ -612,6 +612,48 @@
     "voteFailed": "Vote fehlgeschlagen."
   },
 
+  "bodensee": {
+    "status": {
+      "trick": "Stich <strong>{{n}}</strong> / 18",
+      "mode": "Modus: {{mode}}",
+      "score": "Du <strong>{{own}}</strong> : <strong>{{opp}}</strong> {{name}}"
+    },
+    "opponent": {
+      "handAndHidden": "{{hand}} Handkarten · {{hidden}} verdeckt am Tisch"
+    },
+    "turn": {
+      "you": "Du bist am Zug.",
+      "other": "{{name}} ist am Zug …"
+    },
+    "yourTable": "Dein Tisch",
+    "yourHand": "Deine Hand",
+    "noHandCards": "keine Handkarten mehr",
+    "hiddenBelow": "Eine verdeckte Karte liegt darunter",
+    "trick": {
+      "running": "Laufender Stich",
+      "lastWonByYou": "Letzter Stich — du hast gewonnen",
+      "lastWonByOther": "Letzter Stich — {{name}} hat gewonnen",
+      "starting": "Der Stich beginnt …"
+    },
+    "announce": {
+      "title": "Du bist am Ansagen — wähle die Variante",
+      "sending": "Sage an …",
+      "submit": "Ansagen",
+      "otherChoosing": "{{name}} wählt gerade die Variante …"
+    },
+    "finished": {
+      "draw": "Unentschieden!",
+      "youWon": "Du hast gewonnen!",
+      "otherWon": "{{name}} hat gewonnen.",
+      "score": "Du <strong>{{own}}</strong> : <strong>{{opp}}</strong> {{name}}",
+      "matschYou": "Matsch — alle 18 Stiche!",
+      "matschOther": "{{name}} hat einen Matsch gemacht."
+    },
+    "rematch": {
+      "playAgain": "Nochmal spielen?"
+    }
+  },
+
   "language": {
     "label": "Sprache",
     "de": "Deutsch",

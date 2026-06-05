@@ -18,6 +18,7 @@
  */
 import { useMutation } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Trans, useTranslation } from "react-i18next";
 
 import type { RematchOutcome } from "~/features/game/types";
 import { api, ApiError } from "~/lib/api";
@@ -25,6 +26,7 @@ import { api, ApiError } from "~/lib/api";
 const AUTO_YES_SECONDS = 10;
 
 export function BodenseeRematchPanel({ gameId }: { gameId: string }) {
+  const { t } = useTranslation();
   const [myVote, setMyVote] = useState<"YES" | "NO" | null>(null);
   const [outcome, setOutcome] = useState<RematchOutcome | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -42,7 +44,7 @@ export function BodenseeRematchPanel({ gameId }: { gameId: string }) {
       setOutcome(result);
     },
     onError: (err: unknown) => {
-      setError(err instanceof ApiError ? err.message : "Vote fehlgeschlagen.");
+      setError(err instanceof ApiError ? err.message : t("rematch.voteFailed"));
     },
   });
 
@@ -71,7 +73,7 @@ export function BodenseeRematchPanel({ gameId }: { gameId: string }) {
     <section className="space-y-3 rounded-lg border border-jass-paperEdge bg-jass-cream p-4 shadow-sm">
       {!myVote ? (
         <div className="space-y-2">
-          <p className="font-medium text-jass-ink">Nochmal spielen?</p>
+          <p className="font-medium text-jass-ink">{t("bodensee.rematch.playAgain")}</p>
           <div className="flex flex-wrap items-center gap-3">
             <button
               type="button"
@@ -79,7 +81,7 @@ export function BodenseeRematchPanel({ gameId }: { gameId: string }) {
               disabled={voteMut.isPending}
               className="btn-jass-primary text-base"
             >
-              ▶ Weiter
+              {t("rematch.continue")}
             </button>
             <button
               type="button"
@@ -87,10 +89,14 @@ export function BodenseeRematchPanel({ gameId }: { gameId: string }) {
               disabled={voteMut.isPending}
               className="text-sm text-jass-inkSoft underline hover:text-jass-ink disabled:opacity-50"
             >
-              Aufhören
+              {t("rematch.stop")}
             </button>
             <span className="ml-auto text-xs tabular-nums text-jass-inkSoft">
-              Auto-Start in <strong>{secondsLeft}</strong> s
+              <Trans
+                i18nKey="rematch.autoStart"
+                values={{ seconds: secondsLeft }}
+                components={{ strong: <strong /> }}
+              />
             </span>
           </div>
         </div>
@@ -107,26 +113,32 @@ export function BodenseeRematchPanel({ gameId }: { gameId: string }) {
 }
 
 function RematchStatus({ vote, outcome }: { vote: "YES" | "NO"; outcome: RematchOutcome | null }) {
+  const { t } = useTranslation();
   if (!outcome) return null;
   if (outcome.kind === "pending") {
     return (
       <div className="rounded border border-jass-paperEdge bg-jass-paper px-3 py-2 text-sm text-jass-ink">
-        Du hast „{vote === "YES" ? "weiter" : "aufhören"}" gewählt. Warten auf{" "}
-        {outcome.remainingVotes}{" "}
-        {outcome.remainingVotes === 1 ? "weiteren Spieler" : "weitere Spieler"} …
+        {t("rematch.status.pending", {
+          vote: vote === "YES" ? t("rematch.status.votedYes") : t("rematch.status.votedNo"),
+          count: outcome.remainingVotes,
+          players:
+            outcome.remainingVotes === 1
+              ? t("rematch.status.playerOne")
+              : t("rematch.status.playerOther"),
+        })}
       </div>
     );
   }
   if (outcome.kind === "rematch-started") {
     return (
       <div className="rounded border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
-        Nächste Runde startet. (Tisch wechselt automatisch zum neuen Game.)
+        {t("rematch.status.started")}
       </div>
     );
   }
   return (
     <div className="rounded border border-violet-200 bg-violet-50 px-3 py-2 text-sm text-violet-900">
-      Nicht alle wollen weiterspielen. Der Tisch geht zurück in die Warte-Phase.
+      {t("rematch.status.declined")}
     </div>
   );
 }

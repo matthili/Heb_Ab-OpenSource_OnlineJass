@@ -612,6 +612,48 @@
     "voteFailed": "Vote failed."
   },
 
+  "bodensee": {
+    "status": {
+      "trick": "Trick <strong>{{n}}</strong> / 18",
+      "mode": "Mode: {{mode}}",
+      "score": "You <strong>{{own}}</strong> : <strong>{{opp}}</strong> {{name}}"
+    },
+    "opponent": {
+      "handAndHidden": "{{hand}} cards in hand · {{hidden}} face-down on the table"
+    },
+    "turn": {
+      "you": "Your turn.",
+      "other": "{{name}} is up …"
+    },
+    "yourTable": "Your table",
+    "yourHand": "Your hand",
+    "noHandCards": "no more cards in hand",
+    "hiddenBelow": "A face-down card lies beneath",
+    "trick": {
+      "running": "Current trick",
+      "lastWonByYou": "Last trick — you won",
+      "lastWonByOther": "Last trick — {{name}} won",
+      "starting": "The trick is starting …"
+    },
+    "announce": {
+      "title": "It's your announcement — pick the mode",
+      "sending": "Announcing …",
+      "submit": "Announce",
+      "otherChoosing": "{{name}} is choosing the mode …"
+    },
+    "finished": {
+      "draw": "Draw!",
+      "youWon": "You won!",
+      "otherWon": "{{name}} won.",
+      "score": "You <strong>{{own}}</strong> : <strong>{{opp}}</strong> {{name}}",
+      "matschYou": "Sweep (Matsch) — all 18 tricks!",
+      "matschOther": "{{name}} made a Sweep (Matsch)."
+    },
+    "rematch": {
+      "playAgain": "Play again?"
+    }
+  },
+
   "language": {
     "label": "Language",
     "de": "German",
