@@ -500,6 +500,7 @@
 
   "game": {
     "yourTurn": "Du bist dran.",
+    "errorFallback": "Spielfehler",
     "otherTurn": "<strong>{{name}}</strong> ist dran.",
     "finished": "Spiel beendet — siehe Final-Score unten.",
     "trick": "Stich {{n}} / 9",
@@ -734,6 +735,13 @@
     "notPublicTitle": "Replay nicht öffentlich",
     "notPublicBody": "Dieses Replay existiert entweder nicht, oder die Teilnehmer haben es noch nicht zum Teilen freigegeben.",
     "loginToSeeOwn": "Einloggen, um eigene Replays zu sehen",
+    "error": {
+      "noRound": "Replay: keine Runde gefunden.",
+      "invalidSeat": "Replay: ungültiger Sitz {{seat}}.",
+      "incomplete": "Replay: Spiel ist noch nicht abgeschlossen ({{moves}}/36 Moves).",
+      "initFailed": "Replay: Initial-State konnte nicht rekonstruiert werden — {{message}}",
+      "moveFailed": "Replay: Move {{seq}} (Sitz {{seat}}, Karte {{card}}) fehlgeschlagen — {{message}}"
+    },
     "rank": {
       "SECHS": "Sechs",
       "SIEBEN": "Sieben",

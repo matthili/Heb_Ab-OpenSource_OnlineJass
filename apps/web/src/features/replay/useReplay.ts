@@ -17,6 +17,7 @@
  */
 import { useQuery } from "@tanstack/react-query";
 
+import i18n from "~/i18n";
 import { api } from "~/lib/api";
 import type { Announcement, Card, Variant, RoundState } from "@jass/engine";
 import { applyMove, indexToCard, newRound } from "@jass/engine";
@@ -79,7 +80,7 @@ export function usePublicReplay(gameId: string | undefined) {
 export function reconstruct(bundle: ReplayBundle): ReplayData {
   const round0 = bundle.rounds[0];
   if (!round0) {
-    return { bundle, frames: [], error: "Replay: keine Runde gefunden." };
+    return { bundle, frames: [], error: i18n.t("replay.error.noRound") };
   }
 
   // 4 × 9 Karten aus den Move-Cards rekonstruieren.
@@ -88,7 +89,7 @@ export function reconstruct(bundle: ReplayBundle): ReplayData {
     const card = indexToCard(m.cardIndex);
     const handArr = hands[m.seat];
     if (!handArr) {
-      return { bundle, frames: [], error: `Replay: ungültiger Sitz ${m.seat}.` };
+      return { bundle, frames: [], error: i18n.t("replay.error.invalidSeat", { seat: m.seat }) };
     }
     handArr.push(card);
   }
@@ -115,7 +116,7 @@ export function reconstruct(bundle: ReplayBundle): ReplayData {
     return {
       bundle,
       frames: [],
-      error: `Replay: Spiel ist noch nicht abgeschlossen (${bundle.moves.length}/36 Moves).`,
+      error: i18n.t("replay.error.incomplete", { moves: bundle.moves.length }),
     };
   }
 
@@ -131,9 +132,9 @@ export function reconstruct(bundle: ReplayBundle): ReplayData {
     return {
       bundle,
       frames: [],
-      error: `Replay: Initial-State konnte nicht rekonstruiert werden — ${
-        err instanceof Error ? err.message : String(err)
-      }`,
+      error: i18n.t("replay.error.initFailed", {
+        message: err instanceof Error ? err.message : String(err),
+      }),
     };
   }
 
@@ -147,9 +148,12 @@ export function reconstruct(bundle: ReplayBundle): ReplayData {
       return {
         bundle,
         frames,
-        error:
-          `Replay: Move ${m.seq} (Sitz ${m.seat}, Karte ${card.suit}-${card.rank}) ` +
-          `fehlgeschlagen — ${err instanceof Error ? err.message : String(err)}`,
+        error: i18n.t("replay.error.moveFailed", {
+          seq: m.seq,
+          seat: m.seat,
+          card: `${card.suit}-${card.rank}`,
+          message: err instanceof Error ? err.message : String(err),
+        }),
       };
     }
     frames.push({ state, moveSeq: m.seq, played: { seat: m.seat, card } });

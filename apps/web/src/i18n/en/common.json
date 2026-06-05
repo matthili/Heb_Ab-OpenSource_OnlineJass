@@ -500,6 +500,7 @@
 
   "game": {
     "yourTurn": "Your turn.",
+    "errorFallback": "Game error",
     "otherTurn": "<strong>{{name}}</strong> is up.",
     "finished": "Game over — see final score below.",
     "trick": "Trick {{n}} / 9",
@@ -734,6 +735,13 @@
     "notPublicTitle": "Replay not public",
     "notPublicBody": "This replay either does not exist, or the participants have not shared it yet.",
     "loginToSeeOwn": "Sign in to see your own replays",
+    "error": {
+      "noRound": "Replay: no round found.",
+      "invalidSeat": "Replay: invalid seat {{seat}}.",
+      "incomplete": "Replay: game is not finished yet ({{moves}}/36 moves).",
+      "initFailed": "Replay: could not reconstruct the initial state — {{message}}",
+      "moveFailed": "Replay: move {{seq}} (seat {{seat}}, card {{card}}) failed — {{message}}"
+    },
     "rank": {
       "SECHS": "Six",
       "SIEBEN": "Seven",

@@ -15,6 +15,7 @@
 import type { Card } from "@jass/engine";
 import { useEffect, useRef, useState } from "react";
 
+import i18n from "~/i18n";
 import { getLobbySocket } from "~/lib/ws";
 import type { BodenseeAnnouncement, BodenseeView } from "./types";
 
@@ -49,7 +50,7 @@ export function useBodenseeView(gameId: string | null): BodenseeViewState {
       setError(null);
     }
     function onError(e: { message?: string }) {
-      setError(e?.message ?? "Spielfehler");
+      setError(e?.message ?? i18n.t("game.errorFallback"));
       setMovePending(false);
       setAnnouncePending(false);
     }
