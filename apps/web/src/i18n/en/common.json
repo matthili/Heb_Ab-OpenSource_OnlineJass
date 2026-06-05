@@ -621,5 +621,138 @@
   "theme": {
     "toHiContrast": "Switch to high-contrast theme",
     "toDefault": "Switch back to default look"
+  },
+
+  "admin": {
+    "layout": {
+      "title": "Admin",
+      "nav": {
+        "dashboard": "Dashboard",
+        "settings": "Settings",
+        "smtp": "SMTP",
+        "users": "Users",
+        "blocklist": "Blocklist",
+        "bannedWords": "Banned words",
+        "audit": "Audit log"
+      }
+    },
+    "index": {
+      "intro": "Admin area. Tools for global settings, SMTP, user management, blocklist, chat word filter and audit log.",
+      "settings": {
+        "title": "Global settings",
+        "desc": "Max tables, max seats per variant, default points target."
+      },
+      "smtp": {
+        "title": "SMTP settings",
+        "desc": "Mail delivery configuration. The password is encrypted with AES-256-GCM."
+      },
+      "users": {
+        "title": "User management",
+        "desc": "Roles, block/unblock, filter by status."
+      },
+      "blocklist": {
+        "title": "Blocklist",
+        "desc": "E-mail patterns and domains for the registration block."
+      },
+      "bannedWords": {
+        "title": "Chat word filter",
+        "desc": "Word list that gets replaced with <code>***</code> in chat messages."
+      },
+      "audit": {
+        "title": "Audit log",
+        "desc": "All security-relevant actions (auth, lobby, admin, …)."
+      }
+    },
+    "audit": {
+      "prefixPlaceholder": "Action prefix, e.g. auth. or admin.blocklist.",
+      "firstPage": "First page",
+      "loading": "Loading …",
+      "empty": "No entries.",
+      "colWhen": "When",
+      "colActor": "Actor",
+      "colAction": "Action",
+      "colTarget": "Target",
+      "colMeta": "Meta",
+      "colIp": "IP",
+      "loadOlder": "Load older →"
+    },
+    "bannedWords": {
+      "intro": "Words that get replaced with <code>***</code> in chat messages (lobby, game, DM). Substring match, case-insensitive. To block registrations see <em>Blocklist</em> — a different feature.",
+      "addHeading": "Add word",
+      "wordPlaceholder": "e.g. swear word",
+      "add": "Add",
+      "reasonPlaceholder": "Reason (optional, internal only)",
+      "addError": "Could not add.",
+      "listHeading": "Current list",
+      "loading": "Loading …",
+      "empty": "No words configured — chat moderation is currently unfiltered.",
+      "colWord": "Word",
+      "colReason": "Reason",
+      "colSince": "Since",
+      "delete": "Delete"
+    },
+    "blocklist": {
+      "addHeading": "Add pattern",
+      "patternPlaceholder": "@spam.test  or  *@bad.tld  or  literal@email.com",
+      "add": "Add",
+      "reasonPlaceholder": "Reason (optional, internal only)",
+      "addError": "Could not add.",
+      "listHeading": "Current entries",
+      "loading": "Loading …",
+      "empty": "No patterns configured.",
+      "colPattern": "Pattern",
+      "colReason": "Reason",
+      "colSince": "Since",
+      "delete": "Delete"
+    },
+    "settings": {
+      "saveError": "Could not save.",
+      "loading": "Loading settings …",
+      "intro": "Global settings for the lobby. Values apply from the next table — existing tables are not adjusted retroactively.",
+      "maxOpenTablesLabel": "Max simultaneously active tables",
+      "maxOpenTablesHelp": "Cap on WAITING + IN_GAME + POST_GAME. Protection against uncontrolled growth.",
+      "maxSeatsLabel": "Max seats per variant",
+      "maxSeatsHelp": "Hard cap on seat count. Today: KREUZ_4P/SOLO_4P=4, BODENSEE_2P=2, KREUZ_6P=6 (planned). Default 6.",
+      "defaultPointsLabel": "Default points target",
+      "defaultPointsHelp": "Fallback when the table opener doesn't specify their own target.",
+      "save": "Save",
+      "saved": "Saved."
+    },
+    "smtp": {
+      "loading": "Loading settings …",
+      "heading": "SMTP settings",
+      "hostLabel": "Host",
+      "portLabel": "Port",
+      "userLabel": "User (optional)",
+      "userPlaceholder": "empty = no auth",
+      "passwordLabelSet": "Password (set; empty = unchanged)",
+      "passwordLabel": "Password",
+      "fromLabel": "Sender (From header)",
+      "saveError": "Could not save.",
+      "saveSuccess": "Saved. The next mail delivery uses the new settings.",
+      "saving": "Saving …",
+      "save": "Save settings",
+      "hint": "Note: the next mail delivery (verify, reset, …) automatically rebuilds the SMTP transporter. You can verify the new settings right away by, for example, triggering a password reset for a test user."
+    },
+    "users": {
+      "searchPlaceholder": "Name or e-mail …",
+      "allRoles": "All roles",
+      "rolePlayer": "Player",
+      "roleModerator": "Moderator",
+      "roleAdmin": "Admin",
+      "allStatuses": "All statuses",
+      "statusActive": "Active",
+      "statusBlocked": "Blocked",
+      "statusDeletedSoft": "Deleted (soft)",
+      "loading": "Loading …",
+      "colName": "Name",
+      "colEmail": "E-mail",
+      "colRole": "Role",
+      "colStatus": "Status",
+      "colActions": "Actions",
+      "block": "Block",
+      "unblock": "Unblock",
+      "softDeleted": "soft-deleted"
+    }
   }
 }

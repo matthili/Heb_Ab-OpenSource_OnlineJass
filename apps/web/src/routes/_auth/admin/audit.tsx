@@ -4,6 +4,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import type { AdminAuditEntry } from "~/features/admin/types";
 import { api } from "~/lib/api";
@@ -13,6 +14,7 @@ export const Route = createFileRoute("/_auth/admin/audit")({
 });
 
 function AuditPage() {
+  const { t } = useTranslation();
   const [prefix, setPrefix] = useState("");
   const [before, setBefore] = useState<string | null>(null);
 
@@ -36,7 +38,7 @@ function AuditPage() {
             setPrefix(e.target.value);
             setBefore(null);
           }}
-          placeholder="Action-Prefix, z.B. auth. oder admin.blocklist."
+          placeholder={t("admin.audit.prefixPlaceholder")}
           className="rounded border border-stone-300 px-3 py-1.5 text-sm flex-1 min-w-[16rem]"
         />
         {before && (
@@ -45,12 +47,12 @@ function AuditPage() {
             onClick={() => setBefore(null)}
             className="rounded border border-stone-300 px-2 py-1 text-xs"
           >
-            Erste Seite
+            {t("admin.audit.firstPage")}
           </button>
         )}
       </header>
 
-      {isPending && <p className="text-stone-500">Lade …</p>}
+      {isPending && <p className="text-stone-500">{t("admin.audit.loading")}</p>}
       {error && (
         <p role="alert" className="text-rose-700">
           {error.message}
@@ -58,7 +60,7 @@ function AuditPage() {
       )}
 
       {data && data.entries.length === 0 && (
-        <p className="text-sm text-stone-500 italic">Keine Einträge.</p>
+        <p className="text-sm text-stone-500 italic">{t("admin.audit.empty")}</p>
       )}
 
       {data && data.entries.length > 0 && (
@@ -66,12 +68,12 @@ function AuditPage() {
           <table className="w-full text-xs border-collapse">
             <thead>
               <tr className="border-b border-stone-300 text-left text-stone-600">
-                <th className="py-2 pr-3">Wann</th>
-                <th className="py-2 pr-3">Akteur</th>
-                <th className="py-2 pr-3">Action</th>
-                <th className="py-2 pr-3">Target</th>
-                <th className="py-2 pr-3">Meta</th>
-                <th className="py-2 pr-3">IP</th>
+                <th className="py-2 pr-3">{t("admin.audit.colWhen")}</th>
+                <th className="py-2 pr-3">{t("admin.audit.colActor")}</th>
+                <th className="py-2 pr-3">{t("admin.audit.colAction")}</th>
+                <th className="py-2 pr-3">{t("admin.audit.colTarget")}</th>
+                <th className="py-2 pr-3">{t("admin.audit.colMeta")}</th>
+                <th className="py-2 pr-3">{t("admin.audit.colIp")}</th>
               </tr>
             </thead>
             <tbody>
@@ -103,7 +105,7 @@ function AuditPage() {
                 }}
                 className="rounded border border-stone-300 px-3 py-1.5 text-sm hover:bg-stone-100"
               >
-                Ältere laden →
+                {t("admin.audit.loadOlder")}
               </button>
             </div>
           )}

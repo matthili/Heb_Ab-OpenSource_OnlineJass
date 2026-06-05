@@ -5,6 +5,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import type { AdminUserView, Role, UserStatus } from "~/features/admin/types";
 import { api, ApiError } from "~/lib/api";
@@ -14,6 +15,7 @@ export const Route = createFileRoute("/_auth/admin/users")({
 });
 
 function UsersPage() {
+  const { t } = useTranslation();
   const [q, setQ] = useState("");
   const [roleFilter, setRoleFilter] = useState<"" | Role>("");
   const [statusFilter, setStatusFilter] = useState<"" | UserStatus>("");
@@ -50,7 +52,7 @@ function UsersPage() {
           type="search"
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder="Name oder E-Mail …"
+          placeholder={t("admin.users.searchPlaceholder")}
           className="rounded border border-stone-300 px-3 py-1.5 text-sm flex-1 min-w-[12rem]"
         />
         <select
@@ -58,24 +60,24 @@ function UsersPage() {
           onChange={(e) => setRoleFilter(e.target.value as Role | "")}
           className="rounded border border-stone-300 px-2 py-1.5 text-sm"
         >
-          <option value="">Alle Rollen</option>
-          <option value="PLAYER">Player</option>
-          <option value="MODERATOR">Moderator</option>
-          <option value="ADMIN">Admin</option>
+          <option value="">{t("admin.users.allRoles")}</option>
+          <option value="PLAYER">{t("admin.users.rolePlayer")}</option>
+          <option value="MODERATOR">{t("admin.users.roleModerator")}</option>
+          <option value="ADMIN">{t("admin.users.roleAdmin")}</option>
         </select>
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value as UserStatus | "")}
           className="rounded border border-stone-300 px-2 py-1.5 text-sm"
         >
-          <option value="">Alle Status</option>
-          <option value="ACTIVE">Aktiv</option>
-          <option value="BLOCKED">Blockiert</option>
-          <option value="DELETED_SOFT">Gelöscht (Soft)</option>
+          <option value="">{t("admin.users.allStatuses")}</option>
+          <option value="ACTIVE">{t("admin.users.statusActive")}</option>
+          <option value="BLOCKED">{t("admin.users.statusBlocked")}</option>
+          <option value="DELETED_SOFT">{t("admin.users.statusDeletedSoft")}</option>
         </select>
       </header>
 
-      {isPending && <p className="text-stone-500">Lade …</p>}
+      {isPending && <p className="text-stone-500">{t("admin.users.loading")}</p>}
       {error && (
         <p role="alert" className="text-rose-700">
           {error.message}
@@ -86,11 +88,11 @@ function UsersPage() {
         <table className="w-full text-sm border-collapse">
           <thead>
             <tr className="border-b border-stone-300 text-left text-stone-600">
-              <th className="py-2 pr-3">Name</th>
-              <th className="py-2 pr-3">E-Mail</th>
-              <th className="py-2 pr-3">Rolle</th>
-              <th className="py-2 pr-3">Status</th>
-              <th className="py-2 pr-3">Aktionen</th>
+              <th className="py-2 pr-3">{t("admin.users.colName")}</th>
+              <th className="py-2 pr-3">{t("admin.users.colEmail")}</th>
+              <th className="py-2 pr-3">{t("admin.users.colRole")}</th>
+              <th className="py-2 pr-3">{t("admin.users.colStatus")}</th>
+              <th className="py-2 pr-3">{t("admin.users.colActions")}</th>
             </tr>
           </thead>
           <tbody>
@@ -105,9 +107,9 @@ function UsersPage() {
                     disabled={setRole.isPending}
                     className="rounded border border-stone-300 px-2 py-0.5 text-xs"
                   >
-                    <option value="PLAYER">Player</option>
-                    <option value="MODERATOR">Moderator</option>
-                    <option value="ADMIN">Admin</option>
+                    <option value="PLAYER">{t("admin.users.rolePlayer")}</option>
+                    <option value="MODERATOR">{t("admin.users.roleModerator")}</option>
+                    <option value="ADMIN">{t("admin.users.roleAdmin")}</option>
                   </select>
                 </td>
                 <td className="py-2 pr-3">
@@ -121,7 +123,7 @@ function UsersPage() {
                       disabled={setStatus.isPending}
                       className="rounded border border-stone-300 px-2 py-1 text-xs hover:bg-rose-50"
                     >
-                      Sperren
+                      {t("admin.users.block")}
                     </button>
                   ) : u.status === "BLOCKED" ? (
                     <button
@@ -130,10 +132,10 @@ function UsersPage() {
                       disabled={setStatus.isPending}
                       className="rounded border border-stone-300 px-2 py-1 text-xs hover:bg-emerald-50"
                     >
-                      Entsperren
+                      {t("admin.users.unblock")}
                     </button>
                   ) : (
-                    <span className="text-xs text-stone-400">soft-deleted</span>
+                    <span className="text-xs text-stone-400">{t("admin.users.softDeleted")}</span>
                   )}
                 </td>
               </tr>

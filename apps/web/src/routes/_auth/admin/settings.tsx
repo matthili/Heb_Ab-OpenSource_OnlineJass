@@ -8,6 +8,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { type FormEvent, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import { api, ApiError } from "~/lib/api";
 
@@ -22,6 +23,7 @@ export const Route = createFileRoute("/_auth/admin/settings")({
 });
 
 function GlobalSettingsPage() {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const queryKey = ["admin", "lobby-settings"] as const;
   const { data, isPending } = useQuery<LobbySettings>({
@@ -52,12 +54,12 @@ function GlobalSettingsPage() {
       setDraft(fresh);
     },
     onError: (err: unknown) => {
-      setError(err instanceof ApiError ? err.message : "Speichern fehlgeschlagen.");
+      setError(err instanceof ApiError ? err.message : t("admin.settings.saveError"));
     },
   });
 
   if (isPending || !draft) {
-    return <p className="text-stone-500">Lade Einstellungen …</p>;
+    return <p className="text-stone-500">{t("admin.settings.loading")}</p>;
   }
 
   function onSave(e: FormEvent<HTMLFormElement>) {
@@ -72,31 +74,28 @@ function GlobalSettingsPage() {
 
   return (
     <section className="space-y-4 max-w-xl">
-      <p className="text-sm text-stone-600">
-        Globale Einstellungen für die Lobby. Werte gelten ab dem nächsten Tisch — bereits bestehende
-        Tische werden nicht rückwirkend angepasst.
-      </p>
+      <p className="text-sm text-stone-600">{t("admin.settings.intro")}</p>
 
       <form onSubmit={onSave} className="space-y-4">
         <NumberRow
-          label="Max. gleichzeitig aktive Tische"
-          help="Cap auf WAITING + IN_GAME + POST_GAME. Schutz vor unkontrolliertem Wachstum."
+          label={t("admin.settings.maxOpenTablesLabel")}
+          help={t("admin.settings.maxOpenTablesHelp")}
           value={draft.maxOpenTables}
           min={1}
           max={10_000}
           onChange={(v) => setField("maxOpenTables", v)}
         />
         <NumberRow
-          label="Max. Sitze pro Variante"
-          help="Hard-Cap auf Sitzzahl. Heute: KREUZ_4P/SOLO_4P=4, BODENSEE_2P=2, KREUZ_6P=6 (geplant). Default 6."
+          label={t("admin.settings.maxSeatsLabel")}
+          help={t("admin.settings.maxSeatsHelp")}
           value={draft.maxSeatsPerTable}
           min={2}
           max={12}
           onChange={(v) => setField("maxSeatsPerTable", v)}
         />
         <NumberRow
-          label="Default-Punkte-Ziel"
-          help="Fallback, wenn der Tisch-Eröffner kein eigenes Punkteziel angibt."
+          label={t("admin.settings.defaultPointsLabel")}
+          help={t("admin.settings.defaultPointsHelp")}
           value={draft.defaultPointsTarget}
           min={500}
           max={5000}
@@ -109,10 +108,10 @@ function GlobalSettingsPage() {
             disabled={saveMut.isPending}
             className="rounded bg-stone-900 px-4 py-2 text-white hover:bg-stone-700 disabled:opacity-50"
           >
-            Speichern
+            {t("admin.settings.save")}
           </button>
           {savedAt !== null && Date.now() - savedAt < 5_000 && (
-            <span className="text-sm text-emerald-700">Gespeichert.</span>
+            <span className="text-sm text-emerald-700">{t("admin.settings.saved")}</span>
           )}
         </div>
         {error && (

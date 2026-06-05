@@ -6,6 +6,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { type FormEvent, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import type { SmtpSettingsView } from "~/features/admin/types";
 import { api, ApiError } from "~/lib/api";
@@ -15,6 +16,7 @@ export const Route = createFileRoute("/_auth/admin/smtp")({
 });
 
 function SmtpPage() {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const { data, isPending } = useQuery<SmtpSettingsView>({
     queryKey: ["admin", "smtp"],
@@ -43,14 +45,14 @@ function SmtpPage() {
     mutationFn: (patch: Record<string, unknown>) =>
       api("/api/admin/smtp", { method: "PUT", body: patch }),
     onSuccess: () => {
-      setSuccess("Gespeichert. Der nächste Mail-Versand nutzt die neuen Settings.");
+      setSuccess(t("admin.smtp.saveSuccess"));
       setError(null);
       setPassword("");
       queryClient.invalidateQueries({ queryKey: ["admin", "smtp"] });
       setTimeout(() => setSuccess(null), 5_000);
     },
     onError: (err: unknown) => {
-      setError(err instanceof ApiError ? err.message : "Speichern fehlgeschlagen.");
+      setError(err instanceof ApiError ? err.message : t("admin.smtp.saveError"));
       setSuccess(null);
     },
   });
@@ -67,13 +69,13 @@ function SmtpPage() {
     mut.mutate(patch);
   }
 
-  if (isPending) return <p className="text-stone-500">Lade Settings …</p>;
+  if (isPending) return <p className="text-stone-500">{t("admin.smtp.loading")}</p>;
 
   return (
     <form onSubmit={onSubmit} className="space-y-4 max-w-xl">
-      <h2 className="text-xl font-semibold">SMTP-Settings</h2>
+      <h2 className="text-xl font-semibold">{t("admin.smtp.heading")}</h2>
 
-      <FieldRow label="Host">
+      <FieldRow label={t("admin.smtp.hostLabel")}>
         <input
           type="text"
           value={host}
@@ -83,7 +85,7 @@ function SmtpPage() {
         />
       </FieldRow>
 
-      <FieldRow label="Port">
+      <FieldRow label={t("admin.smtp.portLabel")}>
         <input
           type="number"
           value={port}
@@ -95,29 +97,31 @@ function SmtpPage() {
         />
       </FieldRow>
 
-      <FieldRow label="User (optional)">
+      <FieldRow label={t("admin.smtp.userLabel")}>
         <input
           type="text"
           value={user}
           onChange={(e) => setUser(e.target.value)}
-          placeholder="leer = ohne Auth"
+          placeholder={t("admin.smtp.userPlaceholder")}
           className="w-full rounded border border-stone-300 px-3 py-2"
           autoComplete="off"
         />
       </FieldRow>
 
-      <FieldRow label={data?.hasPassword ? "Passwort (gesetzt; leer = unverändert)" : "Passwort"}>
+      <FieldRow
+        label={data?.hasPassword ? t("admin.smtp.passwordLabelSet") : t("admin.smtp.passwordLabel")}
+      >
         <input
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          placeholder={data?.hasPassword ? "••••••••" : "Passwort"}
+          placeholder={data?.hasPassword ? "••••••••" : t("admin.smtp.passwordLabel")}
           className="w-full rounded border border-stone-300 px-3 py-2"
           autoComplete="new-password"
         />
       </FieldRow>
 
-      <FieldRow label="Absender (From-Header)">
+      <FieldRow label={t("admin.smtp.fromLabel")}>
         <input
           type="text"
           value={from}
@@ -143,14 +147,10 @@ function SmtpPage() {
         disabled={mut.isPending}
         className="rounded bg-stone-900 px-4 py-2 text-white hover:bg-stone-700 disabled:opacity-50"
       >
-        {mut.isPending ? "Speichere …" : "Settings speichern"}
+        {mut.isPending ? t("admin.smtp.saving") : t("admin.smtp.save")}
       </button>
 
-      <p className="text-xs text-stone-500">
-        Hinweis: Der nächste Mail-Versand (Verify, Reset, …) baut den SMTP-Transporter automatisch
-        neu. Du kannst die neuen Settings sofort verifizieren, indem du z.B. ein Passwort-Reset für
-        einen Test-User auslöst.
-      </p>
+      <p className="text-xs text-stone-500">{t("admin.smtp.hint")}</p>
     </form>
   );
 }

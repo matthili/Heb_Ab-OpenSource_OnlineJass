@@ -1,66 +1,59 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { Trans, useTranslation } from "react-i18next";
 
 export const Route = createFileRoute("/_auth/admin/")({
   component: AdminDashboard,
 });
 
 function AdminDashboard() {
+  const { t } = useTranslation();
   return (
     <section className="space-y-4">
-      <p className="text-stone-600">
-        Verwaltungsbereich. Tools für globale Einstellungen, SMTP, User-Management, Blocklist,
-        Chat-Wortfilter und Audit-Log.
-      </p>
+      <p className="text-stone-600">{t("admin.index.intro")}</p>
       <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <Link
           to="/admin/settings"
           className="block rounded border border-stone-200 px-4 py-3 hover:bg-stone-50"
         >
-          <strong>Globale Einstellungen</strong>
-          <p className="text-sm text-stone-500">
-            Max. Tische, max. Sitze pro Variante, Default-Punkte-Ziel.
-          </p>
+          <strong>{t("admin.index.settings.title")}</strong>
+          <p className="text-sm text-stone-500">{t("admin.index.settings.desc")}</p>
         </Link>
         <Link
           to="/admin/smtp"
           className="block rounded border border-stone-200 px-4 py-3 hover:bg-stone-50"
         >
-          <strong>SMTP-Settings</strong>
-          <p className="text-sm text-stone-500">
-            Mailversand-Konfiguration. Passwort wird AES-256-GCM-verschlüsselt.
-          </p>
+          <strong>{t("admin.index.smtp.title")}</strong>
+          <p className="text-sm text-stone-500">{t("admin.index.smtp.desc")}</p>
         </Link>
         <Link
           to="/admin/users"
           className="block rounded border border-stone-200 px-4 py-3 hover:bg-stone-50"
         >
-          <strong>User-Management</strong>
-          <p className="text-sm text-stone-500">Rollen, Block/Unblock, Filter nach Status.</p>
+          <strong>{t("admin.index.users.title")}</strong>
+          <p className="text-sm text-stone-500">{t("admin.index.users.desc")}</p>
         </Link>
         <Link
           to="/admin/blocklist"
           className="block rounded border border-stone-200 px-4 py-3 hover:bg-stone-50"
         >
-          <strong>Blocklist</strong>
-          <p className="text-sm text-stone-500">E-Mail-Pattern und -Domains für Register-Sperre.</p>
+          <strong>{t("admin.index.blocklist.title")}</strong>
+          <p className="text-sm text-stone-500">{t("admin.index.blocklist.desc")}</p>
         </Link>
         <Link
           to="/admin/banned-words"
           className="block rounded border border-stone-200 px-4 py-3 hover:bg-stone-50"
         >
-          <strong>Chat-Wortfilter</strong>
+          <strong>{t("admin.index.bannedWords.title")}</strong>
           <p className="text-sm text-stone-500">
-            Wortliste, die in Chat-Nachrichten durch <code>***</code> ersetzt wird.
+            <Trans i18nKey="admin.index.bannedWords.desc" components={{ code: <code /> }} />
           </p>
         </Link>
         <Link
           to="/admin/audit"
           className="block rounded border border-stone-200 px-4 py-3 hover:bg-stone-50"
         >
-          <strong>Audit-Log</strong>
-          <p className="text-sm text-stone-500">
-            Alle sicherheitsrelevanten Aktionen (auth, lobby, admin, …).
-          </p>
+          <strong>{t("admin.index.audit.title")}</strong>
+          <p className="text-sm text-stone-500">{t("admin.index.audit.desc")}</p>
         </Link>
       </ul>
     </section>

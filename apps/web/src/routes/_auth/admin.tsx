@@ -6,6 +6,7 @@
  * Bei fehlender ADMIN-Rolle → Redirect zur Lobby.
  */
 import { createFileRoute, Link, Outlet, redirect } from "@tanstack/react-router";
+import { useTranslation } from "react-i18next";
 
 import { api } from "~/lib/api";
 import type { MeProfileResponse } from "~/features/admin/types";
@@ -31,59 +32,60 @@ export const Route = createFileRoute("/_auth/admin")({
 });
 
 function AdminLayout() {
+  const { t } = useTranslation();
   return (
     <div className="space-y-4">
       <header className="flex items-center gap-3 border-b border-stone-200 pb-2">
-        <h1 className="text-2xl font-bold">Admin</h1>
+        <h1 className="text-2xl font-bold">{t("admin.layout.title")}</h1>
         <nav className="flex gap-3 text-sm ml-4">
           <Link
             to="/admin"
             activeProps={{ className: "font-semibold text-stone-900" }}
             inactiveProps={{ className: "text-stone-600 hover:text-stone-900" }}
           >
-            Dashboard
+            {t("admin.layout.nav.dashboard")}
           </Link>
           <Link
             to="/admin/settings"
             activeProps={{ className: "font-semibold text-stone-900" }}
             inactiveProps={{ className: "text-stone-600 hover:text-stone-900" }}
           >
-            Einstellungen
+            {t("admin.layout.nav.settings")}
           </Link>
           <Link
             to="/admin/smtp"
             activeProps={{ className: "font-semibold text-stone-900" }}
             inactiveProps={{ className: "text-stone-600 hover:text-stone-900" }}
           >
-            SMTP
+            {t("admin.layout.nav.smtp")}
           </Link>
           <Link
             to="/admin/users"
             activeProps={{ className: "font-semibold text-stone-900" }}
             inactiveProps={{ className: "text-stone-600 hover:text-stone-900" }}
           >
-            Users
+            {t("admin.layout.nav.users")}
           </Link>
           <Link
             to="/admin/blocklist"
             activeProps={{ className: "font-semibold text-stone-900" }}
             inactiveProps={{ className: "text-stone-600 hover:text-stone-900" }}
           >
-            Blocklist
+            {t("admin.layout.nav.blocklist")}
           </Link>
           <Link
             to="/admin/banned-words"
             activeProps={{ className: "font-semibold text-stone-900" }}
             inactiveProps={{ className: "text-stone-600 hover:text-stone-900" }}
           >
-            Wortfilter
+            {t("admin.layout.nav.bannedWords")}
           </Link>
           <Link
             to="/admin/audit"
             activeProps={{ className: "font-semibold text-stone-900" }}
             inactiveProps={{ className: "text-stone-600 hover:text-stone-900" }}
           >
-            Audit-Log
+            {t("admin.layout.nav.audit")}
           </Link>
         </nav>
       </header>

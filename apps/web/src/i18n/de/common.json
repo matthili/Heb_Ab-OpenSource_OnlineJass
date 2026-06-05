@@ -621,5 +621,138 @@
   "theme": {
     "toHiContrast": "Kontrast-Modus aktivieren",
     "toDefault": "Zurück zum Standard-Look"
+  },
+
+  "admin": {
+    "layout": {
+      "title": "Admin",
+      "nav": {
+        "dashboard": "Dashboard",
+        "settings": "Einstellungen",
+        "smtp": "SMTP",
+        "users": "Users",
+        "blocklist": "Blocklist",
+        "bannedWords": "Wortfilter",
+        "audit": "Audit-Log"
+      }
+    },
+    "index": {
+      "intro": "Verwaltungsbereich. Tools für globale Einstellungen, SMTP, User-Management, Blocklist, Chat-Wortfilter und Audit-Log.",
+      "settings": {
+        "title": "Globale Einstellungen",
+        "desc": "Max. Tische, max. Sitze pro Variante, Default-Punkte-Ziel."
+      },
+      "smtp": {
+        "title": "SMTP-Settings",
+        "desc": "Mailversand-Konfiguration. Passwort wird AES-256-GCM-verschlüsselt."
+      },
+      "users": {
+        "title": "User-Management",
+        "desc": "Rollen, Block/Unblock, Filter nach Status."
+      },
+      "blocklist": {
+        "title": "Blocklist",
+        "desc": "E-Mail-Pattern und -Domains für Register-Sperre."
+      },
+      "bannedWords": {
+        "title": "Chat-Wortfilter",
+        "desc": "Wortliste, die in Chat-Nachrichten durch <code>***</code> ersetzt wird."
+      },
+      "audit": {
+        "title": "Audit-Log",
+        "desc": "Alle sicherheitsrelevanten Aktionen (auth, lobby, admin, …)."
+      }
+    },
+    "audit": {
+      "prefixPlaceholder": "Action-Prefix, z.B. auth. oder admin.blocklist.",
+      "firstPage": "Erste Seite",
+      "loading": "Lade …",
+      "empty": "Keine Einträge.",
+      "colWhen": "Wann",
+      "colActor": "Akteur",
+      "colAction": "Action",
+      "colTarget": "Target",
+      "colMeta": "Meta",
+      "colIp": "IP",
+      "loadOlder": "Ältere laden →"
+    },
+    "bannedWords": {
+      "intro": "Wörter, die in Chat-Nachrichten (Lobby, Spiel, DM) durch <code>***</code> ersetzt werden. Substring-Match, Groß-/Kleinschreibung egal. Für die Sperre von Registrierungen siehe <em>Blocklist</em> — anderes Feature.",
+      "addHeading": "Wort hinzufügen",
+      "wordPlaceholder": "z.B. Schimpfwort",
+      "add": "Hinzufügen",
+      "reasonPlaceholder": "Grund (optional, intern sichtbar)",
+      "addError": "Hinzufügen fehlgeschlagen.",
+      "listHeading": "Aktuelle Liste",
+      "loading": "Lade …",
+      "empty": "Keine Wörter eingetragen — Chat-Moderation ist aktuell ungefiltert.",
+      "colWord": "Wort",
+      "colReason": "Grund",
+      "colSince": "Seit",
+      "delete": "Löschen"
+    },
+    "blocklist": {
+      "addHeading": "Pattern hinzufügen",
+      "patternPlaceholder": "@spam.test  oder  *@bad.tld  oder  literal@email.com",
+      "add": "Hinzufügen",
+      "reasonPlaceholder": "Grund (optional, intern sichtbar)",
+      "addError": "Hinzufügen fehlgeschlagen.",
+      "listHeading": "Aktuelle Einträge",
+      "loading": "Lade …",
+      "empty": "Keine Patterns eingetragen.",
+      "colPattern": "Pattern",
+      "colReason": "Grund",
+      "colSince": "Seit",
+      "delete": "Löschen"
+    },
+    "settings": {
+      "saveError": "Speichern fehlgeschlagen.",
+      "loading": "Lade Einstellungen …",
+      "intro": "Globale Einstellungen für die Lobby. Werte gelten ab dem nächsten Tisch — bereits bestehende Tische werden nicht rückwirkend angepasst.",
+      "maxOpenTablesLabel": "Max. gleichzeitig aktive Tische",
+      "maxOpenTablesHelp": "Cap auf WAITING + IN_GAME + POST_GAME. Schutz vor unkontrolliertem Wachstum.",
+      "maxSeatsLabel": "Max. Sitze pro Variante",
+      "maxSeatsHelp": "Hard-Cap auf Sitzzahl. Heute: KREUZ_4P/SOLO_4P=4, BODENSEE_2P=2, KREUZ_6P=6 (geplant). Default 6.",
+      "defaultPointsLabel": "Default-Punkte-Ziel",
+      "defaultPointsHelp": "Fallback, wenn der Tisch-Eröffner kein eigenes Punkteziel angibt.",
+      "save": "Speichern",
+      "saved": "Gespeichert."
+    },
+    "smtp": {
+      "loading": "Lade Settings …",
+      "heading": "SMTP-Settings",
+      "hostLabel": "Host",
+      "portLabel": "Port",
+      "userLabel": "User (optional)",
+      "userPlaceholder": "leer = ohne Auth",
+      "passwordLabelSet": "Passwort (gesetzt; leer = unverändert)",
+      "passwordLabel": "Passwort",
+      "fromLabel": "Absender (From-Header)",
+      "saveError": "Speichern fehlgeschlagen.",
+      "saveSuccess": "Gespeichert. Der nächste Mail-Versand nutzt die neuen Settings.",
+      "saving": "Speichere …",
+      "save": "Settings speichern",
+      "hint": "Hinweis: Der nächste Mail-Versand (Verify, Reset, …) baut den SMTP-Transporter automatisch neu. Du kannst die neuen Settings sofort verifizieren, indem du z.B. ein Passwort-Reset für einen Test-User auslöst."
+    },
+    "users": {
+      "searchPlaceholder": "Name oder E-Mail …",
+      "allRoles": "Alle Rollen",
+      "rolePlayer": "Player",
+      "roleModerator": "Moderator",
+      "roleAdmin": "Admin",
+      "allStatuses": "Alle Status",
+      "statusActive": "Aktiv",
+      "statusBlocked": "Blockiert",
+      "statusDeletedSoft": "Gelöscht (Soft)",
+      "loading": "Lade …",
+      "colName": "Name",
+      "colEmail": "E-Mail",
+      "colRole": "Rolle",
+      "colStatus": "Status",
+      "colActions": "Aktionen",
+      "block": "Sperren",
+      "unblock": "Entsperren",
+      "softDeleted": "soft-deleted"
+    }
   }
 }

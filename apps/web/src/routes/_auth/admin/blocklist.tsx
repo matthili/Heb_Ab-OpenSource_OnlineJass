@@ -5,6 +5,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { type FormEvent, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import type { BlocklistEntry } from "~/features/admin/types";
 import { api, ApiError } from "~/lib/api";
@@ -14,6 +15,7 @@ export const Route = createFileRoute("/_auth/admin/blocklist")({
 });
 
 function BlocklistPage() {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const queryKey = ["admin", "blocklist"] as const;
   const { data, isPending } = useQuery<{ entries: BlocklistEntry[] }>({
@@ -38,7 +40,7 @@ function BlocklistPage() {
       queryClient.invalidateQueries({ queryKey });
     },
     onError: (err: unknown) => {
-      setError(err instanceof ApiError ? err.message : "Hinzufügen fehlgeschlagen.");
+      setError(err instanceof ApiError ? err.message : t("admin.blocklist.addError"));
     },
   });
 
@@ -56,13 +58,13 @@ function BlocklistPage() {
   return (
     <section className="space-y-4">
       <form onSubmit={onAdd} className="space-y-2 max-w-xl">
-        <h2 className="text-xl font-semibold">Pattern hinzufügen</h2>
+        <h2 className="text-xl font-semibold">{t("admin.blocklist.addHeading")}</h2>
         <div className="flex gap-2">
           <input
             type="text"
             value={pattern}
             onChange={(e) => setPattern(e.target.value)}
-            placeholder="@spam.test  oder  *@bad.tld  oder  literal@email.com"
+            placeholder={t("admin.blocklist.patternPlaceholder")}
             required
             className="flex-1 rounded border border-stone-300 px-3 py-2"
           />
@@ -71,14 +73,14 @@ function BlocklistPage() {
             disabled={addMut.isPending}
             className="rounded bg-stone-900 px-4 py-2 text-white hover:bg-stone-700 disabled:opacity-50"
           >
-            Hinzufügen
+            {t("admin.blocklist.add")}
           </button>
         </div>
         <input
           type="text"
           value={reason}
           onChange={(e) => setReason(e.target.value)}
-          placeholder="Grund (optional, intern sichtbar)"
+          placeholder={t("admin.blocklist.reasonPlaceholder")}
           className="w-full rounded border border-stone-300 px-3 py-2 text-sm"
         />
         {error && (
@@ -89,18 +91,18 @@ function BlocklistPage() {
       </form>
 
       <div>
-        <h2 className="text-xl font-semibold mb-2">Aktuelle Einträge</h2>
-        {isPending && <p className="text-stone-500">Lade …</p>}
+        <h2 className="text-xl font-semibold mb-2">{t("admin.blocklist.listHeading")}</h2>
+        {isPending && <p className="text-stone-500">{t("admin.blocklist.loading")}</p>}
         {data && data.entries.length === 0 && (
-          <p className="text-sm text-stone-500 italic">Keine Patterns eingetragen.</p>
+          <p className="text-sm text-stone-500 italic">{t("admin.blocklist.empty")}</p>
         )}
         {data && data.entries.length > 0 && (
           <table className="w-full text-sm border-collapse">
             <thead>
               <tr className="border-b border-stone-300 text-left text-stone-600">
-                <th className="py-2 pr-3">Pattern</th>
-                <th className="py-2 pr-3">Grund</th>
-                <th className="py-2 pr-3">Seit</th>
+                <th className="py-2 pr-3">{t("admin.blocklist.colPattern")}</th>
+                <th className="py-2 pr-3">{t("admin.blocklist.colReason")}</th>
+                <th className="py-2 pr-3">{t("admin.blocklist.colSince")}</th>
                 <th className="py-2 pr-3"></th>
               </tr>
             </thead>
@@ -119,7 +121,7 @@ function BlocklistPage() {
                       disabled={removeMut.isPending}
                       className="rounded border border-stone-300 px-2 py-1 text-xs hover:bg-rose-50"
                     >
-                      Löschen
+                      {t("admin.blocklist.delete")}
                     </button>
                   </td>
                 </tr>
