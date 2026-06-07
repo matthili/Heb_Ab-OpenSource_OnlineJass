@@ -512,6 +512,13 @@
   "game": {
     "yourTurn": "Du bist dran.",
     "errorFallback": "Spielfehler",
+    "announceOverlay": {
+      "trumpf": "{{suit}} ist Trumpf",
+      "gumpf": "{{suit}}-Gumpf angesagt",
+      "gumpfSub": "({{suit}} ist Trumpf — für den Rest gilt Geiss/Unten)",
+      "slalom": "Slalom angesagt",
+      "slalomSub": "(Modus wechselt pro Stich · Start: {{start}})"
+    },
     "otherTurn": "<strong>{{name}}</strong> ist dran.",
     "finished": "Spiel beendet — siehe Final-Score unten.",
     "trick": "Stich {{n}} / 9",

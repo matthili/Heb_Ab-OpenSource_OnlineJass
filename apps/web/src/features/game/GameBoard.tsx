@@ -23,6 +23,7 @@ import { Trans, useTranslation } from "react-i18next";
 import type { SeatView } from "~/features/lobby/types";
 import { seatDisplayName } from "./aiNames";
 import { AnnouncementDialog } from "./AnnouncementDialog";
+import { AnnounceOverlay, ModeWatermark } from "./AnnounceVisuals";
 import { DealCinematic } from "./DealCinematic";
 import { MatschOverlay } from "./MatschOverlay";
 import { relativeSlot, SEAT_LABEL_POS } from "./seat-layout";
@@ -338,6 +339,21 @@ function PlayingArea({
       role="region"
       aria-label={t("game.playingArea")}
     >
+      <ModeWatermark
+        info={{
+          mode: state.announcement.variant.mode,
+          trumpSuit: state.announcement.variant.trump_suit,
+          slalom: state.announcement.slalom,
+        }}
+      />
+      <AnnounceOverlay
+        gameId={view.gameId}
+        info={{
+          mode: state.announcement.variant.mode,
+          trumpSuit: state.announcement.variant.trump_suit,
+          slalom: state.announcement.slalom,
+        }}
+      />
       {/* Sitz-Labels der 3 Mitspieler */}
       {seats.map((s) => {
         if (s.seat === mySeat) return null;
@@ -385,8 +401,8 @@ function PlayingArea({
         );
       })}
 
-      {/* Trick in der Mitte — mit Linger-Effekt */}
-      <div className="row-start-1 row-end-4 col-start-1 col-end-4 pointer-events-none">
+      {/* Trick in der Mitte — mit Linger-Effekt (über dem Modus-Wasserzeichen) */}
+      <div className="row-start-1 row-end-4 col-start-1 col-end-4 pointer-events-none relative z-10">
         <Trick
           cards={displayedCards}
           starter={displayedStarter}

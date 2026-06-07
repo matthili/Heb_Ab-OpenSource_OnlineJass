@@ -512,6 +512,13 @@
   "game": {
     "yourTurn": "Your turn.",
     "errorFallback": "Game error",
+    "announceOverlay": {
+      "trumpf": "{{suit}} is trump",
+      "gumpf": "{{suit}}-Gumpf announced",
+      "gumpfSub": "({{suit}} is trump — the rest follows Bottom-up (Geiss))",
+      "slalom": "Slalom announced",
+      "slalomSub": "(mode alternates each trick · start: {{start}})"
+    },
     "otherTurn": "<strong>{{name}}</strong> is up.",
     "finished": "Game over — see final score below.",
     "trick": "Trick {{n}} / 9",
