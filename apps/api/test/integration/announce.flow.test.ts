@@ -126,6 +126,54 @@ describe("Sprint C — Trumpf-Ansage-Flow", () => {
     expect(rd?.starter).toBe(0);
   });
 
+  it("Schiebe-Slalom: der Schieber (Vorhand) wählt die Start-Richtung, nicht der Ansager", async () => {
+    const seats: SeatAssignment[] = [
+      { seat: 0, userId: null, aiSeatType: "heuristic" },
+      { seat: 1, userId: null, aiSeatType: "heuristic" },
+      { seat: 2, userId: null, aiSeatType: "heuristic" },
+      { seat: 3, userId: null, aiSeatType: "heuristic" },
+    ];
+    const { gameId } = await games.createGame({ seats, announcerSeat: 0, rngSeed: 7 });
+
+    // Sitz 0 schiebt → Partner (Sitz 2) wird Ansager.
+    await games.applyAnnouncementAsSeat(gameId, 0, { kind: "push" });
+
+    // Partner sagt SLALOM an — Startmodus OBEN wird mitgeschickt, MUSS aber
+    // verworfen werden (der Schieber entscheidet).
+    await games.applyAnnouncementAsSeat(gameId, 2, {
+      kind: "announce",
+      mode: "OBEN",
+      slalom: true,
+    });
+
+    // Die Richtungs-Wahl wandert zurück an den Schieber (Sitz 0).
+    const dirView = await games.viewForSeat(gameId, 0);
+    expect(dirView.status).toBe("announcing");
+    expect(dirView.announcement?.announcerSeat).toBe(0);
+    expect(dirView.announcement?.slalomDirectionOnly).toBe(true);
+    expect(dirView.announcement?.canPush).toBe(false);
+
+    // Im Richtungs-Schritt ist Schieben gesperrt.
+    await expect(games.applyAnnouncementAsSeat(gameId, 0, { kind: "push" })).rejects.toThrow();
+
+    // Der Schieber wählt UNTEN (≠ OBEN-Default des Partners) → Runde startet.
+    await games.applyAnnouncementAsSeat(gameId, 0, {
+      kind: "announce",
+      mode: "UNTEN",
+      slalom: true,
+    });
+
+    const rd = await app.prisma.roundDecision.findUnique({
+      where: { gameId_roundIdx: { gameId, roundIdx: 0 } },
+    });
+    expect(rd?.starter).toBe(0); // Schieber kommt raus
+    expect(rd?.mode).toBe("UNTEN"); // Richtung vom Schieber, nicht OBEN vom Partner
+
+    const playView = await games.viewForSeat(gameId, 0);
+    expect(playView.status).toBe("playing");
+    expect(playView.state?.announcement.slalom).toBe(true); // es IST ein Slalom
+  });
+
   it("Validation: TRUMPF ohne trumpSuit wirft", async () => {
     const seats: SeatAssignment[] = [
       { seat: 0, userId: null, aiSeatType: "heuristic" },
