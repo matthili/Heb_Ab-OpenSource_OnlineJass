@@ -124,6 +124,8 @@ export interface BodenseePlayerView {
   /** Effektive Variante (gesetzt ab `playing`). */
   playMode?: PlayMode;
   trumpSuit?: Suit;
+  /** Stabiles Slalom-Flag der Ansage (für Modus-Symbol/Overlay). */
+  slalom?: boolean;
   trickIdx: number;
   ownScore: number;
   oppScore: number;
@@ -131,6 +133,8 @@ export interface BodenseePlayerView {
   currentTrick: { cards: readonly Card[]; starter: number };
   /** Zuletzt abgeschlossener Stich — bleibt sichtbar, bis der nächste beginnt. */
   lastTrick?: { cards: readonly Card[]; starter: number; winner: number };
+  /** Erster Stich der Runde — dauerhaft als Mini angezeigt (wie regulär). */
+  firstTrick?: { cards: readonly Card[]; starter: number; winner: number };
   announcement?: {
     announcerSeat: number;
     iAmAnnouncer: boolean;
@@ -354,6 +358,7 @@ export class BodenseeGameService {
       whoseTurnSeat: finished ? -1 : whoseTurnBodensee(state),
       myTurn: !finished && whoseTurnBodensee(state) === seat,
       playMode: state.variant.mode,
+      slalom: state.announcement.slalom,
       trickIdx: state.trick_idx,
       ownScore: view.own_score,
       oppScore: view.opp_score,
@@ -364,6 +369,12 @@ export class BodenseeGameService {
     };
     const completed = view.completed_tricks;
     if (completed.length > 0) {
+      const first = completed[0]!;
+      result.firstTrick = {
+        cards: first.cards,
+        starter: first.starter,
+        winner: state.trick_winners[0] ?? -1,
+      };
       const last = completed[completed.length - 1]!;
       result.lastTrick = {
         cards: last.cards,

@@ -30,11 +30,15 @@ export interface BodenseeView {
   myTurn: boolean;
   playMode?: PlayMode;
   trumpSuit?: Suit;
+  /** Stabiles Slalom-Flag der Ansage (für Modus-Symbol/Overlay). */
+  slalom?: boolean;
   trickIdx: number;
   ownScore: number;
   oppScore: number;
   currentTrick: { cards: readonly Card[]; starter: number };
   lastTrick?: { cards: readonly Card[]; starter: number; winner: number };
+  /** Erster Stich der Runde — dauerhaft als Mini angezeigt. */
+  firstTrick?: { cards: readonly Card[]; starter: number; winner: number };
   announcement?: { announcerSeat: number; iAmAnnouncer: boolean; announceLevel: AnnounceLevel };
   finalScore?: { player_total_points: readonly number[]; matsch_player: number | null };
 }

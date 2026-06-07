@@ -26,6 +26,8 @@ import { useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
 
 import { seatDisplayName } from "~/features/game/aiNames";
+import { AnnounceOverlay } from "~/features/game/AnnounceVisuals";
+import { announceDisplay } from "~/features/game/announceDisplay";
 import type { SeatView } from "~/features/lobby/types";
 import type { BodenseeAnnouncement, BodenseeView } from "./types";
 
@@ -84,8 +86,16 @@ export function BodenseeBoard({
   const isLegal = (c: CardModel): boolean => view.legalActionMask[cardIndex(c)] === 1;
   const canPlay = view.status === "playing" && view.myTurn && !movePending;
 
+  // Stabile Ansage-Info (für Overlay + Modus-Icon). Erst ab `playing` gesetzt.
+  const announceInfo =
+    view.playMode !== undefined
+      ? { mode: view.playMode, trumpSuit: view.trumpSuit, slalom: view.slalom ?? false }
+      : null;
+  const modeIcon = announceInfo ? announceDisplay(t, announceInfo).iconSrc : null;
+
   return (
-    <div className="space-y-3">
+    <div className="space-y-3 relative">
+      {announceInfo && <AnnounceOverlay gameId={view.gameId} info={announceInfo} />}
       {/* Status-Leiste */}
       <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-jass-paperEdge bg-jass-cream px-4 py-2 text-sm">
         <span className="text-jass-inkSoft">
@@ -96,6 +106,9 @@ export function BodenseeBoard({
           />
         </span>
         <span className="jass-mode-glow rounded bg-jass-yellow px-2.5 py-1 text-sm font-bold text-jass-ink ring-1 ring-jass-yellowDark">
+          {modeIcon && (
+            <img src={modeIcon} alt="" className="mr-1 inline-block h-5 w-5 align-middle" />
+          )}
           {t("bodensee.status.mode", {
             mode: view.playMode ? modeLabel(t, view.playMode) : "—",
           })}
@@ -154,6 +167,30 @@ export function BodenseeBoard({
       <section className="rounded-xl bg-emerald-800 px-4 py-5 text-center text-emerald-50 shadow-inner">
         <TrickArea view={view} seatName={seatName} />
       </section>
+
+      {/* Erster + letzter abgeschlossener Stich als Minis (wie regulär) */}
+      {(view.firstTrick || view.lastTrick) && (
+        <section className="flex justify-center gap-4">
+          {view.firstTrick && (
+            <MiniTrick
+              label={t("game.trickMini.first")}
+              trick={view.firstTrick}
+              mySeat={view.mySeat}
+              seatName={seatName}
+              t={t}
+            />
+          )}
+          {view.lastTrick && (
+            <MiniTrick
+              label={t("game.trickMini.last")}
+              trick={view.lastTrick}
+              mySeat={view.mySeat}
+              seatName={seatName}
+              t={t}
+            />
+          )}
+        </section>
+      )}
 
       {/* Eigener Bereich */}
       <section className="rounded-lg border border-jass-paperEdge bg-jass-paper p-3 space-y-3">
@@ -297,6 +334,40 @@ function TrickArea({ view, seatName }: { view: BodenseeView; seatName: (seat: nu
   }
 
   return <p className="text-sm text-emerald-100">{t("bodensee.trick.starting")}</p>;
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Stich-Mini (erster / letzter abgeschlossener Stich)
+// ─────────────────────────────────────────────────────────────────────
+
+function MiniTrick({
+  label,
+  trick,
+  mySeat,
+  seatName,
+  t,
+}: {
+  label: string;
+  trick: { cards: readonly CardModel[]; starter: number; winner: number };
+  mySeat: number;
+  seatName: (seat: number) => string;
+  t: TFunction;
+}) {
+  return (
+    <div className="rounded-lg border border-jass-paperEdge bg-jass-cream px-2 py-1 text-center">
+      <p className="text-[10px] uppercase tracking-wide text-jass-inkSoft">{label}</p>
+      <div className="my-0.5 flex justify-center gap-0.5">
+        {trick.cards.map((c, i) => (
+          <Card key={`${c.suit}-${c.rank}-${i}`} card={c} size="xs" />
+        ))}
+      </div>
+      <p className="text-[10px] text-jass-inkSoft">
+        {trick.winner === mySeat
+          ? t("game.trickMini.wonByYou")
+          : t("game.trickMini.wonByName", { name: seatName(trick.winner) })}
+      </p>
+    </div>
+  );
 }
 
 // ─────────────────────────────────────────────────────────────────────
