@@ -15,6 +15,8 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import type { PlayMode } from "@jass/engine";
+
 import { announceDisplay, type AnnounceModeInfo } from "./announceDisplay";
 
 const SEEN_KEY = "jass:announce-overlay-seen";
@@ -96,14 +98,30 @@ export function AnnounceOverlay({ gameId, info }: { gameId: string; info: Announ
  * Dauerhaftes Modus-Wasserzeichen. Gehört HINTER den Stich (Container muss
  * `relative` sein, der Stich `z-10`); dieses Element bleibt auf `z-0`.
  */
-export function ModeWatermark({ info }: { info: AnnounceModeInfo }) {
+export function ModeWatermark({
+  info,
+  currentMode,
+}: {
+  info: AnnounceModeInfo;
+  /**
+   * Effektiver Modus des AKTUELLEN Stichs. Bei Slalom (wechselt Oben↔Unten
+   * pro Stich) als gut lesbares Label ÜBER dem Symbol gezeigt; bei Nicht-
+   * Slalom ungenutzt (das Symbol ist eindeutig).
+   */
+  currentMode?: PlayMode | undefined;
+}) {
   const { t } = useTranslation();
   const d = announceDisplay(t, info);
   return (
     <div
       aria-hidden="true"
-      className="pointer-events-none absolute inset-0 z-0 flex items-center justify-center"
+      className="pointer-events-none absolute inset-0 z-0 flex flex-col items-center justify-center gap-2"
     >
+      {info.slalom && currentMode && (
+        <span className="rounded bg-black/35 px-2 py-0.5 text-base font-bold uppercase tracking-wide text-white/90">
+          {t(`game.announce.mode.${currentMode}`)}
+        </span>
+      )}
       {d.iconSrc ? (
         <img
           src={d.iconSrc}

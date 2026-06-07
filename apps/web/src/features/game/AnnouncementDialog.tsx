@@ -207,7 +207,7 @@ export function AnnouncementDialog({ view, seatNames, pending, onAnnounce }: Pro
             if (decision) onAnnounce(decision);
           }}
           disabled={!canConfirm}
-          className="ml-auto rounded bg-jass-ink px-4 py-2 text-sm text-jass-cream hover:bg-jass-brownDark disabled:opacity-40"
+          className="ml-auto btn-jass-primary text-sm"
         >
           {pending ? t("game.announce.sending") : t("game.announce.confirm")}
         </button>

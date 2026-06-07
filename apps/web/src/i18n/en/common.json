@@ -520,7 +520,7 @@
       "slalomSub": "(mode alternates each trick · start: {{start}})"
     },
     "otherTurn": "<strong>{{name}}</strong> is up.",
-    "finished": "Game over — see final score below.",
+    "finished": "Round over — see final score below.",
     "trick": "Trick {{n}} / 9",
     "scoreOwn": "Your team: <strong>{{score}}</strong>",
     "scoreOpp": "Opponents: <strong>{{score}}</strong>",

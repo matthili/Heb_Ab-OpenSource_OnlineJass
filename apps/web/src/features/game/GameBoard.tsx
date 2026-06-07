@@ -349,6 +349,7 @@ function PlayingArea({
           trumpSuit: state.announcement.variant.trump_suit,
           slalom: state.announcement.slalom,
         }}
+        currentMode={state.variant.mode}
       />
       <AnnounceOverlay
         gameId={view.gameId}

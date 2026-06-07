@@ -165,7 +165,7 @@ export function BodenseeBoard({
       {/* Stich-Mitte — mit Modus-Wasserzeichen dahinter (gut sichtbar statt
           des zu kleinen Icons oben). */}
       <section className="relative min-h-[10rem] overflow-hidden rounded-xl bg-emerald-800 px-4 py-5 text-center text-emerald-50 shadow-inner">
-        {announceInfo && <ModeWatermark info={announceInfo} />}
+        {announceInfo && <ModeWatermark info={announceInfo} currentMode={view.playMode} />}
         <div className="relative z-10">
           <TrickArea view={view} seatName={seatName} />
         </div>

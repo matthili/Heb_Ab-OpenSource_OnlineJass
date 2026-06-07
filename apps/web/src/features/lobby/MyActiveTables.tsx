@@ -62,7 +62,7 @@ export function MyActiveTables() {
             <Link
               to="/table/$id"
               params={{ id: tbl.id }}
-              className="ml-auto rounded bg-jass-ink px-3 py-1 text-xs text-jass-cream hover:bg-jass-brownDark"
+              className="ml-auto rounded bg-jass-ink px-3 py-1 text-xs text-jass-cream hover:opacity-90"
             >
               {t("lobby.myTables.goToTable")}
             </Link>

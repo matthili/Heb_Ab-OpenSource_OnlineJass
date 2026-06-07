@@ -520,7 +520,7 @@
       "slalomSub": "(Modus wechselt pro Stich · Start: {{start}})"
     },
     "otherTurn": "<strong>{{name}}</strong> ist dran.",
-    "finished": "Spiel beendet — siehe Final-Score unten.",
+    "finished": "Durchgang beendet — siehe Final-Score unten.",
     "trick": "Stich {{n}} / 9",
     "scoreOwn": "Eigenes Team: <strong>{{score}}</strong>",
     "scoreOpp": "Gegner: <strong>{{score}}</strong>",
