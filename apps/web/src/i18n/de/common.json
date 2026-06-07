@@ -297,7 +297,7 @@
 
   "lobby": {
     "title": "Lobby",
-    "openTable": "Tisch öffnen",
+    "openTableButton": "Tisch öffnen",
     "loading": "Lade Tische …",
     "empty": "Keine offenen Tische. Öffne den ersten mit „Tisch öffnen“ oben rechts.",
     "loadError": "Konnte Lobby nicht laden: {{message}}",

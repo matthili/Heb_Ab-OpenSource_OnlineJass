@@ -297,7 +297,7 @@
 
   "lobby": {
     "title": "Lobby",
-    "openTable": "Open table",
+    "openTableButton": "Open table",
     "loading": "Loading tables …",
     "empty": "No open tables. Open the first one with “Open table” up top.",
     "loadError": "Couldn't load the lobby: {{message}}",

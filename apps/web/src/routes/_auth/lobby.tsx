@@ -28,7 +28,7 @@ function LobbyPage() {
           onClick={() => setOpenDialog(true)}
           className="ml-auto btn-jass-primary"
         >
-          {t("lobby.openTable")}
+          {t("lobby.openTableButton")}
         </button>
       </header>
       <CompleteProfilePrompt />
