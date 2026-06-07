@@ -39,6 +39,11 @@ export interface ScoreboardProps {
   /** Trumpf-Farbe, nur relevant bei mode === "TRUMPF" oder "GUMPF". */
   trumpSuit?: Suit;
   /**
+   * Slalom-Ansage: zeigt „Slalom (ab …)" statt der pro-Stich wechselnden
+   * effektiven Variante. `mode` ist dann der Startmodus (OBEN/UNTEN).
+   */
+  slalom?: boolean;
+  /**
    * **Solo-Jass**: wenn gesetzt, zeigt das Scoreboard 4 Einzelkonten
    * statt der Team-Anzeige (own/opp werden dann ignoriert).
    */
@@ -114,13 +119,16 @@ export function Scoreboard({
   trickIdx,
   mode,
   trumpSuit,
+  slalom,
   soloPlayers,
 }: ScoreboardProps) {
-  const modeText = mode
-    ? mode === "TRUMPF" || mode === "GUMPF"
-      ? `${MODE_LABEL[mode]} · ${trumpSuit ? SUIT_LABEL[trumpSuit] : "?"}`
-      : MODE_LABEL[mode]
-    : null;
+  const modeText = slalom
+    ? `Slalom${mode ? ` · ab ${MODE_LABEL[mode]}` : ""}`
+    : mode
+      ? mode === "TRUMPF" || mode === "GUMPF"
+        ? `${MODE_LABEL[mode]} · ${trumpSuit ? SUIT_LABEL[trumpSuit] : "?"}`
+        : MODE_LABEL[mode]
+      : null;
 
   // ── Solo-Variante: 4 Einzelkonten ───────────────────────────────────
   // Routing-Only: KEINE Hooks in dieser Funktion — die Team- und Solo-

@@ -12,7 +12,7 @@
  * `absolute inset-0` in einen `relative`-Container (das Spielfeld bzw. den
  * Bodensee-Tisch).
  */
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { announceDisplay, type AnnounceModeInfo } from "./announceDisplay";
@@ -49,17 +49,23 @@ function markSeen(gameId: string): void {
 export function AnnounceOverlay({ gameId, info }: { gameId: string; info: AnnounceModeInfo }) {
   const { t } = useTranslation();
   const [visible, setVisible] = useState(false);
-  const startedRef = useRef(false);
 
+  // Einmal pro gameId einblenden (localStorage-gemerkt → kein Re-Trigger bei
+  // Reload). Bewusst KEIN ref-Guard mit Timer im selben Effekt: React-
+  // StrictMode (dev) würde sonst den Timer im Cleanup löschen und beim
+  // Re-Run nicht neu setzen → Overlay bliebe bis zum Klick stehen.
   useEffect(() => {
-    if (startedRef.current) return;
-    startedRef.current = true;
     if (loadSeen().has(gameId)) return;
     markSeen(gameId);
     setVisible(true);
+  }, [gameId]);
+
+  // Timer separat an `visible` gekoppelt — überlebt den StrictMode-Doppel-Effekt.
+  useEffect(() => {
+    if (!visible) return;
     const tmr = setTimeout(() => setVisible(false), 3000);
     return () => clearTimeout(tmr);
-  }, [gameId]);
+  }, [visible]);
 
   if (!visible) return null;
   const d = announceDisplay(t, info);
@@ -103,10 +109,12 @@ export function ModeWatermark({ info }: { info: AnnounceModeInfo }) {
           src={d.iconSrc}
           alt=""
           draggable={false}
-          className="h-48 w-48 object-contain opacity-[0.13]"
+          className="h-48 w-48 object-contain opacity-30"
         />
       ) : (
-        <span className="text-[10rem] font-black leading-none text-jass-ink opacity-[0.10]">
+        // Heller Glyph: das Wasserzeichen liegt immer auf dunklem Filz
+        // (greenDark / emerald-800), in HELL wie DUNKEL.
+        <span className="text-[10rem] font-black leading-none text-white opacity-25">
           {d.glyph}
         </span>
       )}

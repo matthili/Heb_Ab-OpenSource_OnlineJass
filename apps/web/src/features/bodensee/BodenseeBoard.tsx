@@ -26,8 +26,7 @@ import { useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
 
 import { seatDisplayName } from "~/features/game/aiNames";
-import { AnnounceOverlay } from "~/features/game/AnnounceVisuals";
-import { announceDisplay } from "~/features/game/announceDisplay";
+import { AnnounceOverlay, ModeWatermark } from "~/features/game/AnnounceVisuals";
 import type { SeatView } from "~/features/lobby/types";
 import type { BodenseeAnnouncement, BodenseeView } from "./types";
 
@@ -86,12 +85,11 @@ export function BodenseeBoard({
   const isLegal = (c: CardModel): boolean => view.legalActionMask[cardIndex(c)] === 1;
   const canPlay = view.status === "playing" && view.myTurn && !movePending;
 
-  // Stabile Ansage-Info (für Overlay + Modus-Icon). Erst ab `playing` gesetzt.
+  // Stabile Ansage-Info (für Overlay + Wasserzeichen). Erst ab `playing` gesetzt.
   const announceInfo =
     view.playMode !== undefined
       ? { mode: view.playMode, trumpSuit: view.trumpSuit, slalom: view.slalom ?? false }
       : null;
-  const modeIcon = announceInfo ? announceDisplay(t, announceInfo).iconSrc : null;
 
   return (
     <div className="space-y-3 relative">
@@ -106,13 +104,14 @@ export function BodenseeBoard({
           />
         </span>
         <span className="jass-mode-glow rounded bg-jass-yellow px-2.5 py-1 text-sm font-bold text-jass-ink ring-1 ring-jass-yellowDark">
-          {modeIcon && (
-            <img src={modeIcon} alt="" className="mr-1 inline-block h-5 w-5 align-middle" />
-          )}
           {t("bodensee.status.mode", {
-            mode: view.playMode ? modeLabel(t, view.playMode) : "—",
+            mode: view.slalom
+              ? t("game.announce.mode.SLALOM")
+              : view.playMode
+                ? modeLabel(t, view.playMode)
+                : "—",
           })}
-          {view.trumpSuit ? ` ${suitLabel(t, view.trumpSuit)}` : ""}
+          {!view.slalom && view.trumpSuit ? ` ${suitLabel(t, view.trumpSuit)}` : ""}
         </span>
         <span className="text-jass-inkSoft">
           <Trans
@@ -163,9 +162,13 @@ export function BodenseeBoard({
         )}
       </section>
 
-      {/* Stich-Mitte */}
-      <section className="rounded-xl bg-emerald-800 px-4 py-5 text-center text-emerald-50 shadow-inner">
-        <TrickArea view={view} seatName={seatName} />
+      {/* Stich-Mitte — mit Modus-Wasserzeichen dahinter (gut sichtbar statt
+          des zu kleinen Icons oben). */}
+      <section className="relative min-h-[10rem] overflow-hidden rounded-xl bg-emerald-800 px-4 py-5 text-center text-emerald-50 shadow-inner">
+        {announceInfo && <ModeWatermark info={announceInfo} />}
+        <div className="relative z-10">
+          <TrickArea view={view} seatName={seatName} />
+        </div>
       </section>
 
       {/* Erster + letzter abgeschlossener Stich als Minis (wie regulär) */}
@@ -447,6 +450,7 @@ function AnnouncePanel({
   const { t } = useTranslation();
   const [mode, setMode] = useState<AnnounceMode>("TRUMPF");
   const [suit, setSuit] = useState<Suit>("EICHEL");
+  const [slalomStart, setSlalomStart] = useState<"OBEN" | "UNTEN">("OBEN");
   const needsSuit = mode === "TRUMPF" || mode === "GUMPF";
 
   // Nur die an diesem Tisch erlaubten Ansage-Arten anbieten.
@@ -458,7 +462,8 @@ function AnnouncePanel({
 
   function confirm() {
     if (mode === "SLALOM") {
-      onAnnounce({ variant: { mode: "OBEN" }, slalom: true });
+      // Ansager = Vorhand (kommt raus) → wählt selbst den Startmodus.
+      onAnnounce({ variant: { mode: slalomStart }, slalom: true });
       return;
     }
     if (needsSuit) {
@@ -505,6 +510,30 @@ function AnnouncePanel({
               {suitLabel(t, s)}
             </button>
           ))}
+        </div>
+      )}
+      {mode === "SLALOM" && (
+        <div className="space-y-1">
+          <p className="text-xs uppercase tracking-wide text-jass-inkSoft">
+            {t("game.announce.slalomStartsWith")}
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {(["OBEN", "UNTEN"] as const).map((s) => (
+              <button
+                key={s}
+                type="button"
+                onClick={() => setSlalomStart(s)}
+                aria-pressed={slalomStart === s}
+                className={`rounded border px-3 py-1 text-sm transition ${
+                  slalomStart === s
+                    ? "border-jass-yellowDark bg-jass-yellow font-semibold text-jass-ink"
+                    : "border-jass-paperEdge bg-jass-cream text-jass-inkSoft hover:bg-jass-yellow/20"
+                }`}
+              >
+                {s === "OBEN" ? t("game.announce.slalomOben") : t("game.announce.slalomUnten")}
+              </button>
+            ))}
+          </div>
         </div>
       )}
       <button

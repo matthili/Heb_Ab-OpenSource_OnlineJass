@@ -68,6 +68,10 @@
  * den Eindruck von „nicht plattem Hintergrund" geben. */
 html,
 body {
+  /* Scrollbalken-Platz dauerhaft reservieren — sonst „hüpft" das Layout
+   * horizontal, sobald ein vertikaler Scrollbalken auftaucht/verschwindet
+   * (z.B. beim Turn-Wechsel, wenn der „Du bist dran"-Balken erscheint). */
+  scrollbar-gutter: stable;
   background-color: var(--jass-bg);
   background-image:
     radial-gradient(

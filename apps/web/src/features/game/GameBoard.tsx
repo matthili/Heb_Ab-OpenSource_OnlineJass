@@ -183,8 +183,12 @@ export function GameBoard({
         ownTeamScore={state.own_team_score}
         oppTeamScore={state.opp_team_score}
         trickIdx={state.trick_idx}
-        mode={variant.mode}
+        // Bei Slalom den STABILEN Startmodus + slalom-Flag zeigen, nicht die
+        // pro-Stich wechselnde effektive Variante (sonst stünde mal „Oben",
+        // mal „Unten" da statt „Slalom").
+        mode={state.announcement.slalom ? state.announcement.variant.mode : variant.mode}
         {...(variant.trump_suit !== undefined ? { trumpSuit: variant.trump_suit } : {})}
+        {...(state.announcement.slalom ? { slalom: true } : {})}
         {...(soloPlayers ? { soloPlayers } : {})}
       />
       <StatusBanner view={view} seats={seats} nameSeed={nameSeed} />
