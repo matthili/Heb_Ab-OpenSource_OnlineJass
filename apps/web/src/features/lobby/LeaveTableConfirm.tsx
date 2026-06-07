@@ -43,7 +43,7 @@ export function LeaveTableConfirm({ open, tableStatus, pending, onCancel, onConf
     <dialog
       ref={ref}
       onClose={onCancel}
-      className="rounded-lg p-0 backdrop:bg-black/40 w-full max-w-md"
+      className="rounded-lg p-0 backdrop:bg-black/40 w-full max-w-md bg-jass-paper text-jass-ink"
     >
       <div className="p-6 space-y-4">
         <h2 className="text-xl font-bold text-jass-ink">{t("lobby.leave.confirmTitle")}</h2>
