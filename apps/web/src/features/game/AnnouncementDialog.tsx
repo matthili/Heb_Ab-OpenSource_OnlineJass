@@ -83,6 +83,45 @@ export function AnnouncementDialog({ view, seatNames, pending, onAnnounce }: Pro
     );
   }
 
+  // Schiebe-Slalom: der Partner hat Slalom angesagt — ich (Starter, komme mit
+  // der ersten Karte raus) wähle nur noch die Start-Richtung (Oben/Unten).
+  if (ann.slalomDirectionOnly) {
+    return (
+      <div className="rounded-lg border border-jass-paperEdge bg-jass-cream p-4 space-y-4">
+        <header>
+          <h3 className="font-semibold text-jass-ink">{t("game.announce.slalomDirectionTitle")}</h3>
+          <p className="text-sm text-jass-inkSoft">{t("game.announce.slalomDirectionPrompt")}</p>
+        </header>
+        <div className="grid grid-cols-2 gap-2">
+          {(["OBEN", "UNTEN"] as const).map((s) => (
+            <button
+              key={s}
+              type="button"
+              onClick={() => setSlalomStart(s)}
+              className={`rounded px-3 py-2 text-sm border ${
+                slalomStart === s
+                  ? "border-jass-yellowDark bg-jass-yellow text-jass-ink font-semibold"
+                  : "border-jass-paperEdge bg-jass-paper text-jass-ink hover:bg-jass-cream"
+              }`}
+            >
+              {s === "OBEN" ? t("game.announce.slalomOben") : t("game.announce.slalomUnten")}
+            </button>
+          ))}
+        </div>
+        <div className="flex border-t border-jass-paperEdge pt-3">
+          <button
+            type="button"
+            onClick={() => onAnnounce({ kind: "announce", mode: slalomStart, slalom: true })}
+            disabled={pending}
+            className="ml-auto btn-jass-primary text-sm"
+          >
+            {pending ? t("game.announce.sending") : t("game.announce.confirm")}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   function readyDecision(): AnnouncementDecision | null {
     if (mode === null) return null;
     if (mode === "TRUMPF" || mode === "GUMPF") {
@@ -164,8 +203,10 @@ export function AnnouncementDialog({ view, seatNames, pending, onAnnounce }: Pro
         </fieldset>
       )}
 
-      {/* Slalom: Start-Modus */}
-      {mode === "SLALOM" && (
+      {/* Slalom: Start-Modus — nur wenn ICH der Starter bin (nicht geschoben).
+          Habe ich als gepushter Partner Slalom angesagt, wählt der Schieber
+          (Vorhand) die Richtung im separaten slalomDirectionOnly-Schritt. */}
+      {mode === "SLALOM" && ann.pushedFromSeat === null && (
         <fieldset className="space-y-2">
           <legend className="text-xs uppercase tracking-wide text-jass-inkSoft">
             {t("game.announce.slalomStartsWith")}
@@ -187,6 +228,18 @@ export function AnnouncementDialog({ view, seatNames, pending, onAnnounce }: Pro
             ))}
           </div>
         </fieldset>
+      )}
+
+      {/* Slalom nach Schieben: die Start-Richtung wählt der Schieber (Vorhand),
+          nicht ich (gepushter Partner). */}
+      {mode === "SLALOM" && ann.pushedFromSeat !== null && (
+        <p className="text-xs text-jass-inkSoft">
+          {t("game.announce.slalomPushHint", {
+            name:
+              seatNames.get(ann.pushedFromSeat) ??
+              t("game.seatFallback", { n: ann.pushedFromSeat }),
+          })}
+        </p>
       )}
 
       {/* Aktionen */}

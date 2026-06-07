@@ -557,6 +557,9 @@
       "slalomStartsWith": "Slalom starts with",
       "slalomOben": "Top-down → Bottom-up → Top-down …",
       "slalomUnten": "Bottom-up → Top-down → Bottom-up …",
+      "slalomDirectionTitle": "Slalom announced — you lead",
+      "slalomDirectionPrompt": "Your partner announced Slalom. You play the first card — choose whether it starts Top-down (Bock) or Bottom-up (Geiss).",
+      "slalomPushHint": "{{name}} (who leads) chooses the starting direction.",
       "push": "Pass to partner",
       "sending": "Sending…",
       "confirm": "Confirm announcement"

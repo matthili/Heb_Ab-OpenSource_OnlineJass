@@ -557,6 +557,9 @@
       "slalomStartsWith": "Slalom startet mit",
       "slalomOben": "Oben → Unten → Oben …",
       "slalomUnten": "Unten → Oben → Unten …",
+      "slalomDirectionTitle": "Slalom angesagt — du kommst raus",
+      "slalomDirectionPrompt": "Dein Partner hat Slalom angesagt. Du spielst die erste Karte — wähle, ob mit Oben (Bock) oder Unten (Geiss) begonnen wird.",
+      "slalomPushHint": "Die Startrichtung wählt {{name}} (kommt mit der ersten Karte raus).",
       "push": "An Partner schieben",
       "sending": "Sende…",
       "confirm": "Ansage bestätigen"

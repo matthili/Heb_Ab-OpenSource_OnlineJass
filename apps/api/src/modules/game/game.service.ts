@@ -117,6 +117,13 @@ interface PendingAnnouncement {
    * ohne das Feld als `ALLES` (= keine Einschränkung) interpretiert werden.
    */
   announceLevel?: AnnounceLevel;
+  /**
+   * Schiebe-Slalom-Sonderfall: Der gepushte Partner hat Slalom angesagt; offen
+   * ist nur noch die Start-Richtung (Oben/Unten). Die wählt der Starter
+   * (= ursprünglicher Schieber, kommt mit der ersten Karte raus), nicht der
+   * Ansager. Solange gesetzt, ist `announcerSeat` dieser Starter.
+   */
+  slalomDirectionOnly?: boolean;
 }
 
 /** Spielart, die der Caller an `createGame` übergeben kann. */
@@ -229,6 +236,12 @@ export interface PlayerView {
     pushedFromSeat: number | null;
     /** Erlaubte-Ansagen-Stufe des Tisches — der Dialog blendet gesperrte Modi aus. */
     announceLevel: AnnounceLevel;
+    /**
+     * Schiebe-Slalom: der Partner hat Slalom angesagt, offen ist nur noch die
+     * Start-Richtung (Oben/Unten), die DU als Starter wählst. Der Dialog zeigt
+     * dann nur den Richtungs-Picker.
+     */
+    slalomDirectionOnly: boolean;
   };
   finalScore?: {
     team_card_points: readonly number[];
@@ -497,6 +510,7 @@ export class GameService {
           canPush,
           pushedFromSeat: pending.pushedFromSeat,
           announceLevel: pending.announceLevel ?? "ALLES",
+          slalomDirectionOnly: pending.slalomDirectionOnly ?? false,
         },
         stoeckEligible: false,
         stoeckAnnouncedTeam: null,
@@ -1008,6 +1022,13 @@ export class GameService {
     }
 
     if (decision.kind === "push") {
+      // Im Slalom-Richtungs-Schritt (Schiebe-Slalom) darf nicht geschoben
+      // werden — der Starter wählt nur noch Oben/Unten.
+      if (pending.slalomDirectionOnly) {
+        throw new BadRequestException(
+          "Schieben nicht möglich — wähle nur die Slalom-Startrichtung."
+        );
+      }
       // Solo-Jass kennt kein Schieben — es gibt keinen Partner.
       if (pending.isSolo) {
         throw new BadRequestException("Schieben gibt es im Solo-Jass nicht.");
@@ -1046,6 +1067,35 @@ export class GameService {
       throw new BadRequestException(
         `Ansage ${ann.slalom ? "SLALOM" : ann.variant.mode} ist an diesem Tisch nicht erlaubt.`
       );
+    }
+
+    // Im Slalom-Richtungs-Schritt ist ausschließlich eine Slalom-Ansage zulässig.
+    if (pending.slalomDirectionOnly && !ann.slalom) {
+      throw new BadRequestException("Hier ist nur die Slalom-Startrichtung zu wählen.");
+    }
+
+    // **Schiebe-Slalom-Sonderregel**: Sagt der gepushte Partner Slalom an, so
+    // wählt NICHT er die Start-Richtung, sondern der Schieber (= Starter, der
+    // mit der ersten Karte rauskommt). Wir verschieben die Wahl an ihn: er wird
+    // (erneut) zum Ansager und legt nur noch Oben/Unten fest. `slalomDirectionOnly`
+    // verhindert eine Endlosschleife, falls der Starter selbst Slalom wählt.
+    if (ann.slalom && pending.pushedFromSeat !== null && !pending.slalomDirectionOnly) {
+      const starterSeat = pending.pushedFromSeat;
+      await this.writePendingToRedis(gameId, {
+        hands: pending.hands,
+        announcerSeat: starterSeat,
+        pushedFromSeat: starterSeat,
+        ...(pending.isSolo !== undefined ? { isSolo: pending.isSolo } : {}),
+        ...(pending.announceLevel !== undefined ? { announceLevel: pending.announceLevel } : {}),
+        slalomDirectionOnly: true,
+      });
+      await this.audit.record({
+        action: "game.announce.slalom-deferred",
+        actorId,
+        target: gameId,
+        meta: asJson({ announcer: seat, starter: starterSeat }),
+      });
+      return { view: await this.viewForSeat(gameId, seat) };
     }
 
     // Starter ist nach Vorarlberger Tradition immer der Original-Ansager —
@@ -1242,6 +1292,11 @@ export class GameService {
     const pending = await this.loadPending(gameId);
     if (!pending) {
       throw new BadRequestException("Spiel ist nicht im Ansage-Modus.");
+    }
+    // Schiebe-Slalom-Richtungs-Schritt: die KI (als Starter) wählt nur die
+    // Start-Richtung — Oben als einfache, neutrale Default-Wahl.
+    if (pending.slalomDirectionOnly) {
+      return { kind: "announce", mode: "OBEN", slalom: true };
     }
     const hand = pending.hands[seat] ?? [];
     const canPush = pending.pushedFromSeat === null;

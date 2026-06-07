@@ -67,6 +67,8 @@ export interface PlayerView {
     pushedFromSeat: number | null;
     /** Erlaubte-Ansagen-Stufe des Tisches — der Dialog blendet gesperrte Modi aus. */
     announceLevel: AnnounceLevel;
+    /** Schiebe-Slalom: nur noch die Start-Richtung (Oben/Unten) ist zu wählen. */
+    slalomDirectionOnly: boolean;
   };
   finalScore?: FinalScore;
   /**
