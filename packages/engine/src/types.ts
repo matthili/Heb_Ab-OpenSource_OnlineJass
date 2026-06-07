@@ -106,6 +106,61 @@ export interface Announcement {
 }
 
 /**
+ * **Erlaubte-Ansagen-Stufe** (Tisch-Einstellung). Strikte Leiter — jede
+ * Stufe erweitert die vorige:
+ *   - `TRUMPF`     — nur Trumpf
+ *   - `GEISS_BOCK` — + Oben (Bock) / Unten (Geiss)
+ *   - `SLALOM`     — + Slalom (alterniert Oben/Unten, braucht daher Geiss/Bock)
+ *   - `ALLES`      — + Gumpf (Default)
+ *
+ * Beim Tisch-Eröffnen wählbar; bindet ALLE Ansager (Mensch + KI).
+ */
+export type AnnounceLevel = "TRUMPF" | "GEISS_BOCK" | "SLALOM" | "ALLES";
+
+/** Stufen in aufsteigender Reihenfolge (für UI-Kaskade + Validierung). */
+export const ANNOUNCE_LEVELS: readonly AnnounceLevel[] = [
+  "TRUMPF",
+  "GEISS_BOCK",
+  "SLALOM",
+  "ALLES",
+];
+
+export interface AnnounceConstraints {
+  /** Erlaubte `Variant.mode`-Werte. */
+  readonly allowedModes: ReadonlySet<PlayMode>;
+  /** Ob eine Slalom-Ansage erlaubt ist (separates Flag, kein eigener mode). */
+  readonly allowSlalom: boolean;
+}
+
+/** Leitet aus der Stufe die erlaubten Modi + das Slalom-Flag ab. */
+export function announceConstraints(level: AnnounceLevel): AnnounceConstraints {
+  switch (level) {
+    case "TRUMPF":
+      return { allowedModes: new Set<PlayMode>(["TRUMPF"]), allowSlalom: false };
+    case "GEISS_BOCK":
+      return { allowedModes: new Set<PlayMode>(["TRUMPF", "OBEN", "UNTEN"]), allowSlalom: false };
+    case "SLALOM":
+      return { allowedModes: new Set<PlayMode>(["TRUMPF", "OBEN", "UNTEN"]), allowSlalom: true };
+    case "ALLES":
+      return {
+        allowedModes: new Set<PlayMode>(["TRUMPF", "GUMPF", "OBEN", "UNTEN"]),
+        allowSlalom: true,
+      };
+  }
+}
+
+/**
+ * Prüft, ob eine konkrete Ansage unter der gegebenen Stufe erlaubt ist.
+ * Bei Slalom zählt nur `allowSlalom` (der `variant.mode` ist dann der
+ * Startmodus OBEN/UNTEN, der auf jeder Slalom-fähigen Stufe erlaubt ist).
+ */
+export function isAnnouncementAllowed(ann: Announcement, level: AnnounceLevel): boolean {
+  const { allowedModes, allowSlalom } = announceConstraints(level);
+  if (ann.slalom) return allowSlalom;
+  return allowedModes.has(ann.variant.mode);
+}
+
+/**
  * Ein abgeschlossener Stich inklusive Starter, damit der Encoder pro Karte
  * den Spieler-Index rekonstruieren kann.
  */

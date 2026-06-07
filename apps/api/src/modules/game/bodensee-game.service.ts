@@ -33,6 +33,8 @@ import {
   SPEC_VERSION,
   visibleTableCards,
   whoseTurnBodensee,
+  isAnnouncementAllowed,
+  type AnnounceLevel,
   type Announcement,
   type BodenseeRoundState,
   type Card,
@@ -63,6 +65,8 @@ interface BodenseePending {
   hands: Card[][];
   tables: TableStack[][];
   announcerIdx: number;
+  /** Erlaubte-Ansagen-Stufe (optional → alte Pending-Objekte = ALLES). */
+  announceLevel?: AnnounceLevel;
 }
 
 /** Sitz-Zuordnung für ein Bodensee-Game (genau 2). */
@@ -82,6 +86,8 @@ export interface CreateBodenseeGameInput {
    * den Ansager (Match-Start, Vorarlberger Tradition).
    */
   announcerSeat?: number;
+  /** Erlaubte Ansage-Arten. Default: vom Tisch geladen bzw. ALLES. */
+  announceLevel?: AnnounceLevel;
 }
 
 /**
@@ -128,6 +134,7 @@ export interface BodenseePlayerView {
   announcement?: {
     announcerSeat: number;
     iAmAnnouncer: boolean;
+    announceLevel: AnnounceLevel;
   };
   finalScore?: {
     player_total_points: readonly number[];
@@ -166,10 +173,23 @@ export class BodenseeGameService {
     // der Caller den (alternierenden) Ansager explizit.
     const announcerIdx = input.announcerSeat ?? findWeliHolderBodensee(hands, tables);
 
+    // Erlaubte-Ansagen-Stufe: explizit > vom Tisch geladen > ALLES.
+    const announceLevel: AnnounceLevel =
+      input.announceLevel ??
+      (input.tableId
+        ? ((
+            await this.prisma.lobbyTable.findUnique({
+              where: { id: input.tableId },
+              select: { announceLevel: true },
+            })
+          )?.announceLevel ?? "ALLES")
+        : "ALLES");
+
     const game = await this.prisma.$transaction(async (tx) => {
       const created = await tx.game.create({
         data: {
           variant: "BODENSEE_2P",
+          announceLevel,
           ruleVersion: SPEC_VERSION,
           ...(input.tableId !== undefined ? { tableId: input.tableId } : {}),
         },
@@ -202,7 +222,7 @@ export class BodenseeGameService {
       return created;
     });
 
-    await this.writePending(game.id, { hands, tables, announcerIdx });
+    await this.writePending(game.id, { hands, tables, announcerIdx, announceLevel });
     await this.audit.record({
       action: "bodensee.game.created",
       target: game.id,
@@ -226,6 +246,13 @@ export class BodenseeGameService {
     if (seat !== pending.announcerIdx) {
       throw new BadRequestException(
         `Sitz ${seat} darf nicht ansagen (Ansager: ${pending.announcerIdx}).`
+      );
+    }
+    // Erlaubte-Ansagen-Stufe des Tisches server-seitig durchsetzen.
+    const level: AnnounceLevel = pending.announceLevel ?? "ALLES";
+    if (!isAnnouncementAllowed(announcement, level)) {
+      throw new BadRequestException(
+        `Ansage ${announcement.slalom ? "SLALOM" : announcement.variant.mode} ist an diesem Tisch nicht erlaubt.`
       );
     }
     const state = newBodenseeRound({
@@ -297,6 +324,7 @@ export class BodenseeGameService {
         announcement: {
           announcerSeat: pending.announcerIdx,
           iAmAnnouncer: pending.announcerIdx === seat,
+          announceLevel: pending.announceLevel ?? "ALLES",
         },
       };
     }

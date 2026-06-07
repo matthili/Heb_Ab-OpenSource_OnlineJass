@@ -32,6 +32,14 @@ export type RestartMode = z.infer<typeof RestartModeSchema>;
 export const VariantEnumSchema = z.enum(["KREUZ_4P", "SOLO_4P", "BODENSEE_2P"]);
 export type VariantEnum = z.infer<typeof VariantEnumSchema>;
 
+/**
+ * Erlaubte Ansage-Arten am Tisch (strikte Leiter, jede Stufe erweitert die
+ * vorige): TRUMPF → GEISS_BOCK (+Oben/Unten) → SLALOM (+Slalom) → ALLES
+ * (+Gumpf, Default). Siehe @jass/engine `AnnounceLevel` / `announceConstraints`.
+ */
+export const AnnounceLevelSchema = z.enum(["TRUMPF", "GEISS_BOCK", "SLALOM", "ALLES"]);
+export type AnnounceLevel = z.infer<typeof AnnounceLevelSchema>;
+
 /** Tisch-Lebenszyklus aus Sicht der Lobby. */
 export const LobbyStatusSchema = z.enum([
   "WAITING",
@@ -52,6 +60,8 @@ export const OpenTableDtoSchema = z
   .object({
     joinMode: JoinModeSchema.default("OPEN"),
     variant: VariantEnumSchema.default("KREUZ_4P"),
+    /** Erlaubte Ansage-Arten. Default ALLES = alle Möglichkeiten aktiv. */
+    announceLevel: AnnounceLevelSchema.default("ALLES"),
     /** Default-KI-Typ für Auto-Fill und initial besetzte KI-Sitze. */
     aiSeatType: AiSeatTypeSchema.default("heuristic"),
     /**

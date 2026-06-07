@@ -31,6 +31,7 @@ import type { TFunction } from "i18next";
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import { ANNOUNCE_LEVELS, type AnnounceLevel } from "@jass/engine";
 import { api, ApiError } from "~/lib/api";
 import type { JoinMode, OpenTableDto, RestartMode, TableVariant } from "./types";
 
@@ -69,6 +70,15 @@ const DEFAULT_SCORE: Record<TableVariant, number> = {
 
 const VARIANT_OPTIONS: readonly TableVariant[] = ["KREUZ_4P", "SOLO_4P", "BODENSEE_2P"];
 
+// Kaskaden-Stufen der erlaubten Ansagen ÜBER Trumpf hinaus (Trumpf ist immer
+// an). `index` = Position in ANNOUNCE_LEVELS: GEISS_BOCK=1, SLALOM=2, ALLES
+// (=+Gumpf)=3. Eine Checkbox ist aktivierbar, sobald die vorige Stufe an ist.
+const ANNOUNCE_STEPS = [
+  { key: "geissBock", index: 1 },
+  { key: "slalom", index: 2 },
+  { key: "gumpf", index: 3 },
+] as const;
+
 /** KI-Sitze für den „allein gegen KI"-Shortcut — bei Bodensee nur Sitz 1. */
 function soloAiSeats(variant: TableVariant): { seat: number }[] {
   return variant === "BODENSEE_2P" ? [{ seat: 1 }] : [{ seat: 1 }, { seat: 2 }, { seat: 3 }];
@@ -86,6 +96,7 @@ export function OpenTableDialog({ open, onClose }: Props) {
   const [autoFill, setAutoFill] = useState<number | null>(30);
   const [restartMode, setRestartMode] = useState<RestartMode>("SIEGER_GIBT");
   const [targetScore, setTargetScore] = useState<number>(1000);
+  const [announceLevel, setAnnounceLevel] = useState<AnnounceLevel>("ALLES");
   const [soloVsAi, setSoloVsAi] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [existingTableId, setExistingTableId] = useState<string | null>(null);
@@ -152,6 +163,7 @@ export function OpenTableDialog({ open, onClose }: Props) {
       autoFillSeconds: autoFill,
       restartMode,
       targetScore,
+      announceLevel,
       initialAiSeats: soloVsAi ? soloAiSeats(variant) : [],
     };
     openMut.mutate(dto);
@@ -238,6 +250,36 @@ export function OpenTableDialog({ open, onClose }: Props) {
                   hint={t(`lobby.openTable.variant.${opt}.hint`)}
                 />
               ))}
+            </div>
+          </Section>
+
+          {/* Erlaubte Ansage-Arten (Kaskade — Trumpf immer an) */}
+          <Section title={t("lobby.openTable.sections.announceLevel")}>
+            <div className="space-y-1.5">
+              <AnnounceCheck
+                checked
+                disabled
+                label={t("lobby.openTable.announceLevel.trumpf")}
+                hint={t("lobby.openTable.announceLevel.trumpfHint")}
+                onChange={() => {}}
+              />
+              {ANNOUNCE_STEPS.map((step) => {
+                const levelIdx = ANNOUNCE_LEVELS.indexOf(announceLevel);
+                const checked = levelIdx >= step.index;
+                const disabled = levelIdx < step.index - 1;
+                return (
+                  <AnnounceCheck
+                    key={step.key}
+                    checked={checked}
+                    disabled={disabled}
+                    label={t(`lobby.openTable.announceLevel.${step.key}`)}
+                    hint={t(`lobby.openTable.announceLevel.${step.key}Hint`)}
+                    onChange={() =>
+                      setAnnounceLevel(ANNOUNCE_LEVELS[checked ? step.index - 1 : step.index]!)
+                    }
+                  />
+                );
+              })}
             </div>
           </Section>
 
@@ -452,6 +494,43 @@ function Pill({
     >
       {label}
     </button>
+  );
+}
+
+/** Eine Kaskaden-Checkbox für die erlaubten Ansage-Arten. */
+function AnnounceCheck({
+  checked,
+  disabled,
+  label,
+  hint,
+  onChange,
+}: {
+  checked: boolean;
+  disabled: boolean;
+  label: string;
+  hint: string;
+  onChange: () => void;
+}) {
+  return (
+    <label
+      className={`flex items-start gap-2 rounded-lg border px-3 py-2 transition ${
+        disabled
+          ? "cursor-not-allowed border-jass-paperEdge opacity-50"
+          : "cursor-pointer border-jass-paperEdge hover:bg-jass-yellow/10"
+      }`}
+    >
+      <input
+        type="checkbox"
+        checked={checked}
+        disabled={disabled}
+        onChange={onChange}
+        className="mt-0.5 h-4 w-4 accent-jass-yellowDark"
+      />
+      <span>
+        <span className="block text-sm font-medium text-jass-ink">{label}</span>
+        <span className="block text-xs leading-snug text-jass-inkSoft">{hint}</span>
+      </span>
+    </label>
   );
 }
 

@@ -52,6 +52,9 @@ import {
   InvalidMoveError,
   isRoundDone,
   isWeli,
+  announceConstraints,
+  isAnnouncementAllowed,
+  type AnnounceLevel,
   legalActionMask,
   newRound,
   SOLO_TEAMS,
@@ -109,6 +112,11 @@ interface PendingAnnouncement {
    * (= Kreuz-Jass) interpretiert werden.
    */
   isSolo?: boolean;
+  /**
+   * Erlaubte-Ansagen-Stufe des Tisches. Optional, damit alte Pending-Objekte
+   * ohne das Feld als `ALLES` (= keine Einschränkung) interpretiert werden.
+   */
+  announceLevel?: AnnounceLevel;
 }
 
 /** Spielart, die der Caller an `createGame` übergeben kann. */
@@ -162,6 +170,11 @@ export interface CreateGameInput {
    */
   tableId?: string;
   /**
+   * Erlaubte Ansage-Arten (Tisch-Einstellung). Default `ALLES` = keine
+   * Einschränkung — passt zu Tests/Direkt-Pfaden, die das Feld weglassen.
+   */
+  announceLevel?: AnnounceLevel;
+  /**
    * Optional: vorab gemischte Hände (z.B. wenn die Lobby für den WELI-
    * Re-Match-Modus den WELI-Inhaber bestimmen muss, bevor das Game
    * angelegt wird). Wenn nicht gesetzt, mischt `createGame` selbst per
@@ -214,6 +227,8 @@ export interface PlayerView {
     canPush: boolean;
     /** Wenn schon gepusht wurde, von wem (Partner darf nicht zurückpushen). */
     pushedFromSeat: number | null;
+    /** Erlaubte-Ansagen-Stufe des Tisches — der Dialog blendet gesperrte Modi aus. */
+    announceLevel: AnnounceLevel;
   };
   finalScore?: {
     team_card_points: readonly number[];
@@ -338,6 +353,20 @@ export class GameService {
     const isSolo = (input.gameType ?? "kreuz") === "solo";
     const teams = isSolo ? SOLO_TEAMS : undefined; // undefined → Engine-Default
 
+    // Erlaubte-Ansagen-Stufe: explizit übergeben > vom zugehörigen Tisch
+    // geladen > Default ALLES. So bleibt die Einschränkung an EINER Stelle
+    // (kein Durchreichen durch alle Aufrufer / Re-Match-Pfade nötig).
+    const announceLevel: AnnounceLevel =
+      input.announceLevel ??
+      (input.tableId
+        ? ((
+            await this.prisma.lobbyTable.findUnique({
+              where: { id: input.tableId },
+              select: { announceLevel: true },
+            })
+          )?.announceLevel ?? "ALLES")
+        : "ALLES");
+
     const state = isAnnouncingMode
       ? null
       : newRound({
@@ -354,6 +383,7 @@ export class GameService {
       const created = await tx.game.create({
         data: {
           variant: variantToEnum(input.gameType ?? "kreuz"),
+          announceLevel,
           ruleVersion: SPEC_VERSION,
           ...(input.tableId !== undefined ? { tableId: input.tableId } : {}),
         },
@@ -405,6 +435,7 @@ export class GameService {
         announcerSeat: announcerSeat!,
         pushedFromSeat: null,
         isSolo,
+        announceLevel,
       });
     } else {
       await this.writeRoundStateToRedis(game.id, state!);
@@ -465,6 +496,7 @@ export class GameService {
           iAmAnnouncer: pending.announcerSeat === seat,
           canPush,
           pushedFromSeat: pending.pushedFromSeat,
+          announceLevel: pending.announceLevel ?? "ALLES",
         },
         stoeckEligible: false,
         stoeckAnnouncedTeam: null,
@@ -991,6 +1023,7 @@ export class GameService {
         announcerSeat: partnerSeat,
         pushedFromSeat: seat,
         ...(pending.isSolo !== undefined ? { isSolo: pending.isSolo } : {}),
+        ...(pending.announceLevel !== undefined ? { announceLevel: pending.announceLevel } : {}),
       };
       await this.writePendingToRedis(gameId, next);
       await this.audit.record({
@@ -1004,6 +1037,16 @@ export class GameService {
 
     // Reguläre Ansage. Validate.
     const ann = buildAnnouncement(decision);
+
+    // Erlaubte-Ansagen-Stufe des Tisches server-seitig durchsetzen — ein
+    // manipulierter Client könnte sonst eine gesperrte Ansage (z.B. Gumpf)
+    // schicken, obwohl der Tisch sie nicht anbietet.
+    const level: AnnounceLevel = pending.announceLevel ?? "ALLES";
+    if (!isAnnouncementAllowed(ann, level)) {
+      throw new BadRequestException(
+        `Ansage ${ann.slalom ? "SLALOM" : ann.variant.mode} ist an diesem Tisch nicht erlaubt.`
+      );
+    }
 
     // Starter ist nach Vorarlberger Tradition immer der Original-Ansager —
     // auch wenn er gepusht hat. `pushedFromSeat` wenn gesetzt → der ist
@@ -1202,7 +1245,12 @@ export class GameService {
     }
     const hand = pending.hands[seat] ?? [];
     const canPush = pending.pushedFromSeat === null;
-    const heur = new HeuristicPlayer();
+    // KI an die Erlaubte-Ansagen-Stufe des Tisches binden. Alle KI-Typen
+    // (random/heuristic/nn) nutzen für die Ansage den HeuristicPlayer; der
+    // filtert Kandidaten nach allowedModes/allowSlalom. TRUMPF ist auf jeder
+    // Stufe erlaubt → es gibt immer mindestens eine wählbare Ansage.
+    const { allowedModes, allowSlalom } = announceConstraints(pending.announceLevel ?? "ALLES");
+    const heur = new HeuristicPlayer({ allowedModes, allowSlalom });
     const ann = heur.chooseAnnouncement(hand, canPush);
     if (ann === null) {
       // HeuristicPlayer wollte pushen; Partner muss dann entscheiden.

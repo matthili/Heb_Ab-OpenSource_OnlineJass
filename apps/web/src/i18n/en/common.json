@@ -375,7 +375,18 @@
         "aiType": "Which AI fills free seats?",
         "autoFill": "Auto-fill empty seats",
         "targetScore": "Target score of the match",
-        "restart": "Who starts the next game?"
+        "restart": "Who starts the next game?",
+        "announceLevel": "Allowed announcements"
+      },
+      "announceLevel": {
+        "trumpf": "Trump",
+        "trumpfHint": "Always allowed — the base announcement.",
+        "geissBock": "Oben & Unten (Bock / Geiss)",
+        "geissBockHint": "Also allow Top-down (Bock) and Bottom-up (Geiss).",
+        "slalom": "Slalom",
+        "slalomHint": "Mode alternates between Top-down and Bottom-up each trick — requires Oben/Unten.",
+        "gumpf": "Gumpf",
+        "gumpfHint": "Also allow the hardest announcement (Gumpf)."
       },
       "variant": {
         "KREUZ_4P": {

@@ -6,7 +6,7 @@
  * 6 Tisch-Stapel (sichtbare + verdeckte Karte). Spielbar ist der „Pool"
  * aus Handkarten und sichtbaren Tisch-Karten.
  */
-import type { Card, PlayMode, Suit } from "@jass/engine";
+import type { AnnounceLevel, Card, PlayMode, Suit } from "@jass/engine";
 
 /** Ein Tisch-Stapel in der Client-Sicht — `hidden` ist nur als Flag bekannt. */
 export interface BodenseeTableStackView {
@@ -35,7 +35,7 @@ export interface BodenseeView {
   oppScore: number;
   currentTrick: { cards: readonly Card[]; starter: number };
   lastTrick?: { cards: readonly Card[]; starter: number; winner: number };
-  announcement?: { announcerSeat: number; iAmAnnouncer: boolean };
+  announcement?: { announcerSeat: number; iAmAnnouncer: boolean; announceLevel: AnnounceLevel };
   finalScore?: { player_total_points: readonly number[]; matsch_player: number | null };
 }
 

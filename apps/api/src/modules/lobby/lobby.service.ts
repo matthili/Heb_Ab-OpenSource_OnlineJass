@@ -185,6 +185,7 @@ export class LobbyService {
           ownerId,
           joinMode: dto.joinMode,
           variant: dto.variant,
+          announceLevel: dto.announceLevel,
           aiSeatType: dto.aiSeatType,
           autoFillSeconds: dto.autoFillSeconds,
           restartMode: dto.restartMode,

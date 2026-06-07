@@ -12,7 +12,14 @@
  * Spielbar ist der „Pool": Handkarten + sichtbare Tisch-Karten. Welche
  * Karte legal ist, sagt `legalActionMask` (36-Bit, Index = `cardIndex`).
  */
-import { cardIndex, type Card as CardModel, type PlayMode, type Suit } from "@jass/engine";
+import {
+  announceConstraints,
+  cardIndex,
+  type AnnounceLevel,
+  type Card as CardModel,
+  type PlayMode,
+  type Suit,
+} from "@jass/engine";
 import { Card } from "@jass/ui";
 import type { TFunction } from "i18next";
 import { useState } from "react";
@@ -212,7 +219,11 @@ export function BodenseeBoard({
       {/* Ansage-Phase */}
       {view.status === "announcing" &&
         (view.announcement?.iAmAnnouncer ? (
-          <AnnouncePanel pending={announcePending} onAnnounce={onAnnounce} />
+          <AnnouncePanel
+            pending={announcePending}
+            onAnnounce={onAnnounce}
+            announceLevel={view.announcement.announceLevel}
+          />
         ) : (
           <p className="rounded-lg border border-jass-paperEdge bg-jass-cream px-4 py-3 text-sm text-jass-inkSoft">
             {t("bodensee.announce.otherChoosing", {
@@ -351,21 +362,28 @@ function FaceDownCard({ size }: { size: "xs" | "sm" }) {
 
 type AnnounceMode = "TRUMPF" | "GUMPF" | "OBEN" | "UNTEN" | "SLALOM";
 
-const ANNOUNCE_MODES: readonly AnnounceMode[] = ["TRUMPF", "GUMPF", "OBEN", "UNTEN", "SLALOM"];
-
 const SUITS: readonly Suit[] = ["EICHEL", "SCHELLE", "HERZ", "LAUB"];
 
 function AnnouncePanel({
   pending,
   onAnnounce,
+  announceLevel,
 }: {
   pending: boolean;
   onAnnounce: (a: BodenseeAnnouncement) => void;
+  announceLevel: AnnounceLevel;
 }) {
   const { t } = useTranslation();
   const [mode, setMode] = useState<AnnounceMode>("TRUMPF");
   const [suit, setSuit] = useState<Suit>("EICHEL");
   const needsSuit = mode === "TRUMPF" || mode === "GUMPF";
+
+  // Nur die an diesem Tisch erlaubten Ansage-Arten anbieten.
+  const { allowedModes, allowSlalom } = announceConstraints(announceLevel);
+  const visibleModes: AnnounceMode[] = [
+    ...(["TRUMPF", "GUMPF", "OBEN", "UNTEN"] as const).filter((m) => allowedModes.has(m)),
+    ...(allowSlalom ? (["SLALOM"] as const) : []),
+  ];
 
   function confirm() {
     if (mode === "SLALOM") {
@@ -383,7 +401,7 @@ function AnnouncePanel({
     <section className="rounded-lg border-2 border-jass-yellowDark bg-jass-yellow/15 p-4 space-y-3">
       <h3 className="font-semibold text-jass-ink">{t("bodensee.announce.title")}</h3>
       <div className="flex flex-wrap gap-2">
-        {ANNOUNCE_MODES.map((m) => (
+        {visibleModes.map((m) => (
           <button
             key={m}
             type="button"

@@ -18,7 +18,7 @@
  */
 import { useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
-import type { PlayMode, Suit } from "@jass/engine";
+import { announceConstraints, type PlayMode, type Suit } from "@jass/engine";
 
 import type { AnnouncementDecision, PlayerView } from "./types";
 
@@ -45,6 +45,13 @@ export function AnnouncementDialog({ view, seatNames, pending, onAnnounce }: Pro
   const [mode, setMode] = useState<ModeChoice | null>(null);
   const [trumpSuit, setTrumpSuit] = useState<Suit | null>(null);
   const [slalomStart, setSlalomStart] = useState<"OBEN" | "UNTEN">("OBEN");
+
+  // Nur die an diesem Tisch erlaubten Ansage-Arten anbieten (Stufe vom Server).
+  const { allowedModes, allowSlalom } = announceConstraints(ann.announceLevel);
+  const visibleModes: ModeChoice[] = [
+    ...(["TRUMPF", "GUMPF", "OBEN", "UNTEN"] as const).filter((m) => allowedModes.has(m)),
+    ...(allowSlalom ? (["SLALOM"] as const) : []),
+  ];
 
   if (!ann.iAmAnnouncer) {
     const name =
@@ -112,7 +119,7 @@ export function AnnouncementDialog({ view, seatNames, pending, onAnnounce }: Pro
           {t("game.announce.variant")}
         </legend>
         <div className="grid grid-cols-2 gap-2">
-          {(["TRUMPF", "GUMPF", "OBEN", "UNTEN", "SLALOM"] as const).map((m) => (
+          {visibleModes.map((m) => (
             <button
               key={m}
               type="button"

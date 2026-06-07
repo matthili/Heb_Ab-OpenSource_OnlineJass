@@ -375,7 +375,18 @@
         "aiType": "Welche KI füllt freie Sitze?",
         "autoFill": "Auto-Fill leerer Sitze",
         "targetScore": "Punkteziel der Partie",
-        "restart": "Wer beginnt das nächste Spiel?"
+        "restart": "Wer beginnt das nächste Spiel?",
+        "announceLevel": "Erlaubte Ansage-Arten"
+      },
+      "announceLevel": {
+        "trumpf": "Trumpf",
+        "trumpfHint": "Immer erlaubt — die Grundansage.",
+        "geissBock": "Oben & Unten (Bock / Geiß)",
+        "geissBockHint": "Zusätzlich Oben (Bock) und Unten (Geiß) erlauben.",
+        "slalom": "Slalom",
+        "slalomHint": "Modus wechselt pro Stich zwischen Oben und Unten — braucht Oben/Unten.",
+        "gumpf": "Gumpf",
+        "gumpfHint": "Zusätzlich die anspruchsvollste Ansage (Gumpf) erlauben."
       },
       "variant": {
         "KREUZ_4P": {

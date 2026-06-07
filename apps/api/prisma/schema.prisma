@@ -194,13 +194,16 @@ model Friendship {
 // ─────────────────────────────────────────────────────────────────────
 
 model Game {
-  id           String      @id @default(cuid())
-  variant      GameVariant
-  ruleVersion  String // spec_version aus jass_rules.json
-  modelVersion String? // NN-Release-Tag (für Replays)
-  startedAt    DateTime    @default(now())
-  endedAt      DateTime?
-  finalScore   Json? // { team0: 81, team1: 76, matsch: false }
+  id            String        @id @default(cuid())
+  variant       GameVariant
+  // Erlaubte Ansage-Arten für dieses Spiel — beim Game-Start aus dem
+  // LobbyTable kopiert (Default ALLES für direkt/test angelegte Spiele).
+  announceLevel AnnounceLevel @default(ALLES)
+  ruleVersion   String // spec_version aus jass_rules.json
+  modelVersion  String? // NN-Release-Tag (für Replays)
+  startedAt     DateTime      @default(now())
+  endedAt       DateTime?
+  finalScore    Json? // { team0: 81, team1: 76, matsch: false }
 
   /// Wenn `true`, ist das Replay über `/api/games/:id/replay/public` ohne
   /// Login erreichbar — Spec-Feature „Öffentliche/teilbare Replays". Default
@@ -299,20 +302,23 @@ model RoundDecision {
 // ─────────────────────────────────────────────────────────────────────
 
 model LobbyTable {
-  id              String      @id @default(cuid())
+  id              String        @id @default(cuid())
   ownerId         String
-  joinMode        JoinMode    @default(OPEN)
-  variant         GameVariant @default(KREUZ_4P)
+  joinMode        JoinMode      @default(OPEN)
+  variant         GameVariant   @default(KREUZ_4P)
+  // Erlaubte Ansage-Arten am Tisch (Owner wählt beim Eröffnen). Default
+  // ALLES = alle Möglichkeiten aktiv. Wird beim Game-Start auf das Game kopiert.
+  announceLevel   AnnounceLevel @default(ALLES)
   // Default-KI-Typ für Auto-Fill und manuell platzierte KI-Sitze. Owner
   // konfiguriert das beim Tisch-Erstellen; einzelne Sitze können per
   // `LobbyTableSeat.aiSeatType` davon abweichen.
-  aiSeatType      String      @default("heuristic") // "random" | "heuristic" | "nn" | "nn-vX.Y.Z"
+  aiSeatType      String        @default("heuristic") // "random" | "heuristic" | "nn" | "nn-vX.Y.Z"
   // Auto-Fill-Timer in Sekunden ab letzter Sitz-Änderung. `null` = nie
   // automatisch auffüllen, Owner muss manuell starten.
-  autoFillSeconds Int?        @default(30)
+  autoFillSeconds Int?          @default(30)
   // Starter-Bestimmung bei Re-Match (Vorarlberger Tradition). Default ist
   // `SIEGER_GIBT` — Owner kann beim Tisch-Erstellen umstellen.
-  restartMode     RestartMode @default(SIEGER_GIBT)
+  restartMode     RestartMode   @default(SIEGER_GIBT)
 
   // **Punkteziel**: Die Partie ist gewonnen, sobald ein Team diese Punkte
   // kumulativ über mehrere Spiele erreicht. Vorarlberger Standard: 1000
@@ -566,6 +572,19 @@ enum GameVariant {
   KREUZ_STEIGERN
   SOLO_4P
   BODENSEE_2P
+}
+
+// Erlaubte Ansage-Arten pro Tisch (strikte Leiter, jede Stufe erweitert die
+// vorige). Siehe @jass/engine `AnnounceLevel` / `announceConstraints`.
+//   TRUMPF     — nur Trumpf
+//   GEISS_BOCK — + Oben (Bock) / Unten (Geiss)
+//   SLALOM     — + Slalom (alterniert Oben/Unten, braucht daher Geiss/Bock)
+//   ALLES      — + Gumpf (Default)
+enum AnnounceLevel {
+  TRUMPF
+  GEISS_BOCK
+  SLALOM
+  ALLES
 }
 
 enum ChatChannel {

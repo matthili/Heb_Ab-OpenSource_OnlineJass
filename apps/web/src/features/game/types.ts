@@ -3,7 +3,7 @@
  * (PlayerView). Bewusst handgepflegt: `PlayerView` ist ein WebSocket-Payload,
  * den ein OpenAPI-Schema (beschreibt nur REST) ohnehin nicht abdecken würde.
  */
-import type { Card, GameState, PlayMode, Suit } from "@jass/engine";
+import type { AnnounceLevel, Card, GameState, PlayMode, Suit } from "@jass/engine";
 
 export interface FinalScore {
   team_card_points: readonly number[];
@@ -65,6 +65,8 @@ export interface PlayerView {
     iAmAnnouncer: boolean;
     canPush: boolean;
     pushedFromSeat: number | null;
+    /** Erlaubte-Ansagen-Stufe des Tisches — der Dialog blendet gesperrte Modi aus. */
+    announceLevel: AnnounceLevel;
   };
   finalScore?: FinalScore;
   /**
