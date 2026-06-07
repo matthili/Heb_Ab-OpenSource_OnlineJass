@@ -715,6 +715,7 @@
   },
 
   "theme": {
+    "toDark": "Switch to dark mode",
     "toHiContrast": "Switch to high-contrast theme",
     "toDefault": "Switch back to default look"
   },

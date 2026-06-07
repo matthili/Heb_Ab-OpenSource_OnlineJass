@@ -174,7 +174,7 @@ export function OpenTableDialog({ open, onClose }: Props) {
     <dialog
       ref={dialogRef}
       onClose={onClose}
-      className="rounded-lg p-0 backdrop:bg-stone-900/40 w-full max-w-xl"
+      className="rounded-lg p-0 backdrop:bg-black/40 w-full max-w-xl"
     >
       <form onSubmit={submit} className="bg-jass-paper">
         {/* Header */}

@@ -1,8 +1,11 @@
 /**
- * Theme-Verwaltung — Default + High-Contrast.
+ * Theme-Verwaltung — Default (hell) + Dark + High-Contrast.
  *
  * **Persistenz**: localStorage-Key `jass-theme`, Werte `"default"` |
- * `"hi-contrast"`. Server-Seite kennt das Theme nicht (rein clientside);
+ * `"dark"` | `"hi-contrast"`. `"default"` löscht den Key + das
+ * data-theme-Attribut; die anderen setzen `data-theme="<wert>"` auf
+ * <html>, worauf die CSS-Variablen-Overrides in styles.css greifen.
+ * Server-Seite kennt das Theme nicht (rein clientside);
  * SSR wäre ein Hydration-Flash-Risiko, aber wir haben keine SSR.
  *
  * **Frühe Application**: das Theme muss VOR dem ersten React-Render
@@ -15,7 +18,7 @@
  */
 import { useEffect, useState } from "react";
 
-export type Theme = "default" | "hi-contrast";
+export type Theme = "default" | "dark" | "hi-contrast";
 
 const STORAGE_KEY = "jass-theme";
 
@@ -26,7 +29,7 @@ const STORAGE_KEY = "jass-theme";
 export function loadTheme(): Theme {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    return raw === "hi-contrast" ? "hi-contrast" : "default";
+    return raw === "hi-contrast" || raw === "dark" ? raw : "default";
   } catch {
     return "default";
   }

@@ -715,6 +715,7 @@
   },
 
   "theme": {
+    "toDark": "Dunkelmodus aktivieren",
     "toHiContrast": "Kontrast-Modus aktivieren",
     "toDefault": "Zurück zum Standard-Look"
   },

@@ -15,7 +15,7 @@ import { ConsentBanner } from "~/features/consent/ConsentBanner";
 import type { MeProfileResponse } from "~/features/admin/types";
 import { api } from "~/lib/api";
 import { signOut, useSession } from "~/lib/auth-client";
-import { useTheme } from "~/lib/theme";
+import { type Theme, useTheme } from "~/lib/theme";
 import { useToast } from "~/lib/toast";
 import { useUserEvents } from "~/lib/ws";
 
@@ -191,24 +191,41 @@ function Header() {
 }
 
 /**
- * Toggle für High-Contrast-Theme. Persistiert in localStorage; greift
- * sofort ohne Reload. Kleines Button-Icon-Pair statt Switch, weil das
- * im a11y-Sinne klarer ist (visueller State sofort sichtbar).
+ * Theme-Umschalter — zyklisch: Hell → Dunkel → Hoher Kontrast → Hell.
+ * Persistiert in localStorage; greift sofort ohne Reload. Icon zeigt das
+ * AKTUELLE Theme, das aria-label/title beschreibt die NÄCHSTE Aktion
+ * (a11y-Sinn: was passiert beim Klick).
  */
+const THEME_NEXT: Record<Theme, Theme> = {
+  default: "dark",
+  dark: "hi-contrast",
+  "hi-contrast": "default",
+};
+const THEME_ICON: Record<Theme, string> = {
+  default: "◐",
+  dark: "🌙",
+  "hi-contrast": "🎨",
+};
+/** Label beschreibt die Aktion (= Wechsel zum jeweils nächsten Theme). */
+const THEME_NEXT_LABEL: Record<Theme, string> = {
+  default: "theme.toDark",
+  dark: "theme.toHiContrast",
+  "hi-contrast": "theme.toDefault",
+};
+
 function ContrastToggle() {
   const { theme, setTheme } = useTheme();
   const { t } = useTranslation();
-  const isHi = theme === "hi-contrast";
+  const label = t(THEME_NEXT_LABEL[theme]);
   return (
     <button
       type="button"
-      onClick={() => setTheme(isHi ? "default" : "hi-contrast")}
-      aria-pressed={isHi}
-      aria-label={t(isHi ? "theme.toDefault" : "theme.toHiContrast")}
-      title={t(isHi ? "theme.toDefault" : "theme.toHiContrast")}
+      onClick={() => setTheme(THEME_NEXT[theme])}
+      aria-label={label}
+      title={label}
       className="rounded border border-jass-paperEdge bg-jass-paper px-2 py-1 text-sm hover:bg-jass-cream text-jass-ink"
     >
-      {isHi ? "🎨" : "◐"}
+      {THEME_ICON[theme]}
     </button>
   );
 }

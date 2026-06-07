@@ -89,7 +89,7 @@ export function WeisenResultOverlay({ gameId, weisen, seats, mySeat, nameSeed }:
       role="dialog"
       aria-modal="true"
       aria-labelledby="weisen-result-title"
-      className="absolute inset-0 z-40 flex items-center justify-center bg-stone-900/55 backdrop-blur-sm rounded-lg p-4 overflow-y-auto"
+      className="absolute inset-0 z-40 flex items-center justify-center bg-black/55 backdrop-blur-sm rounded-lg p-4 overflow-y-auto"
     >
       <div className="max-w-xl w-full my-auto rounded-lg bg-jass-paper border border-jass-paperEdge shadow-xl p-5 space-y-4">
         <header className="text-center">

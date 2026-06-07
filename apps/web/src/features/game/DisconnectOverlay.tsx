@@ -165,7 +165,7 @@ function Backdrop({ children }: { children: React.ReactNode }) {
       role="dialog"
       aria-modal="true"
       aria-labelledby="disconnect-title"
-      className="absolute inset-0 z-40 flex items-center justify-center bg-stone-900/55 backdrop-blur-sm rounded-lg p-4"
+      className="absolute inset-0 z-40 flex items-center justify-center bg-black/55 backdrop-blur-sm rounded-lg p-4"
     >
       {children}
     </div>

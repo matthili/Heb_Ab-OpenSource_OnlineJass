@@ -842,3 +842,176 @@ h1 {
   outline: 3px solid #000000;
   outline-offset: 2px;
 }
+
+/* ── Dark-Mode-Theme ────────────────────────────────────────────────
+ * „Wirtshaus bei Kerzenlicht“ — dunkler Nussbaum-Tisch, gedämpfter
+ * Tannen-Filz, Messing-Gold, Weinrot, Pergament-Schrift. Öl-Pigment-
+ * Anmutung, kein Neon/Sci-Fi.
+ *
+ * Drei Ebenen, alle hier zentral — KEIN Komponenten-Code:
+ *   1. jass-*-Tokens überschreiben (Spieltisch-Flächen, Filz, Buttons).
+ *   2. Standard-Tailwind-Rampen umbiegen (Tailwind 4 gibt sie als
+ *      var(--color-…) aus, also greift der Override überall):
+ *        - `stone` (Neutral) wird INVERTIERT: niedrig=dunkel, hoch=hell
+ *          → Text/Rahmen/Flächen passen automatisch.
+ *        - `rose/emerald/amber/violet` werden GEFALTET: 50/100=dunkler
+ *          Tint (Alarm-Box-Grund), 500/600=satt (solide Buttons),
+ *          700–900=heller Tint (Text). So funktionieren Alarm-Boxen UND
+ *          farbige Buttons gleichzeitig.
+ *   3. Effekte/Tiefe nachziehen (schwarze Schatten „verschwinden“ auf
+ *      Dunkel → kräftiger + helle Oberkante; helle Halos → dunkel).
+ *
+ * `bg-stone-900` ist im Code dreifach belegt (dunkler Button, Text,
+ * Overlay-Schleier). Text läuft über die invertierte Variable (hell),
+ * die soliden Dunkel-Buttons werden per Klassen-Override dunkel
+ * gehalten; die Schleier nutzen `bg-black/…` (in Komponenten umgestellt).
+ */
+:root[data-theme="dark"] {
+  /* PAPIER/KARTON → dunkle Holz-/Leder-Flächen (Grund → angehoben) */
+  --color-jass-bg: #14110d; /* Seiten-Grund: fast-schwarze warme Umbra */
+  --color-jass-paper: #251f18; /* Haupt-Panel: dunkler Nussbaum */
+  --color-jass-cardBg: #2b241c; /* Eingaben / Karten-Flächen */
+  --color-jass-cream: #322a20; /* angehobene Fläche / Hover */
+  --color-jass-white: #3c3328; /* hellste Fläche / feine Kante */
+  --color-jass-paperEdge: #4e4133; /* Rahmen — warm, sichtbar */
+  --color-jass-rule: #67543c; /* Trennlinien */
+
+  /* FARBSYMBOLE & TEXTIL → Öl-Pigmente, fürs Dunkle leicht angehoben */
+  --color-jass-red: #d6453f; /* Alizarin/Zinnober */
+  --color-jass-redDark: #8f231f; /* Ochsenblut */
+  --color-jass-yellow: #e8bd49; /* Neapelgelb/Messing — passt zu den Gold-Glows */
+  --color-jass-yellowDark: #b3831a; /* Ocker */
+  --color-jass-green: #49a541; /* Viridian */
+  --color-jass-greenDark: #1d4a28; /* tiefes Tannengrün — Filz-Grund */
+  --color-jass-brown: #7a4a2c; /* Sienna gebrannt */
+  --color-jass-brownDark: #3f2415; /* Van-Dyck-Braun */
+
+  /* TINTE & HAUT → Schrift wird warmes Pergament */
+  --color-jass-ink: #efe3cd; /* Haupttext: Elfenbein/Bein (kein Reinweiß) */
+  --color-jass-inkSoft: #c1aa8c; /* Sekundärtext: weiches Tabak-Beige */
+  --color-jass-skin: #e8c19e;
+  --color-jass-skinDark: #a9764f;
+  --color-jass-hair: #d8c4a8;
+  --color-jass-blue: #6f93c8; /* Preußischblau angehoben (sonst unsichtbar) */
+
+  /* NEUTRAL (stone) — INVERTIERT + warm getönt */
+  --color-stone-50: #1b1712;
+  --color-stone-100: #242019;
+  --color-stone-200: #322c23;
+  --color-stone-300: #463b2e;
+  --color-stone-400: #6e604d;
+  --color-stone-500: #9a8b75;
+  --color-stone-600: #b8a88e;
+  --color-stone-700: #cfc1a8;
+  --color-stone-800: #e2d6bf;
+  --color-stone-900: #efe5d0;
+  --color-stone-950: #f7efdd;
+
+  /* ROSE (Fehler/Rot) — gefaltet */
+  --color-rose-50: #2c1413;
+  --color-rose-100: #3a1a18;
+  --color-rose-200: #512623;
+  --color-rose-300: #6f342f;
+  --color-rose-400: #b9514b;
+  --color-rose-500: #d75a52;
+  --color-rose-600: #d6453f;
+  --color-rose-700: #f0a39d;
+  --color-rose-800: #f4bdb8;
+  --color-rose-900: #f7d2ce;
+
+  /* EMERALD (Erfolg/Grün) — gefaltet */
+  --color-emerald-50: #102a1c;
+  --color-emerald-100: #163a26;
+  --color-emerald-200: #1f5236;
+  --color-emerald-300: #2a6e48;
+  --color-emerald-400: #37925d;
+  --color-emerald-500: #3bab68;
+  --color-emerald-600: #2f9d5d;
+  --color-emerald-700: #88dcab;
+  --color-emerald-800: #afe8c6;
+  --color-emerald-900: #cbf0da;
+
+  /* AMBER (Warnung/Highlight) — gefaltet */
+  --color-amber-50: #2e2410;
+  --color-amber-100: #3d3014;
+  --color-amber-200: #574420;
+  --color-amber-300: #7a5f25;
+  --color-amber-400: #c79a2e;
+  --color-amber-500: #e0a92a;
+  --color-amber-600: #c98f1f;
+  --color-amber-700: #ecc876;
+  --color-amber-800: #f2d896;
+  --color-amber-900: #f5e1ab;
+
+  /* VIOLET (Status „abgelehnt“) — gefaltet */
+  --color-violet-50: #221a33;
+  --color-violet-100: #2c2342;
+  --color-violet-200: #3a2f5a;
+  --color-violet-300: #4c3f76;
+  --color-violet-500: #8b78d0;
+  --color-violet-700: #c3b4ef;
+  --color-violet-900: #ddd0f5;
+}
+
+/* Body-Vignette bleibt (zieht über die dunklen Tokens automatisch nach
+ * → dezenter warmer Schimmer). Filz `.bg-jass-felt` wird über
+ * greenDark/green automatisch das gedämpfte Tannen-Filz. */
+
+/* `bg-white`-Flächen sind reines #fff (Tailwind-Konstante) → würden grell
+ * bleiben. Im Dark-Mode auf eine dunkle Karten-Fläche umbiegen. */
+:root[data-theme="dark"] .bg-white {
+  background-color: var(--color-jass-cardBg);
+}
+
+/* Solide Dunkel-Buttons (`bg-stone-900 … text-white`, `hover:bg-stone-700`)
+ * bewusst dunkel halten (die stone-900-Variable ist jetzt hell → für Text).
+ * Warme angehobene Fläche, damit weißer Text klar lesbar bleibt. */
+:root[data-theme="dark"] .bg-stone-900 {
+  background-color: #3a2e20;
+}
+:root[data-theme="dark"] .bg-stone-700,
+:root[data-theme="dark"] .hover\:bg-stone-700:hover {
+  background-color: #4a3b29;
+}
+
+/* Primär-Button (Wirtshaus-Stil) — auf Dunkel: warme angehobene Holzfläche
+ * + helle Oberkante + kräftigerer Schlagschatten, damit die Tiefe trägt. */
+:root[data-theme="dark"] .btn-jass-primary {
+  background-color: #3a2e20;
+  color: #f3ead6;
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.1),
+    0 2px 0 0 #15100b,
+    0 3px 5px 0 rgba(0, 0, 0, 0.5);
+}
+:root[data-theme="dark"] .btn-jass-primary:hover {
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.1),
+    0 3px 0 0 #15100b,
+    0 5px 7px 0 rgba(0, 0, 0, 0.55);
+}
+
+/* Sekundär-Button + Lobby-Karten: schwarze Schatten tragen auf Dunkel nicht
+ * → dezente helle Inset-Kante + stärkerer dunkler Schatten für die „Tiefe“. */
+:root[data-theme="dark"] .btn-jass-secondary {
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.05),
+    0 2px 3px 0 rgba(0, 0, 0, 0.4);
+}
+:root[data-theme="dark"] .card-jass {
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.04),
+    0 2px 6px 0 rgba(0, 0, 0, 0.45);
+}
+:root[data-theme="dark"] .card-jass:hover {
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.05),
+    0 8px 16px 0 rgba(0, 0, 0, 0.55);
+}
+
+/* Abheben-Label: der helle Text-Halo (für dunklen Text auf hell) wäscht auf
+ * Dunkel aus → dunkler Halo. (Der rote Karten-Rücken bleibt rot — er ist
+ * eine physische Karten-Illustration und sieht auf Dunkel stimmig aus.) */
+:root[data-theme="dark"] .jass-cut-label {
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.75);
+}

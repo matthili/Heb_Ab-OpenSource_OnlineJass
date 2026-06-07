@@ -42,7 +42,7 @@ export function SessionSupersededBanner() {
       role="alertdialog"
       aria-modal="true"
       aria-labelledby="superseded-title"
-      className="fixed inset-0 z-[1000] flex items-center justify-center bg-stone-900/60 p-4"
+      className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/60 p-4"
     >
       <div className="max-w-md w-full rounded-lg bg-jass-paper border border-jass-paperEdge shadow-xl p-6 space-y-3">
         <h2 id="superseded-title" className="text-lg font-bold text-jass-ink">
