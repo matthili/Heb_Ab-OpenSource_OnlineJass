@@ -184,22 +184,27 @@ export function BodenseeBoard({
           <p className="text-xs uppercase tracking-wide text-jass-inkSoft mb-1">
             {t("bodensee.yourHand")}
           </p>
-          <div className="flex flex-wrap items-end gap-1">
+          <div className="flex flex-wrap items-end gap-1.5">
             {view.hand.length === 0 && (
               <span className="text-sm text-jass-inkSoft italic">{t("bodensee.noHandCards")}</span>
             )}
-            {view.hand.map((c) => {
-              const legal = isLegal(c);
-              return (
-                <Card
-                  key={cardKey(c)}
-                  card={c}
-                  size="md"
-                  {...(canPlay && legal ? { onClick: onPlayCard } : {})}
-                  disabled={canPlay && !legal}
-                />
-              );
-            })}
+            {/* Aufsteigend nach Farbe dann Rang sortiert (cardIndex = SUIT_ID*9 +
+                RANK_ID) — gleiches Bild wie der <Hand>-Fan der anderen Varianten.
+                Die Tisch-Stapel bleiben dagegen in Austeil-Reihenfolge. */}
+            {[...view.hand]
+              .sort((a, b) => cardIndex(a) - cardIndex(b))
+              .map((c) => {
+                const legal = isLegal(c);
+                return (
+                  <Card
+                    key={cardKey(c)}
+                    card={c}
+                    size="md"
+                    {...(canPlay && legal ? { onClick: onPlayCard } : {})}
+                    disabled={canPlay && !legal}
+                  />
+                );
+              })}
           </div>
         </div>
       </section>
@@ -316,7 +321,7 @@ function TableStackSlot({
       />
       {stack.hasHidden && (
         <span
-          className="absolute -bottom-1 -right-1 rounded-full bg-jass-brownDark px-1.5 py-0.5 text-[10px] font-semibold text-jass-cream"
+          className="absolute -bottom-1 -right-1 rounded-full bg-jass-yellow px-1.5 py-0.5 text-[10px] font-bold text-jass-brownDark ring-1 ring-jass-brownDark"
           title={t("bodensee.hiddenBelow")}
         >
           +1

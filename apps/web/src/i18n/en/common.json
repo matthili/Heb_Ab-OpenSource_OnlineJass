@@ -685,8 +685,8 @@
     "hiddenBelow": "A face-down card lies beneath",
     "trick": {
       "running": "Current trick",
-      "lastWonByYou": "Last trick — you won",
-      "lastWonByOther": "Last trick — {{name}} won",
+      "lastWonByYou": "Last trick — you took it",
+      "lastWonByOther": "Last trick — {{name}} took it",
       "starting": "The trick is starting …"
     },
     "announce": {
@@ -697,8 +697,8 @@
     },
     "finished": {
       "draw": "Draw!",
-      "youWon": "You won!",
-      "otherWon": "{{name}} won.",
+      "youWon": "You won this round!",
+      "otherWon": "{{name}} won this round.",
       "score": "You <strong>{{own}}</strong> : <strong>{{opp}}</strong> {{name}}",
       "matschYou": "Sweep (Matsch) — all 18 tricks!",
       "matschOther": "{{name}} made a Sweep (Matsch)."

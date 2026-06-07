@@ -685,8 +685,8 @@
     "hiddenBelow": "Eine verdeckte Karte liegt darunter",
     "trick": {
       "running": "Laufender Stich",
-      "lastWonByYou": "Letzter Stich — du hast gewonnen",
-      "lastWonByOther": "Letzter Stich — {{name}} hat gewonnen",
+      "lastWonByYou": "Letzter Stich — du hast gestochen",
+      "lastWonByOther": "Letzter Stich — {{name}} hat gestochen",
       "starting": "Der Stich beginnt …"
     },
     "announce": {
@@ -697,8 +697,8 @@
     },
     "finished": {
       "draw": "Unentschieden!",
-      "youWon": "Du hast gewonnen!",
-      "otherWon": "{{name}} hat gewonnen.",
+      "youWon": "Du hast die Runde gewonnen!",
+      "otherWon": "{{name}} hat die Runde gewonnen.",
       "score": "Du <strong>{{own}}</strong> : <strong>{{opp}}</strong> {{name}}",
       "matschYou": "Matsch — alle 18 Stiche!",
       "matschOther": "{{name}} hat einen Matsch gemacht."
