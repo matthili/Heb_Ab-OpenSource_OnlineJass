@@ -108,6 +108,10 @@ export function TableDetail({ tableId }: Props) {
         <div className="flex items-center gap-3">
           <h1 className="text-2xl font-bold">
             {t("lobby.tableDetail.heading", { name: data.ownerName })}
+            <span className="text-jass-inkSoft font-semibold">
+              {" — "}
+              {t(`lobby.openTable.variant.${data.variant}.title`)}
+            </span>
           </h1>
           <StatusBadge status={data.status} />
         </div>
