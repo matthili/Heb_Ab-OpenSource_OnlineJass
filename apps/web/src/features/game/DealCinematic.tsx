@@ -151,9 +151,14 @@ export function DealCinematic({
     const next = (p: Phase, after: number) => timeouts.push(setTimeout(() => setPhase(p), after));
 
     if (phase === "mix") next("slide", T_MIX);
-    else if (phase === "slide") next("wait-cut", T_SLIDE);
+    // Das ECHTE Abheben passiert jetzt in einer eigenen Phase VOR dieser
+    // Cinematic (CutPhase im GameBoard). Die alte kosmetische Cut-Geste
+    // (wait-cut/cut) wäre danach redundant → wir gehen direkt slide → deal.
+    // (wait-cut/cut bleiben als Phasen definiert, werden aber nicht mehr
+    // angesteuert.)
+    else if (phase === "slide") next("deal", T_SLIDE);
     else if (phase === "wait-cut") {
-      // Auto-Cut nach 10 s, falls niemand klickt.
+      // Auto-Cut nach 10 s, falls niemand klickt. (Nicht mehr erreicht.)
       next("cut", CUT_TIMEOUT_MS);
     } else if (phase === "cut") next("deal", T_CUT);
     // Die WELI-Reveal-Phase gehört NUR zum Match-Start (full): da ist der
