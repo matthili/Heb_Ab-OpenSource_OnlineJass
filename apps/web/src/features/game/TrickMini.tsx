@@ -18,7 +18,7 @@
  * und ist nach Linger redundant — sie blendet sich dann selbst aus.
  */
 import type { Card, GameState } from "@jass/engine";
-import { trickWinner } from "@jass/engine";
+import { effectiveVariant, trickWinner } from "@jass/engine";
 import { useTranslation } from "react-i18next";
 
 import { Card as CardView } from "@jass/ui";
@@ -61,7 +61,12 @@ export function TrickMini({
     if (completed.length === 1) return null; // first zeigt schon dasselbe
   }
 
-  const winnerIdx = trickWinner(trick.cards as Card[], state.variant);
+  // Slalom: jeder Stich hat seine eigene effektive Variante (Oben/Unten
+  // alternierend). `state.variant` gilt nur für den AKTUELLEN Stich — den
+  // abgeschlossenen Stich `trickIdx` müssen wir mit seiner eigenen Variante
+  // auswerten, sonst leuchtet die falsche Karte als Gewinner.
+  const trickVariant = effectiveVariant(state.announcement, trickIdx);
+  const winnerIdx = trickWinner(trick.cards as Card[], trickVariant);
   const winnerSeat = (trick.starter + winnerIdx) % 4;
   const winnerName = seatNames.get(winnerSeat) ?? t("game.seatFallback", { n: winnerSeat });
   const isMyWin = winnerSeat === mySeat;

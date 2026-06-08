@@ -64,6 +64,30 @@ describe("trickWinner bei UNTEN (Geiss): niedrigste Karte sticht", () => {
   });
 });
 
+describe("Anzeige-Regression: abgeschlossener Slalom-Stich braucht SEINE EIGENE Variante", () => {
+  // Gemeldetes Szenario (Solo, Slalom-OBEN): Spieler spielt Herz-Ass aus,
+  // dann Herz-Unter, Eichel-Ober, Herz-10. Korrekt sticht Herz-Ass (OBEN).
+  // Das Frontend hatte den fertigen Stich aber mit `state.variant` gewertet —
+  // und das ist nach Stich-Abschluss bereits die Variante des NÄCHSTEN Stichs
+  // (UNTEN). In UNTEN gewinnt unter den Herz-Karten die Herz-10 → falsches
+  // Highlight + falscher „letzter Stich"-Name. Fix: Stich i mit
+  // effectiveVariant(ann, i) werten.
+  it("Herz-Ass sticht in OBEN — NICHT Herz-10 (das wäre die Folge-Variante)", () => {
+    const ann: Announcement = { variant: { mode: "OBEN" }, slalom: true };
+    const trick = [
+      c("HERZ", "ASS"), // idx 0 — Anspieler
+      c("HERZ", "UNTER"), // idx 1
+      c("EICHEL", "OBER"), // idx 2 — Fehlfarbe, sticht nie
+      c("HERZ", "ZEHN"), // idx 3
+    ];
+    // Richtig: Variante DES Stichs (Index 0 → OBEN) → Herz-Ass (Index 0).
+    expect(trickWinner(trick, effectiveVariant(ann, 0))).toBe(0);
+    // Der alte Bug: Variante des NÄCHSTEN Stichs (Index 1 → UNTEN) →
+    // fälschlich Herz-10 (Index 3). Genau das hatte der Spieler gesehen.
+    expect(trickWinner(trick, effectiveVariant(ann, 1))).toBe(3);
+  });
+});
+
 describe("applyMove: Slalom flippt die Variante nach jedem Stich", () => {
   it("OBEN → UNTEN → OBEN über zwei volle Stiche", () => {
     const hands = dealCards(seededRng(42));

@@ -29,6 +29,7 @@ export {
   applyMove,
   clickWeisenButton,
   dealCards,
+  effectiveVariant,
   finalRoundScore,
   freshDeck,
   handOf,

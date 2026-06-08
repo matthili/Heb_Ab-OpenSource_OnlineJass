@@ -16,7 +16,7 @@
  */
 import { useEffect, useRef, useState } from "react";
 
-import { trickWinner } from "@jass/engine";
+import { effectiveVariant, trickWinner } from "@jass/engine";
 import type { Card, GameState } from "@jass/engine";
 
 const LINGER_MS = 1800;
@@ -54,7 +54,13 @@ export function useDisplayedTrick(state: GameState | undefined): DisplayedTrick 
     if (state && completedCount > prevCompletedCount.current && completedCount > 0) {
       // Der zuletzt abgeschlossene Trick — den frieren wir ein.
       const lastTrick = state.completed_tricks[completedCount - 1]!;
-      const winnerIdx = trickWinner(lastTrick.cards, state.variant);
+      // WICHTIG (Slalom): `state.variant` ist bereits die Variante des
+      // *nächsten* Stichs. Der gerade fertige Stich (Index completedCount-1)
+      // wurde unter `effectiveVariant(ann, completedCount-1)` gespielt — sonst
+      // wird der Gewinner bei Slalom falsch berechnet (z. B. Herz-10 statt
+      // Herz-Ass). Bei Nicht-Slalom liefert effectiveVariant konstant dieselbe.
+      const trickVariant = effectiveVariant(state.announcement, completedCount - 1);
+      const winnerIdx = trickWinner(lastTrick.cards, trickVariant);
       const winnerSeat = (lastTrick.starter + winnerIdx) % 4;
       setFrozen({
         cards: lastTrick.cards,
