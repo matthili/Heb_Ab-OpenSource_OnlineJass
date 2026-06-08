@@ -748,9 +748,9 @@ export class GameGateway
    *     einer konkreten Variante.
    *   - **move**: wie bisher — KI wählt Karte, applyMove, broadcast.
    *
-   * Sicherheitsnetz: maximal 36 Move-Schritte (= 4 × 9 Karten) plus
-   * separater Counter für maximal 2 Ansage-Schritte (Original + ein
-   * Push, danach muss Partner ansagen).
+   * Sicherheitsnetz: maximal 40 Schleifen-Durchläufe plus separater Counter
+   * für maximal 3 Ansage-Schritte (Original-Push + Partner-Slalom + Starter-
+   * Richtungswahl beim Schiebe-Slalom; sonst 1–2).
    */
   private async driveAIsLoop(gameId: string): Promise<void> {
     let announceSteps = 0;
@@ -769,8 +769,14 @@ export class GameGateway
         }
 
         if (action.kind === "announce") {
-          if (++announceSteps > 2) {
-            this.log.error({ gameId, seat: action.seat }, "Ansage-Loop > 2 Schritte — fail-safe");
+          // Max. 3 legitime Ansage-Schritte bei reiner KI:
+          //   1) Ansager schiebt
+          //   2) Partner sagt Slalom an  → Schiebe-Slalom: Richtungswahl geht
+          //      zurück an den Schieber (Starter)
+          //   3) Starter wählt die Slalom-Startrichtung
+          // (Ohne Schiebe-Slalom sind es 1 oder 2.) Erst > 3 ist ein Runaway.
+          if (++announceSteps > 3) {
+            this.log.error({ gameId, seat: action.seat }, "Ansage-Loop > 3 Schritte — fail-safe");
             return;
           }
           const decision = await this.games.aiChooseAnnouncement(gameId, action.seat);
