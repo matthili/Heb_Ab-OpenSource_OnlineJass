@@ -64,6 +64,12 @@ export class AuthService implements OnModuleInit {
     }
     const baseURL = process.env["BETTER_AUTH_URL"] ?? "http://localhost:3000";
 
+    // Konto-Freischaltung: "email" (Default) = Verifikation per E-Mail-Link;
+    // "admin" (LAN-Mode) = keine Mail, ein Admin schaltet im Panel frei.
+    // Das Session-Gate bleibt in BEIDEN Fällen `emailVerified` (require-
+    // EmailVerification: true) — im LAN-Mode setzt der Admin es statt einer Mail.
+    const accountActivation = process.env["ACCOUNT_ACTIVATION"] === "admin" ? "admin" : "email";
+
     const blocklist = this.blocklist;
     const audit = this.audit;
 
@@ -96,7 +102,10 @@ export class AuthService implements OnModuleInit {
         resetPasswordTokenExpiresIn: 60 * 60, // 1 Stunde
       },
       emailVerification: {
-        sendOnSignUp: true,
+        // Im LAN-Mode keine Verifikations-Mail verschicken — der Admin schaltet
+        // frei. `requireEmailVerification` (oben) bleibt true → die Session ist
+        // bis zur Freischaltung gesperrt.
+        sendOnSignUp: accountActivation === "email",
         autoSignInAfterVerification: true,
         expiresIn: 60 * 60 * 24, // 24h
         sendVerificationEmail: async ({ user, url }) => {

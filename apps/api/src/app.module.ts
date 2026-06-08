@@ -16,6 +16,7 @@ import { AuditModule } from "./modules/audit/audit.module.js";
 import { AuthModule } from "./modules/auth/auth.module.js";
 import { BlocklistModule } from "./modules/blocklist/blocklist.module.js";
 import { ChatModule } from "./modules/chat/chat.module.js";
+import { PublicConfigModule } from "./modules/config/config.module.js";
 import { GameModule } from "./modules/game/game.module.js";
 import { HealthModule } from "./modules/health/health.module.js";
 import { InferenceModule } from "./modules/inference/inference.module.js";
@@ -75,6 +76,7 @@ const pinoHttp = isDev
     ChatModule,
     AdminModule,
     HealthModule,
+    PublicConfigModule,
   ],
   providers: [
     // Globaler CSRF-Guard: Origin-Header-Check für state-changing Methoden.

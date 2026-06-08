@@ -34,7 +34,10 @@ export interface AdminUserView {
   name: string;
   role: Role;
   status: UserStatus;
+  /** `false` = wartet auf Freischaltung (E-Mail-Link ODER Admin im LAN-Mode). */
   emailVerified: boolean;
+  /** Admin-Notiz (z.B. „Rookie3000 = Martin Meier"); nur für Admins. */
+  adminNote: string | null;
   createdAt: string;
 }
 
@@ -145,6 +148,7 @@ export class AdminService {
         role: true,
         status: true,
         emailVerified: true,
+        adminNote: true,
         createdAt: true,
       },
     });
@@ -155,6 +159,7 @@ export class AdminService {
       role: u.role,
       status: u.status,
       emailVerified: u.emailVerified,
+      adminNote: u.adminNote,
       createdAt: u.createdAt.toISOString(),
     }));
   }
@@ -206,6 +211,41 @@ export class AdminService {
       target: targetId,
       meta: { from: target.status, to: dto.status },
     });
+  }
+
+  /**
+   * Konto freischalten: setzt `emailVerified = true`, wodurch Better Auth
+   * Sessions zulässt. Das ist der „Freischalten"-Knopf im LAN-Mode (statt
+   * E-Mail-Verifikation), funktioniert aber auch zum manuellen Bestätigen
+   * eines hängengebliebenen E-Mail-Kontos. Idempotent.
+   */
+  async approveUser(actorId: string, targetId: string): Promise<void> {
+    const target = await this.prisma.user.findUnique({
+      where: { id: targetId },
+      select: { emailVerified: true },
+    });
+    if (!target) throw new NotFoundException(`User ${targetId} nicht gefunden`);
+    if (target.emailVerified) return; // bereits freigeschaltet → no-op
+    await this.prisma.user.update({
+      where: { id: targetId },
+      data: { emailVerified: true },
+    });
+    await this.audit.record({ action: "admin.user.approve", actorId, target: targetId, meta: {} });
+  }
+
+  /** Admin-Notiz pro Nutzer setzen/leeren (z.B. „Rookie3000 = Martin Meier"). */
+  async setAdminNote(actorId: string, targetId: string, note: string | null): Promise<void> {
+    const target = await this.prisma.user.findUnique({
+      where: { id: targetId },
+      select: { id: true },
+    });
+    if (!target) throw new NotFoundException(`User ${targetId} nicht gefunden`);
+    const trimmed = note?.trim() ?? "";
+    await this.prisma.user.update({
+      where: { id: targetId },
+      data: { adminNote: trimmed === "" ? null : trimmed },
+    });
+    await this.audit.record({ action: "admin.user.note", actorId, target: targetId, meta: {} });
   }
 
   // ─── Audit-Log-View ────────────────────────────────────────────────

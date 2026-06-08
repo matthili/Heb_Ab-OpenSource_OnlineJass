@@ -63,6 +63,14 @@ export const SetUserStatusDtoSchema = z
   .strict();
 export type SetUserStatusDto = z.infer<typeof SetUserStatusDtoSchema>;
 
+export const SetAdminNoteDtoSchema = z
+  .object({
+    /** Notiz-Text (z.B. „Rookie3000 = Martin Meier"); leer = Notiz löschen. */
+    note: z.string().max(500),
+  })
+  .strict();
+export type SetAdminNoteDto = z.infer<typeof SetAdminNoteDtoSchema>;
+
 export const ListAuditQuerySchema = z
   .object({
     /** Filter auf Action-Prefix (z.B. "auth." oder "lobby."). */

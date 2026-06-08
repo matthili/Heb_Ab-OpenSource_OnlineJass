@@ -31,6 +31,7 @@ import {
   AddBlocklistDtoSchema,
   ListAuditQuerySchema,
   ListUsersQuerySchema,
+  SetAdminNoteDtoSchema,
   SetUserRoleDtoSchema,
   SetUserStatusDtoSchema,
   SmtpSettingsDtoSchema,
@@ -39,6 +40,7 @@ import {
   type AddBlocklistDto,
   type ListAuditQuery,
   type ListUsersQuery,
+  type SetAdminNoteDto,
   type SetUserRoleDto,
   type SetUserStatusDto,
   type SmtpSettingsDto,
@@ -174,6 +176,27 @@ export class AdminController {
     @Body(new ZodValidationPipe(SetUserStatusDtoSchema)) dto: SetUserStatusDto
   ): Promise<{ ok: true }> {
     await this.admin.setUserStatus(req.user!.id, targetId, dto);
+    return { ok: true };
+  }
+
+  /** Konto freischalten (LAN-Mode): setzt emailVerified=true. */
+  @Post("users/:id/approve")
+  async approveUser(
+    @Req() req: FastifyRequest,
+    @Param("id") targetId: string
+  ): Promise<{ ok: true }> {
+    await this.admin.approveUser(req.user!.id, targetId);
+    return { ok: true };
+  }
+
+  /** Admin-Notiz pro Nutzer setzen/leeren. */
+  @Patch("users/:id/note")
+  async setAdminNote(
+    @Req() req: FastifyRequest,
+    @Param("id") targetId: string,
+    @Body(new ZodValidationPipe(SetAdminNoteDtoSchema)) dto: SetAdminNoteDto
+  ): Promise<{ ok: true }> {
+    await this.admin.setAdminNote(req.user!.id, targetId, dto.note);
     return { ok: true };
   }
 
