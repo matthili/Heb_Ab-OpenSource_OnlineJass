@@ -940,7 +940,13 @@
       "colEmail": "E-mail",
       "colRole": "Role",
       "colStatus": "Status",
+      "colVerified": "Account",
+      "colNote": "Note",
       "colActions": "Actions",
+      "verified": "active",
+      "pending": "⏳ pending",
+      "approve": "Approve",
+      "notePlaceholder": "e.g. = Martin Meier",
       "block": "Block",
       "unblock": "Unblock",
       "softDeleted": "soft-deleted"

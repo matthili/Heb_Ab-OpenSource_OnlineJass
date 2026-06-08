@@ -940,7 +940,13 @@
       "colEmail": "E-Mail",
       "colRole": "Rolle",
       "colStatus": "Status",
+      "colVerified": "Konto",
+      "colNote": "Notiz",
       "colActions": "Aktionen",
+      "verified": "frei",
+      "pending": "⏳ wartet",
+      "approve": "Freischalten",
+      "notePlaceholder": "z.B. = Martin Meier",
       "block": "Sperren",
       "unblock": "Entsperren",
       "softDeleted": "soft-deleted"

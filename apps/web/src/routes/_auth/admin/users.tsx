@@ -45,6 +45,19 @@ function UsersPage() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin", "users"] }),
   });
 
+  // LAN-Mode: Konto freischalten (setzt emailVerified=true serverseitig).
+  const approve = useMutation({
+    mutationFn: (id: string) => api(`/api/admin/users/${id}/approve`, { method: "POST" }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin", "users"] }),
+  });
+
+  // Admin-Notiz pro Nutzer setzen/leeren.
+  const setNote = useMutation({
+    mutationFn: ({ id, note }: { id: string; note: string }) =>
+      api(`/api/admin/users/${id}/note`, { method: "PATCH", body: { note } }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin", "users"] }),
+  });
+
   return (
     <section className="space-y-3">
       <header className="flex flex-wrap gap-2 items-center">
@@ -92,6 +105,8 @@ function UsersPage() {
               <th className="py-2 pr-3">{t("admin.users.colEmail")}</th>
               <th className="py-2 pr-3">{t("admin.users.colRole")}</th>
               <th className="py-2 pr-3">{t("admin.users.colStatus")}</th>
+              <th className="py-2 pr-3">{t("admin.users.colVerified")}</th>
+              <th className="py-2 pr-3">{t("admin.users.colNote")}</th>
               <th className="py-2 pr-3">{t("admin.users.colActions")}</th>
             </tr>
           </thead>
@@ -116,27 +131,59 @@ function UsersPage() {
                   <StatusBadge status={u.status} />
                 </td>
                 <td className="py-2 pr-3">
-                  {u.status === "ACTIVE" ? (
-                    <button
-                      type="button"
-                      onClick={() => setStatus.mutate({ id: u.id, status: "BLOCKED" })}
-                      disabled={setStatus.isPending}
-                      className="rounded border border-stone-300 px-2 py-1 text-xs hover:bg-rose-50"
-                    >
-                      {t("admin.users.block")}
-                    </button>
-                  ) : u.status === "BLOCKED" ? (
-                    <button
-                      type="button"
-                      onClick={() => setStatus.mutate({ id: u.id, status: "ACTIVE" })}
-                      disabled={setStatus.isPending}
-                      className="rounded border border-stone-300 px-2 py-1 text-xs hover:bg-emerald-50"
-                    >
-                      {t("admin.users.unblock")}
-                    </button>
+                  {u.emailVerified ? (
+                    <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-xs text-emerald-800">
+                      {t("admin.users.verified")}
+                    </span>
                   ) : (
-                    <span className="text-xs text-stone-400">{t("admin.users.softDeleted")}</span>
+                    <span className="rounded bg-amber-100 px-1.5 py-0.5 text-xs text-amber-900">
+                      {t("admin.users.pending")}
+                    </span>
                   )}
+                </td>
+                <td className="py-2 pr-3">
+                  <NoteCell
+                    key={u.adminNote ?? "∅"}
+                    initial={u.adminNote ?? ""}
+                    onSave={(note) => setNote.mutate({ id: u.id, note })}
+                    saving={setNote.isPending}
+                    placeholder={t("admin.users.notePlaceholder")}
+                  />
+                </td>
+                <td className="py-2 pr-3">
+                  <div className="flex flex-wrap items-center gap-1">
+                    {!u.emailVerified && (
+                      <button
+                        type="button"
+                        onClick={() => approve.mutate(u.id)}
+                        disabled={approve.isPending}
+                        className="rounded border border-jass-yellowDark bg-jass-yellow px-2 py-1 text-xs font-semibold text-jass-ink hover:bg-jass-yellow/90"
+                      >
+                        {t("admin.users.approve")}
+                      </button>
+                    )}
+                    {u.status === "ACTIVE" ? (
+                      <button
+                        type="button"
+                        onClick={() => setStatus.mutate({ id: u.id, status: "BLOCKED" })}
+                        disabled={setStatus.isPending}
+                        className="rounded border border-stone-300 px-2 py-1 text-xs hover:bg-rose-50"
+                      >
+                        {t("admin.users.block")}
+                      </button>
+                    ) : u.status === "BLOCKED" ? (
+                      <button
+                        type="button"
+                        onClick={() => setStatus.mutate({ id: u.id, status: "ACTIVE" })}
+                        disabled={setStatus.isPending}
+                        className="rounded border border-stone-300 px-2 py-1 text-xs hover:bg-emerald-50"
+                      >
+                        {t("admin.users.unblock")}
+                      </button>
+                    ) : (
+                      <span className="text-xs text-stone-400">{t("admin.users.softDeleted")}</span>
+                    )}
+                  </div>
                 </td>
               </tr>
             ))}
@@ -154,7 +201,45 @@ function UsersPage() {
           {setStatus.error.message}
         </p>
       )}
+      {approve.error instanceof ApiError && (
+        <p role="alert" className="text-sm text-rose-700">
+          {approve.error.message}
+        </p>
+      )}
+      {setNote.error instanceof ApiError && (
+        <p role="alert" className="text-sm text-rose-700">
+          {setNote.error.message}
+        </p>
+      )}
     </section>
+  );
+}
+
+/** Inline-editierbare Admin-Notiz pro Nutzer; speichert beim Verlassen des Felds. */
+function NoteCell({
+  initial,
+  onSave,
+  saving,
+  placeholder,
+}: {
+  initial: string;
+  onSave: (note: string) => void;
+  saving: boolean;
+  placeholder: string;
+}) {
+  const [val, setVal] = useState(initial);
+  return (
+    <input
+      type="text"
+      value={val}
+      onChange={(e) => setVal(e.target.value)}
+      onBlur={() => {
+        if (val !== initial) onSave(val);
+      }}
+      disabled={saving}
+      placeholder={placeholder}
+      className="w-40 rounded border border-stone-300 px-2 py-0.5 text-xs"
+    />
   );
 }
 

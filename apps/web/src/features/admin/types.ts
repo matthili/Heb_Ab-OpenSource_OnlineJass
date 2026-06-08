@@ -30,7 +30,10 @@ export interface AdminUserView {
   name: string;
   role: Role;
   status: UserStatus;
+  /** `false` = wartet auf Freischaltung (E-Mail-Link oder Admin im LAN-Mode). */
   emailVerified: boolean;
+  /** Admin-Notiz (z.B. „Rookie3000 = Martin Meier"). */
+  adminNote: string | null;
   createdAt: string;
 }
 
