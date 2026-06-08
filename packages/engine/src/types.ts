@@ -276,6 +276,13 @@ export const MATCH_BONUS = 100;
  */
 export const STOECK_BONUS = 20;
 export const TOTAL_POINTS_PER_ROUND = 157; // 152 + 5 letzter Stich
+/**
+ * **„Sack" (Tisch-Option)**: Mindest-Kartenpunkte (aus Stichen) pro
+ * Team/Spieler, damit die Runde überhaupt gewertet wird. Wer darunter
+ * bleibt, bekommt NICHTS — Kartenpunkte UND Weis verfallen (kein Transfer
+ * ans andere Team). Vorarlberger „im Sack" / „verre".
+ */
+export const SACK_MIN_POINTS = 21;
 
 /** Punktewerte, wenn die Variante TRUMPF/GUMPF gewählt ist und die Karte NICHT Trumpf ist. */
 export const POINT_VALUES_NORMAL: Readonly<Record<Rank, number>> = {

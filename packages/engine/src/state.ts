@@ -34,6 +34,7 @@ import {
   type Variant,
   MATCH_BONUS,
   STOECK_BONUS,
+  SACK_MIN_POINTS,
   NUM_PLAYERS,
   TRICKS_PER_ROUND,
   DECK_SIZE,
@@ -127,6 +128,19 @@ export interface RoundState {
   readonly weisen_button_clicked_at: readonly (number | null)[];
   readonly weisen_declarations: readonly (readonly WeisDeclaration[])[];
   readonly weisen_evaluated: boolean;
+
+  // ── Optionale Wertungs-Regeln (Tisch-Optionen) ────────────────────
+  // Pro Team in der Trick-1-Auswertung kassierte Weis-Punkte (Delta).
+  // Getrennt geführt, damit `finalRoundScore` Karten- von Weis-Punkten
+  // unterscheiden kann (für die Regeln unten). `undefined` = Alt-State
+  // (Redis vor Deploy) → wird als „kein Weis" behandelt.
+  readonly weisen_team_points?: readonly number[] | undefined;
+  // „Sack": Team/Spieler mit < 21 Kartenpunkten (aus Stichen) bekommt
+  // gar nichts gewertet — Kartenpunkte UND Weis verfallen (kein Transfer).
+  readonly sack_rule?: boolean | undefined;
+  // „Kein Stich → Weis verfällt": wer keinen einzigen Stich macht,
+  // verliert am Rundenende seine Weis-Punkte wieder.
+  readonly weis_needs_trick?: boolean | undefined;
 }
 
 /** Eine Karten-Aktion eines bestimmten Sitzes. */
@@ -169,6 +183,10 @@ interface NewRoundOptions {
   /** Standard [0,1,0,1]. */
   teams?: readonly number[];
   round_idx?: number;
+  /** Tisch-Option „Sack": < 21 Kartenpunkte → nichts gewertet. Default false. */
+  sackRule?: boolean;
+  /** Tisch-Option „kein Stich → Weis verfällt". Default false. */
+  weisNeedsTrick?: boolean;
 }
 
 export function newRound(opts: NewRoundOptions): RoundState {
@@ -206,6 +224,9 @@ export function newRound(opts: NewRoundOptions): RoundState {
     weisen_button_clicked_at: new Array<number | null>(num_players).fill(null),
     weisen_declarations: Array.from({ length: num_players }, () => [] as WeisDeclaration[]),
     weisen_evaluated: false,
+    weisen_team_points: new Array<number>(numTeams).fill(0),
+    sack_rule: opts.sackRule ?? false,
+    weis_needs_trick: opts.weisNeedsTrick ?? false,
   };
 }
 
@@ -338,11 +359,16 @@ export function applyMove(state: RoundState, move: Move): RoundState {
   // evaluiert, jetzt aggregieren + Punkte ans Sieger-Team addieren.
   let weisenEvaluated = state.weisen_evaluated;
   let teamPointsAfterWeisen = newTeamPoints;
+  let weisenTeamPoints = state.weisen_team_points;
   if (!state.weisen_evaluated && state.completed_tricks.length === 0) {
     // state.completed_tricks.length === 0 vor diesem Trick → das hier ist
     // der gerade abgeschlossene Trick 1.
     weisenEvaluated = true;
     teamPointsAfterWeisen = applyWeisenPoints(state, newTeamPoints);
+    // Reiner Weis-Anteil pro Team = Differenz zu den Karten-Punkten vor
+    // der Auswertung. Damit kann finalRoundScore Karten- von Weis-Punkten
+    // trennen (für die „Sack"- und „kein Stich"-Regeln).
+    weisenTeamPoints = teamPointsAfterWeisen.map((p, t) => p - (newTeamPoints[t] ?? 0));
   }
 
   return {
@@ -363,6 +389,7 @@ export function applyMove(state: RoundState, move: Move): RoundState {
     trick_winners: [...state.trick_winners, winnerSeat],
     stoeck_eligible_seat: nextStoeckEligible,
     weisen_evaluated: weisenEvaluated,
+    weisen_team_points: weisenTeamPoints,
   };
 }
 
@@ -598,39 +625,65 @@ export function announceStoeck(state: RoundState, seat: number): RoundState {
  * **Matsch-Bonus**: Wenn ein Team alle 9 Stiche gewonnen hat, addieren
  * wir `MATCH_BONUS` (= 100) zu seinen `team_card_points`. Die Konsistenz-
  * Prüfung aus der NN-Spec (`sum(team_card_points) == 157` ohne Matsch,
- * `== 257` mit Matsch) gilt nach diesem Schritt.
+ * `== 257` mit Matsch) gilt nach diesem Schritt — **sofern keine
+ * optionalen Regeln aktiv sind** (die dürfen Punkte verfallen lassen).
+ *
+ * **Optionale Tisch-Regeln** (aus dem RoundState):
+ *   - `weis_needs_trick`: Ein Team/Spieler ohne einen einzigen Stich
+ *     verliert seine Weis-Punkte wieder (Weis zählt nur mit Stich).
+ *   - `sack_rule` („Sack"): Wer unter `SACK_MIN_POINTS` (21) reine
+ *     Kartenpunkte aus Stichen bleibt, bekommt GAR NICHTS gewertet —
+ *     Kartenpunkte UND Weis verfallen und gehen an niemanden (kein
+ *     Transfer ans andere Team).
  */
 export function finalRoundScore(state: RoundState): RoundScore {
   if (!isRoundDone(state)) {
     throw new Error("finalRoundScore: round is not finished yet");
   }
-  // Matsch-Team: hat ein Team alle 9 Stiche gewonnen?
   const numTeams = state.team_card_points.length;
+
+  // Stiche pro Team zählen — für Matsch UND die „kein Stich"-Regel.
+  const trickCount = new Array<number>(numTeams).fill(0);
+  for (const w of state.trick_winners) {
+    const tm = state.teams[w];
+    if (tm !== undefined && tm < numTeams) trickCount[tm] = (trickCount[tm] ?? 0) + 1;
+  }
+
+  // Matsch-Team: hat ein Team alle 9 Stiche gewonnen?
   let matsch_team: number | null = null;
   for (let t = 0; t < numTeams; t++) {
-    let count = 0;
-    for (const w of state.trick_winners) {
-      if (state.teams[w] === t) count++;
-    }
-    if (count === TRICKS_PER_ROUND) {
+    if (trickCount[t] === TRICKS_PER_ROUND) {
       matsch_team = t;
       break;
     }
   }
 
-  // Matsch-Bonus direkt in team_card_points einrechnen.
-  const team_card_points = [...state.team_card_points];
-  if (matsch_team !== null) {
-    team_card_points[matsch_team] = (team_card_points[matsch_team] ?? 0) + MATCH_BONUS;
-  }
-  // Stöck-Bonus: +20 für das Team, das offiziell angesagt hat. Nicht
-  // ansagen → keine Punkte (das ist der Vorarlberger Brauch, kein
-  // Bug). `stoeck_announced_team` ist nur gesetzt, wenn jemand via
-  // `announceStoeck()` aktiv geklickt hat.
-  if (state.stoeck_announced_team !== null) {
-    const t = state.stoeck_announced_team;
-    team_card_points[t] = (team_card_points[t] ?? 0) + STOECK_BONUS;
-  }
+  const weisPerTeam = state.weisen_team_points ?? new Array<number>(numTeams).fill(0);
+  const sackRule = state.sack_rule === true;
+  const weisNeedsTrick = state.weis_needs_trick === true;
+
+  const team_card_points = state.team_card_points.map((merged, t) => {
+    // `merged` = Karten-Punkte aus Stichen (inkl. Letzter-Stich-Bonus)
+    //            + bereits einaddierte Weis-Punkte.
+    const weis = weisPerTeam[t] ?? 0;
+    const cardOnly = merged - weis; // reine Stich-Kartenpunkte
+    let total = merged;
+
+    // Regel: kein Stich → Weis verfällt.
+    if (weisNeedsTrick && (trickCount[t] ?? 0) === 0) total -= weis;
+
+    // Matsch-Bonus (+100). Das Matsch-Team hat 9 Stiche → cardOnly weit
+    // über der Sack-Grenze, also nie betroffen.
+    if (t === matsch_team) total += MATCH_BONUS;
+    // Stöck-Bonus (+20) nur fürs offiziell ansagende Team.
+    if (state.stoeck_announced_team === t) total += STOECK_BONUS;
+
+    // Regel „Sack": unter 21 reinen Kartenpunkten verfällt ALLES
+    // (Karten + Weis + evtl. Stöck) — geht an niemanden.
+    if (sackRule && cardOnly < SACK_MIN_POINTS) total = 0;
+
+    return total;
+  });
 
   return {
     team_card_points,
