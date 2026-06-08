@@ -225,6 +225,8 @@
       "intro": "We've sent you a link. Click it to start playing.",
       "introWithAddress": "We've sent a link to <strong>{{email}}</strong>. Click it to start playing.",
       "validity": "The link is valid for 24 hours. Check the spam folder if needed.",
+      "adminTitle": "Account awaiting approval",
+      "adminIntro": "Your account has been created. An admin must approve it before you can sign in.",
       "back": "Back to sign-in"
     },
     "forgot": {

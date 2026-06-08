@@ -2,6 +2,8 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { Trans, useTranslation } from "react-i18next";
 import { z } from "zod";
 
+import { useAccountActivation } from "~/lib/useAccountActivation";
+
 const CheckEmailSearch = z.object({
   email: z.string().email().optional(),
 });
@@ -14,6 +16,26 @@ export const Route = createFileRoute("/_public/check-email")({
 function CheckEmailPage() {
   const { t } = useTranslation();
   const { email } = Route.useSearch();
+  const activation = useAccountActivation();
+
+  // LAN-Mode: es wird keine Mail verschickt — ein Admin schaltet frei.
+  if (activation === "admin") {
+    return (
+      <section className="space-y-4 text-center py-8">
+        <div className="text-5xl" aria-hidden="true">
+          ⏳
+        </div>
+        <h1 className="text-2xl font-bold">{t("auth.checkEmail.adminTitle")}</h1>
+        <p className="text-stone-600">{t("auth.checkEmail.adminIntro")}</p>
+        <p className="text-sm">
+          <Link to="/login" className="text-stone-900 underline">
+            {t("auth.checkEmail.back")}
+          </Link>
+        </p>
+      </section>
+    );
+  }
+
   return (
     <section className="space-y-4 text-center py-8">
       <div className="text-5xl" aria-hidden="true">

@@ -225,6 +225,8 @@
       "intro": "Wir haben dir einen Link geschickt. Klick drauf, und dann kannst du mitspielen.",
       "introWithAddress": "Wir haben dir einen Link an <strong>{{email}}</strong> geschickt. Klick drauf, und dann kannst du mitspielen.",
       "validity": "Der Link ist 24 Stunden gültig. Schau auch im Spam-Ordner nach.",
+      "adminTitle": "Konto wartet auf Freischaltung",
+      "adminIntro": "Dein Konto wurde angelegt. Ein Admin muss es freischalten, bevor du dich anmelden kannst.",
       "back": "Zurück zur Anmeldung"
     },
     "forgot": {
