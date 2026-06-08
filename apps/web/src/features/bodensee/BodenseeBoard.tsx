@@ -29,6 +29,7 @@ import { seatDisplayName } from "~/features/game/aiNames";
 import { AnnounceOverlay, ModeWatermark } from "~/features/game/AnnounceVisuals";
 import type { SeatView } from "~/features/lobby/types";
 import type { BodenseeAnnouncement, BodenseeView } from "./types";
+import { useBodenseeTrickLinger } from "./useBodenseeTrickLinger";
 
 interface Props {
   view: BodenseeView;
@@ -84,6 +85,10 @@ export function BodenseeBoard({
 
   const isLegal = (c: CardModel): boolean => view.legalActionMask[cardIndex(c)] === 1;
   const canPlay = view.status === "playing" && view.myTurn && !movePending;
+
+  // Gerade fertigen Stich ~1,8 s „eingefroren" zeigen (wer hat gestochen?),
+  // auch wenn der nächste Stich schon startet.
+  const lingerTrick = useBodenseeTrickLinger(view);
 
   // Stabile Ansage-Info (für Overlay + Wasserzeichen). Erst ab `playing` gesetzt.
   const announceInfo =
@@ -167,7 +172,7 @@ export function BodenseeBoard({
       <section className="relative min-h-[10rem] overflow-hidden rounded-xl bg-emerald-800 px-4 py-5 text-center text-emerald-50 shadow-inner">
         {announceInfo && <ModeWatermark info={announceInfo} currentMode={view.playMode} />}
         <div className="relative z-10">
-          <TrickArea view={view} seatName={seatName} />
+          <TrickArea view={view} seatName={seatName} lingerTrick={lingerTrick} />
         </div>
       </section>
 
@@ -284,8 +289,26 @@ export function BodenseeBoard({
 // Stich-Mitte
 // ─────────────────────────────────────────────────────────────────────
 
-function TrickArea({ view, seatName }: { view: BodenseeView; seatName: (seat: number) => string }) {
+function TrickArea({
+  view,
+  seatName,
+  lingerTrick,
+}: {
+  view: BodenseeView;
+  seatName: (seat: number) => string;
+  lingerTrick: NonNullable<BodenseeView["lastTrick"]> | null;
+}) {
   const { t } = useTranslation();
+
+  // 1) Linger: gerade fertiger Stich „eingefroren" (Vorrang vor dem schon
+  //    laufenden nächsten Stich) — beide Karten + „… hat gestochen".
+  if (lingerTrick) {
+    return (
+      <CompletedTrickView trick={lingerTrick} mySeat={view.mySeat} seatName={seatName} emphasised />
+    );
+  }
+
+  // 2) Laufender Stich.
   const live = view.currentTrick;
   if (live.cards.length > 0) {
     return (
@@ -310,33 +333,71 @@ function TrickArea({ view, seatName }: { view: BodenseeView; seatName: (seat: nu
     );
   }
 
-  const last = view.lastTrick;
-  if (last) {
+  // 3) Idle: zuletzt abgeschlossener Stich (bis der nächste startet).
+  if (view.lastTrick) {
     return (
-      <div>
-        <p className="text-xs uppercase tracking-wide text-emerald-200 mb-2">
-          {last.winner === view.mySeat
-            ? t("bodensee.trick.lastWonByYou")
-            : t("bodensee.trick.lastWonByOther", { name: seatName(last.winner) })}
-        </p>
-        <div className="flex items-end justify-center gap-4 opacity-80">
-          {last.cards.map((c, i) => {
-            const seat = i === 0 ? last.starter : 1 - last.starter;
-            return (
-              <div key={`lt-${i}`} className="space-y-1">
-                <Card card={c} size="sm" />
-                <p className="text-xs text-emerald-100">
-                  {seat === view.mySeat ? t("game.you") : seatName(seat)}
-                </p>
-              </div>
-            );
-          })}
-        </div>
-      </div>
+      <CompletedTrickView
+        trick={view.lastTrick}
+        mySeat={view.mySeat}
+        seatName={seatName}
+        emphasised={false}
+      />
     );
   }
 
+  // 4) Noch kein Stich.
   return <p className="text-sm text-emerald-100">{t("bodensee.trick.starting")}</p>;
+}
+
+/**
+ * Ein abgeschlossener Stich (beide Karten + „… hat gestochen"). Der Gewinner
+ * kommt vom Server (`trick.winner`) — keine Client-Berechnung, also kein
+ * Slalom-Risiko. `emphasised` (Linger-Moment): volle Deckkraft + Gold-Ring
+ * um die Sieger-Karte; sonst leicht gedimmt (reine Wartedarstellung).
+ */
+function CompletedTrickView({
+  trick,
+  mySeat,
+  seatName,
+  emphasised,
+}: {
+  trick: NonNullable<BodenseeView["lastTrick"]>;
+  mySeat: number;
+  seatName: (seat: number) => string;
+  emphasised: boolean;
+}) {
+  const { t } = useTranslation();
+  return (
+    <div>
+      <p className="text-sm uppercase tracking-wide text-emerald-100 mb-2 font-semibold">
+        {trick.winner === mySeat
+          ? t("bodensee.trick.lastWonByYou")
+          : t("bodensee.trick.lastWonByOther", { name: seatName(trick.winner) })}
+      </p>
+      <div className={`flex items-end justify-center gap-4 ${emphasised ? "" : "opacity-80"}`}>
+        {trick.cards.map((c, i) => {
+          const seat = i === 0 ? trick.starter : 1 - trick.starter;
+          const isWinnerCard = seat === trick.winner;
+          return (
+            <div key={`ct-done-${i}`} className="space-y-1">
+              <div
+                className={
+                  isWinnerCard && emphasised
+                    ? "rounded-lg ring-2 ring-jass-yellow ring-offset-1"
+                    : ""
+                }
+              >
+                <Card card={c} size="md" />
+              </div>
+              <p className="text-xs text-emerald-100">
+                {seat === mySeat ? t("game.you") : seatName(seat)}
+              </p>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
 }
 
 // ─────────────────────────────────────────────────────────────────────
@@ -357,14 +418,14 @@ function MiniTrick({
   t: TFunction;
 }) {
   return (
-    <div className="rounded-lg border border-jass-paperEdge bg-jass-cream px-2 py-1 text-center">
-      <p className="text-[10px] uppercase tracking-wide text-jass-inkSoft">{label}</p>
-      <div className="my-0.5 flex justify-center gap-0.5">
+    <div className="rounded-lg border border-jass-paperEdge bg-jass-cream px-3 py-2 text-center">
+      <p className="text-xs uppercase tracking-wide text-jass-inkSoft">{label}</p>
+      <div className="my-1 flex justify-center gap-1">
         {trick.cards.map((c, i) => (
-          <Card key={`${c.suit}-${c.rank}-${i}`} card={c} size="xs" />
+          <Card key={`${c.suit}-${c.rank}-${i}`} card={c} size="sm" />
         ))}
       </div>
-      <p className="text-[10px] text-jass-inkSoft">
+      <p className="text-xs text-jass-inkSoft">
         {trick.winner === mySeat
           ? t("game.trickMini.wonByYou")
           : t("game.trickMini.wonByName", { name: seatName(trick.winner) })}
