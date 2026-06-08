@@ -725,48 +725,55 @@ export class GameGateway
    */
   private async driveAIsLoop(gameId: string): Promise<void> {
     let announceSteps = 0;
-    for (let i = 0; i < 40; i++) {
-      const action = await this.games.nextAIAction(gameId);
-      if (!action) return; // Mensch ist dran oder Spiel vorbei
+    try {
+      for (let i = 0; i < 40; i++) {
+        const action = await this.games.nextAIAction(gameId);
+        if (!action) return; // Mensch ist dran oder Spiel vorbei
 
-      if (action.kind === "announce") {
-        if (++announceSteps > 2) {
-          this.log.error({ gameId, seat: action.seat }, "Ansage-Loop > 2 Schritte — fail-safe");
+        if (action.kind === "announce") {
+          if (++announceSteps > 2) {
+            this.log.error({ gameId, seat: action.seat }, "Ansage-Loop > 2 Schritte — fail-safe");
+            return;
+          }
+          const decision = await this.games.aiChooseAnnouncement(gameId, action.seat);
+          await this.games.applyAnnouncementAsSeat(gameId, action.seat, decision);
+          await this.broadcastState(gameId);
+          // Zwischen Ansage-Schritten kurz Pause, damit das Frontend die
+          // Push-Animation zeigen kann.
+          await sleep(aiStepDelayMs());
+          continue;
+        }
+
+        // Weisen-Auto-Vor-Move: bevor die KI ihre erste Karte in Trick 1
+        // spielt, soll sie deklarieren (= Button klicken + Karten submitten).
+        // Die Engine prüft via `weisenWindowOpen`, ob das Fenster noch
+        // offen ist; bei jedem späteren Aufruf ist es ein No-op.
+        await this.games.aiAutoWeisenForSeat(gameId, action.seat);
+        await this.broadcastState(gameId);
+
+        // Move-Schritt.
+        const card = await this.games.aiChooseMove(gameId, action.seat, action.aiSeatType);
+        const { view } = await this.games.playMoveAsSeat(gameId, action.seat, card);
+        await this.broadcastState(gameId);
+        // Stöck-Auto-Ansage: wenn die KI gerade die zweite Trumpf-O/K
+        // gespielt hat (= eligible), ruft sie sofort an. Heuristik: „immer".
+        if (view.stoeckEligible) {
+          await this.games.announceStoeckAsSeat(gameId, action.seat);
+          await this.broadcastState(gameId);
+        }
+        if (view.status === "finished") {
+          this.server.to(roomKey(gameId)).emit("game:ended", { finalScore: view.finalScore });
           return;
         }
-        const decision = await this.games.aiChooseAnnouncement(gameId, action.seat);
-        await this.games.applyAnnouncementAsSeat(gameId, action.seat, decision);
-        await this.broadcastState(gameId);
-        // Zwischen Ansage-Schritten kurz Pause, damit das Frontend die
-        // Push-Animation zeigen kann.
         await sleep(aiStepDelayMs());
-        continue;
       }
-
-      // Weisen-Auto-Vor-Move: bevor die KI ihre erste Karte in Trick 1
-      // spielt, soll sie deklarieren (= Button klicken + Karten submitten).
-      // Die Engine prüft via `weisenWindowOpen`, ob das Fenster noch
-      // offen ist; bei jedem späteren Aufruf ist es ein No-op.
-      await this.games.aiAutoWeisenForSeat(gameId, action.seat);
-      await this.broadcastState(gameId);
-
-      // Move-Schritt.
-      const card = await this.games.aiChooseMove(gameId, action.seat, action.aiSeatType);
-      const { view } = await this.games.playMoveAsSeat(gameId, action.seat, card);
-      await this.broadcastState(gameId);
-      // Stöck-Auto-Ansage: wenn die KI gerade die zweite Trumpf-O/K
-      // gespielt hat (= eligible), ruft sie sofort an. Heuristik: „immer".
-      if (view.stoeckEligible) {
-        await this.games.announceStoeckAsSeat(gameId, action.seat);
-        await this.broadcastState(gameId);
-      }
-      if (view.status === "finished") {
-        this.server.to(roomKey(gameId)).emit("game:ended", { finalScore: view.finalScore });
-        return;
-      }
-      await sleep(aiStepDelayMs());
+      this.log.warn({ gameId }, "driveAIsLoop hat Sicherheitsgrenze erreicht");
+    } catch (err) {
+      // Defense-in-depth: ein fehlgeschlagener KI-Schritt darf NIEMALS die
+      // ganze API mitreißen (vorher: unhandled exception im Loop → Prozess-
+      // Crash für alle). Wir loggen + stoppen nur diesen Loop.
+      this.log.error({ gameId, err }, "driveAIsLoop abgebrochen — KI-Schritt fehlgeschlagen");
     }
-    this.log.warn({ gameId }, "driveAIsLoop hat Sicherheitsgrenze erreicht");
   }
 
   // ─── Bodensee events ──────────────────────────────────────────────

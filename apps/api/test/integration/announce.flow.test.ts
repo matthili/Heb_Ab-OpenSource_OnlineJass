@@ -244,4 +244,51 @@ describe("Sprint C — Trumpf-Ansage-Flow", () => {
     const view = await games.viewForSeat(gameId, 2);
     expect(view.announcement?.announcerSeat).toBe(2);
   });
+
+  it("Solo: KI-Ansager schiebt NIE (auch bei schwacher Hand) → kein Crash", async () => {
+    // Regression: Im Solo gibt es kein Schieben. Früher bot aiChooseAnnouncement
+    // dem HeuristicPlayer trotzdem canPush=true an; bei schwacher Hand wollte er
+    // schieben → applyAnnouncementAsSeat warf „Schieben gibt es im Solo-Jass
+    // nicht" → unhandled im driveAIsLoop → API-Crash.
+    const fullDeck: { suit: "EICHEL" | "SCHELLE" | "HERZ" | "LAUB"; rank: string }[] = [];
+    for (const s of ["EICHEL", "SCHELLE", "HERZ", "LAUB"] as const) {
+      for (const r of [
+        "SECHS",
+        "SIEBEN",
+        "ACHT",
+        "NEUN",
+        "ZEHN",
+        "UNTER",
+        "OBER",
+        "KOENIG",
+        "ASS",
+      ]) {
+        fullDeck.push({ suit: s, rank: r });
+      }
+    }
+    // Sitz 0 (Ansager) bekommt die 9 schwächsten Karten — würde im Kreuz schieben.
+    const isWeak = (c: { suit: string; rank: string }) =>
+      ["EICHEL", "SCHELLE", "HERZ"].includes(c.suit) &&
+      ["SECHS", "SIEBEN", "ACHT"].includes(c.rank);
+    const weak = fullDeck.filter(isWeak);
+    const rest = fullDeck.filter((c) => !isWeak(c));
+    const hands = [weak, rest.slice(0, 9), rest.slice(9, 18), rest.slice(18, 27)];
+
+    const { gameId } = await games.createGame({
+      seats: [
+        { seat: 0, userId: null, aiSeatType: "heuristic" },
+        { seat: 1, userId: null, aiSeatType: "heuristic" },
+        { seat: 2, userId: null, aiSeatType: "heuristic" },
+        { seat: 3, userId: null, aiSeatType: "heuristic" },
+      ],
+      hands: hands as never,
+      announcerSeat: 0,
+      gameType: "solo",
+    });
+
+    const decision = await games.aiChooseAnnouncement(gameId, 0);
+    expect(decision.kind).toBe("announce"); // NICHT "push"
+    // Und die Ansage ist anwendbar (wirft nicht).
+    await expect(games.applyAnnouncementAsSeat(gameId, 0, decision)).resolves.toBeDefined();
+  });
 });

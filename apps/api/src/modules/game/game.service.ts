@@ -1299,7 +1299,11 @@ export class GameService {
       return { kind: "announce", mode: "OBEN", slalom: true };
     }
     const hand = pending.hands[seat] ?? [];
-    const canPush = pending.pushedFromSeat === null;
+    // Schieben gibt es nur im Kreuz-Jass (Partner) und NIE im Solo-Jass —
+    // analog zur Mensch-View. Ohne den isSolo-Check böte der HeuristicPlayer
+    // bei schwacher Solo-Hand ein Push an (chooseAnnouncement → null), das
+    // applyAnnouncementAsSeat dann zu Recht ablehnt → früher Crash im AI-Loop.
+    const canPush = !pending.isSolo && pending.pushedFromSeat === null;
     // KI an die Erlaubte-Ansagen-Stufe des Tisches binden. Alle KI-Typen
     // (random/heuristic/nn) nutzen für die Ansage den HeuristicPlayer; der
     // filtert Kandidaten nach allowedModes/allowSlalom. TRUMPF ist auf jeder
