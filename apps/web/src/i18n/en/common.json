@@ -379,7 +379,7 @@
         "targetScore": "Target score of the match",
         "restart": "Who starts the next game?",
         "announceLevel": "Allowed announcements",
-        "scoringRules": "Scoring rules"
+        "scoringRules": "House rules"
       },
       "announceLevel": {
         "trumpf": "Trump",
@@ -395,7 +395,9 @@
         "weisNeedsTrick": "Declaration needs a trick",
         "weisNeedsTrickHint": "A team/player who wins no trick in a round loses their declaration (Weis) points.",
         "sack": "Sack (min. 21 points)",
-        "sackHint": "Under 21 card points in a round, everything is voided — including the Weis. The points go to nobody."
+        "sackHint": "Under 21 card points in a round, everything is voided — including the Weis. The points go to nobody.",
+        "cut": "Real cut",
+        "cutHint": "Before each deal (except the first), the player to the dealer's right actually cuts the deck — or knocks."
       },
       "variant": {
         "KREUZ_4P": {
@@ -648,6 +650,15 @@
       "youWon": "Congratulations!",
       "standings": "Final standings",
       "clickToClose": "(click to close)"
+    },
+    "cut": {
+      "title": "Cut the deck",
+      "explain": "Slide to choose where to cut — or knock (don't cut).",
+      "position": "Cut at card {{n}}",
+      "cut": "Cut",
+      "knock": "Knock",
+      "waiting": "{{name}} is cutting …",
+      "sliderAria": "Cut position"
     },
     "disconnect": {
       "closedTitle": "Table was dissolved",

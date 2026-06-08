@@ -379,7 +379,7 @@
         "targetScore": "Punkteziel der Partie",
         "restart": "Wer beginnt das nächste Spiel?",
         "announceLevel": "Erlaubte Ansage-Arten",
-        "scoringRules": "Wertungs-Regeln"
+        "scoringRules": "Hausregeln"
       },
       "announceLevel": {
         "trumpf": "Trumpf",
@@ -395,7 +395,9 @@
         "weisNeedsTrick": "Weis nur mit Stich",
         "weisNeedsTrickHint": "Wer in einer Runde keinen einzigen Stich macht, verliert seine Weis-Punkte wieder.",
         "sack": "Sack (mind. 21 Punkte)",
-        "sackHint": "Unter 21 Kartenpunkten pro Runde verfällt alles — auch der Weis. Die Punkte gehen an niemanden."
+        "sackHint": "Unter 21 Kartenpunkten pro Runde verfällt alles — auch der Weis. Die Punkte gehen an niemanden.",
+        "cut": "Echtes Abheben",
+        "cutHint": "Vor jedem Geben (außer dem ersten) hebt der Spieler rechts vom Geber wirklich ab — oder klopft."
       },
       "variant": {
         "KREUZ_4P": {
@@ -648,6 +650,15 @@
       "youWon": "Glückwunsch!",
       "standings": "Endstand",
       "clickToClose": "(klicken zum Schließen)"
+    },
+    "cut": {
+      "title": "Abheben",
+      "explain": "Schieb den Regler, wo abgehoben wird — oder klopfe (nicht abheben).",
+      "position": "Abheben bei Karte {{n}}",
+      "cut": "Abheben",
+      "knock": "Klopfen",
+      "waiting": "{{name}} hebt ab …",
+      "sliderAria": "Abhebe-Position"
     },
     "disconnect": {
       "closedTitle": "Tisch wurde aufgelöst",

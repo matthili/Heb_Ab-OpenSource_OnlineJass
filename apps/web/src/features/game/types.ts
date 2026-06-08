@@ -70,6 +70,16 @@ export interface PlayerView {
     /** Schiebe-Slalom: nur noch die Start-Richtung (Oben/Unten) ist zu wählen. */
     slalomDirectionOnly: boolean;
   };
+  /**
+   * Nur in der „Abheben"-Phase gesetzt (status `announcing`, `announcement`
+   * dann nicht gesetzt): Karten noch nicht ausgeteilt, gewartet wird auf den
+   * Abheber.
+   */
+  cut?: {
+    cutterSeat: number;
+    iAmCutter: boolean;
+    deckSize: number;
+  };
   finalScore?: FinalScore;
   /**
    * **Stöck**: Ist mein eigener Sitz gerade berechtigt, „Stöck" zu rufen?

@@ -208,8 +208,7 @@ model Game {
   sackRule       Boolean       @default(false)
   weisNeedsTrick Boolean       @default(false)
   // Echtes Abheben aktiv? Beim Game-Start aus dem LobbyTable kopiert.
-  // (Default false bis Frontend steht — danach auf true geflippt.)
-  cutEnabled     Boolean       @default(false)
+  cutEnabled     Boolean       @default(true)
   ruleVersion   String // spec_version aus jass_rules.json
   modelVersion  String? // NN-Release-Tag (für Replays)
   startedAt     DateTime      @default(now())
@@ -326,8 +325,8 @@ model LobbyTable {
   sackRule        Boolean       @default(false)
   weisNeedsTrick  Boolean       @default(false)
   // Echtes Abheben vor dem Austeilen (außer WELI-Deal/Spiel 1). Owner wählt
-  // beim Eröffnen. (Default false bis Frontend steht — danach auf true.)
-  cutEnabled      Boolean       @default(false)
+  // beim Eröffnen. Default an (Vorarlberger Tradition).
+  cutEnabled      Boolean       @default(true)
   // Default-KI-Typ für Auto-Fill und manuell platzierte KI-Sitze. Owner
   // konfiguriert das beim Tisch-Erstellen; einzelne Sitze können per
   // `LobbyTableSeat.aiSeatType` davon abweichen.

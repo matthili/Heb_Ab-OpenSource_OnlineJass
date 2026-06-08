@@ -39,6 +39,7 @@ interface Props {
   mySeat: number;
   movePending: boolean;
   announcePending: boolean;
+  cutPending: boolean;
   weisenPending: boolean;
   error: string | null;
   /**
@@ -52,6 +53,7 @@ interface Props {
   nameSeed: string;
   onPlayCard: (card: Card) => void;
   onAnnounce: (decision: AnnouncementDecision) => void;
+  onCut: (cutIndex: number) => void;
   onAnnounceStoeck: () => void;
   onClickWeisen: () => void;
   onSubmitWeisen: (groups: ReadonlyArray<ReadonlyArray<Card>>) => void;
@@ -63,12 +65,14 @@ export function GameBoard({
   mySeat,
   movePending,
   announcePending,
+  cutPending,
   weisenPending,
   error,
   dealCinematicMode = "full",
   nameSeed,
   onPlayCard,
   onAnnounce,
+  onCut,
   onAnnounceStoeck,
   onClickWeisen,
   onSubmitWeisen,
@@ -96,6 +100,24 @@ export function GameBoard({
   // Ansage-Phase: nur die Hand + Dialog rendern, kein Scoreboard/Spielfeld.
   // Die Variante steht ja noch gar nicht fest, das Scoreboard hätte nichts
   // sinnvolles anzuzeigen.
+  // Abheben-Phase: Karten noch nicht ausgeteilt — nur die Cut-UI zeigen
+  // (Schieberegler + Klopfen für den Abheber; sonst „… hebt ab").
+  if (view.status === "announcing" && view.cut) {
+    return (
+      <div className="space-y-4 relative" style={{ minHeight: "20rem" }}>
+        {error && (
+          <div
+            role="alert"
+            className="rounded border border-rose-300 bg-rose-50 px-3 py-2 text-sm text-rose-800"
+          >
+            {error}
+          </div>
+        )}
+        <CutPhase cut={view.cut} seatNames={seatNames} onCut={onCut} pending={cutPending} />
+      </div>
+    );
+  }
+
   if (view.status === "announcing") {
     // WELI-Highlight: Das WELI bestimmt den Ansager NUR beim Match-Start
     // (erste Hand → `dealCinematicMode === "full"`). Danach rotiert der
@@ -264,6 +286,91 @@ export function GameBoard({
         nameSeed={nameSeed}
       />
     </div>
+  );
+}
+
+/**
+ * **Abheben-Phase** (echtes Cut-the-Deck). Der Abheber zieht einen
+ * Schieberegler (1..deckSize-1) und hebt ab — oder klopft (= nicht abheben).
+ * Andere Sitze sehen nur „… hebt ab".
+ */
+function CutPhase({
+  cut,
+  seatNames,
+  onCut,
+  pending,
+}: {
+  cut: NonNullable<PlayerView["cut"]>;
+  seatNames: ReadonlyMap<number, string>;
+  onCut: (cutIndex: number) => void;
+  pending: boolean;
+}) {
+  const { t } = useTranslation();
+  const [value, setValue] = useState(Math.floor(cut.deckSize / 2));
+
+  if (!cut.iAmCutter) {
+    const name = seatNames.get(cut.cutterSeat) ?? t("game.seatFallback", { n: cut.cutterSeat + 1 });
+    return (
+      <div className="rounded-lg border border-jass-paperEdge bg-jass-cream px-4 py-8 text-center text-jass-inkSoft">
+        <div className="mb-2 text-4xl">🂠</div>
+        {t("game.cut.waiting", { name })}
+      </div>
+    );
+  }
+
+  return (
+    <section className="rounded-lg border-2 border-jass-yellowDark bg-jass-yellow/15 p-4 space-y-4">
+      <div>
+        <h3 className="font-semibold text-jass-ink">{t("game.cut.title")}</h3>
+        <p className="mt-1 text-sm text-jass-inkSoft">{t("game.cut.explain")}</p>
+      </div>
+      {/* Stilisierter verdeckter Stapel */}
+      <div className="flex justify-center py-2">
+        <div className="relative h-28 w-20">
+          {[0, 1, 2, 3].map((i) => (
+            <div
+              key={i}
+              className="absolute h-28 w-20 rounded-md border border-jass-brownDark bg-gradient-to-br from-jass-brownDark to-stone-700 shadow"
+              style={{ top: i * 2, left: i * 2 }}
+              aria-hidden="true"
+            />
+          ))}
+        </div>
+      </div>
+      <div className="space-y-1">
+        <input
+          type="range"
+          min={1}
+          max={cut.deckSize - 1}
+          value={value}
+          onChange={(e) => setValue(Number(e.target.value))}
+          disabled={pending}
+          className="w-full accent-jass-yellowDark"
+          aria-label={t("game.cut.sliderAria")}
+        />
+        <div className="text-center text-sm font-semibold text-jass-ink">
+          {t("game.cut.position", { n: value })}
+        </div>
+      </div>
+      <div className="flex flex-wrap justify-center gap-3">
+        <button
+          type="button"
+          onClick={() => onCut(value)}
+          disabled={pending}
+          className="btn-jass-primary disabled:opacity-50"
+        >
+          {t("game.cut.cut")}
+        </button>
+        <button
+          type="button"
+          onClick={() => onCut(0)}
+          disabled={pending}
+          className="rounded border-2 border-jass-yellowDark bg-jass-cream px-4 py-2 text-sm font-bold text-jass-ink hover:bg-jass-yellow/20 disabled:opacity-50"
+        >
+          {t("game.cut.knock")}
+        </button>
+      </div>
+    </section>
   );
 }
 

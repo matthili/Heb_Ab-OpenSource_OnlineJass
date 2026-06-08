@@ -75,10 +75,10 @@ export const OpenTableDtoSchema = z
     weisNeedsTrick: z.boolean().default(false),
     /**
      * **Echtes Abheben**: vor jedem Geben (außer dem WELI-Deal in Spiel 1)
-     * hebt der Spieler rechts vom Geber real ab — oder klopft. (Default
-     * vorerst aus, bis das Frontend steht; danach an.)
+     * hebt der Spieler rechts vom Geber real ab — oder klopft. Default an
+     * (Vorarlberger Tradition).
      */
-    cutEnabled: z.boolean().default(false),
+    cutEnabled: z.boolean().default(true),
     /** Default-KI-Typ für Auto-Fill und initial besetzte KI-Sitze. */
     aiSeatType: AiSeatTypeSchema.default("heuristic"),
     /**

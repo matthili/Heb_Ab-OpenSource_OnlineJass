@@ -675,9 +675,11 @@ function GameSection({
     error,
     movePending,
     announcePending,
+    cutPending,
     weisenPending,
     playCard,
     announce,
+    cut,
     announceStoeck,
     clickWeisen,
     submitWeisen,
@@ -708,12 +710,14 @@ function GameSection({
           mySeat={view.mySeat}
           movePending={movePending}
           announcePending={announcePending}
+          cutPending={cutPending}
           weisenPending={weisenPending}
           error={error}
           dealCinematicMode={isFirstGame ? "full" : "short"}
           nameSeed={nameSeed}
           onPlayCard={playCard}
           onAnnounce={announce}
+          onCut={cut}
           onAnnounceStoeck={announceStoeck}
           onClickWeisen={clickWeisen}
           onSubmitWeisen={submitWeisen}

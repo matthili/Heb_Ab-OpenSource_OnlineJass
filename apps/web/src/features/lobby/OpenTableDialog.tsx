@@ -99,6 +99,7 @@ export function OpenTableDialog({ open, onClose }: Props) {
   const [announceLevel, setAnnounceLevel] = useState<AnnounceLevel>("ALLES");
   const [sackRule, setSackRule] = useState(false);
   const [weisNeedsTrick, setWeisNeedsTrick] = useState(false);
+  const [cutEnabled, setCutEnabled] = useState(true);
   const [soloVsAi, setSoloVsAi] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [existingTableId, setExistingTableId] = useState<string | null>(null);
@@ -168,6 +169,7 @@ export function OpenTableDialog({ open, onClose }: Props) {
       announceLevel,
       sackRule,
       weisNeedsTrick,
+      cutEnabled,
       initialAiSeats: soloVsAi ? soloAiSeats(variant) : [],
     };
     openMut.mutate(dto);
@@ -303,6 +305,13 @@ export function OpenTableDialog({ open, onClose }: Props) {
                 label={t("lobby.openTable.scoringRules.sack")}
                 hint={t("lobby.openTable.scoringRules.sackHint")}
                 onChange={() => setSackRule((v) => !v)}
+              />
+              <AnnounceCheck
+                checked={cutEnabled}
+                disabled={false}
+                label={t("lobby.openTable.scoringRules.cut")}
+                hint={t("lobby.openTable.scoringRules.cutHint")}
+                onChange={() => setCutEnabled((v) => !v)}
               />
             </div>
           </Section>

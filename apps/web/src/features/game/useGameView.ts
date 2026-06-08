@@ -32,11 +32,15 @@ export interface GameViewState {
   movePending: boolean;
   /** true, solange ein `game:announce` unterwegs ist. */
   announcePending: boolean;
+  /** true, solange ein `game:cut` unterwegs ist. */
+  cutPending: boolean;
   /** true, solange ein `game:weisen-*` Roundtrip unterwegs ist. */
   weisenPending: boolean;
   playCard: (card: Card) => void;
   /** Trumpf-Ansage (oder Push) absenden. */
   announce: (decision: AnnouncementDecision) => void;
+  /** Abheben (cutIndex 1..deckSize-1) oder klopfen (cutIndex 0). */
+  cut: (cutIndex: number) => void;
   /** „Stöck" rufen — nur erlaubt, wenn `view.stoeckEligible`. */
   announceStoeck: () => void;
   /**
@@ -61,6 +65,7 @@ export function useGameView(gameId: string | null): GameViewState {
   const [error, setError] = useState<string | null>(null);
   const [movePending, setMovePending] = useState(false);
   const [announcePending, setAnnouncePending] = useState(false);
+  const [cutPending, setCutPending] = useState(false);
   const [weisenPending, setWeisenPending] = useState(false);
   // Ref zum letzten gameId, damit der play-Callback nicht stale wird.
   const gameIdRef = useRef<string | null>(gameId);
@@ -74,6 +79,7 @@ export function useGameView(gameId: string | null): GameViewState {
       setView(v);
       setMovePending(false);
       setAnnouncePending(false);
+      setCutPending(false);
       setWeisenPending(false);
       // State-Update räumt einen alten Move-Fehler auf, sobald ein
       // legitimer State eintrifft.
@@ -83,6 +89,7 @@ export function useGameView(gameId: string | null): GameViewState {
       setError(e?.message ?? i18n.t("game.errorFallback"));
       setMovePending(false);
       setAnnouncePending(false);
+      setCutPending(false);
       setWeisenPending(false);
     }
 
@@ -111,6 +118,14 @@ export function useGameView(gameId: string | null): GameViewState {
     const socket = getLobbySocket();
     setAnnouncePending(true);
     socket.emit("game:announce", { gameId: id, decision });
+  }
+
+  function cut(cutIndex: number) {
+    const id = gameIdRef.current;
+    if (!id) return;
+    const socket = getLobbySocket();
+    setCutPending(true);
+    socket.emit("game:cut", { gameId: id, cutIndex });
   }
 
   function announceStoeck() {
@@ -150,9 +165,11 @@ export function useGameView(gameId: string | null): GameViewState {
     error,
     movePending,
     announcePending,
+    cutPending,
     weisenPending,
     playCard,
     announce,
+    cut,
     announceStoeck,
     clickWeisen,
     submitWeisen,
