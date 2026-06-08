@@ -83,12 +83,16 @@ export function BodenseeBoard({
     return s ? seatDisplayName(s, nameSeed, fallback) : fallback;
   };
 
-  const isLegal = (c: CardModel): boolean => view.legalActionMask[cardIndex(c)] === 1;
-  const canPlay = view.status === "playing" && view.myTurn && !movePending;
-
   // Gerade fertigen Stich ~1,8 s „eingefroren" zeigen (wer hat gestochen?),
   // auch wenn der nächste Stich schon startet.
   const lingerTrick = useBodenseeTrickLinger(view);
+
+  const isLegal = (c: CardModel): boolean => view.legalActionMask[cardIndex(c)] === 1;
+  // Während des Lingers Hand/Stapel neutral + nicht klickbar lassen: sonst
+  // zeigt der Farbzwang (gedimmte illegale Karten) bereits den nächsten Stich
+  // an — die KI hat ihre Anspielkarte serverseitig evtl. schon gelegt, nur die
+  // Mitte zeigt noch den fertigen Stich. Das würde die Anspielfarbe verraten.
+  const canPlay = view.status === "playing" && view.myTurn && !movePending && !lingerTrick;
 
   // Stabile Ansage-Info (für Overlay + Wasserzeichen). Erst ab `playing` gesetzt.
   const announceInfo =
