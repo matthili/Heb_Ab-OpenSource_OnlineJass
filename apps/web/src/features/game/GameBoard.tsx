@@ -253,6 +253,7 @@ export function GameBoard({
         seats={seats}
         mySeat={mySeat}
         nameSeed={nameSeed}
+        teams={state.teams}
       />
       <MatschOverlay
         gameId={view.gameId}

@@ -61,9 +61,11 @@ interface Props {
   mySeat: number;
   /** Seed für stabile KI-Namen (Tisch-ID). */
   nameSeed: string;
+  /** Team-Zuordnung pro Sitz. Solo = [0,1,2,3] (jeder eigenes Team). */
+  teams: readonly number[];
 }
 
-export function WeisenResultOverlay({ gameId, weisen, seats, mySeat, nameSeed }: Props) {
+export function WeisenResultOverlay({ gameId, weisen, seats, mySeat, nameSeed, teams }: Props) {
   const { t } = useTranslation();
   const [dismissed, setDismissed] = useState(false);
 
@@ -79,10 +81,18 @@ export function WeisenResultOverlay({ gameId, weisen, seats, mySeat, nameSeed }:
   // zu feiern). Server liefert in dem Fall `points: 0` + leeres perSeat.
   if (perSeat.length === 0) return null;
 
+  // Solo: jeder Spieler ist sein eigenes „Team" ([0,1,2,3]) → wir zeigen
+  // Namen statt „Team X". In Solo ist `winningTeam` der Gewinner-SITZ.
+  const isSolo = new Set(teams).size === teams.length;
+
   const seatNames = new Map<number, string>();
   for (const s of seats) {
     seatNames.set(s.seat, seatDisplayName(s, nameSeed, t("game.seatFallback", { n: s.seat })));
   }
+  const winnerName =
+    winningTeam !== null
+      ? (seatNames.get(winningTeam) ?? t("game.seatFallback", { n: winningTeam }))
+      : "";
 
   return (
     <div
@@ -99,8 +109,8 @@ export function WeisenResultOverlay({ gameId, weisen, seats, mySeat, nameSeed }:
           {winningTeam !== null ? (
             <p className="mt-1 text-jass-inkSoft">
               <Trans
-                i18nKey="game.weisen.result.teamWins"
-                values={{ team: winningTeam, points }}
+                i18nKey={isSolo ? "game.weisen.result.soloWins" : "game.weisen.result.teamWins"}
+                values={isSolo ? { name: winnerName, points } : { team: winningTeam, points }}
                 components={{
                   strong: <strong className="text-jass-ink" />,
                   points: <span className="font-bold text-jass-green" />,
@@ -114,9 +124,10 @@ export function WeisenResultOverlay({ gameId, weisen, seats, mySeat, nameSeed }:
 
         <ul className="space-y-3">
           {perSeat.map(({ seat, declarations }) => {
-            // Team-Affiliation (KREUZ_4P): Sitze 0+2 = Team 0, 1+3 = Team 1.
-            // Server liefert das implizit über `winningTeam` — hier nur fürs UI.
-            const teamOfSeat = seat % 2;
+            // Team-Affiliation aus der echten Zuordnung lesen (KREUZ: 0/1,
+            // Solo: jeder eigenes Team = Sitz). Früher hart `seat % 2`, was in
+            // Solo falsch war.
+            const teamOfSeat = teams[seat] ?? seat % 2;
             const isWinner = teamOfSeat === winningTeam;
             return (
               <li
@@ -137,7 +148,7 @@ export function WeisenResultOverlay({ gameId, weisen, seats, mySeat, nameSeed }:
                     )}
                   </div>
                   <div className="text-xs text-jass-inkSoft">
-                    {t("game.weisen.result.team", { team: teamOfSeat })}
+                    {!isSolo && t("game.weisen.result.team", { team: teamOfSeat })}
                     {isWinner && (
                       <span className="ml-2 text-jass-yellowDark font-bold">
                         {t("game.weisen.result.winner")}

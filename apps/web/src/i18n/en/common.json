@@ -619,7 +619,8 @@
       },
       "result": {
         "title": "Declarations (Weisen) result",
-        "teamWins": "<strong>Team {{team}} wins</strong> and takes <points>{{points}} pts</points>.",
+        "teamWins": "<strong>Team {{team}}</strong> has the highest declaration and takes <points>{{points}} pts</points>.",
+        "soloWins": "<strong>{{name}}</strong> has the highest declaration and takes <points>{{points}} pts</points>.",
         "noneReported": "No declarations reported.",
         "you": "(you)",
         "team": "Team {{team}}",

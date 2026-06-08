@@ -619,7 +619,8 @@
       },
       "result": {
         "title": "Auswertung der Weise",
-        "teamWins": "<strong>Team {{team}} gewinnt</strong> und kassiert <points>{{points}} Pkt</points>.",
+        "teamWins": "<strong>Team {{team}}</strong> hat das höchste Weis und kassiert <points>{{points}} Pkt</points>.",
+        "soloWins": "<strong>{{name}}</strong> hat das höchste Weis und kassiert <points>{{points}} Pkt</points>.",
         "noneReported": "Keine Weise gemeldet.",
         "you": "(du)",
         "team": "Team {{team}}",
