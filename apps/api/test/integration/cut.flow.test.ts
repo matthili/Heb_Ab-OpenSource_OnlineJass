@@ -99,16 +99,29 @@ describe("Echtes Abheben — Flow", () => {
     await expect(games.applyCutAsSeat(gameId, 0, 5)).rejects.toThrow();
   });
 
-  it("Spiel 1 (WELI, announcerSeat undefined) wird NICHT abgehoben", async () => {
+  it("Spiel 1 wird AUCH abgehoben — nach der WELI-Ansager-Ermittlung", async () => {
+    // Kein announcerSeat → Ansager kommt aus der WELI-Ermittlung; danach
+    // mischt der Geber neu und es wird trotzdem abgehoben (Vorarlberger Regel:
+    // nur die WELI-Ermittlung selbst wird nicht abgehoben).
     const { gameId } = await games.createGame({
       seats: AI_SEATS,
-      cutEnabled: true, // an, aber kein announcerSeat → WELI-Deal
+      cutEnabled: true,
       rngSeed: 0x1234,
     });
     const view = await games.viewForSeat(gameId, 0);
-    expect(view.cut).toBeUndefined();
-    expect(view.announcement).toBeDefined();
-    expect(view.hand).toHaveLength(9);
+    expect(view.cut).toBeDefined();
+    expect(view.cut!.cutterSeat).toBeGreaterThanOrEqual(0);
+    expect(view.cut!.cutterSeat).toBeLessThan(4);
+    expect(view.hand).toHaveLength(0); // noch nicht ausgeteilt
+
+    // Abheben → Ansage-Phase; Abheber muss (Ansager + 2) % 4 sein.
+    const cutterSeat = view.cut!.cutterSeat;
+    await games.applyCutAsSeat(gameId, cutterSeat, 7);
+    const after = await games.viewForSeat(gameId, 0);
+    expect(after.cut).toBeUndefined();
+    expect(after.announcement).toBeDefined();
+    expect((after.announcement!.announcerSeat + 2) % 4).toBe(cutterSeat);
+    expect(after.hand).toHaveLength(9);
   });
 
   it("cutEnabled=false → kein Abheben, direkt Ansage-Phase", async () => {

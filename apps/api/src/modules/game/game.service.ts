@@ -387,9 +387,11 @@ export class GameService {
 
     // Hände entweder vom Caller mitgebracht (Re-Match-WELI-Pfad, M6-E) oder
     // hier frisch gemischt. Validierung: genau 4 Hände à 9 Karten.
-    const hands =
-      input.hands ??
-      dealCards(input.rngSeed !== undefined ? seededRng(input.rngSeed) : cryptoRng());
+    // Im WELI-Ermittlungs-Spiel (Spiel 1, kein announcerSeat) dienen diese
+    // Hände NUR zur Bestimmung des Ansagers (WELI-Halter) — beim echten
+    // Abheben mischt der Geber danach neu (`dealCards(rng).flat()`).
+    const rng = input.rngSeed !== undefined ? seededRng(input.rngSeed) : cryptoRng();
+    const hands = input.hands ?? dealCards(rng);
     if (hands.length !== 4 || hands.some((h) => h.length !== 9)) {
       throw new BadRequestException("hands müssen genau 4 Sitze × 9 Karten enthalten");
     }
@@ -441,11 +443,13 @@ export class GameService {
     const weisNeedsTrick = input.weisNeedsTrick ?? tableRules?.weisNeedsTrick ?? false;
     const cutEnabled = input.cutEnabled ?? tableRules?.cutEnabled ?? false;
 
-    // **Echtes Abheben**: nur wenn der Ansager schon feststeht (= Folgespiel,
-    // `announcerSeat` explizit übergeben). Spiel 1 bestimmt den Ansager erst
-    // übers Austeilen (WELI) → dann KEIN Abheben. Abheber = rechts vom Geber
-    // = (Ansager + 2) % 4 (Geber = Ansager − 1).
-    const shouldCut = isAnnouncingMode && cutEnabled && input.announcerSeat !== undefined;
+    // **Echtes Abheben**: vor JEDEM echten Austeilen — auch Spiel 1. Der
+    // Ansager steht hier immer fest (Folgespiel: übergeben; Spiel 1:
+    // WELI-Halter aus der Ermittlung oben). Die WELI-Ermittlung selbst ist
+    // das einzige Austeilen ohne Abheben — und die ist hier bereits gelaufen
+    // (die `hands` oben), bevor der Geber für die echte Runde neu mischt.
+    // Abheber = rechts vom Geber = (Ansager + 2) % 4 (Geber = Ansager − 1).
+    const shouldCut = isAnnouncingMode && cutEnabled;
 
     const state = isAnnouncingMode
       ? null
@@ -514,9 +518,10 @@ export class GameService {
     });
 
     if (shouldCut) {
-      // Noch nicht austeilen — erst hebt der Abheber ab. Das schon gemischte
-      // Deck verlustfrei aus den (bereits gemischten) Händen rekonstruieren.
-      const deck = (hands as Card[][]).flat();
+      // Noch nicht austeilen — erst hebt der Abheber ab. Der Geber mischt für
+      // die echte Runde NEU (frischer Shuffle, unabhängig von der oben evtl.
+      // gelaufenen WELI-Ermittlung). Erst nach dem Abheben wird verteilt.
+      const deck = dealCards(rng).flat();
       await this.writeCutToRedis(game.id, {
         deck,
         cutterSeat: (announcerSeat! + 2) % 4,

@@ -122,11 +122,10 @@ export function GameBoard({
     // WELI-Highlight: Das WELI bestimmt den Ansager NUR beim Match-Start
     // (erste Hand → `dealCinematicMode === "full"`). Danach rotiert der
     // Ansager im Uhrzeigersinn — dann darf die WELI-Enthüllung NICHT mehr
-    // erscheinen, auch wenn der rotierte Ansager das WELI zufällig hält.
-    const iHaveWeli =
-      dealCinematicMode === "full" &&
-      view.announcement?.iAmAnnouncer === true &&
-      view.hand.some((c) => c.suit === "SCHELLE" && c.rank === "SECHS");
+    // erscheinen. Wir binden es an `iAmAnnouncer` (= WELI-Halter aus der
+    // Ermittlung), NICHT an die reale Hand: durch das echte Abheben wird die
+    // Spielhand neu verteilt und enthält das WELI evtl. gar nicht mehr.
+    const iHaveWeli = dealCinematicMode === "full" && view.announcement?.iAmAnnouncer === true;
     const announcerSeat = view.announcement?.announcerSeat ?? 0;
     return (
       <div
