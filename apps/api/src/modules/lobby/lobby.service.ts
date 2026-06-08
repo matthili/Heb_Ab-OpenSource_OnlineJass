@@ -188,6 +188,7 @@ export class LobbyService {
           announceLevel: dto.announceLevel,
           sackRule: dto.sackRule,
           weisNeedsTrick: dto.weisNeedsTrick,
+          cutEnabled: dto.cutEnabled,
           aiSeatType: dto.aiSeatType,
           autoFillSeconds: dto.autoFillSeconds,
           restartMode: dto.restartMode,

@@ -621,6 +621,35 @@ export class GameGateway
   }
 
   /**
+   * Abheben durch einen menschlichen Abheber. Payload:
+   * `{ gameId, cutIndex }` — cutIndex 1..35 = abheben, 0 = klopfen.
+   * Server prüft, dass der Sender wirklich der Abheber ist.
+   */
+  @SubscribeMessage("game:cut")
+  async onCut(
+    @ConnectedSocket() socket: AuthenticatedSocket,
+    @MessageBody() payload: { gameId?: string; cutIndex?: number }
+  ): Promise<void> {
+    const userId = socket.data.userId;
+    if (!userId) return this.fail(socket, "Not authenticated");
+    const gameId = payload?.gameId;
+    const cutIndex = payload?.cutIndex;
+    if (typeof gameId !== "string" || typeof cutIndex !== "number") {
+      return this.fail(socket, "gameId + cutIndex required");
+    }
+    try {
+      await this.locks.withLock(gameId, async () => {
+        await this.games.applyCutAsUser(gameId, userId, cutIndex);
+        await this.broadcastState(gameId);
+        // Nach dem Abheben ist evtl. direkt eine KI als Ansager dran.
+        await this.driveAIsLoop(gameId);
+      });
+    } catch (err) {
+      this.fail(socket, this.errorMessage(err));
+    }
+  }
+
+  /**
    * Stöck-Ansage durch einen menschlichen Spieler. Payload: `{ gameId }`.
    * Server prüft Eligibility (engine `announceStoeck` wirft `InvalidMoveError`
    * bei Missbrauch), broadcastet danach den neuen State.
@@ -729,6 +758,15 @@ export class GameGateway
       for (let i = 0; i < 40; i++) {
         const action = await this.games.nextAIAction(gameId);
         if (!action) return; // Mensch ist dran oder Spiel vorbei
+
+        if (action.kind === "cut") {
+          // KI-Abheber hebt an einer zufälligen Stelle ab (1..35).
+          const cutIndex = 1 + Math.floor(Math.random() * 35);
+          await this.games.applyCutAsSeat(gameId, action.seat, cutIndex);
+          await this.broadcastState(gameId);
+          await sleep(aiStepDelayMs());
+          continue;
+        }
 
         if (action.kind === "announce") {
           if (++announceSteps > 2) {

@@ -73,6 +73,12 @@ export const OpenTableDtoSchema = z
      * verliert am Rundenende seine Weis-Punkte wieder. Default aus.
      */
     weisNeedsTrick: z.boolean().default(false),
+    /**
+     * **Echtes Abheben**: vor jedem Geben (außer dem WELI-Deal in Spiel 1)
+     * hebt der Spieler rechts vom Geber real ab — oder klopft. (Default
+     * vorerst aus, bis das Frontend steht; danach an.)
+     */
+    cutEnabled: z.boolean().default(false),
     /** Default-KI-Typ für Auto-Fill und initial besetzte KI-Sitze. */
     aiSeatType: AiSeatTypeSchema.default("heuristic"),
     /**

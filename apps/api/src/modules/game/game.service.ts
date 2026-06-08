@@ -46,7 +46,9 @@ import {
   applyMove,
   cardIndex,
   clickWeisenButton,
+  cutDeck,
   dealCards,
+  dealFromDeck,
   finalRoundScore,
   handOf,
   InvalidMoveError,
@@ -99,6 +101,29 @@ function redisStateKey(gameId: string): string {
  */
 function redisPendingKey(gameId: string): string {
   return `game:${gameId}:pending`;
+}
+
+function redisCutKey(gameId: string): string {
+  return `game:${gameId}:cut`;
+}
+
+/**
+ * **Cut-Pending** — die kurze „Abheben"-Phase VOR dem Austeilen. Der Server
+ * hat gemischt (`deck`, 36 Karten ungeschnitten), wartet aber noch auf den
+ * Abheber, bevor die Hände entstehen. Nur in Folgespielen (Ansager steht
+ * schon fest); der WELI-Deal (Spiel 1) wird nicht abgehoben.
+ */
+interface CutPending {
+  /** Gemischtes, noch nicht abgehobenes Deck (36 Karten). */
+  deck: Card[];
+  /** Wer hebt ab? Rechts vom Geber = (announcerSeat + 2) % 4. */
+  cutterSeat: number;
+  /** Steht schon fest (Folgespiel) — kommt nach dem Abheben raus. */
+  announcerSeat: number;
+  isSolo?: boolean;
+  announceLevel?: AnnounceLevel;
+  sackRule?: boolean;
+  weisNeedsTrick?: boolean;
 }
 
 interface PendingAnnouncement {
@@ -192,6 +217,12 @@ export interface CreateGameInput {
   sackRule?: boolean;
   weisNeedsTrick?: boolean;
   /**
+   * Echtes Abheben (Tisch-Einstellung). Greift nur, wenn der Ansager schon
+   * feststeht (= Folgespiele); der WELI-Deal (Spiel 1) wird nie abgehoben.
+   * Default `false`.
+   */
+  cutEnabled?: boolean;
+  /**
    * Optional: vorab gemischte Hände (z.B. wenn die Lobby für den WELI-
    * Re-Match-Modus den WELI-Inhaber bestimmen muss, bevor das Game
    * angelegt wird). Wenn nicht gesetzt, mischt `createGame` selbst per
@@ -252,6 +283,19 @@ export interface PlayerView {
      * dann nur den Richtungs-Picker.
      */
     slalomDirectionOnly: boolean;
+  };
+  /**
+   * Nur in der „Abheben"-Phase gesetzt (status bleibt `announcing`, aber
+   * `announcement` ist dann nicht gesetzt). Die Karten sind noch nicht
+   * ausgeteilt; gewartet wird auf den Abheber.
+   */
+  cut?: {
+    /** Wer hebt ab (absoluter Sitz 0..3). */
+    cutterSeat: number;
+    /** Bin ich der Abheber? */
+    iAmCutter: boolean;
+    /** Deckgröße (für den Schieberegler 1..deckSize-1). */
+    deckSize: number;
   };
   finalScore?: {
     team_card_points: readonly number[];
@@ -382,7 +426,12 @@ export class GameService {
     const tableRules = input.tableId
       ? await this.prisma.lobbyTable.findUnique({
           where: { id: input.tableId },
-          select: { announceLevel: true, sackRule: true, weisNeedsTrick: true },
+          select: {
+            announceLevel: true,
+            sackRule: true,
+            weisNeedsTrick: true,
+            cutEnabled: true,
+          },
         })
       : null;
     const announceLevel: AnnounceLevel =
@@ -390,6 +439,13 @@ export class GameService {
     // Optionale Wertungsregeln: explizit > Tisch > aus (analog announceLevel).
     const sackRule = input.sackRule ?? tableRules?.sackRule ?? false;
     const weisNeedsTrick = input.weisNeedsTrick ?? tableRules?.weisNeedsTrick ?? false;
+    const cutEnabled = input.cutEnabled ?? tableRules?.cutEnabled ?? false;
+
+    // **Echtes Abheben**: nur wenn der Ansager schon feststeht (= Folgespiel,
+    // `announcerSeat` explizit übergeben). Spiel 1 bestimmt den Ansager erst
+    // übers Austeilen (WELI) → dann KEIN Abheben. Abheber = rechts vom Geber
+    // = (Ansager + 2) % 4 (Geber = Ansager − 1).
+    const shouldCut = isAnnouncingMode && cutEnabled && input.announcerSeat !== undefined;
 
     const state = isAnnouncingMode
       ? null
@@ -457,7 +513,20 @@ export class GameService {
       return created;
     });
 
-    if (isAnnouncingMode) {
+    if (shouldCut) {
+      // Noch nicht austeilen — erst hebt der Abheber ab. Das schon gemischte
+      // Deck verlustfrei aus den (bereits gemischten) Händen rekonstruieren.
+      const deck = (hands as Card[][]).flat();
+      await this.writeCutToRedis(game.id, {
+        deck,
+        cutterSeat: (announcerSeat! + 2) % 4,
+        announcerSeat: announcerSeat!,
+        isSolo,
+        announceLevel,
+        sackRule,
+        weisNeedsTrick,
+      });
+    } else if (isAnnouncingMode) {
       await this.writePendingToRedis(game.id, {
         hands: hands as Card[][],
         announcerSeat: announcerSeat!,
@@ -505,6 +574,33 @@ export class GameService {
    * playing/finished.
    */
   async viewForSeat(gameId: string, seat: number): Promise<PlayerView> {
+    // Abheben-Phase: Karten noch nicht ausgeteilt, gewartet wird auf den
+    // Abheber. status bleibt „announcing", aber `cut` statt `announcement`.
+    const cut = await this.loadCut(gameId);
+    if (cut) {
+      return {
+        gameId,
+        status: "announcing",
+        mySeat: seat,
+        state: null,
+        hand: [],
+        legalActionMask: [],
+        whoseTurnSeat: -1,
+        myTurn: false,
+        cut: {
+          cutterSeat: cut.cutterSeat,
+          iAmCutter: cut.cutterSeat === seat,
+          deckSize: cut.deck.length,
+        },
+        stoeckEligible: false,
+        stoeckAnnouncedTeam: null,
+        weisen: {
+          myStatus: "PENDING",
+          canClickButton: false,
+          myDeclarations: [],
+        },
+      };
+    }
     const pending = await this.loadPending(gameId);
     if (pending) {
       const hand = pending.hands[seat] ?? [];
@@ -929,6 +1025,63 @@ export class GameService {
     return this.applyAnnouncementAsSeat(gameId, seat, decision, userId);
   }
 
+  // ───────────────────────────────────────────────────────────────────
+  // Abheben (echtes Cut-the-Deck)
+  // ───────────────────────────────────────────────────────────────────
+
+  async applyCutAsUser(
+    gameId: string,
+    userId: string,
+    cutIndex: number
+  ): Promise<{ view: PlayerView }> {
+    const seat = await this.findSeatForUser(gameId, userId);
+    return this.applyCutAsSeat(gameId, seat, cutIndex, userId);
+  }
+
+  /**
+   * Hebt das (gemischte) Deck real ab und teilt erst dann aus — wechselt
+   * also aus der Abheben-Phase in die normale Ansage-Phase.
+   *
+   *   - `cutIndex` in 1..35 = abheben an dieser Stelle.
+   *   - `cutIndex === 0` (oder Vielfaches von 36) = „Klopfen" (nicht abheben).
+   */
+  async applyCutAsSeat(
+    gameId: string,
+    seat: number,
+    cutIndex: number,
+    actorId?: string
+  ): Promise<{ view: PlayerView }> {
+    const cut = await this.loadCut(gameId);
+    if (!cut) {
+      throw new BadRequestException("Es ist gerade keine Abheben-Phase aktiv.");
+    }
+    if (seat !== cut.cutterSeat) {
+      throw new BadRequestException(
+        `Sitz ${seat} darf gerade nicht abheben (Abheber: ${cut.cutterSeat}).`
+      );
+    }
+    // Real abheben → austeilen → in die Ansage-Phase wechseln.
+    const hands = dealFromDeck(cutDeck(cut.deck, cutIndex), 4);
+    await this.writePendingToRedis(gameId, {
+      hands,
+      announcerSeat: cut.announcerSeat,
+      pushedFromSeat: null,
+      ...(cut.isSolo !== undefined ? { isSolo: cut.isSolo } : {}),
+      ...(cut.announceLevel !== undefined ? { announceLevel: cut.announceLevel } : {}),
+      ...(cut.sackRule !== undefined ? { sackRule: cut.sackRule } : {}),
+      ...(cut.weisNeedsTrick !== undefined ? { weisNeedsTrick: cut.weisNeedsTrick } : {}),
+    });
+    await this.redis.client.del(redisCutKey(gameId));
+    const knocked = ((cutIndex % cut.deck.length) + cut.deck.length) % cut.deck.length === 0;
+    await this.audit.record({
+      action: "game.cut",
+      ...(actorId !== undefined ? { actorId } : {}),
+      target: gameId,
+      meta: asJson({ seat, knocked }),
+    });
+    return { view: await this.viewForSeat(gameId, seat) };
+  }
+
   /**
    * Markiert einen menschlichen Sitz als ausgestiegen — der Sitz bleibt
    * mit seiner `userId` in der DB (für Spiel-Historie und Quitter-Tracking),
@@ -1179,7 +1332,14 @@ export class GameService {
    */
   async nextAIAction(
     gameId: string
-  ): Promise<{ kind: "announce" | "move"; seat: number; aiSeatType: string } | null> {
+  ): Promise<{ kind: "announce" | "move" | "cut"; seat: number; aiSeatType: string } | null> {
+    // Abheben-Phase: ist der Abheber eine KI, hebt sie automatisch ab.
+    const cut = await this.loadCut(gameId);
+    if (cut) {
+      const effective = await this.effectiveAiTypeForSeat(gameId, cut.cutterSeat);
+      if (effective === null) return null; // Mensch hebt ab → warten
+      return { kind: "cut", seat: cut.cutterSeat, aiSeatType: effective };
+    }
     const pending = await this.loadPending(gameId);
     if (pending) {
       const seat = pending.announcerSeat;
@@ -1411,6 +1571,21 @@ export class GameService {
     await this.redis.client.set(
       redisPendingKey(gameId),
       JSON.stringify(pending),
+      "EX",
+      REDIS_STATE_TTL_SECONDS
+    );
+  }
+
+  private async loadCut(gameId: string): Promise<CutPending | null> {
+    const raw = await this.redis.client.get(redisCutKey(gameId));
+    if (!raw) return null;
+    return JSON.parse(raw) as CutPending;
+  }
+
+  private async writeCutToRedis(gameId: string, cut: CutPending): Promise<void> {
+    await this.redis.client.set(
+      redisCutKey(gameId),
+      JSON.stringify(cut),
       "EX",
       REDIS_STATE_TTL_SECONDS
     );
