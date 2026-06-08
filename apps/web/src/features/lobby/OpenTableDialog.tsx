@@ -97,6 +97,8 @@ export function OpenTableDialog({ open, onClose }: Props) {
   const [restartMode, setRestartMode] = useState<RestartMode>("SIEGER_GIBT");
   const [targetScore, setTargetScore] = useState<number>(1000);
   const [announceLevel, setAnnounceLevel] = useState<AnnounceLevel>("ALLES");
+  const [sackRule, setSackRule] = useState(false);
+  const [weisNeedsTrick, setWeisNeedsTrick] = useState(false);
   const [soloVsAi, setSoloVsAi] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [existingTableId, setExistingTableId] = useState<string | null>(null);
@@ -164,6 +166,8 @@ export function OpenTableDialog({ open, onClose }: Props) {
       restartMode,
       targetScore,
       announceLevel,
+      sackRule,
+      weisNeedsTrick,
       initialAiSeats: soloVsAi ? soloAiSeats(variant) : [],
     };
     openMut.mutate(dto);
@@ -280,6 +284,26 @@ export function OpenTableDialog({ open, onClose }: Props) {
                   />
                 );
               })}
+            </div>
+          </Section>
+
+          {/* Optionale Wertungsregeln */}
+          <Section title={t("lobby.openTable.sections.scoringRules")}>
+            <div className="space-y-1.5">
+              <AnnounceCheck
+                checked={weisNeedsTrick}
+                disabled={false}
+                label={t("lobby.openTable.scoringRules.weisNeedsTrick")}
+                hint={t("lobby.openTable.scoringRules.weisNeedsTrickHint")}
+                onChange={() => setWeisNeedsTrick((v) => !v)}
+              />
+              <AnnounceCheck
+                checked={sackRule}
+                disabled={false}
+                label={t("lobby.openTable.scoringRules.sack")}
+                hint={t("lobby.openTable.scoringRules.sackHint")}
+                onChange={() => setSackRule((v) => !v)}
+              />
             </div>
           </Section>
 

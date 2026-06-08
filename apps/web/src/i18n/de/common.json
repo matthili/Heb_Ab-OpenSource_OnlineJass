@@ -378,7 +378,8 @@
         "autoFill": "Auto-Fill leerer Sitze",
         "targetScore": "Punkteziel der Partie",
         "restart": "Wer beginnt das nächste Spiel?",
-        "announceLevel": "Erlaubte Ansage-Arten"
+        "announceLevel": "Erlaubte Ansage-Arten",
+        "scoringRules": "Wertungs-Regeln"
       },
       "announceLevel": {
         "trumpf": "Trumpf",
@@ -389,6 +390,12 @@
         "slalomHint": "Modus wechselt pro Stich zwischen Oben und Unten — braucht Oben/Unten.",
         "gumpf": "Gumpf",
         "gumpfHint": "Zusätzlich die anspruchsvollste Ansage (Gumpf) erlauben."
+      },
+      "scoringRules": {
+        "weisNeedsTrick": "Weis nur mit Stich",
+        "weisNeedsTrickHint": "Wer in einer Runde keinen einzigen Stich macht, verliert seine Weis-Punkte wieder.",
+        "sack": "Sack (mind. 21 Punkte)",
+        "sackHint": "Unter 21 Kartenpunkten pro Runde verfällt alles — auch der Weis. Die Punkte gehen an niemanden."
       },
       "variant": {
         "KREUZ_4P": {

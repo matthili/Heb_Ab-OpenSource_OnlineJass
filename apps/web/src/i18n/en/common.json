@@ -378,7 +378,8 @@
         "autoFill": "Auto-fill empty seats",
         "targetScore": "Target score of the match",
         "restart": "Who starts the next game?",
-        "announceLevel": "Allowed announcements"
+        "announceLevel": "Allowed announcements",
+        "scoringRules": "Scoring rules"
       },
       "announceLevel": {
         "trumpf": "Trump",
@@ -389,6 +390,12 @@
         "slalomHint": "Mode alternates between Top-down and Bottom-up each trick — requires Oben/Unten.",
         "gumpf": "Gumpf",
         "gumpfHint": "Also allow the hardest announcement (Gumpf)."
+      },
+      "scoringRules": {
+        "weisNeedsTrick": "Declaration needs a trick",
+        "weisNeedsTrickHint": "A team/player who wins no trick in a round loses their declaration (Weis) points.",
+        "sack": "Sack (min. 21 points)",
+        "sackHint": "Under 21 card points in a round, everything is voided — including the Weis. The points go to nobody."
       },
       "variant": {
         "KREUZ_4P": {
