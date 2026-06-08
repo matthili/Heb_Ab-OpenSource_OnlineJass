@@ -392,11 +392,11 @@
       },
       "variant": {
         "KREUZ_4P": {
-          "title": "Kreuz-Jass",
+          "title": "Kreuz-Jass (zu viert)",
           "hint": "Klassisch: 2 Teams (Sitz 1+3 gegen 2+4), Schieben erlaubt. Ziel 1000."
         },
         "SOLO_4P": {
-          "title": "Solo-Jass",
+          "title": "Solo-Jass (zu viert)",
           "hint": "Jeder gegen jeden — kein Partner, kein Schieben. Ziel 500."
         },
         "BODENSEE_2P": {
