@@ -202,6 +202,11 @@ model Game {
   // Erlaubte Ansage-Arten für dieses Spiel — beim Game-Start aus dem
   // LobbyTable kopiert (Default ALLES für direkt/test angelegte Spiele).
   announceLevel AnnounceLevel @default(ALLES)
+  // Optionale Wertungsregeln (beim Game-Start aus dem LobbyTable kopiert).
+  // sackRule: < 21 Kartenpunkte → Rundenwertung verfällt komplett.
+  // weisNeedsTrick: kein Stich → Weis-Punkte verfallen wieder.
+  sackRule       Boolean       @default(false)
+  weisNeedsTrick Boolean       @default(false)
   ruleVersion   String // spec_version aus jass_rules.json
   modelVersion  String? // NN-Release-Tag (für Replays)
   startedAt     DateTime      @default(now())
@@ -312,6 +317,11 @@ model LobbyTable {
   // Erlaubte Ansage-Arten am Tisch (Owner wählt beim Eröffnen). Default
   // ALLES = alle Möglichkeiten aktiv. Wird beim Game-Start auf das Game kopiert.
   announceLevel   AnnounceLevel @default(ALLES)
+  // Optionale Wertungsregeln (Owner wählt beim Eröffnen, beim Game-Start
+  // aufs Game kopiert). sackRule: < 21 Kartenpunkte → Runde verfällt komplett.
+  // weisNeedsTrick: kein Stich → Weis-Punkte verfallen wieder.
+  sackRule        Boolean       @default(false)
+  weisNeedsTrick  Boolean       @default(false)
   // Default-KI-Typ für Auto-Fill und manuell platzierte KI-Sitze. Owner
   // konfiguriert das beim Tisch-Erstellen; einzelne Sitze können per
   // `LobbyTableSeat.aiSeatType` davon abweichen.

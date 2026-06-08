@@ -186,6 +186,8 @@ export class LobbyService {
           joinMode: dto.joinMode,
           variant: dto.variant,
           announceLevel: dto.announceLevel,
+          sackRule: dto.sackRule,
+          weisNeedsTrick: dto.weisNeedsTrick,
           aiSeatType: dto.aiSeatType,
           autoFillSeconds: dto.autoFillSeconds,
           restartMode: dto.restartMode,

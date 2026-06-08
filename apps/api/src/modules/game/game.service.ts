@@ -117,6 +117,9 @@ interface PendingAnnouncement {
    * ohne das Feld als `ALLES` (= keine Einschränkung) interpretiert werden.
    */
   announceLevel?: AnnounceLevel;
+  /** Optionale Wertungsregeln des Tisches (Default false, s. createGame). */
+  sackRule?: boolean;
+  weisNeedsTrick?: boolean;
   /**
    * Schiebe-Slalom-Sonderfall: Der gepushte Partner hat Slalom angesagt; offen
    * ist nur noch die Start-Richtung (Oben/Unten). Die wählt der Starter
@@ -181,6 +184,13 @@ export interface CreateGameInput {
    * Einschränkung — passt zu Tests/Direkt-Pfaden, die das Feld weglassen.
    */
   announceLevel?: AnnounceLevel;
+  /**
+   * Optionale Wertungsregeln (Tisch-Einstellung). Default `false`. Werden
+   * wie `announceLevel` aufgelöst (explizit > Tisch > aus) und aufs Game
+   * sowie die Engine-Runde (`newRound`) durchgereicht.
+   */
+  sackRule?: boolean;
+  weisNeedsTrick?: boolean;
   /**
    * Optional: vorab gemischte Hände (z.B. wenn die Lobby für den WELI-
    * Re-Match-Modus den WELI-Inhaber bestimmen muss, bevor das Game
@@ -369,16 +379,17 @@ export class GameService {
     // Erlaubte-Ansagen-Stufe: explizit übergeben > vom zugehörigen Tisch
     // geladen > Default ALLES. So bleibt die Einschränkung an EINER Stelle
     // (kein Durchreichen durch alle Aufrufer / Re-Match-Pfade nötig).
+    const tableRules = input.tableId
+      ? await this.prisma.lobbyTable.findUnique({
+          where: { id: input.tableId },
+          select: { announceLevel: true, sackRule: true, weisNeedsTrick: true },
+        })
+      : null;
     const announceLevel: AnnounceLevel =
-      input.announceLevel ??
-      (input.tableId
-        ? ((
-            await this.prisma.lobbyTable.findUnique({
-              where: { id: input.tableId },
-              select: { announceLevel: true },
-            })
-          )?.announceLevel ?? "ALLES")
-        : "ALLES");
+      input.announceLevel ?? tableRules?.announceLevel ?? "ALLES";
+    // Optionale Wertungsregeln: explizit > Tisch > aus (analog announceLevel).
+    const sackRule = input.sackRule ?? tableRules?.sackRule ?? false;
+    const weisNeedsTrick = input.weisNeedsTrick ?? tableRules?.weisNeedsTrick ?? false;
 
     const state = isAnnouncingMode
       ? null
@@ -388,6 +399,8 @@ export class GameService {
           hands: hands as Card[][],
           starter: input.starter!,
           ...(teams !== undefined ? { teams } : {}),
+          sackRule,
+          weisNeedsTrick,
         });
 
     // Game + GameSeats + RoundDecision in einer Transaktion anlegen. `seats`
@@ -397,6 +410,8 @@ export class GameService {
         data: {
           variant: variantToEnum(input.gameType ?? "kreuz"),
           announceLevel,
+          sackRule,
+          weisNeedsTrick,
           ruleVersion: SPEC_VERSION,
           ...(input.tableId !== undefined ? { tableId: input.tableId } : {}),
         },
@@ -449,6 +464,8 @@ export class GameService {
         pushedFromSeat: null,
         isSolo,
         announceLevel,
+        sackRule,
+        weisNeedsTrick,
       });
     } else {
       await this.writeRoundStateToRedis(game.id, state!);
@@ -1045,6 +1062,8 @@ export class GameService {
         pushedFromSeat: seat,
         ...(pending.isSolo !== undefined ? { isSolo: pending.isSolo } : {}),
         ...(pending.announceLevel !== undefined ? { announceLevel: pending.announceLevel } : {}),
+        ...(pending.sackRule !== undefined ? { sackRule: pending.sackRule } : {}),
+        ...(pending.weisNeedsTrick !== undefined ? { weisNeedsTrick: pending.weisNeedsTrick } : {}),
       };
       await this.writePendingToRedis(gameId, next);
       await this.audit.record({
@@ -1087,6 +1106,8 @@ export class GameService {
         pushedFromSeat: starterSeat,
         ...(pending.isSolo !== undefined ? { isSolo: pending.isSolo } : {}),
         ...(pending.announceLevel !== undefined ? { announceLevel: pending.announceLevel } : {}),
+        ...(pending.sackRule !== undefined ? { sackRule: pending.sackRule } : {}),
+        ...(pending.weisNeedsTrick !== undefined ? { weisNeedsTrick: pending.weisNeedsTrick } : {}),
         slalomDirectionOnly: true,
       });
       await this.audit.record({
@@ -1110,6 +1131,8 @@ export class GameService {
       hands: pending.hands,
       starter,
       ...(pending.isSolo ? { teams: SOLO_TEAMS } : {}),
+      sackRule: pending.sackRule ?? false,
+      weisNeedsTrick: pending.weisNeedsTrick ?? false,
     });
 
     // RoundDecision updaten (Platzhalter überschreiben).

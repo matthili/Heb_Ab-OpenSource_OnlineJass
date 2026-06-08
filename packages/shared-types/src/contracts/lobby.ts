@@ -62,6 +62,17 @@ export const OpenTableDtoSchema = z
     variant: VariantEnumSchema.default("KREUZ_4P"),
     /** Erlaubte Ansage-Arten. Default ALLES = alle Möglichkeiten aktiv. */
     announceLevel: AnnounceLevelSchema.default("ALLES"),
+    /**
+     * **„Sack"**: Wer pro Runde < 21 reine Kartenpunkte (aus Stichen) macht,
+     * bekommt gar nichts gewertet — Kartenpunkte UND Weis verfallen (kein
+     * Transfer ans andere Team). Default aus.
+     */
+    sackRule: z.boolean().default(false),
+    /**
+     * **„Kein Stich → Weis verfällt"**: Wer keinen einzigen Stich macht,
+     * verliert am Rundenende seine Weis-Punkte wieder. Default aus.
+     */
+    weisNeedsTrick: z.boolean().default(false),
     /** Default-KI-Typ für Auto-Fill und initial besetzte KI-Sitze. */
     aiSeatType: AiSeatTypeSchema.default("heuristic"),
     /**
