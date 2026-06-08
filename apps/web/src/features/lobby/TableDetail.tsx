@@ -24,6 +24,7 @@ import { ChatPanel } from "~/features/chat/ChatPanel";
 import { aiName } from "~/features/game/aiNames";
 import { DisconnectOverlay } from "~/features/game/DisconnectOverlay";
 import { GameBoard } from "~/features/game/GameBoard";
+import { MatchOverOverlay } from "~/features/game/MatchOverOverlay";
 import { RematchPanel } from "~/features/game/RematchPanel";
 import { useGameView } from "~/features/game/useGameView";
 import { api, ApiError } from "~/lib/api";
@@ -723,6 +724,15 @@ function GameSection({
             finalScore={view.finalScore}
             cumulativeScores={cumulativeScores}
             targetScore={targetScore}
+            seats={tableSeats}
+            mySeat={view.mySeat}
+            nameSeed={nameSeed}
+          />
+        )}
+        {tableStatus === "MATCH_OVER" && view.status === "finished" && (
+          <MatchOverOverlay
+            gameId={gameId}
+            cumulativeScores={cumulativeScores}
             seats={tableSeats}
             mySeat={view.mySeat}
             nameSeed={nameSeed}

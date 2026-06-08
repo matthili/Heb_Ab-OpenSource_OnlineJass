@@ -634,6 +634,14 @@
       "wonByOther": "{{name}} took all 9 tricks.",
       "clickToClose": "(click to close)"
     },
+    "matchOver": {
+      "banner": "Match won!",
+      "wonBySolo": "{{name}} won the match!",
+      "wonByTeam": "{{names}} won the match!",
+      "youWon": "Congratulations!",
+      "standings": "Final standings",
+      "clickToClose": "(click to close)"
+    },
     "disconnect": {
       "closedTitle": "Table was dissolved",
       "closedDefault": "A majority voted to end the game.",

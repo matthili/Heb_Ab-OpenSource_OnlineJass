@@ -634,6 +634,14 @@
       "wonByOther": "{{name}} hat alle 9 Stiche.",
       "clickToClose": "(klicken zum Schließen)"
     },
+    "matchOver": {
+      "banner": "Partie gewonnen!",
+      "wonBySolo": "{{name}} hat die Partie gewonnen!",
+      "wonByTeam": "{{names}} haben die Partie gewonnen!",
+      "youWon": "Glückwunsch!",
+      "standings": "Endstand",
+      "clickToClose": "(klicken zum Schließen)"
+    },
     "disconnect": {
       "closedTitle": "Tisch wurde aufgelöst",
       "closedDefault": "Eine Mehrheit hat fürs Beenden gestimmt.",
