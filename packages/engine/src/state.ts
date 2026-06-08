@@ -777,20 +777,50 @@ export function shuffleDeck(deck: readonly Card[], rng: RandomFn): Card[] {
 }
 
 /**
- * Teilt ein gemischtes Deck in `num_players` Hände zu je 9 Karten.
+ * **Abheben** (cut the deck). Schneidet das (bereits gemischte) Deck an
+ * Position `cutIndex` ab und legt den oberen Teil unter den unteren:
+ * `neu = deck[cutIndex..] + deck[0..cutIndex-1]`.
+ *
+ * Beispiel `cutIndex = 16`: das neue Deck beginnt mit der bisherigen Karte
+ * an Index 16, danach folgen die ersten 16 Karten.
+ *
+ * `cutIndex` wird modulo Deckgröße normalisiert; **0** (bzw. ein Vielfaches
+ * der Deckgröße) lässt die Reihenfolge unverändert = „Klopfen" (nicht
+ * abheben, dem Geber vertrauen). Rein deterministisch — der eigentliche
+ * Zufall steckt schon im vorherigen `shuffleDeck`.
+ */
+export function cutDeck(deck: readonly Card[], cutIndex: number): Card[] {
+  const n = deck.length;
+  if (n === 0) return [];
+  const k = ((Math.trunc(cutIndex) % n) + n) % n; // 0..n-1 (0 = Klopfen)
+  return [...deck.slice(k), ...deck.slice(0, k)];
+}
+
+/**
+ * Teilt ein bereits vorbereitetes (gemischtes + ggf. abgehobenes) Deck in
+ * `num_players` Hände auf. Sitz 0 bekommt Karten 0..8, Sitz 1 die 9..17, etc.
+ */
+export function dealFromDeck(deck: readonly Card[], num_players: number = NUM_PLAYERS): Card[][] {
+  if (deck.length % num_players !== 0) {
+    throw new Error(`dealFromDeck: ${deck.length} ist nicht teilbar durch ${num_players}`);
+  }
+  const cardsPerHand = deck.length / num_players;
+  const hands: Card[][] = [];
+  for (let p = 0; p < num_players; p++) {
+    hands.push([...deck.slice(p * cardsPerHand, (p + 1) * cardsPerHand)]);
+  }
+  return hands;
+}
+
+/**
+ * Teilt ein frisch gemischtes Deck in `num_players` Hände zu je 9 Karten.
  * Spielt-Verteilung: Sitz 0 bekommt Karten 0..8, Sitz 1 die 9..17, etc.
  */
 export function dealCards(rng: RandomFn, num_players: number = NUM_PLAYERS): Card[][] {
   if (DECK_SIZE % num_players !== 0) {
     throw new Error(`dealCards: ${DECK_SIZE} ist nicht teilbar durch ${num_players}`);
   }
-  const shuffled = shuffleDeck(freshDeck(), rng);
-  const cardsPerHand = DECK_SIZE / num_players;
-  const hands: Card[][] = [];
-  for (let p = 0; p < num_players; p++) {
-    hands.push(shuffled.slice(p * cardsPerHand, (p + 1) * cardsPerHand));
-  }
-  return hands;
+  return dealFromDeck(shuffleDeck(freshDeck(), rng), num_players);
 }
 
 // ---------------------------------------------------------------------
