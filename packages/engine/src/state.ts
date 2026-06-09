@@ -149,7 +149,6 @@ export interface Move {
   readonly card: Card;
 }
 
-/** Strukturiertes Ergebnis einer kompletten Runde. */
 /**
  * Wenn eine optionale Tisch-Regel die Punkte eines Teams hat verfallen lassen,
  * beschreibt dieser Eintrag, was und warum — damit das Frontend dem Betroffenen
@@ -169,6 +168,7 @@ export interface RoundVoid {
   readonly lostPoints: number;
 }
 
+/** Strukturiertes Ergebnis einer kompletten Runde. */
 export interface RoundScore {
   /** Karten-Punkte pro Team-ID (Index 0 / 1 bei Kreuz-Jass). */
   readonly team_card_points: readonly number[];
