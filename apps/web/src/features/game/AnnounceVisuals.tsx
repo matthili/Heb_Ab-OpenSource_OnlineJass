@@ -118,9 +118,17 @@ export function ModeWatermark({
       className="pointer-events-none absolute inset-0 z-0 flex flex-col items-center justify-center gap-2"
     >
       {info.slalom && currentMode && (
-        <span className="rounded bg-black/35 px-2 py-0.5 text-base font-bold uppercase tracking-wide text-white/90">
-          {t(`game.announce.mode.${currentMode}`)}
-        </span>
+        // Zwei Zeilen: „SLALOM" (das angesagte Spiel) + der aktuelle Stich-
+        // Modus „OBEN (BOCK)" / „UNTEN (GEISS)". So keine Verwechslung mehr mit
+        // einem einheitlichen Bock-/Geiss-Spiel.
+        <div className="flex flex-col items-center gap-1">
+          <span className="rounded bg-black/40 px-3 py-0.5 text-lg font-black uppercase tracking-[0.2em] text-white">
+            {t("game.announce.mode.SLALOM")}
+          </span>
+          <span className="rounded bg-black/35 px-2 py-0.5 text-base font-bold uppercase tracking-wide text-white/90">
+            {t(`game.announce.mode.${currentMode}`)}
+          </span>
+        </div>
       )}
       {d.iconSrc ? (
         <img
