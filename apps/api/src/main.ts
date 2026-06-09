@@ -58,7 +58,25 @@ function assertNoUnsafeFlagsInProduction(): void {
   }
 }
 
+/**
+ * Globaler Absturz-Schutz. Eine einzige unbehandelte Promise-Rejection oder
+ * Exception (egal woher — KI-Timer, Redis-Hiccup, ein vergessenes `await`)
+ * würde sonst den ganzen Node-Prozess killen → ALLE laufenden Spiele hängen,
+ * der Client sieht nur noch `ECONNREFUSED`. Wir loggen den Fehler PROMINENT
+ * (damit die Ursache auffindbar bleibt) und lassen den Prozess weiterlaufen —
+ * dieselbe Defense-in-depth-Linie wie der try/catch um `driveAIsLoop`.
+ */
+function installProcessGuards(): void {
+  process.on("unhandledRejection", (reason) => {
+    console.error("[api] UNHANDLED REJECTION (abgefangen, Prozess läuft weiter):", reason);
+  });
+  process.on("uncaughtException", (err) => {
+    console.error("[api] UNCAUGHT EXCEPTION (abgefangen, Prozess läuft weiter):", err);
+  });
+}
+
 async function bootstrap(): Promise<void> {
+  installProcessGuards();
   assertNoUnsafeFlagsInProduction();
 
   const app = await NestFactory.create<NestFastifyApplication>(

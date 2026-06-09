@@ -104,6 +104,16 @@ export function useGameView(gameId: string | null): GameViewState {
     };
   }, [gameId]);
 
+  // Fehler-Banner nach kurzer Zeit automatisch ausblenden — so hängt man nie
+  // dauerhaft vor einer Meldung fest (z.B. „Stöck wurde bereits angesagt"),
+  // wenn danach kein neuer State mehr kommt. Zusätzlich zum Clear bei jedem
+  // eintreffenden `game:state`. 6 s reichen zum Lesen.
+  useEffect(() => {
+    if (!error) return;
+    const id = setTimeout(() => setError(null), 6000);
+    return () => clearTimeout(id);
+  }, [error]);
+
   function playCard(card: Card) {
     const id = gameIdRef.current;
     if (!id) return;
