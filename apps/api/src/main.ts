@@ -62,16 +62,33 @@ function assertNoUnsafeFlagsInProduction(): void {
  * Globaler Absturz-Schutz. Eine einzige unbehandelte Promise-Rejection oder
  * Exception (egal woher — KI-Timer, Redis-Hiccup, ein vergessenes `await`)
  * würde sonst den ganzen Node-Prozess killen → ALLE laufenden Spiele hängen,
- * der Client sieht nur noch `ECONNREFUSED`. Wir loggen den Fehler PROMINENT
- * (damit die Ursache auffindbar bleibt) und lassen den Prozess weiterlaufen —
- * dieselbe Defense-in-depth-Linie wie der try/catch um `driveAIsLoop`.
+ * der Client sieht nur noch `ECONNREFUSED`. Wir loggen IMMER prominent (damit
+ * die Ursache auffindbar bleibt). Was danach passiert, hängt von der Umgebung ab:
+ *
+ *   - **unhandledRejection**: meist erholbar (z.B. ein vergessenes `catch`) →
+ *     wir laufen überall weiter.
+ *   - **uncaughtException**: der Prozess-Zustand könnte korrupt sein.
+ *       • In PRODUKTION beenden wir sauber mit Code 1 → Docker
+ *         (`restart: unless-stopped`) bzw. die k8s-Liveness-Probe starten
+ *         sofort einen FRISCHEN Prozess. Laufende Spiele überleben (RoundState
+ *         liegt in Redis), die Clients reconnecten automatisch.
+ *       • Im DEV lassen wir den Prozess am Leben (kein Auto-Restart hinter
+ *         `nest start --watch`), damit man nicht ständig manuell neu starten
+ *         muss — und den Fehler im Log gleich sieht.
  */
 function installProcessGuards(): void {
+  const isProd = process.env["NODE_ENV"] === "production";
   process.on("unhandledRejection", (reason) => {
     console.error("[api] UNHANDLED REJECTION (abgefangen, Prozess läuft weiter):", reason);
   });
   process.on("uncaughtException", (err) => {
-    console.error("[api] UNCAUGHT EXCEPTION (abgefangen, Prozess läuft weiter):", err);
+    console.error("[api] UNCAUGHT EXCEPTION:", err);
+    if (isProd) {
+      console.error("[api] → beende sauber (Code 1); der Orchestrator startet neu.");
+      process.exit(1);
+    } else {
+      console.error("[api] → Dev: Prozess läuft weiter (kein Auto-Restart hinter --watch).");
+    }
   });
 }
 
