@@ -491,7 +491,11 @@ function PlayingArea({
           active
             ? "bg-jass-yellow text-jass-ink font-semibold ring-2 ring-jass-yellowDark jass-seat-active-pulse"
             : isLastWinner
-              ? "bg-jass-cream text-jass-ink border border-jass-yellowDark"
+              ? // ring statt border: box-shadow-basiert → ändert die Label-Größe
+                // NICHT. Ein echter `border` machte das Gewinner-Label 2 px höher,
+                // und weil der Letzter-Stich-Gewinner jeden Stich wechselt, staucht
+                // das die mittlere Zeile → das UI „hüpfte" leicht beim Zugwechsel.
+                "bg-jass-cream text-jass-ink ring-1 ring-jass-yellowDark"
               : "bg-jass-paper text-jass-ink",
         ].join(" ");
         const content = (
