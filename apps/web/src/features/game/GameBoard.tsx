@@ -15,6 +15,7 @@
  * (siehe `seat-layout.ts`).
  */
 import { Hand, Scoreboard, Trick } from "@jass/ui";
+import { effectiveVariant } from "@jass/engine";
 import type { Card } from "@jass/engine";
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
@@ -213,15 +214,6 @@ export function GameBoard({
         {...(soloPlayers ? { soloPlayers } : {})}
       />
       <StatusBanner view={view} seats={seats} nameSeed={nameSeed} />
-      {view.stoeckEligible && (
-        <button
-          type="button"
-          onClick={onAnnounceStoeck}
-          className="w-full rounded-lg bg-jass-yellow border-2 border-jass-yellowDark px-4 py-3 text-jass-ink font-bold text-lg shadow-md hover:bg-jass-yellow/90 jass-your-turn-glow"
-        >
-          {t("game.stoeck.call")}
-        </button>
-      )}
       {error && (
         <div
           role="alert"
@@ -250,6 +242,18 @@ export function GameBoard({
         selected={currentGroup}
         onSelect={(card) => setCurrentGroup(toggleCardInGroup(currentGroup, card))}
       />
+      {/* Stöck-Button UNTER der Hand — im selben Bereich wie das Weisen
+          (User-Feedback: vorher war er oberhalb des Spielfelds, der Weisen-
+          Button aber unten — verwirrend). */}
+      {view.stoeckEligible && (
+        <button
+          type="button"
+          onClick={onAnnounceStoeck}
+          className="w-full rounded-lg bg-jass-yellow border-2 border-jass-yellowDark px-4 py-3 text-jass-ink font-bold text-lg shadow-md hover:bg-jass-yellow/90 jass-your-turn-glow"
+        >
+          {t("game.stoeck.call")}
+        </button>
+      )}
       {/* Weise-Panel UNTER der Hand: User-Feedback aus erster Demo. Der
           Button war oberhalb der Spielfläche zu weit weg von den Karten,
           die er auswählen soll — jetzt direkt anschließend, damit Hand
@@ -456,7 +460,15 @@ function PlayingArea({
           trumpSuit: state.announcement.variant.trump_suit,
           slalom: state.announcement.slalom,
         }}
-        currentMode={state.variant.mode}
+        // Während des Linger den Modus des EINGEFRORENEN Stichs zeigen, nicht
+        // den schon weitergedrehten `state.variant` — sonst springt das Label
+        // (z.B. „Unten/Geiss" → „Oben/Bock") schon, während die alten Karten
+        // noch liegen. Bei Nicht-Slalom liefert effectiveVariant konstant denselben.
+        currentMode={
+          lingering && state.completed_tricks.length > 0
+            ? effectiveVariant(state.announcement, state.completed_tricks.length - 1).mode
+            : state.variant.mode
+        }
       />
       <AnnounceOverlay
         gameId={view.gameId}

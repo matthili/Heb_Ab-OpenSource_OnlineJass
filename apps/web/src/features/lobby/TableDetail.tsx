@@ -242,11 +242,15 @@ function CumulativeScoreBar({ table }: { table: TableDetailView }) {
     >
       <div className="flex items-baseline justify-between text-sm text-jass-inkSoft">
         <span>
-          <Trans
-            i18nKey="lobby.tableDetail.scoreProgress"
-            values={{ target }}
-            components={{ strong: <strong className="text-jass-ink" /> }}
-          />
+          {table.status === "MATCH_OVER" ? (
+            <strong className="text-jass-ink">{t("lobby.tableDetail.scoreResult")}</strong>
+          ) : (
+            <Trans
+              i18nKey="lobby.tableDetail.scoreProgress"
+              values={{ target }}
+              components={{ strong: <strong className="text-jass-ink" /> }}
+            />
+          )}
         </span>
         {winner >= 0 && (
           <span className="text-jass-yellowDark font-semibold">

@@ -148,7 +148,9 @@ export function AnnouncementDialog({ view, seatNames, pending, onAnnounce }: Pro
                   seatNames.get(ann.pushedFromSeat) ??
                   t("game.seatFallback", { n: ann.pushedFromSeat }),
               })
-            : t("game.announce.chooseOrPush")}
+            : ann.canPush
+              ? t("game.announce.chooseOrPush")
+              : t("game.announce.chooseOnly")}
         </p>
       </header>
 

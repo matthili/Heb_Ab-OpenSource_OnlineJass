@@ -493,6 +493,7 @@
       "seatEmpty": "empty",
       "scoreLabel": "Cumulative score",
       "scoreProgress": "Match standing (target: <strong>{{target}}</strong>)",
+      "scoreResult": "Match result",
       "scoreWinner": "{{name}} has won the match!",
       "teamLabel": "Seat {{n}}",
       "team0": "Team 0 (seats 1 + 3)",
@@ -531,7 +532,7 @@
       "slalomSub": "(mode alternates each trick · start: {{start}})"
     },
     "otherTurn": "<strong>{{name}}</strong> is up.",
-    "finished": "Round over — see final score below.",
+    "finished": "Round over — match standing is shown above.",
     "trick": "Trick {{n}} / 9",
     "scoreOwn": "Your team: <strong>{{score}}</strong>",
     "scoreOpp": "Opponents: <strong>{{score}}</strong>",
@@ -550,6 +551,7 @@
       "title": "You have to announce.",
       "pushedToYou": "{{name}} passed to you — you have to choose.",
       "chooseOrPush": "Pick a mode, or pass to your partner.",
+      "chooseOnly": "Pick a mode. (Passing isn't possible in Solo Jass.)",
       "variant": "Mode",
       "mode": {
         "TRUMPF": "Trump",

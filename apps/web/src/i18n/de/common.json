@@ -493,6 +493,7 @@
       "seatEmpty": "frei",
       "scoreLabel": "Kumulativer Punktestand",
       "scoreProgress": "Partie-Stand (Ziel: <strong>{{target}}</strong>)",
+      "scoreResult": "Partie-Ergebnis",
       "scoreWinner": "{{name}} hat die Partie gewonnen!",
       "teamLabel": "Sitz {{n}}",
       "team0": "Team 0 (Sitz 1 + 3)",
@@ -531,7 +532,7 @@
       "slalomSub": "(Modus wechselt pro Stich · Start: {{start}})"
     },
     "otherTurn": "<strong>{{name}}</strong> ist dran.",
-    "finished": "Durchgang beendet — siehe Final-Score unten.",
+    "finished": "Durchgang beendet — der Partie-Stand steht oben.",
     "trick": "Stich {{n}} / 9",
     "scoreOwn": "Eigenes Team: <strong>{{score}}</strong>",
     "scoreOpp": "Gegner: <strong>{{score}}</strong>",
@@ -550,6 +551,7 @@
       "title": "Du musst ansagen.",
       "pushedToYou": "{{name}} hat an dich geschoben — du musst wählen.",
       "chooseOrPush": "Such dir eine Variante aus, oder schiebe an deinen Partner.",
+      "chooseOnly": "Such dir eine Variante aus. (Schieben ist beim Solo-Jass nicht möglich.)",
       "variant": "Variante",
       "mode": {
         "TRUMPF": "Trumpf",
