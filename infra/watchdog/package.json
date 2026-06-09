@@ -1,0 +1,13 @@
+{
+  "name": "jass-watchdog",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "Eigenständiger Uptime-Wächter: pingt die API /health und mailt den Admin bei Ausfall/Erholung.",
+  "scripts": {
+    "start": "node watchdog.mjs"
+  },
+  "dependencies": {
+    "nodemailer": "^8.0.7"
+  }
+}

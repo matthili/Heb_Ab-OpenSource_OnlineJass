@@ -5,6 +5,7 @@
 # **Was hier passiert:**
 #   - `caddy` als TLS-Terminator + Reverse-Proxy (siehe ./caddy/Caddyfile).
 #   - `api` (NestJS) + `inference` (tfjs) mit Healthchecks + restart-Policy.
+#   - `watchdog` — pingt die API /health und mailt den Admin bei Ausfall.
 #   - `web` + `landing` als nginx-gehostete static builds.
 #   - `postgres` + `redis` lokal — bei echter Skalierung Managed-Service.
 #   - **Mailhog ist NICHT dabei** (das ist Dev). SMTP läuft via
@@ -15,6 +16,10 @@
 #   POSTGRES_PASSWORD, BETTER_AUTH_SECRET, APP_SECRET (alle ≥ 32 zufällige Zeichen)
 #   TURNSTILE_SECRET_KEY, TURNSTILE_SITE_KEY, VITE_TURNSTILE_SITE_KEY
 #   SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASSWORD, SMTP_FROM
+#
+# **Optional-Env** (sinnvolle Defaults, siehe Service-Blöcke):
+#   WATCHDOG_ALERT_EMAIL — Admin-Mail für Ausfall-Alarme (leer = kein Alarm)
+#   WATCHDOG_INTERVAL_SECONDS, WATCHDOG_FAILURES_BEFORE_ALERT, WATCHDOG_LABEL
 #
 # **Start:**
 #   docker compose -f infra/docker-compose.prod.yml --env-file .env up -d
@@ -98,6 +103,30 @@ services:
       timeout: 5s
       retries: 5
       start_period: 30s
+    networks: [jass-internal]
+
+  # Uptime-Wächter: pingt die API auf /health und mailt den Admin bei
+  # Ausfall (und Erholung). Eigener Container → überlebt einen API-Crash.
+  # WATCHDOG_ALERT_EMAIL = die Admin-Mail-Adresse, an die alarmiert wird.
+  watchdog:
+    image: jass-watchdog:${JASS_IMAGE_TAG:-latest}
+    build:
+      context: ./watchdog
+    container_name: jass-watchdog
+    restart: unless-stopped
+    environment:
+      WATCHDOG_TARGET_URL: http://api:3000/health
+      WATCHDOG_INTERVAL_SECONDS: ${WATCHDOG_INTERVAL_SECONDS:-30}
+      WATCHDOG_FAILURES_BEFORE_ALERT: ${WATCHDOG_FAILURES_BEFORE_ALERT:-3}
+      WATCHDOG_ALERT_EMAIL: ${WATCHDOG_ALERT_EMAIL:-}
+      WATCHDOG_LABEL: ${WATCHDOG_LABEL:-Heb ab!}
+      SMTP_HOST: ${SMTP_HOST:?required}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM: ${SMTP_FROM:?required}
+    depends_on:
+      - api
     networks: [jass-internal]
 
   inference:
