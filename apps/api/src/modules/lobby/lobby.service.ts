@@ -949,8 +949,15 @@ export class LobbyService {
         throw new ConflictException("Tisch ist bereits geschlossen.");
       }
       // Verlassen in IN_GAME/POST_GAME wird oben behandelt (Sitz-auf-KI-
-      // Umschaltung). Hier landen wir nur im WAITING-Fall.
-      if (table.status !== LobbyTableStatus.WAITING) {
+      // Umschaltung). Hier landen WAITING und MATCH_OVER: in beiden gibt es
+      // kein laufendes Spiel mehr → Sitz wird einfach freigegeben, und wenn
+      // der letzte Mensch geht, wird der Tisch geschlossen. (MATCH_OVER bleibt
+      // sonst offen, damit der Owner „Neue Partie" starten kann — verlässt er
+      // aber, muss er sauber zugehen, sonst verwaist der Tisch dauerhaft.)
+      if (
+        table.status !== LobbyTableStatus.WAITING &&
+        table.status !== LobbyTableStatus.MATCH_OVER
+      ) {
         throw new ConflictException("Unerwarteter Tisch-Status für Leave-Pfad.");
       }
 
