@@ -653,6 +653,13 @@
       "standings": "Final standings",
       "clickToClose": "(click to close)"
     },
+    "void": {
+      "sackTitle": "In the Sack!",
+      "sackBody": "With only {{cardPoints}} card points (under 21) this whole round is voided — cards and Weis, {{lost}} points total. They go to nobody.",
+      "noTrickTitle": "No trick — declaration voided",
+      "noTrickBody": "Without a single trick this round, the declaration points ({{lost}}) are voided.",
+      "ok": "Got it"
+    },
     "cut": {
       "title": "Cut the deck",
       "explain": "Slide to choose where to cut — or knock (don't cut).",

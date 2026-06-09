@@ -653,6 +653,13 @@
       "standings": "Endstand",
       "clickToClose": "(klicken zum Schließen)"
     },
+    "void": {
+      "sackTitle": "Im Sack!",
+      "sackBody": "Mit nur {{cardPoints}} Kartenpunkten (unter 21) verfällt diese Runde komplett — Karten und Weis, zusammen {{lost}} Punkte. Sie gehen an niemanden.",
+      "noTrickTitle": "Kein Stich — Weis verfällt",
+      "noTrickBody": "Ohne einen einzigen Stich in dieser Runde verfallen die Weis-Punkte ({{lost}}).",
+      "ok": "Verstanden"
+    },
     "cut": {
       "title": "Abheben",
       "explain": "Schieb den Regler, wo abgehoben wird — oder klopfe (nicht abheben).",

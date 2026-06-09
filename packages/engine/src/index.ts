@@ -21,6 +21,7 @@ export {
   type Move,
   type RandomFn,
   type RoundScore,
+  type RoundVoid,
   type RoundState,
   DEFAULT_TEAMS,
   SOLO_TEAMS,

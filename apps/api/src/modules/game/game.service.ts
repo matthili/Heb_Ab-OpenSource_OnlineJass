@@ -301,6 +301,13 @@ export interface PlayerView {
     team_card_points: readonly number[];
     matsch_team: number | null;
     trick_winners: readonly number[];
+    /** Teams, deren Punkte durch Sack/Kein-Stich verfallen sind (für die UI-Meldung). */
+    voided?: readonly {
+      team: number;
+      reason: "sack" | "no_trick";
+      cardPoints: number;
+      lostPoints: number;
+    }[];
   };
   /**
    * **Stöck**: ist der eigene Sitz gerade zum Stöck-Ansagen berechtigt?

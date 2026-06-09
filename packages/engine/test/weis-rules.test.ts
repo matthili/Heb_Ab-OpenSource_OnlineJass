@@ -133,3 +133,40 @@ describe("Regel kein Stich -> Weis verfaellt (weis_needs_trick)", () => {
     expect(finalRoundScore(s).matsch_team).toBe(0);
   });
 });
+
+describe("finalRoundScore: voided meldet den Verfalls-Grund", () => {
+  it("Sack: reason=sack, cardPoints + lostPoints (Karten + Weis)", () => {
+    const s = finished({
+      teams: [0, 1, 0, 1],
+      trickWinners: [0, 0, 0, 0, 0, 0, 0, 0, 1],
+      teamCardPoints: [147, 60], // team1: 10 Karten + 50 Weis
+      weisTeamPoints: [0, 50],
+      sackRule: true,
+    });
+    const voided = finalRoundScore(s).voided ?? [];
+    expect(voided).toHaveLength(1);
+    expect(voided[0]).toMatchObject({ team: 1, reason: "sack", cardPoints: 10, lostPoints: 60 });
+  });
+
+  it("kein Stich: reason=no_trick, lostPoints = Weis", () => {
+    const s = finished({
+      teams: [0, 1, 2, 3],
+      trickWinners: [0, 1, 2, 0, 1, 2, 0, 1, 2], // Sitz 3 = 0 Stiche
+      teamCardPoints: [50, 50, 57, 50],
+      weisTeamPoints: [0, 0, 0, 50],
+      weisNeedsTrick: true,
+    });
+    const voided = finalRoundScore(s).voided ?? [];
+    expect(voided).toHaveLength(1);
+    expect(voided[0]).toMatchObject({ team: 3, reason: "no_trick", lostPoints: 50 });
+  });
+
+  it("ohne aktive Regel ist voided leer/weg", () => {
+    const s = finished({
+      teams: [0, 1, 0, 1],
+      trickWinners: [0, 0, 0, 0, 0, 1, 1, 1, 1],
+      teamCardPoints: [100, 57],
+    });
+    expect(finalRoundScore(s).voided).toBeUndefined();
+  });
+});

@@ -150,6 +150,25 @@ export interface Move {
 }
 
 /** Strukturiertes Ergebnis einer kompletten Runde. */
+/**
+ * Wenn eine optionale Tisch-Regel die Punkte eines Teams hat verfallen lassen,
+ * beschreibt dieser Eintrag, was und warum — damit das Frontend dem Betroffenen
+ * eine Erklärung anzeigen kann.
+ */
+export interface RoundVoid {
+  /** Team-ID (Kreuz 0/1, Solo = Sitz). */
+  readonly team: number;
+  /**
+   * - `sack`: < SACK_MIN_POINTS Kartenpunkte → ALLES verfallen (Karten + Weis).
+   * - `no_trick`: kein Stich gemacht → nur die Weis-Punkte verfallen.
+   */
+  readonly reason: "sack" | "no_trick";
+  /** Reine Stich-Kartenpunkte des Teams (für die Meldung, z.B. „nur 12 Punkte"). */
+  readonly cardPoints: number;
+  /** Wie viele Punkte insgesamt verfallen sind. */
+  readonly lostPoints: number;
+}
+
 export interface RoundScore {
   /** Karten-Punkte pro Team-ID (Index 0 / 1 bei Kreuz-Jass). */
   readonly team_card_points: readonly number[];
@@ -157,6 +176,11 @@ export interface RoundScore {
   readonly matsch_team: number | null;
   /** Sitz-Index pro abgeschlossenem Trick (Länge = 9). */
   readonly trick_winners: readonly number[];
+  /**
+   * Teams, deren Punkte durch eine optionale Regel (Sack / kein Stich)
+   * verfallen sind — leer/weggelassen, wenn keine Regel gegriffen hat.
+   */
+  readonly voided?: readonly RoundVoid[];
 }
 
 // ---------------------------------------------------------------------
@@ -662,25 +686,36 @@ export function finalRoundScore(state: RoundState): RoundScore {
   const sackRule = state.sack_rule === true;
   const weisNeedsTrick = state.weis_needs_trick === true;
 
+  const voided: RoundVoid[] = [];
   const team_card_points = state.team_card_points.map((merged, t) => {
     // `merged` = Karten-Punkte aus Stichen (inkl. Letzter-Stich-Bonus)
     //            + bereits einaddierte Weis-Punkte.
     const weis = weisPerTeam[t] ?? 0;
     const cardOnly = merged - weis; // reine Stich-Kartenpunkte
-    let total = merged;
+    const stoeckBonus = state.stoeck_announced_team === t ? STOECK_BONUS : 0;
+    const matschBonus = t === matsch_team ? MATCH_BONUS : 0;
 
-    // Regel: kein Stich → Weis verfällt.
-    if (weisNeedsTrick && (trickCount[t] ?? 0) === 0) total -= weis;
+    // Regel „Sack": unter SACK_MIN_POINTS reinen Kartenpunkten verfällt ALLES
+    // (Karten + Weis + evtl. Stöck) — geht an niemanden. Zuerst geprüft, weil
+    // es jede andere Wertung überschreibt. (Das Matsch-Team hat 9 Stiche →
+    // cardOnly weit über der Grenze, also nie betroffen.)
+    if (sackRule && cardOnly < SACK_MIN_POINTS) {
+      voided.push({
+        team: t,
+        reason: "sack",
+        cardPoints: cardOnly,
+        lostPoints: merged + stoeckBonus,
+      });
+      return 0;
+    }
 
-    // Matsch-Bonus (+100). Das Matsch-Team hat 9 Stiche → cardOnly weit
-    // über der Sack-Grenze, also nie betroffen.
-    if (t === matsch_team) total += MATCH_BONUS;
-    // Stöck-Bonus (+20) nur fürs offiziell ansagende Team.
-    if (state.stoeck_announced_team === t) total += STOECK_BONUS;
+    let total = merged + matschBonus + stoeckBonus;
 
-    // Regel „Sack": unter 21 reinen Kartenpunkten verfällt ALLES
-    // (Karten + Weis + evtl. Stöck) — geht an niemanden.
-    if (sackRule && cardOnly < SACK_MIN_POINTS) total = 0;
+    // Regel: kein Stich → Weis verfällt wieder.
+    if (weisNeedsTrick && (trickCount[t] ?? 0) === 0 && weis > 0) {
+      total -= weis;
+      voided.push({ team: t, reason: "no_trick", cardPoints: cardOnly, lostPoints: weis });
+    }
 
     return total;
   });
@@ -689,6 +724,7 @@ export function finalRoundScore(state: RoundState): RoundScore {
     team_card_points,
     matsch_team,
     trick_winners: state.trick_winners,
+    ...(voided.length > 0 ? { voided } : {}),
   };
 }
 

@@ -27,6 +27,7 @@ import { AnnouncementDialog } from "./AnnouncementDialog";
 import { AnnounceOverlay, ModeWatermark } from "./AnnounceVisuals";
 import { DealCinematic } from "./DealCinematic";
 import { MatschOverlay } from "./MatschOverlay";
+import { VoidOverlay } from "./VoidOverlay";
 import { relativeSlot, SEAT_LABEL_POS } from "./seat-layout";
 import type { AnnouncementDecision, PlayerView } from "./types";
 import { useDisplayedTrick } from "./useDisplayedTrick";
@@ -287,6 +288,12 @@ export function GameBoard({
         teams={state.teams}
         seats={seats}
         nameSeed={nameSeed}
+      />
+      <VoidOverlay
+        gameId={view.gameId}
+        finalScore={view.finalScore}
+        mySeat={mySeat}
+        teams={state.teams}
       />
     </div>
   );
