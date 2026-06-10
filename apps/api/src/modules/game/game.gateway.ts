@@ -568,6 +568,15 @@ export class GameGateway
           suit: card.suit as never,
           rank: card.rank as never,
         });
+        // Stöck auf der ALLERLETZTEN Karte: der Spieler hat danach keine
+        // Folgekarte mehr, um den „Stöck rufen"-Button zu nutzen, und die KIs
+        // beenden die Runde im selben Lock-Block sofort → der Button käme nie
+        // rechtzeitig. Da es auf der letzten Karte keinen Grund gibt, NICHT zu
+        // rufen (beide Stöck-Karten liegen ohnehin offen), sagen wir ihn
+        // automatisch an, damit die verdienten +20 nicht verfallen.
+        if (view.status !== "finished" && view.stoeckEligible && view.hand.length === 0) {
+          await this.games.announceStoeckAsUser(gameId, userId);
+        }
         await this.broadcastState(gameId);
         if (view.status === "finished") {
           this.server.to(roomKey(gameId)).emit("game:ended", { finalScore: view.finalScore });
