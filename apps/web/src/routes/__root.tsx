@@ -131,9 +131,10 @@ function Header() {
       <nav className="mx-auto max-w-5xl px-4 py-3 flex items-center gap-6">
         <Link
           to="/"
-          className="font-serif text-2xl font-semibold text-jass-ink hover:text-jass-brown transition-colors"
+          aria-label={t("appName")}
+          className="flex items-center transition-opacity hover:opacity-80"
         >
-          {t("appName")}
+          <img src="/logo/lockup-horizontal-hell.svg" alt={t("appName")} className="h-9 w-auto" />
         </Link>
         <div className="ml-auto flex items-center gap-3">
           <ContrastToggle />

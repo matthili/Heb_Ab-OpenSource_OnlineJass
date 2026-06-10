@@ -65,6 +65,13 @@ a:hover {
 .nav-brand {
   font-size: 1.125rem;
   font-weight: 600;
+  display: flex;
+  align-items: center;
+}
+.nav-brand img {
+  height: 28px;
+  width: auto;
+  display: block;
 }
 .nav-link {
   font-size: 0.875rem;
@@ -92,6 +99,15 @@ a:hover {
 }
 .main h1 {
   margin-top: 0;
+}
+.hero-title {
+  margin: 0.5rem 0 1rem;
+}
+.hero-logo {
+  width: 100%;
+  max-width: 360px;
+  height: auto;
+  display: block;
 }
 .lead {
   font-size: 1.125rem;

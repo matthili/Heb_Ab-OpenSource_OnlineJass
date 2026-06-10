@@ -20,27 +20,36 @@ function LobbyPage() {
   const { t } = useTranslation();
   const [openDialog, setOpenDialog] = useState(false);
   return (
-    <section className="space-y-4">
-      <header className="flex items-center gap-3">
-        <h1 className="text-3xl text-jass-ink">{t("lobby.title")}</h1>
-        <button
-          type="button"
-          onClick={() => setOpenDialog(true)}
-          className="ml-auto btn-jass-primary"
-        >
-          {t("lobby.openTableButton")}
-        </button>
-      </header>
-      <CompleteProfilePrompt />
-      <MyActiveTables />
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_20rem] gap-4">
-        <LobbyList />
-        <div className="space-y-4">
-          <OnlineUsersPanel />
-          <ChatPanel channelKey="lobby:global" title={t("lobby.title")} />
+    <section className="relative">
+      {/* Dezentes Marken-Watermark hinter dem Lobby-Inhalt (rein dekorativ). */}
+      <img
+        src="/logo/lockup-gestapelt-hell.svg"
+        alt=""
+        aria-hidden="true"
+        className="pointer-events-none absolute left-1/2 top-24 w-[32rem] max-w-[75%] -translate-x-1/2 select-none opacity-[0.05]"
+      />
+      <div className="relative z-10 space-y-4">
+        <header className="flex items-center gap-3">
+          <h1 className="text-3xl text-jass-ink">{t("lobby.title")}</h1>
+          <button
+            type="button"
+            onClick={() => setOpenDialog(true)}
+            className="ml-auto btn-jass-primary"
+          >
+            {t("lobby.openTableButton")}
+          </button>
+        </header>
+        <CompleteProfilePrompt />
+        <MyActiveTables />
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_20rem] gap-4">
+          <LobbyList />
+          <div className="space-y-4">
+            <OnlineUsersPanel />
+            <ChatPanel channelKey="lobby:global" title={t("lobby.title")} />
+          </div>
         </div>
+        <OpenTableDialog open={openDialog} onClose={() => setOpenDialog(false)} />
       </div>
-      <OpenTableDialog open={openDialog} onClose={() => setOpenDialog(false)} />
     </section>
   );
 }

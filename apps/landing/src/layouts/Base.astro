@@ -18,6 +18,9 @@ const { title, description } = Astro.props;
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#1f2937" />
+    <link rel="icon" href="/favicon.ico" sizes="32x32" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <title>{title}</title>
     {description && <meta name="description" content={description} />}
   </head>
@@ -25,7 +28,9 @@ const { title, description } = Astro.props;
     <div class="page">
       <header class="nav">
         <nav class="nav-inner">
-          <a href="/" class="nav-brand">Heb ab!</a>
+          <a href="/" class="nav-brand" aria-label="Heb ab!">
+            <img src="/logo/lockup-horizontal-hell.svg" alt="Heb ab!" />
+          </a>
           <a href="/rules" class="nav-link">Regeln</a>
           <a href="/about" class="nav-link">Über</a>
           <a href="/app/" class="nav-cta">Zum Spiel</a>

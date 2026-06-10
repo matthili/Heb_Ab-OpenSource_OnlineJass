@@ -1,3 +1,10 @@
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/logo/lockup-gestapelt-dunkel-1600.png" />
+    <img src="assets/logo/lockup-gestapelt-hell-1600.png" alt="Heb ab!" width="420" />
+  </picture>
+</p>
+
 # Heb ab!
 
 > _Der OpenSource-Jass nach vorarlberger Spielart._

@@ -53,6 +53,11 @@ function LoginPage() {
 
   return (
     <section className="space-y-4">
+      <img
+        src="/logo/lockup-gestapelt-hell.svg"
+        alt={t("appName")}
+        className="mx-auto h-32 w-auto"
+      />
       <h1 className="text-2xl font-bold">{t("auth.login.title")}</h1>
       <form onSubmit={onSubmit} className="space-y-3" noValidate>
         <Field label={t("auth.login.emailLabel")} htmlFor="email">
