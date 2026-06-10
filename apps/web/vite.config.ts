@@ -41,7 +41,7 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: "autoUpdate",
-      includeAssets: ["favicon.ico", "favicon.svg", "apple-touch-icon-180x180.png"],
+      includeAssets: ["favicon.ico", "favicon-96x96.png", "apple-touch-icon-180x180.png"],
       manifest: {
         name: "Heb ab! — Vorarlberger Kreuz-Jass",
         short_name: "Heb ab!",

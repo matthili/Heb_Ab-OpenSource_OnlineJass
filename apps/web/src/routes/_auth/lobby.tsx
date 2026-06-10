@@ -10,6 +10,7 @@ import { LobbyList } from "~/features/lobby/LobbyList";
 import { MyActiveTables } from "~/features/lobby/MyActiveTables";
 import { OnlineUsersPanel } from "~/features/lobby/OnlineUsersPanel";
 import { OpenTableDialog } from "~/features/lobby/OpenTableDialog";
+import { BrandLogo } from "~/features/brand/BrandLogo";
 import { CompleteProfilePrompt } from "~/features/profile/CompleteProfilePrompt";
 
 export const Route = createFileRoute("/_auth/lobby")({
@@ -21,12 +22,12 @@ function LobbyPage() {
   const [openDialog, setOpenDialog] = useState(false);
   return (
     <section className="relative">
-      {/* Dezentes Marken-Watermark hinter dem Lobby-Inhalt (rein dekorativ). */}
-      <img
-        src="/logo/lockup-gestapelt-hell.svg"
-        alt=""
-        aria-hidden="true"
-        className="pointer-events-none absolute left-1/2 top-24 w-[32rem] max-w-[75%] -translate-x-1/2 select-none opacity-[0.05]"
+      {/* Dezentes Marken-Watermark hinter dem Lobby-Inhalt (rein dekorativ,
+          theme-aware via BrandLogo). */}
+      <BrandLogo
+        variant="gestapelt"
+        decorative
+        className="pointer-events-none absolute left-1/2 top-24 w-[48rem] max-w-[75%] -translate-x-1/2 select-none opacity-20"
       />
       <div className="relative z-10 space-y-4">
         <header className="flex items-center gap-3">

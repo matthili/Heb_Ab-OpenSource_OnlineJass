@@ -12,6 +12,7 @@ import { useCallback } from "react";
 import { Trans, useTranslation } from "react-i18next";
 
 import { ConsentBanner } from "~/features/consent/ConsentBanner";
+import { BrandLogo } from "~/features/brand/BrandLogo";
 import type { MeProfileResponse } from "~/features/admin/types";
 import { api } from "~/lib/api";
 import { signOut, useSession } from "~/lib/auth-client";
@@ -134,7 +135,7 @@ function Header() {
           aria-label={t("appName")}
           className="flex items-center transition-opacity hover:opacity-80"
         >
-          <img src="/logo/lockup-horizontal-hell.svg" alt={t("appName")} className="h-9 w-auto" />
+          <BrandLogo variant="horizontal" alt={t("appName")} className="h-12 w-auto sm:h-16" />
         </Link>
         <div className="ml-auto flex items-center gap-3">
           <ContrastToggle />

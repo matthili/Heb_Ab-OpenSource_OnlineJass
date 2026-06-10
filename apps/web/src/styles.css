@@ -870,6 +870,23 @@ h1 {
  * die soliden Dunkel-Buttons werden per Klassen-Override dunkel
  * gehalten; die Schleier nutzen `bg-black/…` (in Komponenten umgestellt).
  */
+/* ── Marken-Logo: hell/dunkel je Theme ──────────────────────────────────
+ * `<BrandLogo>` rendert beide Varianten; hier wird die passende ein-/
+ * ausgeblendet. Nur das Dark-Theme hat dunklen Hintergrund → dunkel-Variante;
+ * default + hi-contrast sind hell → hell-Variante. */
+.brand-light {
+  display: block;
+}
+.brand-dark {
+  display: none;
+}
+:root[data-theme="dark"] .brand-light {
+  display: none;
+}
+:root[data-theme="dark"] .brand-dark {
+  display: block;
+}
+
 :root[data-theme="dark"] {
   /* PAPIER/KARTON → dunkle Holz-/Leder-Flächen (Grund → angehoben) */
   --color-jass-bg: #14110d; /* Seiten-Grund: fast-schwarze warme Umbra */

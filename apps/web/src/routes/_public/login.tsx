@@ -10,6 +10,7 @@ import { type FormEvent, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { z } from "zod";
 
+import { BrandLogo } from "~/features/brand/BrandLogo";
 import { signIn } from "~/lib/auth-client";
 
 const LoginSearchSchema = z.object({
@@ -53,11 +54,7 @@ function LoginPage() {
 
   return (
     <section className="space-y-4">
-      <img
-        src="/logo/lockup-gestapelt-hell.svg"
-        alt={t("appName")}
-        className="mx-auto h-32 w-auto"
-      />
+      <BrandLogo variant="gestapelt" alt={t("appName")} className="mx-auto h-48 w-auto sm:h-64" />
       <h1 className="text-2xl font-bold">{t("auth.login.title")}</h1>
       <form onSubmit={onSubmit} className="space-y-3" noValidate>
         <Field label={t("auth.login.emailLabel")} htmlFor="email">
