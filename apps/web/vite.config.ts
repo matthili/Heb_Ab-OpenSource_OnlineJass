@@ -103,6 +103,11 @@ export default defineConfig({
   },
   server: {
     port: 5173,
+    // Auf allen Netzwerk-Interfaces lauschen (nicht nur localhost), damit der
+    // Dev-Server auch von anderen Geräten im LAN erreichbar ist. Vite zeigt
+    // dann eine „Network:"-URL (http://<deine-LAN-IP>:5173). Zusätzlich nötig:
+    // Firewall-Port 5173 freigeben + die LAN-Origin in TRUSTED_ORIGINS (API).
+    host: true,
     proxy: {
       "/api": { target: "http://localhost:3000", changeOrigin: true },
       "/ws": { target: "http://localhost:3000", ws: true, changeOrigin: true },
