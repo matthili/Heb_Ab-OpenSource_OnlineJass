@@ -1326,6 +1326,10 @@ export class GameService {
         mode: ann.variant.mode,
         trumpSuit: ann.variant.trump_suit !== undefined ? suitToInt(ann.variant.trump_suit) : null,
         starter,
+        // Slalom-Flag persistieren — sonst kann das Replay die pro-Stich
+        // alternierende Variante nicht rekonstruieren (mode/trumpSuit allein
+        // verraten Slalom nicht).
+        slalom: ann.slalom,
       },
     });
     await this.writeRoundStateToRedis(gameId, state);

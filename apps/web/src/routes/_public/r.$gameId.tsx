@@ -12,6 +12,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 
+import { BodenseeReplayPlayer } from "~/features/replay/BodenseeReplayPlayer";
 import { ReplayPlayer } from "~/features/replay/ReplayPlayer";
 import { usePublicReplay } from "~/features/replay/useReplay";
 
@@ -71,7 +72,13 @@ function PublicReplayPage() {
         </div>
       )}
 
-      {data.frames.length > 0 ? (
+      {data.bundle.variant === "BODENSEE_2P" ? (
+        data.bodenseeFrames.length > 0 ? (
+          <BodenseeReplayPlayer bundle={data.bundle} frames={data.bodenseeFrames} mySeat={0} />
+        ) : (
+          <p className="text-stone-500">{t("replay.noFrames")}</p>
+        )
+      ) : data.frames.length > 0 ? (
         <ReplayPlayer bundle={data.bundle} frames={data.frames} mySeat={0} />
       ) : (
         <p className="text-stone-500">{t("replay.noFrames")}</p>

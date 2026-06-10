@@ -20,6 +20,10 @@ export interface ReplayRound {
   trumpSuit: number | null; // 0..3
   starter: number;
   weisen: unknown;
+  /** Slalom-Ansage? (Modus alterniert pro Stich.) */
+  slalom: boolean;
+  /** Bodensee: initialer Deal `{ hands, tables }` | null (immer null bei Kreuz/Solo). */
+  bodenseeDeal: unknown;
 }
 
 export interface ReplayMove {

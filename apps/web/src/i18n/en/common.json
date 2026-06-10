@@ -802,7 +802,7 @@
       "incomplete": "Replay: game is not finished yet ({{moves}}/36 moves).",
       "initFailed": "Replay: could not reconstruct the initial state — {{message}}",
       "moveFailed": "Replay: move {{seq}} (seat {{seat}}, card {{card}}) failed — {{message}}",
-      "bodenseeUnsupported": "Bodensee replays are not supported yet — a Bodensee game can't be replayed step by step at the moment."
+      "bodenseeNoDeal": "This Bodensee game predates replay support — the full game state wasn't saved, so it can't be replayed. New Bodensee games can be replayed."
     },
     "rank": {
       "SECHS": "Six",
@@ -841,6 +841,14 @@
       "speedSlow": "Slow (2 s/card)",
       "speedNormal": "Normal (1 s/card)",
       "speedFast": "Fast (0.5 s/card)"
+    },
+    "bodensee": {
+      "trick": "Trick {{n}} / 18",
+      "handLabel": "Hand",
+      "tableLabel": "Table",
+      "playsLine": "{{name}} plays {{suit}}-{{rank}}",
+      "moveListItem": "#{{seq}} — Trick {{trick}}, {{name}}: {{suit}}-{{rank}}",
+      "matsch": "Match"
     },
     "finalScore": {
       "title": "Final score",

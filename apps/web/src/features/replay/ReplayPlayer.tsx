@@ -23,6 +23,7 @@ import { trickWinner } from "@jass/engine";
 
 import { aiName } from "~/features/game/aiNames";
 import { relativeSlot, SEAT_LABEL_POS } from "~/features/game/seat-layout";
+import { ReplayControls } from "./ReplayControls";
 import type { ReplayBundle } from "./types";
 import type { ReplayFrame } from "./useReplay";
 
@@ -92,6 +93,19 @@ export function ReplayPlayer({ bundle, frames, mySeat }: Props) {
   const ownPts = frame.state.team_card_points[myTeam] ?? 0;
   const oppPts = frame.state.team_card_points[1 - myTeam] ?? 0;
 
+  // Status-Zeile für die Transportsteuerung (Initialstand bzw. „Zug n — …").
+  const statusText =
+    frame.moveSeq === null
+      ? t("replay.player.initialState")
+      : t("replay.player.moveProgress", { seq: frame.moveSeq, total: frames.length - 1 }) +
+        (frame.played
+          ? t("replay.player.movePlays", {
+              seat: frame.played.seat,
+              suit: t(`game.announce.suit.${frame.played.card.suit}`),
+              rank: t(`replay.rank.${frame.played.card.rank}`),
+            })
+          : "");
+
   return (
     <div className="space-y-4">
       <Scoreboard
@@ -114,13 +128,12 @@ export function ReplayPlayer({ bundle, frames, mySeat }: Props) {
       <ReplayControls
         frameIdx={frameIdx}
         totalFrames={frames.length}
-        currentMove={frame.played}
-        currentMoveSeq={frame.moveSeq}
         isPlaying={isPlaying}
         speedMs={speedMs}
         onChange={seek}
         onTogglePlay={togglePlay}
         onSpeedChange={setSpeedMs}
+        statusText={statusText}
         t={t}
       />
 
@@ -194,123 +207,6 @@ function PlayingArea({
           mySeat={mySeat}
           {...(winnerSeat !== undefined ? { winnerSeat } : {})}
         />
-      </div>
-    </div>
-  );
-}
-
-function ReplayControls({
-  frameIdx,
-  totalFrames,
-  currentMove,
-  currentMoveSeq,
-  isPlaying,
-  speedMs,
-  onChange,
-  onTogglePlay,
-  onSpeedChange,
-  t,
-}: {
-  frameIdx: number;
-  totalFrames: number;
-  currentMove: { seat: number; card: Card } | null;
-  currentMoveSeq: number | null;
-  isPlaying: boolean;
-  speedMs: number;
-  onChange: (i: number) => void;
-  onTogglePlay: () => void;
-  onSpeedChange: (ms: number) => void;
-  t: TFunction;
-}) {
-  const atEnd = frameIdx === totalFrames - 1;
-  return (
-    <div className="rounded border border-stone-200 bg-white p-3 space-y-2">
-      <div className="flex items-center gap-2">
-        <button
-          type="button"
-          onClick={() => onChange(0)}
-          disabled={frameIdx === 0}
-          className="rounded border border-stone-300 px-2 py-1 text-sm disabled:opacity-40"
-          aria-label={t("replay.player.toStart")}
-        >
-          ⏮
-        </button>
-        <button
-          type="button"
-          onClick={() => onChange(Math.max(0, frameIdx - 1))}
-          disabled={frameIdx === 0}
-          className="rounded border border-stone-300 px-2 py-1 text-sm disabled:opacity-40"
-          aria-label={t("replay.player.stepBack")}
-        >
-          ◀
-        </button>
-        {/* Play/Pause — die primäre Steuerung, daher farblich abgesetzt und
-            mit ⏸/⏵ klar von den ◀▶-Schritt-Buttons unterscheidbar. */}
-        <button
-          type="button"
-          onClick={onTogglePlay}
-          className="rounded bg-stone-900 px-3 py-1 text-sm text-white hover:bg-stone-700"
-          aria-label={isPlaying ? t("replay.player.pause") : t("replay.player.play")}
-          aria-pressed={isPlaying}
-        >
-          {isPlaying ? "⏸" : atEnd ? "↻" : "⏵"}
-        </button>
-        <input
-          type="range"
-          min={0}
-          max={totalFrames - 1}
-          step={1}
-          value={frameIdx}
-          onChange={(e) => onChange(parseInt(e.currentTarget.value, 10))}
-          className="flex-1"
-          aria-label={t("replay.player.framePosition")}
-        />
-        <button
-          type="button"
-          onClick={() => onChange(Math.min(totalFrames - 1, frameIdx + 1))}
-          disabled={atEnd}
-          className="rounded border border-stone-300 px-2 py-1 text-sm disabled:opacity-40"
-          aria-label={t("replay.player.stepForward")}
-        >
-          ▶
-        </button>
-        <button
-          type="button"
-          onClick={() => onChange(totalFrames - 1)}
-          disabled={atEnd}
-          className="rounded border border-stone-300 px-2 py-1 text-sm disabled:opacity-40"
-          aria-label={t("replay.player.toEnd")}
-        >
-          ⏭
-        </button>
-      </div>
-      <div className="flex items-center justify-between gap-2">
-        <div className="text-xs text-stone-600">
-          {currentMoveSeq === null ? (
-            <span>{t("replay.player.initialState")}</span>
-          ) : (
-            <span>
-              {t("replay.player.moveProgress", { seq: currentMoveSeq, total: totalFrames - 1 })}
-              {currentMove
-                ? t("replay.player.movePlays", {
-                    seat: currentMove.seat,
-                    suit: t(`game.announce.suit.${currentMove.card.suit}`),
-                    rank: t(`replay.rank.${currentMove.card.rank}`),
-                  })
-                : ""}
-            </span>
-          )}
-        </div>
-        <select
-          value={speedMs}
-          onChange={(e) => onSpeedChange(parseInt(e.currentTarget.value, 10))}
-          className="rounded border border-stone-300 px-1.5 py-1 text-xs text-stone-700"
-          aria-label={t("replay.player.speed")}
-        >
-          <option value={2000}>{t("replay.player.speedSlow")}</option>
-          <option value={1000}>{t("replay.player.speedNormal")}</option>
-          <option value={500}>{t("replay.player.speedFast")}</option>
-        </select>
       </div>
     </div>
   );

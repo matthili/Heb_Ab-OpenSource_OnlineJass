@@ -41,6 +41,10 @@ export interface ReplayRound {
   // M10 nimmt das Weisen-Json passthrough — Slot ist da, Inhalt
   // noch nicht standardisiert (kommt mit Weisen-Implementation).
   weisen: unknown;
+  // Slalom-Ansage? (Modus alterniert pro Stich.) Für die Replay-Rekonstruktion.
+  slalom: boolean;
+  // Bodensee: initialer Deal { hands, tables } | null. Für Kreuz/Solo immer null.
+  bodenseeDeal: unknown;
 }
 
 export interface ReplayMove {
@@ -188,6 +192,8 @@ export class ReplayService {
       trumpSuit: number | null;
       starter: number;
       weisen: unknown;
+      slalom: boolean;
+      bodenseeDeal: unknown;
     }>;
     moves: Array<{
       seq: number;
@@ -220,6 +226,8 @@ export class ReplayService {
         trumpSuit: r.trumpSuit,
         starter: r.starter,
         weisen: r.weisen,
+        slalom: r.slalom,
+        bodenseeDeal: r.bodenseeDeal,
       })),
       moves: game.moves.map((m) => ({
         seq: m.seq,

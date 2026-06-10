@@ -802,7 +802,7 @@
       "incomplete": "Replay: Spiel ist noch nicht abgeschlossen ({{moves}}/36 Moves).",
       "initFailed": "Replay: Initial-State konnte nicht rekonstruiert werden — {{message}}",
       "moveFailed": "Replay: Move {{seq}} (Sitz {{seat}}, Karte {{card}}) fehlgeschlagen — {{message}}",
-      "bodenseeUnsupported": "Bodensee-Replays werden noch nicht unterstützt — der Verlauf einer Bodensee-Partie kann derzeit nicht Schritt für Schritt nachgespielt werden."
+      "bodenseeNoDeal": "Dieses Bodensee-Spiel stammt aus der Zeit vor der Replay-Unterstützung — der vollständige Spielverlauf wurde nicht gespeichert und kann nicht nachgespielt werden. Neue Bodensee-Partien lassen sich abspielen."
     },
     "rank": {
       "SECHS": "Sechs",
@@ -841,6 +841,14 @@
       "speedSlow": "Langsam (2 s/Karte)",
       "speedNormal": "Normal (1 s/Karte)",
       "speedFast": "Schnell (0,5 s/Karte)"
+    },
+    "bodensee": {
+      "trick": "Stich {{n}} / 18",
+      "handLabel": "Hand",
+      "tableLabel": "Tisch",
+      "playsLine": "{{name}} spielt {{suit}}-{{rank}}",
+      "moveListItem": "#{{seq}} — Stich {{trick}}, {{name}}: {{suit}}-{{rank}}",
+      "matsch": "Matsch"
     },
     "finalScore": {
       "title": "Endstand",

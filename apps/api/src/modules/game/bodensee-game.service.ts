@@ -273,6 +273,11 @@ export class BodenseeGameService {
           announcement.variant.trump_suit !== undefined
             ? suitToInt(announcement.variant.trump_suit)
             : null,
+        slalom: announcement.slalom,
+        // Initialen Deal persistieren, damit das Replay die Runde vollständig
+        // (inkl. verdeckter Tisch-Karten) nachbauen kann — die Moves allein
+        // reichen für Bodensee nicht.
+        bodenseeDeal: asJson({ hands: pending.hands, tables: pending.tables }),
       },
     });
     await this.writeState(gameId, state);

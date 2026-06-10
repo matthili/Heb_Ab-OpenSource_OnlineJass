@@ -19,8 +19,21 @@ import { useQuery } from "@tanstack/react-query";
 
 import i18n from "~/i18n";
 import { api } from "~/lib/api";
-import type { Announcement, Card, Variant, RoundState } from "@jass/engine";
-import { applyMove, indexToCard, newRound } from "@jass/engine";
+import type {
+  Announcement,
+  BodenseeRoundState,
+  Card,
+  RoundState,
+  TableStack,
+  Variant,
+} from "@jass/engine";
+import {
+  applyBodenseeMove,
+  applyMove,
+  indexToCard,
+  newBodenseeRound,
+  newRound,
+} from "@jass/engine";
 
 import type { ReplayBundle } from "./types";
 import { SUIT_BY_ID } from "./types";
@@ -34,9 +47,19 @@ export interface ReplayFrame {
   played: { seat: number; card: Card } | null;
 }
 
+/** Wie `ReplayFrame`, aber für die 2-Spieler-Bodensee-Engine. */
+export interface BodenseeReplayFrame {
+  state: BodenseeRoundState;
+  moveSeq: number | null;
+  played: { player: number; card: Card } | null;
+}
+
 export interface ReplayData {
   bundle: ReplayBundle;
+  /** Kreuz/Solo-Frames (4-Sitz-Engine). Bei Bodensee leer. */
   frames: ReplayFrame[];
+  /** Bodensee-Frames (2-Spieler-Engine). Bei Kreuz/Solo leer. */
+  bodenseeFrames: BodenseeReplayFrame[];
   /** Falls die Rekonstruktion fehlschlägt: Fehlertext. */
   error: string | null;
 }
@@ -73,20 +96,31 @@ export function usePublicReplay(gameId: string | undefined) {
 }
 
 /**
- * Liest die Hand pro Sitz aus dem Bundle, indem alle Moves dieses Sitzes
- * eingesammelt werden. Reihenfolge in der Hand spielt für die Engine
- * keine Rolle.
+ * Top-Level-Rekonstruktion: verzweigt nach Spielvariante in den 4-Sitz-Pfad
+ * (Kreuz/Solo) bzw. den 2-Spieler-Pfad (Bodensee) und vereinheitlicht das
+ * Ergebnis im `ReplayData`-Shape (genau eine der beiden Frame-Listen gefüllt).
  */
 export function reconstruct(bundle: ReplayBundle): ReplayData {
-  // Bodensee ist eine eigene Engine (2 Spieler, 18 Stiche, verdeckte
-  // Tisch-Karten) und der initiale Deal wird nicht in der DB persistiert —
-  // der 4-Sitz-Rekonstruktionspfad unten (`newRound`, 4×9 Karten) passt
-  // dafür nicht. Vorerst eine klare Meldung statt eines kryptischen
-  // Engine-Fehlers. (Volle Bodensee-Replays = eigenes Feature.)
   if (bundle.variant === "BODENSEE_2P") {
-    return { bundle, frames: [], error: i18n.t("replay.error.bodenseeUnsupported") };
+    const r = reconstructBodensee(bundle);
+    return { bundle, frames: [], bodenseeFrames: r.bodenseeFrames, error: r.error };
   }
+  const r = reconstructStandard(bundle);
+  return { bundle, frames: r.frames, bodenseeFrames: [], error: r.error };
+}
 
+interface StandardResult {
+  bundle: ReplayBundle;
+  frames: ReplayFrame[];
+  error: string | null;
+}
+
+/**
+ * Kreuz/Solo (4 Sitze): Liest die Hand pro Sitz aus dem Bundle, indem alle
+ * Moves dieses Sitzes eingesammelt werden. Reihenfolge in der Hand spielt für
+ * die Engine keine Rolle.
+ */
+function reconstructStandard(bundle: ReplayBundle): StandardResult {
   const round0 = bundle.rounds[0];
   if (!round0) {
     return { bundle, frames: [], error: i18n.t("replay.error.noRound") };
@@ -113,7 +147,7 @@ export function reconstruct(bundle: ReplayBundle): ReplayData {
     trumpSuit !== undefined
       ? { mode: round0.mode as Variant["mode"], trump_suit: trumpSuit }
       : { mode: round0.mode as Variant["mode"] };
-  const announcement: Announcement = { variant, slalom: false };
+  const announcement: Announcement = { variant, slalom: round0.slalom };
 
   // Bei einem unvollständigen Spiel kennen wir die Initial-Hände nicht
   // vollständig (manche Spieler haben noch Karten). Wir können das Replay
@@ -169,6 +203,81 @@ export function reconstruct(bundle: ReplayBundle): ReplayData {
   }
 
   return { bundle, frames, error: null };
+}
+
+interface BodenseeResult {
+  bundle: ReplayBundle;
+  bodenseeFrames: BodenseeReplayFrame[];
+  error: string | null;
+}
+
+/**
+ * Bodensee (2 Spieler): rekonstruiert die Runde aus dem persistierten Deal
+ * (`{ hands, tables }`) + der Ansage (inkl. Slalom-Flag) + den Moves. Verdeckte
+ * Tisch-Karten stehen in keinem Move — deshalb ist der gespeicherte Deal
+ * zwingend nötig. Alte Bodensee-Spiele von vor der Persistenz-Migration haben
+ * keinen Deal und sind nicht rekonstruierbar (→ klare Meldung).
+ */
+function reconstructBodensee(bundle: ReplayBundle): BodenseeResult {
+  const round0 = bundle.rounds[0];
+  if (!round0) {
+    return { bundle, bodenseeFrames: [], error: i18n.t("replay.error.noRound") };
+  }
+  const deal = round0.bodenseeDeal as
+    | { hands?: Card[][]; tables?: TableStack[][] }
+    | null
+    | undefined;
+  if (!deal || !Array.isArray(deal.hands) || !Array.isArray(deal.tables)) {
+    return { bundle, bodenseeFrames: [], error: i18n.t("replay.error.bodenseeNoDeal") };
+  }
+
+  // Variant + Announcement aus der RoundDecision (mode/trumpSuit + slalom).
+  const trumpSuit = round0.trumpSuit !== null ? SUIT_BY_ID[round0.trumpSuit] : undefined;
+  const variant: Variant =
+    trumpSuit !== undefined
+      ? { mode: round0.mode as Variant["mode"], trump_suit: trumpSuit }
+      : { mode: round0.mode as Variant["mode"] };
+  const announcement: Announcement = { variant, slalom: round0.slalom };
+
+  let state: BodenseeRoundState;
+  try {
+    state = newBodenseeRound({
+      announcement,
+      hands: deal.hands,
+      tables: deal.tables,
+      announcerIdx: round0.starter,
+    });
+  } catch (err) {
+    return {
+      bundle,
+      bodenseeFrames: [],
+      error: i18n.t("replay.error.initFailed", {
+        message: err instanceof Error ? err.message : String(err),
+      }),
+    };
+  }
+
+  const frames: BodenseeReplayFrame[] = [{ state, moveSeq: null, played: null }];
+  for (const m of bundle.moves) {
+    const card = indexToCard(m.cardIndex);
+    try {
+      // Bodensee-Sitze sind 0/1 = Spieler-Index; Reihenfolge via `seq`.
+      state = applyBodenseeMove(state, { player: m.seat, card });
+    } catch (err) {
+      return {
+        bundle,
+        bodenseeFrames: frames,
+        error: i18n.t("replay.error.moveFailed", {
+          seq: m.seq,
+          seat: m.seat,
+          card: `${card.suit}-${card.rank}`,
+          message: err instanceof Error ? err.message : String(err),
+        }),
+      };
+    }
+    frames.push({ state, moveSeq: m.seq, played: { player: m.seat, card } });
+  }
+  return { bundle, bodenseeFrames: frames, error: null };
 }
 
 /**

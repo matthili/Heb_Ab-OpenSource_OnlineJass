@@ -12,6 +12,7 @@ import { useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
 
 import { aiName } from "~/features/game/aiNames";
+import { BodenseeReplayPlayer } from "~/features/replay/BodenseeReplayPlayer";
 import { ReplayPlayer } from "~/features/replay/ReplayPlayer";
 import type { ReplayBundle } from "~/features/replay/types";
 import { useReplay } from "~/features/replay/useReplay";
@@ -91,20 +92,32 @@ function ReplayPage() {
         canShare={data.bundle.seats.some((s) => s.userId === session?.user?.id)}
       />
 
-      {data.frames.length > 0 ? (
-        <ReplayPlayer bundle={data.bundle} frames={data.frames} mySeat={mySeat} />
+      {data.bundle.variant === "BODENSEE_2P" ? (
+        // Bodensee hat eine eigene Engine + eigenes Board (inkl. eigenem
+        // Endstand). Die Team-basierte FinalScoreCard unten passt hier NICHT.
+        data.bodenseeFrames.length > 0 ? (
+          <BodenseeReplayPlayer bundle={data.bundle} frames={data.bodenseeFrames} mySeat={mySeat} />
+        ) : (
+          <p className="text-stone-500">{t("replay.noFrames")}</p>
+        )
       ) : (
-        <p className="text-stone-500">{t("replay.noFrames")}</p>
-      )}
+        <>
+          {data.frames.length > 0 ? (
+            <ReplayPlayer bundle={data.bundle} frames={data.frames} mySeat={mySeat} />
+          ) : (
+            <p className="text-stone-500">{t("replay.noFrames")}</p>
+          )}
 
-      {data.bundle.finalScore && (
-        <FinalScoreCard
-          gameId={gameId}
-          finalScore={data.bundle.finalScore}
-          seats={data.bundle.seats}
-          mySeat={mySeat}
-          t={t}
-        />
+          {data.bundle.finalScore && (
+            <FinalScoreCard
+              gameId={gameId}
+              finalScore={data.bundle.finalScore}
+              seats={data.bundle.seats}
+              mySeat={mySeat}
+              t={t}
+            />
+          )}
+        </>
       )}
     </section>
   );

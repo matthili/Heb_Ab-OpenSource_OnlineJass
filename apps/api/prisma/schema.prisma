@@ -288,6 +288,18 @@ model RoundDecision {
   starter   Int // seat
   weisen    Json // per-Spieler-Liste
 
+  // Slalom-Ansage (Modus alterniert pro Stich). Aus mode/trumpSuit allein
+  // NICHT ableitbar → fürs Replay nötig. Gilt für alle Varianten (Kreuz/Solo
+  // + Bodensee); Default false für Nicht-Slalom-Runden.
+  slalom Boolean @default(false)
+
+  // Bodensee: kompletter initialer Deal als JSON, damit sich die Runde fürs
+  // Replay rekonstruieren lässt (verdeckte Tisch-Karten stehen in keinem Move).
+  // Form: { hands: Card[][], tables: { visible, hidden }[][] }. Null für
+  // Kreuz/Solo (deren Hände stehen implizit in den Moves) und für alte
+  // Bodensee-Spiele von vor dieser Migration.
+  bodenseeDeal Json?
+
   game Game @relation(fields: [gameId], references: [id], onDelete: Cascade)
 
   @@unique([gameId, roundIdx])
