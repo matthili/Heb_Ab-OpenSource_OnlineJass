@@ -100,6 +100,18 @@ export function BodenseeBoard({
       ? { mode: view.playMode, trumpSuit: view.trumpSuit, slalom: view.slalom ?? false }
       : null;
 
+  // Während des Stich-Lingers den Modus des EINGEFRORENEN Stichs zeigen, nicht
+  // den serverseitig schon weitergedrehten `view.playMode`. Bei Slalom ist das
+  // die Gegenrichtung (Oben↔Unten); ohne Slalom unverändert.
+  const watermarkMode: PlayMode | undefined =
+    lingerTrick && view.slalom && view.playMode
+      ? view.playMode === "OBEN"
+        ? "UNTEN"
+        : view.playMode === "UNTEN"
+          ? "OBEN"
+          : view.playMode
+      : view.playMode;
+
   return (
     <div className="space-y-3 relative">
       {announceInfo && <AnnounceOverlay gameId={view.gameId} info={announceInfo} />}
@@ -174,7 +186,9 @@ export function BodenseeBoard({
       {/* Stich-Mitte — mit Modus-Wasserzeichen dahinter (gut sichtbar statt
           des zu kleinen Icons oben). */}
       <section className="relative min-h-[10rem] overflow-hidden rounded-xl bg-emerald-800 px-4 py-5 text-center text-emerald-50 shadow-inner">
-        {announceInfo && <ModeWatermark info={announceInfo} currentMode={view.playMode} />}
+        {announceInfo && (
+          <ModeWatermark info={announceInfo} currentMode={watermarkMode} align="left" />
+        )}
         <div className="relative z-10">
           <TrickArea view={view} seatName={seatName} lingerTrick={lingerTrick} />
         </div>

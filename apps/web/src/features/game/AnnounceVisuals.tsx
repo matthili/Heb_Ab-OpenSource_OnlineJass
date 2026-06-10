@@ -101,6 +101,7 @@ export function AnnounceOverlay({ gameId, info }: { gameId: string; info: Announ
 export function ModeWatermark({
   info,
   currentMode,
+  align = "center",
 }: {
   info: AnnounceModeInfo;
   /**
@@ -109,6 +110,12 @@ export function ModeWatermark({
    * Slalom ungenutzt (das Symbol ist eindeutig).
    */
   currentMode?: PlayMode | undefined;
+  /**
+   * Position des Text-Labels. `center` (Default, 4er): mittig über dem Symbol.
+   * `left` (Bodensee): am linken Rand — sonst kollidiert es mit den Karten und
+   * dem „Letzter Stich"-Text in der kompakten 2-Spieler-Mitte.
+   */
+  align?: "center" | "left";
 }) {
   const { t } = useTranslation();
   const d = announceDisplay(t, info);
@@ -121,7 +128,13 @@ export function ModeWatermark({
         // Zwei Zeilen: „SLALOM" (das angesagte Spiel) + der aktuelle Stich-
         // Modus „OBEN (BOCK)" / „UNTEN (GEISS)". So keine Verwechslung mehr mit
         // einem einheitlichen Bock-/Geiss-Spiel.
-        <div className="flex flex-col items-center gap-1">
+        <div
+          className={
+            align === "left"
+              ? "absolute left-3 top-1/2 flex -translate-y-1/2 flex-col items-start gap-1"
+              : "flex flex-col items-center gap-1"
+          }
+        >
           <span className="rounded bg-black/40 px-3 py-0.5 text-lg font-black uppercase tracking-[0.2em] text-white">
             {t("game.announce.mode.SLALOM")}
           </span>
