@@ -542,7 +542,8 @@
     "youSeat": "You (seat {{n}})",
     "playingArea": "Playing area",
     "stoeck": {
-      "call": "★ Call Peers (Stöcke) (+20)"
+      "call": "★ Call Peers (Stöcke) (+20)",
+      "callTimed": "★ Call Stöck (+20) — {{n}}s left"
     },
     "announce": {
       "running": "Trump announcement in progress",

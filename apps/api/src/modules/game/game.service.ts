@@ -845,6 +845,25 @@ export class GameService {
     return { view: await this.viewForSeat(gameId, seat) };
   }
 
+  /**
+   * Sagt einen noch offenen Stöck automatisch an — genutzt vom Gateway, wenn
+   * die Stöck-Gnadenfrist (Stöck auf der letzten Karte) ohne Klick abläuft.
+   * No-op, wenn die Runde schon vorbei ist, bereits ein Stöck angesagt wurde
+   * oder gerade niemand berechtigt ist.
+   */
+  async autoAnnounceStoeckIfEligible(gameId: string): Promise<void> {
+    let state: RoundState;
+    try {
+      state = await this.loadRoundState(gameId);
+    } catch {
+      return; // kein aktiver RoundState (Runde schon vorbei) → nichts zu tun
+    }
+    if (isRoundDone(state)) return;
+    if (state.stoeck_announced_team !== null) return; // schon angesagt (Klick)
+    if (state.stoeck_eligible_seat === null) return; // niemand (mehr) berechtigt
+    await this.announceStoeckAsSeat(gameId, state.stoeck_eligible_seat);
+  }
+
   // ───────────────────────────────────────────────────────────────────
   // Weisen
   // ───────────────────────────────────────────────────────────────────

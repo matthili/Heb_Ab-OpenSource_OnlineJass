@@ -18,7 +18,7 @@ import { Hand, Scoreboard, Trick } from "@jass/ui";
 import { effectiveVariant } from "@jass/engine";
 import type { Card } from "@jass/engine";
 import { Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
 
 import type { SeatView } from "~/features/lobby/types";
@@ -245,15 +245,11 @@ export function GameBoard({
       />
       {/* Stöck-Button UNTER der Hand — im selben Bereich wie das Weisen
           (User-Feedback: vorher war er oberhalb des Spielfelds, der Weisen-
-          Button aber unten — verwirrend). */}
+          Button aber unten — verwirrend). Auf der letzten Karte (Hand leer)
+          läuft eine sichtbare Frist — danach wird der Stöck automatisch
+          angesagt (Server-Gnadenfrist), damit nichts hängt. */}
       {view.stoeckEligible && (
-        <button
-          type="button"
-          onClick={onAnnounceStoeck}
-          className="w-full rounded-lg bg-jass-yellow border-2 border-jass-yellowDark px-4 py-3 text-jass-ink font-bold text-lg shadow-md hover:bg-jass-yellow/90 jass-your-turn-glow"
-        >
-          {t("game.stoeck.call")}
-        </button>
+        <StoeckButton lastCard={view.hand.length === 0} onCall={onAnnounceStoeck} />
       )}
       {/* Weise-Panel UNTER der Hand: User-Feedback aus erster Demo. Der
           Button war oberhalb der Spielfläche zu weit weg von den Karten,
@@ -381,6 +377,31 @@ function CutPhase({
         </button>
       </div>
     </section>
+  );
+}
+
+/**
+ * „Stöck rufen"-Button. Auf der letzten Karte (`lastCard`) zeigt er eine
+ * ablaufende Frist (rein kosmetisch, Server-Gnadenfrist ist maßgeblich) —
+ * danach sagt der Server den Stöck automatisch an, damit die Runde nicht hängt.
+ */
+function StoeckButton({ lastCard, onCall }: { lastCard: boolean; onCall: () => void }) {
+  const { t } = useTranslation();
+  const [remaining, setRemaining] = useState(7);
+  useEffect(() => {
+    if (!lastCard) return;
+    setRemaining(7);
+    const id = setInterval(() => setRemaining((r) => Math.max(0, r - 1)), 1000);
+    return () => clearInterval(id);
+  }, [lastCard]);
+  return (
+    <button
+      type="button"
+      onClick={onCall}
+      className="jass-your-turn-glow w-full rounded-lg border-2 border-jass-yellowDark bg-jass-yellow px-4 py-3 text-lg font-bold text-jass-ink shadow-md hover:bg-jass-yellow/90"
+    >
+      {lastCard ? t("game.stoeck.callTimed", { n: remaining }) : t("game.stoeck.call")}
+    </button>
   );
 }
 

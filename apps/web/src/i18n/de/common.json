@@ -542,7 +542,8 @@
     "youSeat": "Du (Sitz {{n}})",
     "playingArea": "Spielfläche",
     "stoeck": {
-      "call": "★ Stöck rufen (+20)"
+      "call": "★ Stöck rufen (+20)",
+      "callTimed": "★ Stöck rufen (+20) — noch {{n}}s"
     },
     "announce": {
       "running": "Trumpf-Ansage läuft",

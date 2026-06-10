@@ -98,6 +98,17 @@ export class GameGateway
     { timer: NodeJS.Timeout; gameId: string; userId: string }
   >();
 
+  /**
+   * Stöck-Gnadenfrist: Spielt ein Mensch die zweite Stöck-Karte als LETZTE
+   * Karte, hat er keine Folgekarte mehr, um den „Stöck rufen"-Button zu nutzen
+   * — und die KIs würden die Runde im selben Lock-Block sofort beenden. Statt
+   * dessen halten wir die Runde kurz an (Button bleibt klickbar) und beenden
+   * sie nach `STOECK_GRACE_MS` automatisch; klickt der Spieler vorher, beenden
+   * wir sofort. In-memory wie oben — ein Crash beendet die Runde notfalls über
+   * den normalen Pfad (driveAIsLoop ist auf fertige Runden idempotent).
+   */
+  private readonly stoeckGraceTimers = new Map<string, NodeJS.Timeout>();
+
   constructor(
     private readonly games: GameService,
     private readonly bodenseeGames: BodenseeGameService,
@@ -568,18 +579,19 @@ export class GameGateway
           suit: card.suit as never,
           rank: card.rank as never,
         });
-        // Stöck auf der ALLERLETZTEN Karte: der Spieler hat danach keine
-        // Folgekarte mehr, um den „Stöck rufen"-Button zu nutzen, und die KIs
-        // beenden die Runde im selben Lock-Block sofort → der Button käme nie
-        // rechtzeitig. Da es auf der letzten Karte keinen Grund gibt, NICHT zu
-        // rufen (beide Stöck-Karten liegen ohnehin offen), sagen wir ihn
-        // automatisch an, damit die verdienten +20 nicht verfallen.
-        if (view.status !== "finished" && view.stoeckEligible && view.hand.length === 0) {
-          await this.games.announceStoeckAsUser(gameId, userId);
-        }
         await this.broadcastState(gameId);
         if (view.status === "finished") {
           this.server.to(roomKey(gameId)).emit("game:ended", { finalScore: view.finalScore });
+          return;
+        }
+        // Stöck auf der ALLERLETZTEN Karte: der Spieler hat danach keine
+        // Folgekarte mehr, um den „Stöck rufen"-Button zu nutzen, und die KIs
+        // würden die Runde im selben Lock-Block sofort beenden. Wir halten die
+        // Runde daher an (Button bleibt klickbar) und beenden nach einer
+        // Gnadenfrist automatisch — oder sofort, sobald der Spieler ruft
+        // (siehe onAnnounceStoeck). KIs hier NICHT weiterlaufen lassen.
+        if (view.stoeckEligible && view.hand.length === 0) {
+          this.scheduleStoeckGrace(gameId);
           return;
         }
         await this.driveAIsLoop(gameId);
@@ -678,6 +690,15 @@ export class GameGateway
       await this.locks.withLock(gameId, async () => {
         await this.games.announceStoeckAsUser(gameId, userId);
         await this.broadcastState(gameId);
+        // Kam der Klick während der Stöck-Gnadenfrist (letzte Karte): Timer
+        // abbrechen und die Runde sofort zu Ende treiben, statt die Frist
+        // abzuwarten.
+        const grace = this.stoeckGraceTimers.get(gameId);
+        if (grace) {
+          clearTimeout(grace);
+          this.stoeckGraceTimers.delete(gameId);
+          await this.driveAIsLoop(gameId);
+        }
       });
     } catch (err) {
       this.fail(socket, this.errorMessage(err));
@@ -744,6 +765,31 @@ export class GameGateway
     } catch (err) {
       this.fail(socket, this.errorMessage(err));
     }
+  }
+
+  /**
+   * Stöck-Gnadenfrist starten: hält die Runde an (Lock ist beim Aufruf schon
+   * freigegeben, da onMove `return`t), lässt den „Stöck rufen"-Button stehen
+   * und beendet die Runde nach `STOECK_GRACE_MS` automatisch — der Stöck wird
+   * dann angesagt (auf der letzten Karte kein Grund dagegen). Klickt der
+   * Spieler vorher, bricht `onAnnounceStoeck` den Timer ab und beendet sofort.
+   */
+  private scheduleStoeckGrace(gameId: string): void {
+    const existing = this.stoeckGraceTimers.get(gameId);
+    if (existing) clearTimeout(existing);
+    const timer = setTimeout(() => {
+      this.stoeckGraceTimers.delete(gameId);
+      void this.locks
+        .withLock(gameId, async () => {
+          await this.games.autoAnnounceStoeckIfEligible(gameId);
+          await this.broadcastState(gameId);
+          await this.driveAIsLoop(gameId);
+        })
+        .catch((err) =>
+          this.log.error({ gameId, err }, "Stöck-Gnadenfrist-Abschluss fehlgeschlagen")
+        );
+    }, STOECK_GRACE_MS);
+    this.stoeckGraceTimers.set(gameId, timer);
   }
 
   /**
@@ -1074,6 +1120,12 @@ function isBodenseeAnnouncement(v: unknown): v is Announcement {
 function aiStepDelayMs(): number {
   return Number(process.env["AI_STEP_DELAY_MS"] ?? "1500");
 }
+
+/**
+ * Wie lange der „Stöck rufen"-Button auf der letzten Karte klickbar bleibt,
+ * bevor der Stöck automatisch angesagt wird und die Runde endet (7 s).
+ */
+const STOECK_GRACE_MS = 7000;
 
 function sleep(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
