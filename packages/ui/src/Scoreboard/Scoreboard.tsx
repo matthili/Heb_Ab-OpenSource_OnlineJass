@@ -69,7 +69,7 @@ const MODE_LABEL: Record<PlayMode, string> = {
  * Returnt das Delta + einen `seq`-Counter, damit jeder Anstieg eine
  * neue Animation auslöst (React remountet das `key`-Element).
  */
-function useScorePop(value: number): { delta: number; seq: number } | null {
+export function useScorePop(value: number): { delta: number; seq: number } | null {
   const prevRef = useRef(value);
   const [pop, setPop] = useState<{ delta: number; seq: number } | null>(null);
   const seqRef = useRef(0);

@@ -14,8 +14,10 @@ export { Hand, type HandProps } from "./Hand/Hand.js";
 export { Trick, type TrickProps } from "./Trick/Trick.js";
 export {
   Scoreboard,
+  useScorePop,
   type ScoreboardProps,
   type SoloScoreEntryData,
 } from "./Scoreboard/Scoreboard.js";
+export { useAnimatedNumber } from "./Scoreboard/useAnimatedNumber.js";
 
 export const UI_PACKAGE_VERSION = "0.0.2-m7e";

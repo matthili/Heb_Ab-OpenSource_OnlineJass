@@ -166,9 +166,11 @@ function PlayingArea({
 }) {
   return (
     <div
-      // Gleiches Grid wie das laufende Spiel (`GameBoard`): die mittlere Zeile
-      // (`1fr`) trägt den Trick, die Sitz-Labels sitzen in den auto-Rändern.
-      className="grid grid-cols-3 grid-rows-[auto_1fr_auto] gap-2 min-h-[28rem] bg-emerald-50 border border-emerald-200 rounded-lg p-4 relative"
+      // Gleiches Grid + FIXE Höhe wie das laufende Spiel (`GameBoard`): die
+      // mittlere Zeile (`1fr`) trägt den Trick, die Sitz-Labels sitzen in den
+      // auto-Rändern. Die feste `h-[clamp(...)]`-Höhe verhindert, dass das
+      // Spielfeld zwischen den Frames „hüpft" (sonst skaliert es mit dem Inhalt).
+      className="grid grid-cols-3 grid-rows-[auto_1fr_auto] gap-2 min-h-[32rem] h-[clamp(32rem,65vh,48rem)] bg-emerald-50 border border-emerald-200 rounded-lg p-4 relative"
       role="region"
       aria-label={t("replay.player.areaAria")}
     >

@@ -21,7 +21,7 @@ import {
   type PlayMode,
   type Suit,
 } from "@jass/engine";
-import { Card } from "@jass/ui";
+import { Card, useAnimatedNumber, useScorePop } from "@jass/ui";
 import type { TFunction } from "i18next";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -114,10 +114,12 @@ export function BodenseeReplayPlayer({ bundle, frames, mySeat }: Props) {
           {slalom ? t("game.announce.mode.SLALOM") : modeLabel(t, mode)}
           {!slalom && trumpSuit ? ` ${suitLabel(t, trumpSuit)}` : ""}
         </span>
-        <span className="tabular-nums text-stone-700">
-          {seatName(mySeat)} {state.player_card_points[mySeat] ?? 0}
-          {" : "}
-          {state.player_card_points[oppSeat] ?? 0} {seatName(oppSeat)}
+        <span className="flex items-center gap-1.5 text-stone-700">
+          <span>{seatName(mySeat)}</span>
+          <ScoreValue value={state.player_card_points[mySeat] ?? 0} />
+          <span className="text-stone-400">:</span>
+          <ScoreValue value={state.player_card_points[oppSeat] ?? 0} />
+          <span>{seatName(oppSeat)}</span>
         </span>
       </div>
 
@@ -449,4 +451,28 @@ function modeLabel(t: TFunction, mode: PlayMode): string {
 }
 function suitLabel(t: TFunction, suit: Suit): string {
   return t(`game.announce.suit.${suit}`);
+}
+
+/**
+ * Eine Punktzahl mit weichem Hochzählen + „+X"-Pop bei Anstieg — dieselben
+ * Hooks wie das Kreuz-Scoreboard, damit der Bodensee-Replay denselben feinen
+ * Effekt zeigt. Beim Zurückspulen sinkt der Wert → kein Pop (useScorePop
+ * reagiert nur auf Anstieg).
+ */
+function ScoreValue({ value }: { value: number }) {
+  const animated = useAnimatedNumber(value);
+  const pop = useScorePop(value);
+  return (
+    <span className="relative inline-block">
+      <strong className="tabular-nums text-stone-900">{animated}</strong>
+      {pop && (
+        <span
+          key={pop.seq}
+          className="jass-score-pop absolute -top-1 left-1/2 -translate-x-1/2 font-semibold text-base text-jass-green"
+        >
+          +{pop.delta}
+        </span>
+      )}
+    </span>
+  );
 }
