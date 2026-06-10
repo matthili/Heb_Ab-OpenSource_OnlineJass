@@ -14,7 +14,7 @@ import { Trans, useTranslation } from "react-i18next";
 import { aiName } from "~/features/game/aiNames";
 import { BodenseeReplayPlayer } from "~/features/replay/BodenseeReplayPlayer";
 import { ReplayPlayer } from "~/features/replay/ReplayPlayer";
-import type { ReplayBundle } from "~/features/replay/types";
+import type { ReplayBundle, ReplayFinalScore } from "~/features/replay/types";
 import { useReplay } from "~/features/replay/useReplay";
 import { api } from "~/lib/api";
 import { useSession } from "~/lib/auth-client";
@@ -203,7 +203,7 @@ function FinalScoreCard({
   t,
 }: {
   gameId: string;
-  finalScore: { team_card_points: number[]; matsch_team: number | null };
+  finalScore: ReplayFinalScore;
   seats: { seat: number; displayName: string | null; aiSeatType: string | null }[];
   mySeat: number;
   t: TFunction;
@@ -213,16 +213,19 @@ function FinalScoreCard({
     finalScore.team_card_points[0] ?? 0,
     finalScore.team_card_points[1] ?? 0,
   ];
+  const seatName = (seat: number): string => {
+    const s = seats.find((x) => x.seat === seat);
+    return (
+      s?.displayName ??
+      (s?.aiSeatType
+        ? aiName(`${gameId}:${seat}`, s.aiSeatType)
+        : t("replay.player.seatFallback", { n: seat }))
+    );
+  };
   const seatsInTeam = (team: number): string =>
     seats
       .filter((s) => s.seat % 2 === team)
-      .map(
-        (s) =>
-          s.displayName ??
-          (s.aiSeatType
-            ? aiName(`${gameId}:${s.seat}`, s.aiSeatType)
-            : t("replay.player.seatFallback", { n: s.seat }))
-      )
+      .map((s) => seatName(s.seat))
       .join(" + ");
 
   return (
@@ -243,6 +246,53 @@ function FinalScoreCard({
           ))}
         </tbody>
       </table>
+
+      {/* Verfallene Punkte (Sack / kein Stich) — nur wenn eine Regel griff. */}
+      {finalScore.voided && finalScore.voided.length > 0 && (
+        <div className="mt-3 space-y-2">
+          {finalScore.voided.map((v, i) => (
+            <div
+              key={i}
+              className="rounded border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900"
+            >
+              <p className="font-semibold">
+                {v.reason === "sack" ? t("game.void.sackTitle") : t("game.void.noTrickTitle")}
+                {" — "}
+                {seatsInTeam(v.team)}
+              </p>
+              <p className="text-xs">
+                {v.reason === "sack"
+                  ? t("game.void.sackBody", { cardPoints: v.cardPoints })
+                  : t("game.void.noTrickBody", { lost: v.lostPoints })}
+              </p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Angesagte Weis — pro Sitz aufgelistet. */}
+      {finalScore.weis && finalScore.weis.length > 0 && (
+        <div className="mt-3">
+          <h3 className="mb-1 text-sm font-semibold text-stone-700">
+            {t("replay.finalScore.weisTitle")}
+          </h3>
+          <ul className="space-y-0.5 text-sm text-stone-700">
+            {finalScore.weis.map((w, i) => (
+              <li key={i}>
+                {seatName(w.seat)}: {weisKindLabel(t, w.kind)} (
+                {t("game.weisen.points", { points: w.points })})
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
+}
+
+/** WeisKind → lesbares Label, wiederverwendet die Spiel-i18n-Keys. */
+function weisKindLabel(t: TFunction, kind: string): string {
+  if (kind === "FOUR_OF_A_KIND") return t("game.weisen.kindFourOfAKind");
+  const m = /^SEQUENCE_(\d)$/.exec(kind);
+  return m ? t("game.weisen.kindSequence", { n: Number(m[1]) }) : kind;
 }

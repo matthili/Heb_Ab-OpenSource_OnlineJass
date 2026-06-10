@@ -852,6 +852,7 @@
     },
     "finalScore": {
       "title": "Endstand",
+      "weisTitle": "Angesagte Weis",
       "teamRow": "Team {{team}} ({{players}})",
       "matsch": "Matsch!"
     }

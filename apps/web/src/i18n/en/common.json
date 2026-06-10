@@ -852,6 +852,7 @@
     },
     "finalScore": {
       "title": "Final score",
+      "weisTitle": "Declared melds",
       "teamRow": "Team {{team}} ({{players}})",
       "matsch": "Matsch!"
     }

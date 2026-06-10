@@ -731,6 +731,13 @@ export class GameService {
     // das **Punkteziel** über die kumulativen Scores erreicht wurde.
     if (isRoundDone(nextState)) {
       const score = finalRoundScore(nextState);
+      // Angesagte Weis pro Sitz fürs Replay flach mitspeichern (kind + Punkte
+      // reichen für die Auflistung). Verfallene Punkte (Sack / kein Stich) aus
+      // dem score.voided-Array übernehmen — sonst geht beides nach Spielende
+      // verloren (Redis-State ist weg, im reinen Endbetrag nicht erkennbar).
+      const weis = nextState.weisen_declarations.flatMap((decls, seat) =>
+        decls.map((d) => ({ seat, kind: d.kind, points: d.points }))
+      );
       const updated = await this.prisma.game.update({
         where: { id: gameId },
         data: {
@@ -739,6 +746,10 @@ export class GameService {
             team_card_points: [...score.team_card_points],
             matsch_team: score.matsch_team,
             trick_winners: [...score.trick_winners],
+            ...(weis.length > 0 ? { weis } : {}),
+            ...(score.voided && score.voided.length > 0
+              ? { voided: score.voided.map((v) => ({ ...v })) }
+              : {}),
           }),
         },
         select: { tableId: true },

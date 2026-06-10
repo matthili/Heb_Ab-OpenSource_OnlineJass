@@ -60,6 +60,10 @@ export interface ReplayFinalScore {
   team_card_points: number[];
   matsch_team: number | null;
   trick_winners: number[];
+  /** Angesagte Weis pro Sitz (nur Kreuz/Solo, optional bei alten Spielen). */
+  weis?: { seat: number; kind: string; points: number }[];
+  /** Verfallene Punkte (Sack / kein Stich) pro Team (optional). */
+  voided?: { team: number; reason: "sack" | "no_trick"; cardPoints: number; lostPoints: number }[];
 }
 
 export interface ReplayBundle {
