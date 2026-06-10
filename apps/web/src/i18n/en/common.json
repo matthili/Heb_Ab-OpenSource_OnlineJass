@@ -801,7 +801,8 @@
       "invalidSeat": "Replay: invalid seat {{seat}}.",
       "incomplete": "Replay: game is not finished yet ({{moves}}/36 moves).",
       "initFailed": "Replay: could not reconstruct the initial state — {{message}}",
-      "moveFailed": "Replay: move {{seq}} (seat {{seat}}, card {{card}}) failed — {{message}}"
+      "moveFailed": "Replay: move {{seq}} (seat {{seat}}, card {{card}}) failed — {{message}}",
+      "bodenseeUnsupported": "Bodensee replays are not supported yet — a Bodensee game can't be replayed step by step at the moment."
     },
     "rank": {
       "SECHS": "Six",
@@ -833,7 +834,13 @@
       "moveProgress": "Move {{seq}} / {{total}}",
       "movePlays": " — seat {{seat}} plays {{suit}}-{{rank}}",
       "moveListSummary": "Move list ({{count}})",
-      "moveListItem": "#{{seq}} — Trick {{trick}}, {{name}}: card index {{cardIndex}}"
+      "moveListItem": "#{{seq}} — Trick {{trick}}, {{name}}: card index {{cardIndex}}",
+      "play": "Play",
+      "pause": "Pause",
+      "speed": "Speed",
+      "speedSlow": "Slow (2 s/card)",
+      "speedNormal": "Normal (1 s/card)",
+      "speedFast": "Fast (0.5 s/card)"
     },
     "finalScore": {
       "title": "Final score",

@@ -14,7 +14,7 @@
  *     übergeben den Winner nur, wenn der Trick komplett ist)
  *   - Weisen-Anzeige (kommt mit der Weisen-Implementation)
  */
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { TFunction } from "i18next";
 import { useTranslation } from "react-i18next";
 import { Trick, Scoreboard } from "@jass/ui";
@@ -22,6 +22,7 @@ import type { Card } from "@jass/engine";
 import { trickWinner } from "@jass/engine";
 
 import { aiName } from "~/features/game/aiNames";
+import { relativeSlot, SEAT_LABEL_POS } from "~/features/game/seat-layout";
 import type { ReplayBundle } from "./types";
 import type { ReplayFrame } from "./useReplay";
 
@@ -35,11 +36,45 @@ interface Props {
 export function ReplayPlayer({ bundle, frames, mySeat }: Props) {
   const { t } = useTranslation();
   const [frameIdx, setFrameIdx] = useState(frames.length - 1); // Start beim Endstand
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [speedMs, setSpeedMs] = useState(1000); // 1 s/Karte = 4 s pro Stich
+
+  // Auto-Play: solange `isPlaying`, alle `speedMs` einen Frame weiter. Der
+  // `setTimeout` re-scheduled sich über die `frameIdx`-Dependency selbst und
+  // stoppt am letzten Frame automatisch. Hooks stehen bewusst VOR dem
+  // Early-Return unten (Rules of Hooks).
+  useEffect(() => {
+    if (!isPlaying) return;
+    if (frameIdx >= frames.length - 1) {
+      setIsPlaying(false);
+      return;
+    }
+    const id = setTimeout(() => setFrameIdx((i) => Math.min(frames.length - 1, i + 1)), speedMs);
+    return () => clearTimeout(id);
+  }, [isPlaying, frameIdx, speedMs, frames.length]);
+
   const frame = frames[frameIdx];
 
   if (!frame) {
     return <div className="text-sm text-stone-600">{t("replay.noPlayerFrames")}</div>;
   }
+
+  // Play am Ende startet wieder von vorn; sonst toggelt es Play/Pause.
+  const togglePlay = () => {
+    if (!isPlaying && frameIdx >= frames.length - 1) {
+      setFrameIdx(0);
+      setIsPlaying(true);
+      return;
+    }
+    setIsPlaying((p) => !p);
+  };
+
+  // Manuelles Springen (Slider, Schritt-Buttons, Zug-Liste) pausiert das
+  // Auto-Play — sonst kämpfen Timer und Nutzer um den Frame-Index.
+  const seek = (i: number) => {
+    setIsPlaying(false);
+    setFrameIdx(i);
+  };
 
   const variant = frame.state.variant;
   const trickCards = frame.state.current_trick_cards;
@@ -81,7 +116,11 @@ export function ReplayPlayer({ bundle, frames, mySeat }: Props) {
         totalFrames={frames.length}
         currentMove={frame.played}
         currentMoveSeq={frame.moveSeq}
-        onChange={setFrameIdx}
+        isPlaying={isPlaying}
+        speedMs={speedMs}
+        onChange={seek}
+        onTogglePlay={togglePlay}
+        onSpeedChange={setSpeedMs}
         t={t}
       />
 
@@ -90,7 +129,7 @@ export function ReplayPlayer({ bundle, frames, mySeat }: Props) {
         moves={bundle.moves}
         seats={bundle.seats}
         currentSeq={frame.moveSeq}
-        onJump={(seq) => setFrameIdx(seq)}
+        onJump={(seq) => seek(seq)}
         t={t}
       />
     </div>
@@ -114,7 +153,9 @@ function PlayingArea({
 }) {
   return (
     <div
-      className="grid grid-cols-3 grid-rows-3 gap-2 min-h-[20rem] bg-emerald-50 border border-emerald-200 rounded-lg p-4 relative"
+      // Gleiches Grid wie das laufende Spiel (`GameBoard`): die mittlere Zeile
+      // (`1fr`) trägt den Trick, die Sitz-Labels sitzen in den auto-Rändern.
+      className="grid grid-cols-3 grid-rows-[auto_1fr_auto] gap-2 min-h-[28rem] bg-emerald-50 border border-emerald-200 rounded-lg p-4 relative"
       role="region"
       aria-label={t("replay.player.areaAria")}
     >
@@ -129,7 +170,7 @@ function PlayingArea({
         return (
           <div
             key={s.seat}
-            className={`${SEAT_SLOT_CLASS[slot]} text-sm rounded bg-white text-stone-700 px-2 py-1 z-10`}
+            className={`${SEAT_LABEL_POS[slot]} text-sm rounded bg-white text-stone-700 px-2 py-1 z-10 shadow-sm whitespace-nowrap`}
           >
             {label}
           </div>
@@ -137,7 +178,7 @@ function PlayingArea({
       })}
       {/* Eigener Sitz-Label am unteren Rand */}
       <div
-        className={`${SEAT_SLOT_CLASS.bottom} text-sm rounded bg-stone-900 text-white px-2 py-1 z-10`}
+        className={`${SEAT_LABEL_POS.bottom} text-sm rounded bg-stone-900 text-white px-2 py-1 z-10 shadow-sm whitespace-nowrap`}
       >
         {t("replay.player.youSuffix", {
           name:
@@ -146,7 +187,7 @@ function PlayingArea({
         })}
       </div>
 
-      <div className="row-start-1 row-end-4 col-start-1 col-end-4 pointer-events-none">
+      <div className="row-start-1 row-end-4 col-start-1 col-end-4 pointer-events-none relative z-10">
         <Trick
           cards={trickCards}
           starter={trickStarter}
@@ -163,16 +204,25 @@ function ReplayControls({
   totalFrames,
   currentMove,
   currentMoveSeq,
+  isPlaying,
+  speedMs,
   onChange,
+  onTogglePlay,
+  onSpeedChange,
   t,
 }: {
   frameIdx: number;
   totalFrames: number;
   currentMove: { seat: number; card: Card } | null;
   currentMoveSeq: number | null;
+  isPlaying: boolean;
+  speedMs: number;
   onChange: (i: number) => void;
+  onTogglePlay: () => void;
+  onSpeedChange: (ms: number) => void;
   t: TFunction;
 }) {
+  const atEnd = frameIdx === totalFrames - 1;
   return (
     <div className="rounded border border-stone-200 bg-white p-3 space-y-2">
       <div className="flex items-center gap-2">
@@ -194,6 +244,17 @@ function ReplayControls({
         >
           ◀
         </button>
+        {/* Play/Pause — die primäre Steuerung, daher farblich abgesetzt und
+            mit ⏸/⏵ klar von den ◀▶-Schritt-Buttons unterscheidbar. */}
+        <button
+          type="button"
+          onClick={onTogglePlay}
+          className="rounded bg-stone-900 px-3 py-1 text-sm text-white hover:bg-stone-700"
+          aria-label={isPlaying ? t("replay.player.pause") : t("replay.player.play")}
+          aria-pressed={isPlaying}
+        >
+          {isPlaying ? "⏸" : atEnd ? "↻" : "⏵"}
+        </button>
         <input
           type="range"
           min={0}
@@ -207,7 +268,7 @@ function ReplayControls({
         <button
           type="button"
           onClick={() => onChange(Math.min(totalFrames - 1, frameIdx + 1))}
-          disabled={frameIdx === totalFrames - 1}
+          disabled={atEnd}
           className="rounded border border-stone-300 px-2 py-1 text-sm disabled:opacity-40"
           aria-label={t("replay.player.stepForward")}
         >
@@ -216,28 +277,40 @@ function ReplayControls({
         <button
           type="button"
           onClick={() => onChange(totalFrames - 1)}
-          disabled={frameIdx === totalFrames - 1}
+          disabled={atEnd}
           className="rounded border border-stone-300 px-2 py-1 text-sm disabled:opacity-40"
           aria-label={t("replay.player.toEnd")}
         >
           ⏭
         </button>
       </div>
-      <div className="text-xs text-stone-600">
-        {currentMoveSeq === null ? (
-          <span>{t("replay.player.initialState")}</span>
-        ) : (
-          <span>
-            {t("replay.player.moveProgress", { seq: currentMoveSeq, total: totalFrames - 1 })}
-            {currentMove
-              ? t("replay.player.movePlays", {
-                  seat: currentMove.seat,
-                  suit: t(`game.announce.suit.${currentMove.card.suit}`),
-                  rank: t(`replay.rank.${currentMove.card.rank}`),
-                })
-              : ""}
-          </span>
-        )}
+      <div className="flex items-center justify-between gap-2">
+        <div className="text-xs text-stone-600">
+          {currentMoveSeq === null ? (
+            <span>{t("replay.player.initialState")}</span>
+          ) : (
+            <span>
+              {t("replay.player.moveProgress", { seq: currentMoveSeq, total: totalFrames - 1 })}
+              {currentMove
+                ? t("replay.player.movePlays", {
+                    seat: currentMove.seat,
+                    suit: t(`game.announce.suit.${currentMove.card.suit}`),
+                    rank: t(`replay.rank.${currentMove.card.rank}`),
+                  })
+                : ""}
+            </span>
+          )}
+        </div>
+        <select
+          value={speedMs}
+          onChange={(e) => onSpeedChange(parseInt(e.currentTarget.value, 10))}
+          className="rounded border border-stone-300 px-1.5 py-1 text-xs text-stone-700"
+          aria-label={t("replay.player.speed")}
+        >
+          <option value={2000}>{t("replay.player.speedSlow")}</option>
+          <option value={1000}>{t("replay.player.speedNormal")}</option>
+          <option value={500}>{t("replay.player.speedFast")}</option>
+        </select>
       </div>
     </div>
   );
@@ -297,30 +370,4 @@ function MoveList({
       </ol>
     </details>
   );
-}
-
-// ─── Layout-Helpers (eigene Kopie, weil Replay andere Sitz-Beschriftung
-//     hat als das laufende Spiel — nur 4-Sitz-Kreuz-Jass) ──────────────
-
-type RelativeSlot = "top" | "left" | "right" | "bottom";
-
-const SEAT_SLOT_CLASS: Record<RelativeSlot, string> = {
-  top: "col-start-2 row-start-1 justify-self-center",
-  left: "col-start-1 row-start-2 self-center",
-  right: "col-start-3 row-start-2 self-center justify-self-end",
-  bottom: "col-start-2 row-start-3 justify-self-center self-end",
-};
-
-function relativeSlot(seat: number, mySeat: number): RelativeSlot {
-  const diff = (seat - mySeat + 4) % 4;
-  switch (diff) {
-    case 1:
-      return "left";
-    case 2:
-      return "top";
-    case 3:
-      return "right";
-    default:
-      return "bottom";
-  }
 }

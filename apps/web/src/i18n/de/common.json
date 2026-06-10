@@ -801,7 +801,8 @@
       "invalidSeat": "Replay: ungültiger Sitz {{seat}}.",
       "incomplete": "Replay: Spiel ist noch nicht abgeschlossen ({{moves}}/36 Moves).",
       "initFailed": "Replay: Initial-State konnte nicht rekonstruiert werden — {{message}}",
-      "moveFailed": "Replay: Move {{seq}} (Sitz {{seat}}, Karte {{card}}) fehlgeschlagen — {{message}}"
+      "moveFailed": "Replay: Move {{seq}} (Sitz {{seat}}, Karte {{card}}) fehlgeschlagen — {{message}}",
+      "bodenseeUnsupported": "Bodensee-Replays werden noch nicht unterstützt — der Verlauf einer Bodensee-Partie kann derzeit nicht Schritt für Schritt nachgespielt werden."
     },
     "rank": {
       "SECHS": "Sechs",
@@ -833,7 +834,13 @@
       "moveProgress": "Zug {{seq}} / {{total}}",
       "movePlays": " — Sitz {{seat}} spielt {{suit}}-{{rank}}",
       "moveListSummary": "Zug-Liste ({{count}})",
-      "moveListItem": "#{{seq}} — Stich {{trick}}, {{name}}: Karte-Index {{cardIndex}}"
+      "moveListItem": "#{{seq}} — Stich {{trick}}, {{name}}: Karte-Index {{cardIndex}}",
+      "play": "Abspielen",
+      "pause": "Pause",
+      "speed": "Tempo",
+      "speedSlow": "Langsam (2 s/Karte)",
+      "speedNormal": "Normal (1 s/Karte)",
+      "speedFast": "Schnell (0,5 s/Karte)"
     },
     "finalScore": {
       "title": "Endstand",

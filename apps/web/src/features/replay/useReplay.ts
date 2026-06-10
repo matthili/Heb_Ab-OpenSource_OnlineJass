@@ -78,6 +78,15 @@ export function usePublicReplay(gameId: string | undefined) {
  * keine Rolle.
  */
 export function reconstruct(bundle: ReplayBundle): ReplayData {
+  // Bodensee ist eine eigene Engine (2 Spieler, 18 Stiche, verdeckte
+  // Tisch-Karten) und der initiale Deal wird nicht in der DB persistiert —
+  // der 4-Sitz-Rekonstruktionspfad unten (`newRound`, 4×9 Karten) passt
+  // dafür nicht. Vorerst eine klare Meldung statt eines kryptischen
+  // Engine-Fehlers. (Volle Bodensee-Replays = eigenes Feature.)
+  if (bundle.variant === "BODENSEE_2P") {
+    return { bundle, frames: [], error: i18n.t("replay.error.bodenseeUnsupported") };
+  }
+
   const round0 = bundle.rounds[0];
   if (!round0) {
     return { bundle, frames: [], error: i18n.t("replay.error.noRound") };
