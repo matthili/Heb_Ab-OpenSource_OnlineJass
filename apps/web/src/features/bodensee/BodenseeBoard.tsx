@@ -182,24 +182,28 @@ export function BodenseeBoard({
             })}
           </span>
         </div>
-        <div className="flex flex-wrap items-end gap-1">
+        {/* min-h-14 reserviert die Höhe einer xs-Karte, damit die Hand-Zeile
+            nicht kollabiert, wenn der Gegner keine Handkarten mehr hat. */}
+        <div className="flex min-h-14 flex-wrap items-end gap-1">
           {Array.from({ length: view.opponentHandCount }).map((_, i) => (
             <FaceDownCard key={`oh-${i}`} size="xs" />
           ))}
         </div>
-        {view.opponentTable.some((s) => s.visible !== null || s.hasHidden) && (
-          <div className="flex flex-wrap items-end gap-1.5 border-t border-jass-paperEdge pt-2">
-            {view.opponentTable.map((stack, i) => (
-              <TableStackSlot
-                key={`opp-stack-${i}`}
-                stack={stack}
-                playable={false}
-                isLegal={NEVER_LEGAL}
-                onPlay={NOOP_PLAY}
-              />
-            ))}
-          </div>
-        )}
+        {/* Tisch-Zeile IMMER rendern (wie der eigene Tisch) — auch wenn alle
+            Stapel leer sind. Sonst schrumpft das Gegner-Rechteck gegen Spielende
+            (keine Tischkarten mehr → ganze Zeile wäre weg). Leere Stapel zeigt
+            TableStackSlot als Platzhalter, die Höhe bleibt konstant. */}
+        <div className="flex flex-wrap items-end gap-1.5 border-t border-jass-paperEdge pt-2">
+          {view.opponentTable.map((stack, i) => (
+            <TableStackSlot
+              key={`opp-stack-${i}`}
+              stack={stack}
+              playable={false}
+              isLegal={NEVER_LEGAL}
+              onPlay={NOOP_PLAY}
+            />
+          ))}
+        </div>
       </section>
 
       {/* Stich-Mitte — mit Modus-Wasserzeichen dahinter (gut sichtbar statt
