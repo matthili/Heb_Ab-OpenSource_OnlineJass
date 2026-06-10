@@ -22,7 +22,7 @@ import {
 } from "@jass/engine";
 import { Card } from "@jass/ui";
 import type { TFunction } from "i18next";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
 
 import { seatDisplayName } from "~/features/game/aiNames";
@@ -93,6 +93,25 @@ export function BodenseeBoard({
   // an — die KI hat ihre Anspielkarte serverseitig evtl. schon gelegt, nur die
   // Mitte zeigt noch den fertigen Stich. Das würde die Anspielfarbe verraten.
   const canPlay = view.status === "playing" && view.myTurn && !movePending && !lingerTrick;
+
+  // „Du bist am Zug" nach jedem eigenen Wurf 2 s ausblenden und dann neu
+  // erscheinen lassen. Sonst merkt man beim „wieder gestochen" nicht, dass ein
+  // neuer Zug begonnen hat — die KI antwortet so schnell, dass `myTurn` quasi
+  // durchgehend true bleibt und der Text einfach stehen bliebe.
+  const [playTick, setPlayTick] = useState(0);
+  const [turnHidden, setTurnHidden] = useState(false);
+  useEffect(() => {
+    if (playTick === 0) return; // Initial-Render: nichts ausblenden.
+    setTurnHidden(true);
+    const id = setTimeout(() => setTurnHidden(false), 2000);
+    return () => clearTimeout(id); // erneuter Wurf → Timer neu starten
+  }, [playTick]);
+
+  // Wrapper um `onPlayCard`, der zusätzlich das 2-s-Ausblenden auslöst.
+  const handlePlayCard = (card: CardModel): void => {
+    setPlayTick((n) => n + 1);
+    onPlayCard(card);
+  };
 
   // Stabile Ansage-Info (für Overlay + Wasserzeichen). Erst ab `playing` gesetzt.
   const announceInfo =
@@ -220,8 +239,11 @@ export function BodenseeBoard({
 
       {/* Eigener Bereich */}
       <section className="rounded-lg border border-jass-paperEdge bg-jass-paper p-3 space-y-3">
-        <div className="text-sm">
+        {/* min-h reserviert die Zeilenhöhe, damit das 2-s-Ausblenden das
+            Layout darunter nicht hochrutschen lässt. */}
+        <div className="text-sm min-h-[1.5rem]">
           {view.status === "playing" &&
+            !turnHidden &&
             (view.myTurn ? (
               <span className="font-semibold text-emerald-700">{t("bodensee.turn.you")}</span>
             ) : (
@@ -243,7 +265,7 @@ export function BodenseeBoard({
                 stack={stack}
                 playable={canPlay}
                 isLegal={isLegal}
-                onPlay={onPlayCard}
+                onPlay={handlePlayCard}
               />
             ))}
           </div>
@@ -270,7 +292,7 @@ export function BodenseeBoard({
                     key={cardKey(c)}
                     card={c}
                     size="md"
-                    {...(canPlay && legal ? { onClick: onPlayCard } : {})}
+                    {...(canPlay && legal ? { onClick: handlePlayCard } : {})}
                     disabled={canPlay && !legal}
                   />
                 );
