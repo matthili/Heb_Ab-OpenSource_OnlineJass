@@ -9,7 +9,8 @@
  * `slalom`-Flag), nicht die pro-Stich-effektive Variante.
  *
  * Die Suit-Icons liegen unter `public/cards/suits/` (von `assets/cards/suits`
- * gespiegelt): `{suit}.png`, `{suit}_gumpf.png`, `slalom.png`.
+ * gespiegelt): `{suit}.png`, `{suit}_gumpf.png`, `slalom.png`, `bock.png` (Oben),
+ * `geiss.png` (Unten).
  */
 import type { PlayMode, Suit } from "@jass/engine";
 import type { TFunction } from "i18next";
@@ -74,9 +75,11 @@ export function announceDisplay(t: TFunction, info: AnnounceModeInfo): AnnounceD
     };
   }
 
-  // OBEN / UNTEN — kein Trumpf, kein Suit-Icon → Pfeil-Glyph + Modus-Label.
+  // OBEN / UNTEN — eigene Bock-/Geiss-Icons (vom User beigelegt) statt nur
+  // einem Pfeil. OBEN = Bock, UNTEN = Geiss. Der Pfeil-Glyph bleibt als
+  // Fallback, falls ein Icon mal nicht lädt.
   return {
-    iconSrc: null,
+    iconSrc: mode === "OBEN" ? "/cards/suits/bock.png" : "/cards/suits/geiss.png",
     glyph: mode === "OBEN" ? "↑" : "↓",
     title: t(`game.announce.mode.${mode}`),
     subtitle: null,
