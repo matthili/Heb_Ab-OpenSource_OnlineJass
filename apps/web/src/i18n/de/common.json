@@ -6,6 +6,7 @@
     "signIn": "Anmelden",
     "signUp": "Registrieren",
     "signOut": "Abmelden",
+    "signOutFailed": "Abmelden fehlgeschlagen. Bitte erneut versuchen.",
     "greeting": "Servus, {{name}}",
     "profile": "Profil",
     "admin": "Admin",

@@ -17,6 +17,7 @@ import { Injectable, Logger, type OnModuleInit } from "@nestjs/common";
 import { betterAuth, type BetterAuthOptions } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 
+import { getTrustedOrigins } from "../../common/trusted-origins.js";
 import { ADMIN_BOOTSTRAP_ACTION, configuredAdminEmail } from "../admin/admin-bootstrap.util.js";
 import { AuditService } from "../audit/audit.service.js";
 import { BlocklistService } from "../blocklist/blocklist.service.js";
@@ -76,8 +77,10 @@ export class AuthService implements OnModuleInit {
     const options: BetterAuthOptions = {
       secret,
       baseURL,
-      // Trust nur unsere bekannten Frontend-Origins; in M11 für Prod festziehen.
-      trustedOrigins: [baseURL, process.env["WEB_PUBLIC_URL"] ?? "http://localhost:5173"],
+      // Dieselbe Origin-Liste wie CORS + OriginCheckGuard (inkl. TRUSTED_ORIGINS,
+      // z.B. LAN-IPs). Sonst weist Better-Auth state-ändernde Requests (Sign-out!)
+      // von erlaubten Origins als „fremd" ab, obwohl CORS sie durchlässt.
+      trustedOrigins: [...getTrustedOrigins()],
       database: prismaAdapter(this.prisma, { provider: "postgresql" }),
       emailAndPassword: {
         enabled: true,

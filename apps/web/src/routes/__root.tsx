@@ -121,6 +121,7 @@ function Header() {
   const { t } = useTranslation();
   const { data, isPending } = useSession();
   const navigate = useNavigate();
+  const { showToast } = useToast();
   // DB-Rolle lädt nur, wenn eingeloggt — für den optionalen "Admin"-
   // Nav-Link. 401 (anonym) wird stillschweigend geschluckt.
   const { data: me } = useQuery<MeProfileResponse>({
@@ -172,8 +173,19 @@ function Header() {
               <button
                 type="button"
                 onClick={async () => {
-                  await signOut();
-                  await navigate({ to: "/" });
+                  // Fehler nicht stillschweigend verschlucken (sonst „Button tut
+                  // nichts"). Better-Auth meldet je nach Fall per { error } ODER
+                  // per Exception — beide Wege führen zur Toast-Meldung.
+                  try {
+                    const res = (await signOut()) as { error?: unknown } | undefined;
+                    if (res?.error) {
+                      showToast(t("nav.signOutFailed"), { variant: "error" });
+                      return;
+                    }
+                    await navigate({ to: "/" });
+                  } catch {
+                    showToast(t("nav.signOutFailed"), { variant: "error" });
+                  }
                 }}
                 className="btn-jass-secondary text-sm"
               >

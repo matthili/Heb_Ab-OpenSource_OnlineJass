@@ -6,6 +6,7 @@
     "signIn": "Sign in",
     "signUp": "Register",
     "signOut": "Sign out",
+    "signOutFailed": "Sign-out failed. Please try again.",
     "greeting": "Hi, {{name}}",
     "profile": "Profile",
     "admin": "Admin",
