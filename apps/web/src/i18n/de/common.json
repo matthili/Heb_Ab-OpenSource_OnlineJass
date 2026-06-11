@@ -7,6 +7,8 @@
     "signUp": "Registrieren",
     "signOut": "Abmelden",
     "signOutFailed": "Abmelden fehlgeschlagen. Bitte erneut versuchen.",
+    "signOutMore": "Weitere Abmelde-Optionen",
+    "signOutEverywhere": "Überall abmelden",
     "greeting": "Servus, {{name}}",
     "profile": "Profil",
     "admin": "Admin",

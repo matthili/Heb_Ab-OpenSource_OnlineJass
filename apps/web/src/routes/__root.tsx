@@ -7,15 +7,16 @@
  * Sub-Layout `_auth.tsx` wird er als Guard verwendet.
  */
 import { useQuery, type QueryClient } from "@tanstack/react-query";
-import { createRootRouteWithContext, Link, Outlet, useNavigate } from "@tanstack/react-router";
+import { createRootRouteWithContext, Link, Outlet } from "@tanstack/react-router";
 import { useCallback } from "react";
 import { Trans, useTranslation } from "react-i18next";
 
 import { ConsentBanner } from "~/features/consent/ConsentBanner";
 import { BrandLogo } from "~/features/brand/BrandLogo";
+import { SignOutMenu } from "~/features/auth/SignOutMenu";
 import type { MeProfileResponse } from "~/features/admin/types";
 import { api } from "~/lib/api";
-import { signOut, useSession } from "~/lib/auth-client";
+import { useSession } from "~/lib/auth-client";
 import { type Theme, useTheme } from "~/lib/theme";
 import { useToast } from "~/lib/toast";
 import { useUserEvents } from "~/lib/ws";
@@ -120,8 +121,6 @@ function UserEventToasts() {
 function Header() {
   const { t } = useTranslation();
   const { data, isPending } = useSession();
-  const navigate = useNavigate();
-  const { showToast } = useToast();
   // DB-Rolle lädt nur, wenn eingeloggt — für den optionalen "Admin"-
   // Nav-Link. 401 (anonym) wird stillschweigend geschluckt.
   const { data: me } = useQuery<MeProfileResponse>({
@@ -146,11 +145,10 @@ function Header() {
           <BrandLogo variant="horizontal" alt={t("appName")} className="h-16 w-auto sm:h-24" />
         </Link>
         <div className="ml-auto flex items-center gap-3">
-          <ContrastToggle />
-          <LanguageSwitcher />
           {isPending ? (
             <span className="text-sm text-jass-inkSoft">…</span>
           ) : data?.user ? (
+            // Reihenfolge: [Admin], Begrüßung, Profil, Farbmodus, Sprache, Abmelden
             <>
               {me?.role === "ADMIN" && (
                 <Link
@@ -160,40 +158,24 @@ function Header() {
                   {t("nav.admin")}
                 </Link>
               )}
+              <span className="text-sm text-jass-inkSoft">
+                {t("nav.greeting", { name: data.user.name }).replace(data.user.name, "")}
+                <strong className="text-jass-ink">{data.user.name}</strong>
+              </span>
               <Link
                 to="/profile"
                 className="text-sm font-medium text-jass-inkSoft hover:text-jass-ink transition-colors"
               >
                 {t("nav.profile")}
               </Link>
-              <span className="text-sm text-jass-inkSoft">
-                {t("nav.greeting", { name: data.user.name }).replace(data.user.name, "")}
-                <strong className="text-jass-ink">{data.user.name}</strong>
-              </span>
-              <button
-                type="button"
-                onClick={async () => {
-                  // Fehler nicht stillschweigend verschlucken (sonst „Button tut
-                  // nichts"). Better-Auth meldet je nach Fall per { error } ODER
-                  // per Exception — beide Wege führen zur Toast-Meldung.
-                  try {
-                    const res = (await signOut()) as { error?: unknown } | undefined;
-                    if (res?.error) {
-                      showToast(t("nav.signOutFailed"), { variant: "error" });
-                      return;
-                    }
-                    await navigate({ to: "/" });
-                  } catch {
-                    showToast(t("nav.signOutFailed"), { variant: "error" });
-                  }
-                }}
-                className="btn-jass-secondary text-sm"
-              >
-                {t("nav.signOut")}
-              </button>
+              <ContrastToggle />
+              <LanguageSwitcher />
+              <SignOutMenu />
             </>
           ) : (
             <>
+              <ContrastToggle />
+              <LanguageSwitcher />
               <Link
                 to="/login"
                 className="text-sm font-medium text-jass-inkSoft hover:text-jass-ink transition-colors"

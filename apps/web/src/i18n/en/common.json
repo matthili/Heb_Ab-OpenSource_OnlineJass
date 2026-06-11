@@ -7,6 +7,8 @@
     "signUp": "Register",
     "signOut": "Sign out",
     "signOutFailed": "Sign-out failed. Please try again.",
+    "signOutMore": "More sign-out options",
+    "signOutEverywhere": "Sign out everywhere",
     "greeting": "Hi, {{name}}",
     "profile": "Profile",
     "admin": "Admin",
