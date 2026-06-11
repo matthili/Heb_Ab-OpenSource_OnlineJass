@@ -191,6 +191,7 @@ export class ChatService {
   private classifyChannel(channelKey: string): ChatChannel {
     if (channelKey === "lobby:global") return ChatChannel.LOBBY;
     if (channelKey.startsWith("game:")) return ChatChannel.GAME;
+    if (channelKey.startsWith("table:")) return ChatChannel.TABLE;
     if (channelKey.startsWith("dm:")) return ChatChannel.DM;
     throw new BadRequestException(`Unbekannter channelKey: ${channelKey}`);
   }
@@ -209,6 +210,21 @@ export class ChatService {
       });
       if (!seat) {
         throw new ForbiddenException("Du sitzt nicht an diesem Spiel.");
+      }
+      return;
+    }
+    if (channel === ChatChannel.TABLE) {
+      const tableId = channelKey.slice("table:".length);
+      if (!tableId) {
+        throw new BadRequestException(`Ungültiger Table-Channel-Key: ${channelKey}`);
+      }
+      // Tisch-Chat: nur wer am LobbyTable sitzt (Owner inklusive — der hat Sitz 0).
+      const seat = await this.prisma.lobbyTableSeat.findFirst({
+        where: { tableId, userId },
+        select: { seat: true },
+      });
+      if (!seat) {
+        throw new ForbiddenException("Du sitzt nicht an diesem Tisch.");
       }
       return;
     }

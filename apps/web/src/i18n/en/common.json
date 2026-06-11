@@ -116,6 +116,8 @@
       "loadError": "Could not load conversations.",
       "empty": "No private messages exchanged yet. Once you message someone, conversations show up here.",
       "selectHint": "Pick a person on the left to see the history.",
+      "replyPlaceholder": "Reply …",
+      "send": "Send",
       "fromGame": "from a game",
       "filterLabel": "Filter:",
       "filterAll": "All",
@@ -184,6 +186,8 @@
     "publicProfile": {
       "notFound": "Profile not found: {{message}}",
       "editProfile": "Edit profile",
+      "sendMessage": "Send message",
+      "dmTitle": "Direct message to {{name}}",
       "birthDate": "Date of birth",
       "hobbies": "Hobbies",
       "bio": "About me",

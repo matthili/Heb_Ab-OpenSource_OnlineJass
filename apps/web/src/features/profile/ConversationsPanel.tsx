@@ -14,13 +14,15 @@
  * Bei Bedarf einfach neu laden. Die aktive Lobby-Chat-Komponente bleibt
  * separat (`ChatPanel`).
  */
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 
+import { makeDmChannelKey } from "~/features/chat/dm";
 import { api } from "~/lib/api";
+import { useSession } from "~/lib/auth-client";
 
 interface Partner {
   partner: { id: string; name: string };
@@ -146,6 +148,23 @@ function ConversationView({ partnerId }: { partnerId: string }) {
     staleTime: 10_000,
   });
 
+  const { data: session } = useSession();
+  const myId = session?.user?.id;
+  const queryClient = useQueryClient();
+  const [draft, setDraft] = useState("");
+  const send = useMutation({
+    mutationFn: (body: string) =>
+      api("/api/chat", {
+        method: "POST",
+        body: { channelKey: makeDmChannelKey(myId!, partnerId), body },
+      }),
+    onSuccess: () => {
+      setDraft("");
+      // Verlauf (alle Filter) + Partnerliste neu laden — Prefix-Invalidate.
+      void queryClient.invalidateQueries({ queryKey: ["chat", "conversations"] });
+    },
+  });
+
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-2 text-sm">
@@ -173,6 +192,32 @@ function ConversationView({ partnerId }: { partnerId: string }) {
         </p>
       )}
       {conv.data && conv.data.messages.length > 0 && <MessageList view={conv.data} />}
+
+      {myId && (
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            const body = draft.trim();
+            if (body) send.mutate(body);
+          }}
+          className="flex gap-2"
+        >
+          <input
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            placeholder={t("profile.conversations.replyPlaceholder")}
+            maxLength={2000}
+            className="flex-1 rounded border border-stone-300 px-3 py-2 text-sm"
+          />
+          <button
+            type="submit"
+            disabled={send.isPending || draft.trim().length === 0}
+            className="btn-jass-primary text-sm disabled:opacity-50"
+          >
+            {t("profile.conversations.send")}
+          </button>
+        </form>
+      )}
     </div>
   );
 }

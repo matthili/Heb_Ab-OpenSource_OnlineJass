@@ -15,8 +15,8 @@ export const ChannelKeySchema = z
   .min(1)
   .max(256)
   .regex(
-    /^(lobby:global|game:[a-z0-9_-]{1,128}|dm:[a-z0-9_-]{1,128}:[a-z0-9_-]{1,128})$/i,
-    "channelKey must be 'lobby:global', 'game:<id>', or 'dm:<a>:<b>'"
+    /^(lobby:global|game:[a-z0-9_-]{1,128}|table:[a-z0-9_-]{1,128}|dm:[a-z0-9_-]{1,128}:[a-z0-9_-]{1,128})$/i,
+    "channelKey must be 'lobby:global', 'game:<id>', 'table:<id>', or 'dm:<a>:<b>'"
   );
 
 export const SendChatDtoSchema = z

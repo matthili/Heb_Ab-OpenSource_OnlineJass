@@ -116,6 +116,8 @@
       "loadError": "Konversationen konnten nicht geladen werden.",
       "empty": "Noch keine Privatnachrichten gewechselt. Sobald du jemandem schreibst, erscheinen die Konversationen hier.",
       "selectHint": "Wähle links eine Person aus, um den Verlauf zu sehen.",
+      "replyPlaceholder": "Antworten …",
+      "send": "Senden",
       "fromGame": "aus einem Spiel",
       "filterLabel": "Filter:",
       "filterAll": "Alle",
@@ -184,6 +186,8 @@
     "publicProfile": {
       "notFound": "Profil nicht gefunden: {{message}}",
       "editProfile": "Profil bearbeiten",
+      "sendMessage": "Nachricht schreiben",
+      "dmTitle": "Privatnachricht an {{name}}",
       "birthDate": "Geburtsdatum",
       "hobbies": "Hobbys",
       "bio": "Über mich",

@@ -137,6 +137,7 @@ export function TableDetail({ tableId }: Props) {
         (data.variant === "BODENSEE_2P" ? (
           <BodenseeGameSection
             gameId={data.currentGameId}
+            tableId={data.id}
             tableSeats={data.seats}
             isAtTable={amIAtTable}
             tableStatus={data.status}
@@ -145,6 +146,7 @@ export function TableDetail({ tableId }: Props) {
         ) : (
           <GameSection
             gameId={data.currentGameId}
+            tableId={data.id}
             tableSeats={data.seats}
             isAtTable={amIAtTable}
             tableStatus={data.status}
@@ -154,6 +156,13 @@ export function TableDetail({ tableId }: Props) {
             nameSeed={data.id}
           />
         ))}
+
+      {/* Wartephasen-Chat: derselbe tisch-weite Kanal wie im Spiel, damit der
+          Verlauf vom Warten über den Spielstart hinweg bleibt. In-Game sitzt
+          der Chat in der GameSection-Seitenleiste. */}
+      {data.status === "WAITING" && amIAtTable && (
+        <ChatPanel channelKey={`table:${data.id}`} title={t("lobby.tableDetail.tableChat")} />
+      )}
 
       {isOwner ? (
         <OwnerPanel table={data} queryKey={queryKey} />
@@ -657,6 +666,7 @@ function PlayerPanel({
  */
 function GameSection({
   gameId,
+  tableId,
   tableSeats,
   isAtTable,
   tableStatus,
@@ -666,6 +676,8 @@ function GameSection({
   nameSeed,
 }: {
   gameId: string;
+  /** Tisch-ID — für den tisch-weiten Chat (bleibt über Re-Matches stabil). */
+  tableId: string;
   tableSeats: TableDetailView["seats"];
   isAtTable: boolean;
   tableStatus: TableDetailView["status"];
@@ -757,7 +769,7 @@ function GameSection({
           nameSeed={nameSeed}
         />
       </div>
-      <ChatPanel channelKey={`game:${gameId}`} title={t("lobby.tableDetail.tableChat")} />
+      <ChatPanel channelKey={`table:${tableId}`} title={t("lobby.tableDetail.tableChat")} />
     </section>
   );
 }
@@ -771,12 +783,15 @@ function GameSection({
  */
 function BodenseeGameSection({
   gameId,
+  tableId,
   tableSeats,
   isAtTable,
   tableStatus,
   nameSeed,
 }: {
   gameId: string;
+  /** Tisch-ID — für den tisch-weiten Chat (stabil über Re-Matches). */
+  tableId: string;
   tableSeats: TableDetailView["seats"];
   isAtTable: boolean;
   tableStatus: TableDetailView["status"];
@@ -817,7 +832,7 @@ function BodenseeGameSection({
           <BodenseeRematchPanel gameId={gameId} />
         )}
       </div>
-      <ChatPanel channelKey={`game:${gameId}`} title={t("lobby.tableDetail.tableChat")} />
+      <ChatPanel channelKey={`table:${tableId}`} title={t("lobby.tableDetail.tableChat")} />
     </section>
   );
 }

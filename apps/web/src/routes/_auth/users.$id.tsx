@@ -16,8 +16,11 @@
  */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import { ChatPanel } from "~/features/chat/ChatPanel";
+import { makeDmChannelKey } from "~/features/chat/dm";
 import { StatsTable, type UserStatsData } from "~/features/profile/UserStatsPanel";
 import { api, ApiError } from "~/lib/api";
 import { useSession } from "~/lib/auth-client";
@@ -53,6 +56,7 @@ function PublicProfilePage() {
   const { data: session } = useSession();
   const myId = session?.user?.id;
   const isSelf = myId === id;
+  const [dmOpen, setDmOpen] = useState(false);
 
   const { data, isPending, error } = useQuery<PublicProfileView>({
     queryKey: ["users", "public", id],
@@ -94,16 +98,33 @@ function PublicProfilePage() {
           {realName.length > 0 && <p className="text-jass-inkSoft">{realName}</p>}
           {place.length > 0 && <p className="text-sm text-jass-inkSoft">{place}</p>}
         </div>
-        <div className="ml-auto">
+        <div className="ml-auto flex flex-col items-end gap-2">
           {isSelf ? (
             <Link to="/profile" search={{ tab: "edit" }} className="btn-jass-secondary text-sm">
               {t("profile.publicProfile.editProfile")}
             </Link>
           ) : myId ? (
-            <FriendButton targetId={id} />
+            <>
+              <FriendButton targetId={id} />
+              <button
+                type="button"
+                onClick={() => setDmOpen((o) => !o)}
+                aria-expanded={dmOpen}
+                className="btn-jass-secondary text-sm"
+              >
+                {t("profile.publicProfile.sendMessage")}
+              </button>
+            </>
           ) : null}
         </div>
       </header>
+
+      {dmOpen && myId && !isSelf && (
+        <ChatPanel
+          channelKey={makeDmChannelKey(myId, id)}
+          title={t("profile.publicProfile.dmTitle", { name: data.name })}
+        />
+      )}
 
       <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 text-sm">
         {data.birthDate && (

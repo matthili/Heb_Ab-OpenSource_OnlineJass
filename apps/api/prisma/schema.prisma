@@ -620,6 +620,9 @@ enum AnnounceLevel {
 enum ChatChannel {
   LOBBY
   GAME
+  // Tisch-weiter Chat (LobbyTable): lebt ab der Warte-Phase und bleibt über
+  // Spielstart + Re-Matches erhalten (anders als der spiel-gebundene GAME-Chat).
+  TABLE
   DM
 }
 
