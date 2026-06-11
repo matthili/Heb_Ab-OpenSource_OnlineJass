@@ -128,14 +128,18 @@ function Header() {
   });
 
   return (
-    <header className="border-b-2 border-jass-paperEdge bg-jass-cream shadow-sm">
-      <nav className="mx-auto max-w-5xl px-4 py-3 flex items-center gap-6">
+    <header className="relative z-20 border-b-2 border-jass-paperEdge bg-jass-cream shadow-sm">
+      {/* Feste, schlanke Bar-Höhe (h-16). Das Logo ist oben ausgerichtet
+          (self-start) und auf sm+ höher als die Bar → es hängt unten über die
+          Trennlinie in den Inhalt, ohne die Bar selbst zu vergrößern. z-20 +
+          overflow-visible (Default) halten es über dem Seiteninhalt sichtbar. */}
+      <nav className="mx-auto flex h-16 max-w-5xl items-center gap-4 px-4">
         <Link
           to="/"
           aria-label={t("appName")}
-          className="flex items-center transition-opacity hover:opacity-80"
+          className="shrink-0 self-start transition-opacity hover:opacity-80"
         >
-          <BrandLogo variant="horizontal" alt={t("appName")} className="h-12 w-auto sm:h-16" />
+          <BrandLogo variant="horizontal" alt={t("appName")} className="h-16 w-auto sm:h-24" />
         </Link>
         <div className="ml-auto flex items-center gap-3">
           <ContrastToggle />
