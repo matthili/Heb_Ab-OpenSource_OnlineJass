@@ -33,7 +33,10 @@ function RootLayout() {
     <div className="min-h-screen flex flex-col">
       <UserEventToasts />
       <Header />
-      <main className="flex-1 mx-auto max-w-5xl w-full px-4 py-6">
+      {/* sm:pt-11 = ~20 px mehr Abstand oben, damit der über die Header-
+          Linie hängende Logo-Überhang nicht die erste Überschrift berührt
+          (gilt für alle Seiten, da Layout geteilt). */}
+      <main className="flex-1 mx-auto max-w-5xl w-full px-4 py-6 sm:pt-11">
         <Outlet />
       </main>
       <ConsentBanner />

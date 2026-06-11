@@ -53,11 +53,16 @@ a:hover {
 .nav {
   border-bottom: 1px solid var(--border);
   background: #fff;
+  /* relative + z-index, damit das überhängende Logo über dem Inhalt liegt. */
+  position: relative;
+  z-index: 10;
 }
 .nav-inner {
   max-width: 64rem;
   margin: 0 auto;
-  padding: 0.75rem 1rem;
+  /* Feste, schlanke Bar-Höhe (kein vertikales Padding) — wie im Web-Header. */
+  padding: 0 1rem;
+  height: 4rem;
   display: flex;
   align-items: center;
   gap: 1.5rem;
@@ -67,11 +72,30 @@ a:hover {
   font-weight: 600;
   display: flex;
   align-items: center;
+  /* Logo oben ausrichten → der Überhang fällt nach unten über die Linie. */
+  align-self: flex-start;
 }
 .nav-brand img {
-  height: 56px;
+  height: 96px;
   width: auto;
   display: block;
+}
+/* Mobil: kein Überhang (würde die schmale Navi sprengen) — Logo passt in die
+   Bar und ist mittig. */
+@media (max-width: 640px) {
+  .nav-inner {
+    height: auto;
+    padding: 0.5rem 1rem;
+  }
+  .nav-brand {
+    align-self: center;
+  }
+  .nav-brand img {
+    height: 48px;
+  }
+  .main {
+    padding-top: 2.5rem;
+  }
 }
 .nav-link {
   font-size: 0.875rem;
@@ -94,7 +118,9 @@ a:hover {
   flex: 1;
   max-width: 48rem;
   margin: 0 auto;
-  padding: 2.5rem 1rem;
+  /* Mehr Luft oben (3.25rem) → der Logo-Überhang aus der Navi berührt die
+     erste Überschrift nicht. Mobil unten wieder reduziert (kein Überhang). */
+  padding: 3.25rem 1rem 2.5rem;
   width: 100%;
 }
 .main h1 {
