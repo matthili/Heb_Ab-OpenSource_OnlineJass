@@ -89,6 +89,16 @@ export interface TableDetailView extends TableListEntry {
   invites?: { id: string; inviteeUserId: string; inviteeName: string; createdAt: Date }[];
 }
 
+/** Offene Einladung AN den eingeloggten User — für die bleibende Lobby-Liste
+ *  „Du wurdest eingeladen" (Empfänger-Sicht, anders als die Owner-Invites oben). */
+export interface IncomingInviteView {
+  inviteId: string;
+  tableId: string;
+  variant: TableListEntry["variant"];
+  inviterName: string;
+  createdAt: string;
+}
+
 @Injectable()
 export class LobbyService {
   private readonly log = new Logger(LobbyService.name);
@@ -743,6 +753,31 @@ export class LobbyService {
       meta: { inviteId },
     });
     await this.pushTableState(invite.tableId);
+  }
+
+  /**
+   * Offene (PENDING) Einladungen, die AN `userId` gerichtet sind — für die
+   * bleibende Lobby-Liste „Du wurdest eingeladen". Geschlossene Tische werden
+   * ausgefiltert (dort kann man eh nicht mehr beitreten).
+   */
+  async listIncomingInvites(userId: string): Promise<IncomingInviteView[]> {
+    const invites = await this.prisma.tableInvite.findMany({
+      where: { inviteeUserId: userId, status: InviteStatus.PENDING },
+      include: {
+        table: { select: { variant: true, status: true } },
+        invitedBy: { select: { name: true } },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+    return invites
+      .filter((i) => i.table.status !== LobbyTableStatus.CLOSED)
+      .map((i) => ({
+        inviteId: i.id,
+        tableId: i.tableId,
+        variant: i.table.variant,
+        inviterName: i.invitedBy.name,
+        createdAt: i.createdAt.toISOString(),
+      }));
   }
 
   async cancelInvite(tableId: string, inviteId: string, ownerId: string): Promise<void> {

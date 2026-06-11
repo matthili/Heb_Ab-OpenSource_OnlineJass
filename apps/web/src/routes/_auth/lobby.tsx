@@ -11,6 +11,7 @@ import { MyActiveTables } from "~/features/lobby/MyActiveTables";
 import { OnlineUsersPanel } from "~/features/lobby/OnlineUsersPanel";
 import { OpenTableDialog } from "~/features/lobby/OpenTableDialog";
 import { BrandLogo } from "~/features/brand/BrandLogo";
+import { IncomingInvites } from "~/features/lobby/IncomingInvites";
 import { CompleteProfilePrompt } from "~/features/profile/CompleteProfilePrompt";
 
 export const Route = createFileRoute("/_auth/lobby")({
@@ -41,6 +42,7 @@ function LobbyPage() {
           </button>
         </header>
         <CompleteProfilePrompt />
+        <IncomingInvites />
         <MyActiveTables />
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_20rem] gap-4">
           <LobbyList />

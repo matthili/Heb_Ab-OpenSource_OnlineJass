@@ -303,6 +303,14 @@
   "lobby": {
     "title": "Lobby",
     "openTableButton": "Open table",
+    "incomingInvites": {
+      "title": "Invitations",
+      "from": "{{name}} invited you to a table.",
+      "accept": "Join",
+      "decline": "Decline",
+      "acceptFailed": "Could not join. {{message}}",
+      "declineFailed": "Could not decline."
+    },
     "loading": "Loading tables …",
     "empty": "No open tables. Open the first one with “Open table” up top.",
     "loadError": "Couldn't load the lobby: {{message}}",

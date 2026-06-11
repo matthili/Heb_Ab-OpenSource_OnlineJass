@@ -303,6 +303,14 @@
   "lobby": {
     "title": "Lobby",
     "openTableButton": "Tisch öffnen",
+    "incomingInvites": {
+      "title": "Einladungen",
+      "from": "{{name}} hat dich an einen Tisch eingeladen.",
+      "accept": "Beitreten",
+      "decline": "Ablehnen",
+      "acceptFailed": "Beitreten fehlgeschlagen. {{message}}",
+      "declineFailed": "Ablehnen fehlgeschlagen."
+    },
     "loading": "Lade Tische …",
     "empty": "Keine offenen Tische. Öffne den ersten mit „Tisch öffnen“ oben rechts.",
     "loadError": "Konnte Lobby nicht laden: {{message}}",

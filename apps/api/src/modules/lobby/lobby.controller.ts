@@ -33,7 +33,12 @@ import {
   type OpenTableDto,
   type UpdateTableSettingsDto,
 } from "./lobby.dto.js";
-import { LobbyService, type TableDetailView, type TableListEntry } from "./lobby.service.js";
+import {
+  LobbyService,
+  type IncomingInviteView,
+  type TableDetailView,
+  type TableListEntry,
+} from "./lobby.service.js";
 import { PresenceService, type PresenceUser } from "./presence.service.js";
 
 @Controller("api/lobby")
@@ -186,6 +191,16 @@ export class LobbyController {
   }
 
   // ─── Einladungen ───────────────────────────────────────────────────
+
+  /**
+   * Offene Einladungen AN den eingeloggten User — für die bleibende
+   * „Du wurdest eingeladen"-Liste in der Lobby (Empfänger-Sicht).
+   */
+  @Get("invites/incoming")
+  async incomingInvites(@Req() req: FastifyRequest): Promise<{ invites: IncomingInviteView[] }> {
+    const invites = await this.lobby.listIncomingInvites(req.user!.id);
+    return { invites };
+  }
 
   @Post("tables/:id/invites")
   async invite(
