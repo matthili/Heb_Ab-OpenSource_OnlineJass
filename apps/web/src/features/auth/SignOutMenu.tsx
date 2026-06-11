@@ -107,14 +107,14 @@ export function SignOutMenu() {
       {open && (
         <div
           role="menu"
-          className="absolute right-0 top-full z-30 mt-1 min-w-[12rem] overflow-hidden rounded-md border border-jass-paperEdge bg-jass-paper shadow-lg"
+          className="absolute right-0 top-full z-30 mt-1 overflow-hidden rounded-md border border-jass-paperEdge bg-jass-paper shadow-lg"
         >
           <button
             type="button"
             role="menuitem"
             onClick={everywhere}
             disabled={busy}
-            className="block w-full px-3 py-2 text-left text-sm text-jass-ink hover:bg-jass-cream disabled:opacity-50"
+            className="block w-full whitespace-nowrap px-3 py-2 text-left text-sm text-jass-ink hover:bg-jass-cream disabled:opacity-50"
           >
             {t("nav.signOutEverywhere")}
           </button>
