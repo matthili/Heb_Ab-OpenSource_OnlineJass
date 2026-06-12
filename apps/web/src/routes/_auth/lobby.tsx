@@ -13,6 +13,7 @@ import { OpenTableDialog } from "~/features/lobby/OpenTableDialog";
 import { BrandLogo } from "~/features/brand/BrandLogo";
 import { IncomingInvites } from "~/features/lobby/IncomingInvites";
 import { CompleteProfilePrompt } from "~/features/profile/CompleteProfilePrompt";
+import { BirthdayReminder } from "~/features/social/BirthdayReminder";
 
 export const Route = createFileRoute("/_auth/lobby")({
   component: LobbyPage,
@@ -42,6 +43,7 @@ function LobbyPage() {
           </button>
         </header>
         <CompleteProfilePrompt />
+        <BirthdayReminder />
         <IncomingInvites />
         <MyActiveTables />
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_20rem] gap-4">

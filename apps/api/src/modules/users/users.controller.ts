@@ -137,6 +137,15 @@ export class UsersController {
     return this.friends.listMine(req.user!.id);
   }
 
+  @Get("me/friends/birthdays-today")
+  @UseGuards(SessionGuard)
+  async friendBirthdaysToday(
+    @Req() req: FastifyRequest
+  ): Promise<{ friends: { id: string; name: string }[] }> {
+    const friends = await this.friends.birthdaysToday(req.user!.id);
+    return { friends };
+  }
+
   @Get(":id/friend-status")
   @UseGuards(SessionGuard)
   async friendStatus(

@@ -20,6 +20,9 @@
       "online": "Online",
       "lastSeenAt": "Last seen: {{when}}"
     },
+    "birthday": {
+      "today": "Birthday today:"
+    },
     "cancel": "Cancel",
     "report": {
       "title": "Report {{name}}",

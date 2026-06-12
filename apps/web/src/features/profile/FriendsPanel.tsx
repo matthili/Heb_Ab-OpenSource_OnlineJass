@@ -16,6 +16,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import { BirthdayReminder } from "~/features/social/BirthdayReminder";
 import { ConfirmDialog } from "~/features/social/ConfirmDialog";
 import { UserName } from "~/features/social/UserName";
 import { api } from "~/lib/api";
@@ -73,6 +74,7 @@ export function FriendsPanel() {
 
   return (
     <div className="space-y-6">
+      <BirthdayReminder />
       {data.pendingIn.length > 0 && (
         <Section title={t("profile.friends.pendingInTitle", { count: data.pendingIn.length })}>
           <ul className="space-y-2">

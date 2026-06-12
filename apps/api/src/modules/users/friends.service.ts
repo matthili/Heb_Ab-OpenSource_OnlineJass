@@ -22,6 +22,7 @@ import type { FriendshipStatus } from "@prisma/client";
 
 import { AuditService } from "../audit/audit.service.js";
 import { PrismaService } from "../prisma/prisma.service.js";
+import { resolveVisibility, type VisibilityMap } from "./visibility.js";
 
 export type FriendStatusOut = "NONE" | "PENDING_OUT" | "PENDING_IN" | "ACCEPTED" | "BLOCKED";
 
@@ -176,6 +177,44 @@ export class FriendsService {
     pendingIn.sort(byName);
     pendingOut.sort(byName);
     return { accepted, pendingIn, pendingOut };
+  }
+
+  /**
+   * Freunde, die **heute** Geburtstag haben — für die dezente Erinnerung in
+   * der Freunde-/Lobby-Ansicht. Respektiert die `birthDate`-Sichtbarkeit: ist
+   * sie PRIVATE, taucht der Freund nicht auf (selbst Freunde sehen sie dann
+   * nicht). Tag/Monat-Vergleich in Server-Zeit (regionale App, CET/CEST).
+   */
+  async birthdaysToday(meId: string): Promise<{ id: string; name: string }[]> {
+    const rows = await this.prisma.friendship.findMany({
+      where: { status: "ACCEPTED", OR: [{ requesterId: meId }, { addresseeId: meId }] },
+      select: { requesterId: true, addresseeId: true },
+    });
+    const friendIds = rows.map((r) => (r.requesterId === meId ? r.addresseeId : r.requesterId));
+    if (friendIds.length === 0) return [];
+
+    const friends = await this.prisma.user.findMany({
+      where: { id: { in: friendIds }, status: "ACTIVE" },
+      select: { id: true, name: true, profile: { select: { birthDate: true, visibility: true } } },
+    });
+
+    const today = new Date();
+    const m = today.getMonth();
+    const d = today.getDate();
+    const out: { id: string; name: string }[] = [];
+    for (const f of friends) {
+      const bd = f.profile?.birthDate;
+      if (!bd) continue;
+      const vis = (f.profile?.visibility ?? {}) as VisibilityMap;
+      // Wir sind befreundet → FRIENDS/LOGGED_IN/PUBLIC sichtbar; nur PRIVATE nicht.
+      if (resolveVisibility("birthDate", vis) === "PRIVATE") continue;
+      const date = new Date(bd);
+      if (date.getMonth() === m && date.getDate() === d) {
+        out.push({ id: f.id, name: f.name });
+      }
+    }
+    out.sort((a, b) => a.name.localeCompare(b.name));
+    return out;
   }
 
   /**
