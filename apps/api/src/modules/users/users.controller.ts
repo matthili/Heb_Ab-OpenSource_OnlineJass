@@ -24,6 +24,8 @@ import type { FastifyReply, FastifyRequest } from "fastify";
 import { SessionGuard } from "../../common/guards/session.guard.js";
 import { OptionalSessionGuard } from "../../common/guards/optional-session.guard.js";
 import { ZodValidationPipe } from "../../common/pipes/zod.pipe.js";
+import { ReportUserDtoSchema, type ReportUserDto } from "../reports/reports.dto.js";
+import { ReportsService } from "../reports/reports.service.js";
 import { FriendsService, type FriendStatusOut, type FriendsList } from "./friends.service.js";
 import { GdprService } from "./gdpr.service.js";
 import { SessionsService, type SessionView } from "./sessions.service.js";
@@ -38,7 +40,8 @@ export class UsersController {
     private readonly gdpr: GdprService,
     private readonly friends: FriendsService,
     private readonly sessions: SessionsService,
-    private readonly stats: UserStatsService
+    private readonly stats: UserStatsService,
+    private readonly reports: ReportsService
   ) {}
 
   @Get("me")
@@ -169,6 +172,19 @@ export class UsersController {
   @UseGuards(SessionGuard)
   async removeFriend(@Req() req: FastifyRequest, @Param("id") targetId: string): Promise<void> {
     await this.friends.remove(req.user!.id, targetId);
+  }
+
+  // ─── Melden ──────────────────────────────────────────────────────
+
+  @Post(":id/report")
+  @UseGuards(SessionGuard)
+  async reportUser(
+    @Req() req: FastifyRequest,
+    @Param("id") targetId: string,
+    @Body(new ZodValidationPipe(ReportUserDtoSchema)) dto: ReportUserDto
+  ): Promise<{ ok: true }> {
+    await this.reports.create(req.user!.id, targetId, dto);
+    return { ok: true };
   }
 
   @Get(":id")

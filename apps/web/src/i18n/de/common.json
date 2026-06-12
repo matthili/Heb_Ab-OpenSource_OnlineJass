@@ -7,14 +7,40 @@
       "addFriend": "Freundschaft anfragen",
       "requestPending": "Anfrage ausstehend",
       "acceptFriend": "Anfrage annehmen",
-      "areFriends": "Freunde"
+      "areFriends": "Freunde",
+      "report": "Melden"
     },
     "dm": {
       "minimize": "Minimieren",
       "restore": "Wiederherstellen",
       "close": "Schließen"
     },
-    "cancel": "Abbrechen"
+    "cancel": "Abbrechen",
+    "report": {
+      "title": "{{name}} melden",
+      "contextLabel": "Worum geht's?",
+      "context": {
+        "PROFILE": "Profilseite",
+        "CHAT": "Aussagen im Chat",
+        "GAME": "Verhalten im Spiel"
+      },
+      "reasonLabel": "Grund",
+      "reason": {
+        "RACISM": "Rassismus",
+        "SEXISM": "Sexismus",
+        "HARASSMENT": "Belästigung",
+        "THREATS": "Drohungen",
+        "VIOLENCE": "Aufruf zu Gewalt",
+        "SPAM": "Spam",
+        "OTHER_ILLEGAL": "Andere rechtswidrige Tat",
+        "GAME_DISRUPTION": "Spiel wiederholt abgebrochen/gestört"
+      },
+      "noteLabel": "Anmerkung (optional)",
+      "notePlaceholder": "Kurze Beschreibung …",
+      "submit": "Melden",
+      "sent": "Meldung gesendet. Danke.",
+      "failed": "Meldung fehlgeschlagen."
+    }
   },
   "appTagline": "Der OpenSource-Jass nach vorarlberger Spielart.",
 
@@ -941,7 +967,23 @@
       "audit": {
         "title": "Audit-Log",
         "desc": "Alle sicherheitsrelevanten Aktionen (auth, lobby, admin, …)."
+      },
+      "reports": {
+        "title": "Meldungen",
+        "desc": "Gemeldete User prüfen und bearbeiten."
       }
+    },
+    "reports": {
+      "filterAll": "Alle",
+      "status": {
+        "PENDING": "Offen",
+        "REVIEWED": "Geprüft",
+        "DISMISSED": "Verworfen",
+        "ACTION_TAKEN": "Maßnahme ergriffen"
+      },
+      "reportedBy": "gemeldet von",
+      "empty": "Keine Meldungen.",
+      "loading": "Lade …"
     },
     "audit": {
       "prefixPlaceholder": "Action-Prefix, z.B. auth. oder admin.blocklist.",

@@ -27,6 +27,13 @@ import { ZodValidationPipe } from "../../common/pipes/zod.pipe.js";
 import { BannedWordsService, type BannedWordView } from "../chat/banned-words.service.js";
 import { LobbySettingsService, type LobbySettings } from "../lobby/lobby-settings.service.js";
 import {
+  ListReportsQuerySchema,
+  SetReportStatusDtoSchema,
+  type ListReportsQuery,
+  type SetReportStatusDto,
+} from "../reports/reports.dto.js";
+import { ReportsService, type AdminReportView } from "../reports/reports.service.js";
+import {
   AddBannedWordDtoSchema,
   AddBlocklistDtoSchema,
   ListAuditQuerySchema,
@@ -60,8 +67,29 @@ export class AdminController {
   constructor(
     private readonly admin: AdminService,
     private readonly bannedWords: BannedWordsService,
-    private readonly lobbySettings: LobbySettingsService
+    private readonly lobbySettings: LobbySettingsService,
+    private readonly reports: ReportsService
   ) {}
+
+  // ─── Meldungen (Reports) ───────────────────────────────────────────
+
+  @Get("reports")
+  async listReports(
+    @Query(new ZodValidationPipe(ListReportsQuerySchema)) query: ListReportsQuery
+  ): Promise<{ reports: AdminReportView[] }> {
+    const reports = await this.reports.list(query);
+    return { reports };
+  }
+
+  @Patch("reports/:id/status")
+  async setReportStatus(
+    @Req() req: FastifyRequest,
+    @Param("id") reportId: string,
+    @Body(new ZodValidationPipe(SetReportStatusDtoSchema)) dto: SetReportStatusDto
+  ): Promise<{ ok: true }> {
+    await this.reports.setStatus(req.user!.id, reportId, dto.status);
+    return { ok: true };
+  }
 
   // ─── SMTP ──────────────────────────────────────────────────────────
 

@@ -14,6 +14,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { useDmWindows } from "~/lib/dm-windows";
 import { useSession } from "~/lib/auth-client";
+import { ReportDialog } from "./ReportDialog";
 import { UserContextMenu } from "./UserContextMenu";
 
 interface Props {
@@ -28,6 +29,7 @@ export function UserName({ userId, name, className = "" }: Props) {
   const myId = session?.user?.id;
   const { open: openDm } = useDmWindows();
   const [menuAt, setMenuAt] = useState<{ x: number; y: number } | null>(null);
+  const [reportOpen, setReportOpen] = useState(false);
   const clickTimer = useRef<number | null>(null);
 
   useEffect(
@@ -81,8 +83,15 @@ export function UserName({ userId, name, className = "" }: Props) {
           name={name}
           anchor={menuAt}
           onClose={() => setMenuAt(null)}
+          onReport={() => setReportOpen(true)}
         />
       )}
+      <ReportDialog
+        open={reportOpen}
+        userId={userId}
+        name={name}
+        onClose={() => setReportOpen(false)}
+      />
     </>
   );
 }

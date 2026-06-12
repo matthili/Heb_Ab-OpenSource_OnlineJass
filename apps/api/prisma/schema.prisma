@@ -75,6 +75,10 @@ model User {
   invitesSent     TableInvite[]     @relation("InvitesSent")
   rematchVotes    RematchVote[]     @relation("RematchVotes")
 
+  // Meldungen (Report): erstellt vs. gegen mich
+  reportsMade    Report[] @relation("ReportsMade")
+  reportsAgainst Report[] @relation("ReportsAgainst")
+
   @@index([status])
   @@index([deletedAt])
 }
@@ -190,6 +194,27 @@ model Friendship {
 
   @@id([requesterId, addresseeId])
   @@index([addresseeId, status])
+}
+
+// Meldung eines Users gegen einen anderen (Moderation). Zweistufig erfasst:
+// `context` = wo (Profil / Chat / Spielverhalten), `reason` = warum.
+model Report {
+  id             String        @id @default(cuid())
+  reporterId     String
+  reportedUserId String
+  context        ReportContext
+  reason         ReportReason
+  note           String?
+  status         ReportStatus  @default(PENDING)
+  createdAt      DateTime      @default(now())
+  resolvedAt     DateTime?
+  resolvedById   String?
+
+  reporter     User @relation("ReportsMade", fields: [reporterId], references: [id], onDelete: Cascade)
+  reportedUser User @relation("ReportsAgainst", fields: [reportedUserId], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt])
+  @@index([reportedUserId])
 }
 
 // ─────────────────────────────────────────────────────────────────────
@@ -594,6 +619,30 @@ enum FriendshipStatus {
   PENDING
   ACCEPTED
   BLOCKED
+}
+
+enum ReportContext {
+  PROFILE
+  CHAT
+  GAME
+}
+
+enum ReportReason {
+  RACISM
+  SEXISM
+  HARASSMENT
+  THREATS
+  VIOLENCE
+  SPAM
+  OTHER_ILLEGAL
+  GAME_DISRUPTION
+}
+
+enum ReportStatus {
+  PENDING
+  REVIEWED
+  DISMISSED
+  ACTION_TAKEN
 }
 
 enum GameVariant {

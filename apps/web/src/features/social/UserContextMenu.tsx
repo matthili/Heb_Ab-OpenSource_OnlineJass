@@ -23,9 +23,11 @@ interface Props {
   name: string;
   anchor: { x: number; y: number };
   onClose: () => void;
+  /** Öffnet den Melde-Dialog (in `UserName` gerendert). */
+  onReport: () => void;
 }
 
-export function UserContextMenu({ userId, name, anchor, onClose }: Props) {
+export function UserContextMenu({ userId, name, anchor, onClose, onReport }: Props) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -131,6 +133,18 @@ export function UserContextMenu({ userId, name, anchor, onClose }: Props) {
           {t("social.menu.addFriend")}
         </button>
       ) : null}
+
+      <button
+        type="button"
+        role="menuitem"
+        className={`${itemClass} border-t border-stone-100 text-rose-700`}
+        onClick={() => {
+          onReport();
+          onClose();
+        }}
+      >
+        {t("social.menu.report")}
+      </button>
     </div>
   );
 }

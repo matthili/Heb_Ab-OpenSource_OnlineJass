@@ -7,14 +7,40 @@
       "addFriend": "Add friend",
       "requestPending": "Request pending",
       "acceptFriend": "Accept request",
-      "areFriends": "Friends"
+      "areFriends": "Friends",
+      "report": "Report"
     },
     "dm": {
       "minimize": "Minimize",
       "restore": "Restore",
       "close": "Close"
     },
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "report": {
+      "title": "Report {{name}}",
+      "contextLabel": "What is this about?",
+      "context": {
+        "PROFILE": "Profile",
+        "CHAT": "Chat statements",
+        "GAME": "In-game behaviour"
+      },
+      "reasonLabel": "Reason",
+      "reason": {
+        "RACISM": "Racism",
+        "SEXISM": "Sexism",
+        "HARASSMENT": "Harassment",
+        "THREATS": "Threats",
+        "VIOLENCE": "Incitement to violence",
+        "SPAM": "Spam",
+        "OTHER_ILLEGAL": "Other unlawful act",
+        "GAME_DISRUPTION": "Repeatedly quitting/disrupting games"
+      },
+      "noteLabel": "Note (optional)",
+      "notePlaceholder": "Short description …",
+      "submit": "Report",
+      "sent": "Report sent. Thank you.",
+      "failed": "Could not send report."
+    }
   },
   "appTagline": "The open-source Jass in the Vorarlberg tradition.",
 
@@ -941,7 +967,23 @@
       "audit": {
         "title": "Audit log",
         "desc": "All security-relevant actions (auth, lobby, admin, …)."
+      },
+      "reports": {
+        "title": "Reports",
+        "desc": "Review and resolve reported users."
       }
+    },
+    "reports": {
+      "filterAll": "All",
+      "status": {
+        "PENDING": "Open",
+        "REVIEWED": "Reviewed",
+        "DISMISSED": "Dismissed",
+        "ACTION_TAKEN": "Action taken"
+      },
+      "reportedBy": "reported by",
+      "empty": "No reports.",
+      "loading": "Loading …"
     },
     "audit": {
       "prefixPlaceholder": "Action prefix, e.g. auth. or admin.blocklist.",
