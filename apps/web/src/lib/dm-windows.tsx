@@ -16,6 +16,7 @@
  * einen anklickbaren Toast. Sichtbar-offene Fenster bekommen die Nachricht
  * ohnehin live über `useChat` — dann kein Badge/Toast.
  */
+import { useQuery } from "@tanstack/react-query";
 import {
   createContext,
   useCallback,
@@ -30,9 +31,25 @@ import { useTranslation } from "react-i18next";
 
 import { ChatPanel } from "~/features/chat/ChatPanel";
 import { makeDmChannelKey } from "~/features/chat/dm";
+import { api } from "~/lib/api";
 import { useSession } from "~/lib/auth-client";
 import { useToast } from "~/lib/toast";
 import { getLobbySocket } from "~/lib/ws";
+
+interface UnreadSummary {
+  partners: { otherUserId: string; name: string; count: number }[];
+  total: number;
+}
+
+/** Beim Anzeigen/Lesen einer Konversation den Server-Last-Read aktualisieren. */
+function markDmReadOnServer(otherUserId: string): void {
+  void api(`/api/chat/dm-read/${otherUserId}`, { method: "POST", raw: true }).catch(() => {
+    /* best-effort — der lokale Zähler ist bereits zurückgesetzt */
+  });
+}
+
+/** Wie viele Ungelesen-Fenster maximal beim Laden minimiert wieder aufgehen. */
+const MAX_SEEDED_WINDOWS = 8;
 
 interface DmWindowState {
   userId: string;
@@ -84,6 +101,8 @@ export function DmWindowProvider({ children }: { children: ReactNode }) {
       }
       return [...ws, { userId, name, minimized: false, unread: 0 }];
     });
+    // Sichtbar geöffnet → server-seitig als gelesen markieren (überlebt Reload).
+    markDmReadOnServer(userId);
   }, []);
 
   const close = useCallback((userId: string) => {
@@ -97,6 +116,7 @@ export function DmWindowProvider({ children }: { children: ReactNode }) {
         w.userId === userId ? { ...w, minimized, unread: minimized ? w.unread : 0 } : w
       )
     );
+    if (!minimized) markDmReadOnServer(userId); // wiederhergestellt → gelesen
   }, []);
 
   // Globaler Neue-PN-Listener (nur wenn eingeloggt).
@@ -108,8 +128,12 @@ export function DmWindowProvider({ children }: { children: ReactNode }) {
       const fromName = view.senderName ?? "?";
       if (!fromId || fromId === myId) return;
       const existing = windowsRef.current.find((w) => w.userId === fromId);
-      // Sichtbar offen → die Nachricht kommt live über useChat; nichts tun.
-      if (existing && !existing.minimized) return;
+      // Sichtbar offen → die Nachricht kommt live über useChat; als gelesen
+      // markieren (Server-Stand bleibt 0) und sonst nichts tun.
+      if (existing && !existing.minimized) {
+        markDmReadOnServer(fromId);
+        return;
+      }
 
       setWindows((ws) => {
         const ex = ws.find((w) => w.userId === fromId);
@@ -132,10 +156,36 @@ export function DmWindowProvider({ children }: { children: ReactNode }) {
     };
   }, [myId, open, showToast]);
 
-  const api = useMemo<DmWindowsApi>(() => ({ open, close }), [open, close]);
+  // Persistenter Ungelesen-Stand: beim Laden vom Server holen und für jeden
+  // Partner mit Ungelesen ein MINIMIERTES Fenster mit Badge wieder aufmachen.
+  // Einmalig pro Mount (seededRef), damit vom User geschlossene Fenster nicht
+  // zurückkehren.
+  const { data: unread } = useQuery<UnreadSummary>({
+    queryKey: ["chat", "unread"],
+    queryFn: () => api("/api/chat/unread"),
+    enabled: !!myId,
+    staleTime: Infinity,
+  });
+  const seededRef = useRef(false);
+  useEffect(() => {
+    if (seededRef.current || !unread) return;
+    seededRef.current = true;
+    const withUnread = unread.partners.filter((p) => p.count > 0).slice(0, MAX_SEEDED_WINDOWS);
+    if (withUnread.length === 0) return;
+    setWindows((ws) => {
+      const next = [...ws];
+      for (const p of withUnread) {
+        if (next.some((w) => w.userId === p.otherUserId)) continue;
+        next.push({ userId: p.otherUserId, name: p.name, minimized: true, unread: p.count });
+      }
+      return next;
+    });
+  }, [unread]);
+
+  const contextValue = useMemo<DmWindowsApi>(() => ({ open, close }), [open, close]);
 
   return (
-    <DmWindowsContext.Provider value={api}>
+    <DmWindowsContext.Provider value={contextValue}>
       {children}
       <DmWindowLayer windows={windows} onClose={close} onMinimize={setMinimized} />
     </DmWindowsContext.Provider>

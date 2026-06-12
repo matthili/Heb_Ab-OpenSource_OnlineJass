@@ -38,6 +38,7 @@ import {
   ConversationsService,
   type ConversationPartner,
   type ConversationView,
+  type UnreadSummary,
 } from "./conversations.service.js";
 
 const ConversationQuerySchema = z
@@ -80,6 +81,22 @@ export class ChatController {
       limit: query.limit,
       ...(query.before !== undefined ? { before: query.before } : {}),
     });
+  }
+
+  // ─── Ungelesen-Zähler (persistent über Reloads) ────────────────────
+
+  @Get("unread")
+  async unread(@Req() req: FastifyRequest): Promise<UnreadSummary> {
+    return this.conversations.unreadSummary(req.user!.id);
+  }
+
+  @Post("dm-read/:otherUserId")
+  @HttpCode(204)
+  async markDmRead(
+    @Req() req: FastifyRequest,
+    @Param("otherUserId") otherUserId: string
+  ): Promise<void> {
+    await this.conversations.markRead(req.user!.id, otherUserId);
   }
 
   @Post()

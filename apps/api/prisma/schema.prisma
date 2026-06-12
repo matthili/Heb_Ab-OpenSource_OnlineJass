@@ -47,16 +47,16 @@ model User {
   updatedAt     DateTime @updatedAt
 
   // Domänen-Felder oberhalb des Better-Auth-Minimums
-  role      Role       @default(PLAYER)
-  status    UserStatus @default(ACTIVE)
-  locale    String     @default("de")
-  deletedAt DateTime? // Soft-Delete (Anonymisierung in M10)
+  role       Role       @default(PLAYER)
+  status     UserStatus @default(ACTIVE)
+  locale     String     @default("de")
+  deletedAt  DateTime? // Soft-Delete (Anonymisierung in M10)
   /// Zeitpunkt des letzten „offline gehen" (letzter Socket getrennt) — für die
   /// „zuletzt gesehen"-Anzeige. Null = noch nie online gewesen / unbekannt.
   lastSeenAt DateTime?
   /// Admin-Notiz pro Nutzer (z.B. „Rookie3000 = Martin Meier"). Nur für Admins
   /// sichtbar; v.a. für den LAN-Mode (Admin-Freischaltung statt E-Mail).
-  adminNote String?
+  adminNote  String?
 
   profile              Profile?
   sessions             Session[]
@@ -85,6 +85,9 @@ model User {
   // PN-Sperren: von mir gesetzt vs. gegen mich
   dmBlocksMade     DmBlock[] @relation("DmBlocker")
   dmBlocksReceived DmBlock[] @relation("DmBlocked")
+
+  // Last-Read-Marker meiner DM-Konversationen (Ungelesen-Zähler)
+  dmReads DmRead[] @relation("DmReadUser")
 
   @@index([status])
   @@index([deletedAt])
@@ -243,16 +246,30 @@ model DmBlock {
   @@index([blockedId])
 }
 
+/// Last-Read-Marker pro DM-Konversation, damit Ungelesen-Zähler Reloads
+/// überleben. `userId` hat die Konversation mit `otherUserId` bis `lastReadAt`
+/// gelesen; ungelesen = Nachrichten von `otherUserId` an `userId` danach.
+model DmRead {
+  userId      String
+  otherUserId String
+  lastReadAt  DateTime @default(now())
+
+  user User @relation("DmReadUser", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, otherUserId])
+  @@index([userId])
+}
+
 // ─────────────────────────────────────────────────────────────────────
 // Domain — Spiel (M4–M10)
 // ─────────────────────────────────────────────────────────────────────
 
 model Game {
-  id            String        @id @default(cuid())
-  variant       GameVariant
+  id             String        @id @default(cuid())
+  variant        GameVariant
   // Erlaubte Ansage-Arten für dieses Spiel — beim Game-Start aus dem
   // LobbyTable kopiert (Default ALLES für direkt/test angelegte Spiele).
-  announceLevel AnnounceLevel @default(ALLES)
+  announceLevel  AnnounceLevel @default(ALLES)
   // Optionale Wertungsregeln (beim Game-Start aus dem LobbyTable kopiert).
   // sackRule: < 21 Kartenpunkte → Rundenwertung verfällt komplett.
   // weisNeedsTrick: kein Stich → Weis-Punkte verfallen wieder.
@@ -260,11 +277,11 @@ model Game {
   weisNeedsTrick Boolean       @default(false)
   // Echtes Abheben aktiv? Beim Game-Start aus dem LobbyTable kopiert.
   cutEnabled     Boolean       @default(true)
-  ruleVersion   String // spec_version aus jass_rules.json
-  modelVersion  String? // NN-Release-Tag (für Replays)
-  startedAt     DateTime      @default(now())
-  endedAt       DateTime?
-  finalScore    Json? // { team0: 81, team1: 76, matsch: false }
+  ruleVersion    String // spec_version aus jass_rules.json
+  modelVersion   String? // NN-Release-Tag (für Replays)
+  startedAt      DateTime      @default(now())
+  endedAt        DateTime?
+  finalScore     Json? // { team0: 81, team1: 76, matsch: false }
 
   /// Wenn `true`, ist das Replay über `/api/games/:id/replay/public` ohne
   /// Login erreichbar — Spec-Feature „Öffentliche/teilbare Replays". Default

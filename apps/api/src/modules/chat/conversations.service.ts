@@ -33,6 +33,17 @@ export interface ConversationPartner {
   };
 }
 
+export interface UnreadPartner {
+  otherUserId: string;
+  name: string;
+  count: number;
+}
+
+export interface UnreadSummary {
+  partners: UnreadPartner[];
+  total: number;
+}
+
 export interface ConversationMessage {
   id: string;
   senderId: string;
@@ -121,6 +132,69 @@ export class ConversationsService {
     }
     out.sort((a, b) => b.lastMessage.createdAt.localeCompare(a.lastMessage.createdAt));
     return out;
+  }
+
+  /**
+   * Markiert die DM-Konversation mit `otherId` als gelesen (Last-Read = jetzt).
+   * Idempotenter Upsert; Self-DM ist no-op.
+   */
+  async markRead(meId: string, otherId: string): Promise<void> {
+    if (meId === otherId) return;
+    const now = new Date();
+    await this.prisma.dmRead.upsert({
+      where: { userId_otherUserId: { userId: meId, otherUserId: otherId } },
+      create: { userId: meId, otherUserId: otherId, lastReadAt: now },
+      update: { lastReadAt: now },
+    });
+  }
+
+  /**
+   * Ungelesen-Zusammenfassung: pro DM-Partner die Anzahl Nachrichten, die der
+   * Partner mir NACH meinem Last-Read geschickt hat. Überlebt Reloads, weil der
+   * Stand server-seitig in `DmRead` liegt. `take` deckelt die Scan-Menge — wer
+   * mehr als das ungelesen hat, sieht den gedeckelten Wert (für ein Badge ok).
+   */
+  async unreadSummary(meId: string): Promise<UnreadSummary> {
+    const reads = await this.prisma.dmRead.findMany({
+      where: { userId: meId },
+      select: { otherUserId: true, lastReadAt: true },
+    });
+    const lastReadBy = new Map(reads.map((r) => [r.otherUserId, r.lastReadAt]));
+
+    // Eingehende DMs (von anderen an mich), jüngste zuerst, gedeckelt.
+    const incoming = await this.prisma.chatMessage.findMany({
+      where: { channel: "DM", channelKey: { contains: meId }, senderId: { not: meId } },
+      select: { senderId: true, createdAt: true, channelKey: true },
+      orderBy: { createdAt: "desc" },
+      take: 1000,
+    });
+
+    const countByPartner = new Map<string, number>();
+    for (const m of incoming) {
+      // Partner über den channelKey verifizieren (robuster als senderId allein).
+      const partner = otherPartyOf(m.channelKey, meId);
+      if (!partner || partner !== m.senderId) continue;
+      const lastRead = lastReadBy.get(partner);
+      if (lastRead && m.createdAt <= lastRead) continue;
+      countByPartner.set(partner, (countByPartner.get(partner) ?? 0) + 1);
+    }
+
+    const partnerIds = [...countByPartner.keys()];
+    if (partnerIds.length === 0) return { partners: [], total: 0 };
+    const users = await this.prisma.user.findMany({
+      where: { id: { in: partnerIds } },
+      select: { id: true, name: true },
+    });
+    const nameById = new Map(users.map((u) => [u.id, u.name]));
+
+    const partners: UnreadPartner[] = partnerIds.map((id) => ({
+      otherUserId: id,
+      name: nameById.get(id) ?? "[Gelöschter Spieler]",
+      count: countByPartner.get(id) ?? 0,
+    }));
+    partners.sort((a, b) => a.name.localeCompare(b.name));
+    const total = partners.reduce((s, p) => s + p.count, 0);
+    return { partners, total };
   }
 
   async getConversation(
