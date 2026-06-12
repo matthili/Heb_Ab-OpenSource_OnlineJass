@@ -95,6 +95,7 @@
       "draw": "unentschieden",
       "matsch": "Matsch!",
       "duringGame": "Während Partie #{{shortId}} · Mitspieler: {{partners}}",
+      "partnersPrefix": "Während Partie #{{shortId}} · Mitspieler:",
       "viewReplay": "Replay ansehen",
       "running": "läuft noch",
       "finalScore": "{{own}} : {{opp}}"

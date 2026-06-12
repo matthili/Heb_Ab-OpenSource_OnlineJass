@@ -16,6 +16,7 @@ import { Link } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 
 import { aiName } from "~/features/game/aiNames";
+import { UserName } from "~/features/social/UserName";
 import { api, ApiError } from "~/lib/api";
 
 import type { ReplaySeat, UserGameSummary } from "./types";
@@ -77,7 +78,7 @@ function GameHistoryItem({ game }: { game: UserGameSummary }) {
               : "draw";
   const badgeClass = badgeForResult(result);
   const badgeLabel = labelForResult(result, t);
-  const partnerNames = collectPartners(game.seats, game.mySeat, game.gameId).join(", ");
+  const partners = collectPartners(game.seats, game.mySeat, game.gameId);
   const shortId = game.gameId.slice(-6);
 
   return (
@@ -106,19 +107,36 @@ function GameHistoryItem({ game }: { game: UserGameSummary }) {
         </Link>
       </div>
       <p className="text-xs text-stone-600">
-        {t("profile.history.duringGame", { shortId, partners: partnerNames || "—" })}
+        {t("profile.history.partnersPrefix", { shortId })}{" "}
+        {partners.length === 0
+          ? "—"
+          : partners.map((p, i) => (
+              <span key={`${p.name}-${i}`}>
+                {i > 0 && ", "}
+                {p.userId ? (
+                  <UserName userId={p.userId} name={p.name} className="text-stone-700" />
+                ) : (
+                  p.name
+                )}
+              </span>
+            ))}
       </p>
     </li>
   );
 }
 
-function collectPartners(seats: readonly ReplaySeat[], mySeat: number, gameId: string): string[] {
+function collectPartners(
+  seats: readonly ReplaySeat[],
+  mySeat: number,
+  gameId: string
+): { userId: string | null; name: string }[] {
   return seats
     .filter((s) => s.seat !== mySeat)
     .sort((a, b) => a.seat - b.seat)
-    .map(
-      (s) => s.displayName ?? (s.aiSeatType ? aiName(`${gameId}:${s.seat}`, s.aiSeatType) : `?`)
-    );
+    .map((s) => ({
+      userId: s.userId,
+      name: s.displayName ?? (s.aiSeatType ? aiName(`${gameId}:${s.seat}`, s.aiSeatType) : "?"),
+    }));
 }
 
 type ResultKind = "running" | "won" | "lost" | "draw" | "matsch-won" | "matsch-lost";

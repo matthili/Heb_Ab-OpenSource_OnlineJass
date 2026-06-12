@@ -21,6 +21,7 @@ import { Trans, useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 
 import { makeDmChannelKey } from "~/features/chat/dm";
+import { UserName } from "~/features/social/UserName";
 import { api } from "~/lib/api";
 import { useSession } from "~/lib/auth-client";
 
@@ -249,7 +250,7 @@ function MessageList({ view }: { view: ConversationView }) {
           <ul className="space-y-1">
             {b.messages.map((m) => (
               <li key={m.id} className="text-sm">
-                <span className="font-medium">{m.senderName}</span>
+                <UserName userId={m.senderId} name={m.senderName} className="font-medium" />
                 <span className="text-xs text-stone-500 ml-2">
                   {new Date(m.createdAt).toLocaleString()}
                 </span>
