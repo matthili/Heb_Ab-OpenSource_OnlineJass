@@ -1,5 +1,16 @@
 {
   "appName": "Heb ab!",
+  "afk": {
+    "button": {
+      "label": "AFK / Pause",
+      "atTableHint": "Nicht möglich, solange du an einem Tisch sitzt."
+    },
+    "overlay": {
+      "title": "Pause",
+      "body": "Du bist als abwesend markiert. Tische und Lobby-Chat sind pausiert — Privatnachrichten erreichen dich weiterhin.",
+      "end": "AFK beenden"
+    }
+  },
   "social": {
     "menu": {
       "message": "Privatnachricht",
@@ -18,6 +29,8 @@
     },
     "presence": {
       "online": "Online",
+      "playing": "Spielt gerade",
+      "afk": "Abwesend (AFK)",
       "lastSeenAt": "Zuletzt gesehen: {{when}}"
     },
     "birthday": {

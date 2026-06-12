@@ -23,6 +23,7 @@ import { createRoot } from "react-dom/client";
 import "@fontsource/eb-garamond/400.css";
 import "@fontsource/eb-garamond/600.css";
 import "./i18n/index.js"; // Side-Effect: initialisiert i18next vor dem ersten Render
+import { AfkProvider } from "./lib/afk.js";
 import { DmWindowProvider } from "./lib/dm-windows.js";
 import { PresenceProvider } from "./lib/presence.js";
 import { applyThemeFromStorage } from "./lib/theme.js";
@@ -69,9 +70,11 @@ createRoot(rootEl).render(
     <QueryClientProvider client={queryClient}>
       <PresenceProvider>
         <ToastProvider>
-          <DmWindowProvider>
-            <RouterProvider router={router} />
-          </DmWindowProvider>
+          <AfkProvider>
+            <DmWindowProvider>
+              <RouterProvider router={router} />
+            </DmWindowProvider>
+          </AfkProvider>
         </ToastProvider>
       </PresenceProvider>
     </QueryClientProvider>

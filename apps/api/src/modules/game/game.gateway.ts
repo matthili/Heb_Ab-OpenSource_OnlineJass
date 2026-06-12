@@ -45,6 +45,7 @@ import { AuthService } from "../auth/auth.service.js";
 import { ChatGateway } from "../chat/chat.gateway.js";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { RedisService } from "../redis/redis.service.js";
+import { AfkService } from "./afk.service.js";
 import { BodenseeGameService, type BodenseePlayerView } from "./bodensee-game.service.js";
 import { DisconnectVoteService } from "./disconnect-vote.service.js";
 import { GameLockService } from "./game-lock.service.js";
@@ -120,7 +121,8 @@ export class GameGateway
     private readonly userRegistry: PerUserSocketRegistry,
     private readonly disconnectVote: DisconnectVoteService,
     private readonly chatGateway: ChatGateway,
-    private readonly prisma: PrismaService
+    private readonly prisma: PrismaService,
+    private readonly afk: AfkService
   ) {
     // Defensive: alle DI-Params sollten von NestJS gefüllt sein. Wenn nicht,
     // ist das ein Setup-Problem (z.B. fehlende `reflect-metadata` /
@@ -136,7 +138,8 @@ export class GameGateway
       !userRegistry ||
       !disconnectVote ||
       !chatGateway ||
-      !prisma
+      !prisma ||
+      !afk
     ) {
       throw new Error(
         "GameGateway: Constructor-DI unvollständig. " +
@@ -269,6 +272,9 @@ export class GameGateway
           .catch((err: unknown) =>
             this.log.warn({ err, userId }, "lastSeenAt-Update fehlgeschlagen")
           );
+        // AFK-Markierung räumen — wer komplett offline geht, ist beim nächsten
+        // Login wieder „online", nicht „abwesend".
+        void this.afk.setAfk(userId, false).catch(() => {});
         // Wenn er an einem laufenden Game sitzt, Disconnect-Flow triggern:
         // Kreuz/Solo via mehrstufigem Vote, Bodensee via KI-Übernahme.
         await this.triggerDisconnectVotesForUser(userId);

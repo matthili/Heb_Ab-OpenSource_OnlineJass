@@ -11,6 +11,7 @@ import {
   Body,
   Controller,
   Delete,
+  ForbiddenException,
   Get,
   Param,
   Patch,
@@ -20,9 +21,12 @@ import {
   UseGuards,
 } from "@nestjs/common";
 import type { FastifyRequest } from "fastify";
+import { z } from "zod";
 
 import { SessionGuard } from "../../common/guards/session.guard.js";
 import { ZodValidationPipe } from "../../common/pipes/zod.pipe.js";
+import { AfkService } from "../game/afk.service.js";
+import { LobbyGateway } from "./lobby.gateway.js";
 import {
   InviteUserDtoSchema,
   ListTablesQuerySchema,
@@ -39,14 +43,19 @@ import {
   type TableDetailView,
   type TableListEntry,
 } from "./lobby.service.js";
-import { PresenceService, type PresenceUser } from "./presence.service.js";
+import { PresenceService, type PresenceState, type PresenceUser } from "./presence.service.js";
+
+const AfkDtoSchema = z.object({ afk: z.boolean() }).strict();
+type AfkDto = z.infer<typeof AfkDtoSchema>;
 
 @Controller("api/lobby")
 @UseGuards(SessionGuard)
 export class LobbyController {
   constructor(
     private readonly lobby: LobbyService,
-    private readonly presence: PresenceService
+    private readonly presence: PresenceService,
+    private readonly afk: AfkService,
+    private readonly gateway: LobbyGateway
   ) {}
 
   // ─── Online-Präsenz ────────────────────────────────────────────────
@@ -71,13 +80,39 @@ export class LobbyController {
   async presenceStatus(
     @Req() req: FastifyRequest,
     @Query("ids") ids?: string
-  ): Promise<{ statuses: Record<string, { online: boolean; lastSeenAt: string | null }> }> {
+  ): Promise<{ statuses: Record<string, { state: PresenceState; lastSeenAt: string | null }> }> {
     const list = (ids ?? "")
       .split(",")
       .map((s) => s.trim())
       .filter(Boolean);
     const statuses = await this.presence.statusFor(req.user!.id, list);
     return { statuses };
+  }
+
+  // ─── AFK / Pause ───────────────────────────────────────────────────
+
+  @Get("afk")
+  async getAfk(@Req() req: FastifyRequest): Promise<{ afk: boolean }> {
+    return { afk: await this.afk.isAfk(req.user!.id) };
+  }
+
+  /**
+   * AFK-Modus setzen. AFK **an** ist nur erlaubt, solange man an keinem Tisch
+   * sitzt (sonst könnte man eine Partie blockieren). Bei Erfolg wird ein
+   * `presence:afk`-Event an alle Geräte des Users gepusht (Overlay an/aus).
+   */
+  @Post("afk")
+  async setAfk(
+    @Req() req: FastifyRequest,
+    @Body(new ZodValidationPipe(AfkDtoSchema)) dto: AfkDto
+  ): Promise<{ afk: boolean }> {
+    const userId = req.user!.id;
+    if (dto.afk && (await this.presence.isAtTable(userId))) {
+      throw new ForbiddenException("AFK ist nicht möglich, solange du an einem Tisch sitzt.");
+    }
+    await this.afk.setAfk(userId, dto.afk);
+    this.gateway.pushToUser(userId, "presence:afk", { afk: dto.afk });
+    return { afk: dto.afk };
   }
 
   // ─── Tisch-CRUD ────────────────────────────────────────────────────

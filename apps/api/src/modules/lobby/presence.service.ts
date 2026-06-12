@@ -12,20 +12,33 @@
  */
 import { Injectable } from "@nestjs/common";
 
+import { AfkService } from "../game/afk.service.js";
 import { PerUserSocketRegistry } from "../game/per-user-socket-registry.service.js";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { resolvePresenceVisibility, type VisibilityMap } from "../users/visibility.js";
 
+/**
+ * Präsenz-Zustand eines Users:
+ *   offline — kein aktiver Socket
+ *   online  — verbunden, frei (grün)
+ *   playing — verbunden + an einem (nicht geschlossenen) Tisch (blau)
+ *   afk     — verbunden + selbst als abwesend markiert (orange)
+ * Reihenfolge der Priorität: afk > playing > online > offline.
+ */
+export type PresenceState = "offline" | "online" | "playing" | "afk";
+
 export interface PresenceUser {
   id: string;
   name: string;
+  state: PresenceState;
 }
 
 @Injectable()
 export class PresenceService {
   constructor(
     private readonly registry: PerUserSocketRegistry,
-    private readonly prisma: PrismaService
+    private readonly prisma: PrismaService,
+    private readonly afk: AfkService
   ) {}
 
   /**
@@ -73,7 +86,19 @@ export class PresenceService {
     });
 
     visible.sort((a, b) => a.name.localeCompare(b.name, "de"));
-    return visible.map((u) => ({ id: u.id, name: u.name }));
+
+    // Alle Sichtbaren sind online (aktiver Socket) → Status ist afk | playing |
+    // online. afk + playing für die ganze Menge in je einer Abfrage auflösen.
+    const visibleIds = visible.map((u) => u.id);
+    const [afkSet, playingSet] = await Promise.all([
+      this.afk.filterAfk(visibleIds),
+      this.playingSet(visibleIds),
+    ]);
+    return visible.map((u) => ({
+      id: u.id,
+      name: u.name,
+      state: afkSet.has(u.id) ? "afk" : playingSet.has(u.id) ? "playing" : "online",
+    }));
   }
 
   /**
@@ -86,7 +111,7 @@ export class PresenceService {
   async statusFor(
     viewerId: string,
     ids: string[]
-  ): Promise<Record<string, { online: boolean; lastSeenAt: string | null }>> {
+  ): Promise<Record<string, { state: PresenceState; lastSeenAt: string | null }>> {
     const unique = [...new Set(ids)].slice(0, 100);
     if (unique.length === 0) return {};
     const users = await this.prisma.user.findMany({
@@ -103,7 +128,9 @@ export class PresenceService {
       .map((u) => u.id);
     const friendIds = await this.acceptedFriendIds(viewerId, friendsOnlyIds);
 
-    const result: Record<string, { online: boolean; lastSeenAt: string | null }> = {};
+    // 1. Pass: Sichtbarkeit + Online-Sein bestimmen.
+    const meta = new Map<string, { maySee: boolean; online: boolean; lastSeenAt: string | null }>();
+    const onlineVisible: string[] = [];
     for (const u of users) {
       const vis = (u.profile?.visibility ?? {}) as VisibilityMap;
       const level = resolvePresenceVisibility(vis);
@@ -112,14 +139,54 @@ export class PresenceService {
         level === "LOGGED_IN" ||
         level === "PUBLIC" ||
         (level === "FRIENDS" && friendIds.has(u.id));
-      if (!maySee) {
-        result[u.id] = { online: false, lastSeenAt: null };
-        continue;
-      }
-      const online = (await this.registry.countSockets(u.id)) > 0;
-      result[u.id] = { online, lastSeenAt: u.lastSeenAt ? u.lastSeenAt.toISOString() : null };
+      const online = maySee && (await this.registry.countSockets(u.id)) > 0;
+      if (online) onlineVisible.push(u.id);
+      meta.set(u.id, {
+        maySee,
+        online,
+        lastSeenAt: maySee && u.lastSeenAt ? u.lastSeenAt.toISOString() : null,
+      });
+    }
+
+    // 2. Pass: afk + playing nur für online+sichtbare User auflösen.
+    const [afkSet, playingSet] = await Promise.all([
+      this.afk.filterAfk(onlineVisible),
+      this.playingSet(onlineVisible),
+    ]);
+
+    const result: Record<string, { state: PresenceState; lastSeenAt: string | null }> = {};
+    for (const u of users) {
+      const m = meta.get(u.id)!;
+      const state: PresenceState = !m.online
+        ? "offline"
+        : afkSet.has(u.id)
+          ? "afk"
+          : playingSet.has(u.id)
+            ? "playing"
+            : "online";
+      result[u.id] = { state, lastSeenAt: m.lastSeenAt };
     }
     return result;
+  }
+
+  /**
+   * Teilmenge der `userIds`, die an einem nicht-geschlossenen Tisch sitzen
+   * (= „spielt gerade"/blau und zugleich die AFK-Sperre). Leere Liste → leer.
+   */
+  private async playingSet(userIds: string[]): Promise<Set<string>> {
+    if (userIds.length === 0) return new Set();
+    const seats = await this.prisma.lobbyTableSeat.findMany({
+      where: { userId: { in: userIds }, table: { status: { not: "CLOSED" } } },
+      select: { userId: true },
+    });
+    const s = new Set<string>();
+    for (const seat of seats) if (seat.userId) s.add(seat.userId);
+    return s;
+  }
+
+  /** Sitzt dieser User aktuell an einem (nicht geschlossenen) Tisch? */
+  async isAtTable(userId: string): Promise<boolean> {
+    return (await this.playingSet([userId])).has(userId);
   }
 
   /**

@@ -15,6 +15,7 @@ import { ConsentBanner } from "~/features/consent/ConsentBanner";
 import { BrandLogo } from "~/features/brand/BrandLogo";
 import { SignOutMenu } from "~/features/auth/SignOutMenu";
 import type { MeProfileResponse } from "~/features/admin/types";
+import { AfkButton } from "~/lib/afk";
 import { api } from "~/lib/api";
 import { useSession } from "~/lib/auth-client";
 import { type Theme, useTheme } from "~/lib/theme";
@@ -168,6 +169,7 @@ function Header() {
               >
                 {t("nav.profile")}
               </Link>
+              <AfkButton />
               <ContrastToggle />
               <LanguageSwitcher />
               <SignOutMenu />

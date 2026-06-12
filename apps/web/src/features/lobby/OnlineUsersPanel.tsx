@@ -9,11 +9,20 @@ import { useTranslation } from "react-i18next";
 
 import { UserName } from "~/features/social/UserName";
 import { api } from "~/lib/api";
+import type { PresenceState } from "~/lib/presence";
 
 interface PresenceUser {
   id: string;
   name: string;
+  state: PresenceState;
 }
+
+const STATE_COLOR: Record<PresenceState, string> = {
+  online: "bg-emerald-500",
+  playing: "bg-sky-500",
+  afk: "bg-amber-500",
+  offline: "bg-stone-400",
+};
 
 const POLL_MS = 15_000;
 
@@ -50,9 +59,9 @@ export function OnlineUsersPanel() {
           {data.users.map((u) => (
             <li key={u.id} className="flex items-center gap-2 text-jass-ink">
               <span
-                title={t("social.presence.online")}
-                aria-label={t("social.presence.online")}
-                className="inline-block size-2 rounded-full bg-emerald-500"
+                title={t(`social.presence.${u.state}`)}
+                aria-label={t(`social.presence.${u.state}`)}
+                className={`inline-block size-2 rounded-full ${STATE_COLOR[u.state]}`}
               />
               <UserName userId={u.id} name={u.name} showPresence={false} />
             </li>

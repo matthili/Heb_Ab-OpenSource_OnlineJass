@@ -27,8 +27,10 @@ import { useTranslation } from "react-i18next";
 import { api } from "~/lib/api";
 import { useSession } from "~/lib/auth-client";
 
+export type PresenceState = "offline" | "online" | "playing" | "afk";
+
 export interface PresenceStatus {
-  online: boolean;
+  state: PresenceState;
   lastSeenAt: string | null;
 }
 
@@ -101,29 +103,35 @@ export function usePresence(userId: string | undefined): PresenceStatus | undefi
   return userId ? data[userId] : undefined;
 }
 
+/** Tailwind-Farbe pro Status. */
+const STATE_COLOR: Record<PresenceState, string> = {
+  online: "bg-emerald-500",
+  playing: "bg-sky-500",
+  afk: "bg-amber-500",
+  offline: "bg-stone-400",
+};
+
 /**
- * Kleiner Präsenz-Punkt: grün = online, grau = offline (mit „zuletzt gesehen"
- * im Tooltip). Unbekannt/versteckt/lädt → nichts (kein Punkt, kein Platz).
+ * Kleiner Präsenz-Punkt: grün = online, blau = spielt gerade, orange = AFK,
+ * grau = offline (mit „zuletzt gesehen" im Tooltip). Unbekannt/versteckt/lädt
+ * oder offline-ohne-Zeitstempel → nichts (kein Punkt, kein Platz).
  */
 export function PresenceDot({ userId }: { userId: string | undefined }) {
   const { t } = useTranslation();
   const status = usePresence(userId);
   if (!status) return null;
-  if (status.online) {
-    return (
-      <span
-        className="inline-block size-2 shrink-0 rounded-full bg-emerald-500"
-        title={t("social.presence.online")}
-        aria-label={t("social.presence.online")}
-      />
-    );
-  }
-  if (!status.lastSeenAt) return null; // offline + unbekannt → kein Punkt
-  const when = new Date(status.lastSeenAt).toLocaleString();
-  const label = t("social.presence.lastSeenAt", { when });
+
+  // Offline ohne bekanntes „zuletzt gesehen" → gar nichts rendern.
+  if (status.state === "offline" && !status.lastSeenAt) return null;
+
+  const label =
+    status.state === "offline"
+      ? t("social.presence.lastSeenAt", { when: new Date(status.lastSeenAt!).toLocaleString() })
+      : t(`social.presence.${status.state}`);
+
   return (
     <span
-      className="inline-block size-2 shrink-0 rounded-full bg-stone-400"
+      className={`inline-block size-2 shrink-0 rounded-full ${STATE_COLOR[status.state]}`}
       title={label}
       aria-label={label}
     />

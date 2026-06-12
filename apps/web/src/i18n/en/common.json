@@ -1,5 +1,16 @@
 {
   "appName": "Heb ab!",
+  "afk": {
+    "button": {
+      "label": "AFK / Pause",
+      "atTableHint": "Not available while you're seated at a table."
+    },
+    "overlay": {
+      "title": "Paused",
+      "body": "You're marked as away. Tables and the lobby chat are paused — direct messages still reach you.",
+      "end": "End AFK"
+    }
+  },
   "social": {
     "menu": {
       "message": "Direct message",
@@ -18,6 +29,8 @@
     },
     "presence": {
       "online": "Online",
+      "playing": "Playing",
+      "afk": "Away (AFK)",
       "lastSeenAt": "Last seen: {{when}}"
     },
     "birthday": {

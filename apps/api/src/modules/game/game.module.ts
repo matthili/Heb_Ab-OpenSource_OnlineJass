@@ -3,6 +3,7 @@ import { Module } from "@nestjs/common";
 import { SessionGuard } from "../../common/guards/session.guard.js";
 import { AuthModule } from "../auth/auth.module.js";
 import { ChatModule } from "../chat/chat.module.js";
+import { AfkService } from "./afk.service.js";
 import { BodenseeGameService } from "./bodensee-game.service.js";
 import { DisconnectVoteService } from "./disconnect-vote.service.js";
 import { GameController } from "./game.controller.js";
@@ -24,6 +25,7 @@ import { AIPlayerFactory } from "./players/ai-player.factory.js";
     GameLockService,
     PerUserSocketRegistry,
     DisconnectVoteService,
+    AfkService,
     AIPlayerFactory,
     SessionGuard,
   ],
@@ -33,6 +35,7 @@ import { AIPlayerFactory } from "./players/ai-player.factory.js";
     ReplayService,
     DisconnectVoteService,
     PerUserSocketRegistry,
+    AfkService,
   ],
 })
 export class GameModule {}
