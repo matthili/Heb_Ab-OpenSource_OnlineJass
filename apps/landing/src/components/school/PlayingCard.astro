@@ -1,0 +1,56 @@
+---
+/**
+ * Eine einzelne Jasskarte aus dem echten Karten-Set (`/cards/{id}.png`,
+ * synchronisiert via scripts/sync-landing-cards.mjs). Erzeugt sprechende
+ * Alt-Texte („Herz Zehn", „WELI — die Schelle-Sechs").
+ */
+interface Props {
+  /** Karten-ID wie der Dateiname, z.B. "herz-10", "eichel-U", "schelle-6-weli". */
+  card: string;
+  /** Render-Breite in px (Höhe folgt dem Seitenverhältnis). */
+  w?: number;
+}
+const { card, w = 72 } = Astro.props;
+
+const SUIT_NAMES: Record<string, string> = {
+  eichel: "Eichel",
+  schelle: "Schelle",
+  herz: "Herz",
+  laub: "Laub",
+};
+const RANK_NAMES: Record<string, string> = {
+  "6": "Sechs",
+  "7": "Sieben",
+  "8": "Acht",
+  "9": "Neun",
+  "10": "Zehn",
+  U: "Unter (Buur)",
+  O: "Ober",
+  K: "König",
+  A: "Ass",
+};
+
+function altFor(id: string): string {
+  if (id === "schelle-6-weli") return "WELI — die Schelle-Sechs";
+  const [suit, rank] = id.split("-");
+  return `${SUIT_NAMES[suit ?? ""] ?? suit} ${RANK_NAMES[rank ?? ""] ?? rank}`;
+}
+---
+
+<img
+  src={`/cards/${card}.png`}
+  alt={altFor(card)}
+  width={w}
+  class="pcard"
+  loading="lazy"
+  decoding="async"
+/>
+
+<style>
+  .pcard {
+    height: auto;
+    border-radius: 6px;
+    box-shadow: 0 1px 3px rgb(0 0 0 / 0.35);
+    display: block;
+  }
+</style>

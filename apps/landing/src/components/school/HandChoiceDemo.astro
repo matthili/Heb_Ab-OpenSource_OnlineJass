@@ -1,0 +1,214 @@
+---
+/**
+ * „Was darfst du spielen?"-Demo: links der liegende Stich, rechts deine
+ * Handkarten mit ✓/✗-Urteil + Begründung. Die Badges poppen gestaffelt,
+ * sobald die Demo sichtbar wird (gleicher `.anim`/`.play`-Mechanismus
+ * wie TrickDemo).
+ */
+import PlayingCard from "./PlayingCard.astro";
+
+interface TableCard {
+  card: string;
+  who: string;
+}
+interface HandCard {
+  card: string;
+  ok: boolean;
+  why: string;
+}
+interface Props {
+  table: TableCard[];
+  hand: HandCard[];
+  caption: string;
+  /** Trumpf-Farbe als Suit-ID ("eichel" | "schelle" | "herz" | "laub"). */
+  trumpSuit?: string;
+}
+const { table, hand, caption, trumpSuit } = Astro.props;
+const SUIT_NAMES: Record<string, string> = {
+  eichel: "Eichel",
+  schelle: "Schelle",
+  herz: "Herz",
+  laub: "Laub",
+};
+---
+
+<figure class="anim choice">
+  <div class="board">
+    <div class="pile">
+      <span class="lbl">Im Stich liegt</span>
+      {
+        trumpSuit && (
+          <span class="trump">
+            Trumpf:
+            <img src={`/cards/suits/${trumpSuit}.png`} alt="" width="18" height="18" />
+            {SUIT_NAMES[trumpSuit]}
+          </span>
+        )
+      }
+      <div class="tcards">
+        {
+          table.map((tc) => (
+            <div class="tcard">
+              <PlayingCard card={tc.card} w={60} />
+              <span class="who">{tc.who}</span>
+            </div>
+          ))
+        }
+      </div>
+    </div>
+    <div class="hand">
+      <span class="lbl">Deine Hand — was ist erlaubt?</span>
+      <div class="hcards">
+        {
+          hand.map((h, i) => (
+            <div class="hcard" style={`--i:${i}`}>
+              <div class="cardbox">
+                <PlayingCard card={h.card} w={62} />
+                <span class={`badge ${h.ok ? "ok" : "no"}`} aria-label={h.ok ? "erlaubt" : "verboten"}>
+                  {h.ok ? "✓" : "✗"}
+                </span>
+              </div>
+              <span class="why">{h.why}</span>
+            </div>
+          ))
+        }
+      </div>
+    </div>
+    <button type="button" class="replay" aria-label="Animation erneut abspielen">↻</button>
+  </div>
+  <figcaption>{caption}</figcaption>
+</figure>
+
+<style>
+  .choice {
+    margin: 1.25rem 0;
+  }
+  .board {
+    position: relative;
+    display: flex;
+    gap: 1.25rem;
+    flex-wrap: wrap;
+    padding: 1rem 2.4rem 1rem 1rem;
+    border-radius: 0.75rem;
+    border: 1px solid var(--edge);
+    background: var(--card-bg);
+  }
+  .lbl {
+    display: block;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--muted);
+    margin-bottom: 0.5rem;
+  }
+  .trump {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.78rem;
+    color: var(--ink);
+    background: var(--cream);
+    border: 1px solid var(--edge);
+    border-radius: 999px;
+    padding: 0.1rem 0.55rem;
+    margin-bottom: 0.5rem;
+  }
+  .trump img {
+    display: block;
+  }
+  .pile {
+    flex: 0 0 auto;
+  }
+  .tcards {
+    display: flex;
+    gap: 0.5rem;
+  }
+  .tcard {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+  }
+  .who {
+    font-size: 0.7rem;
+    color: var(--muted);
+  }
+  .hand {
+    flex: 1 1 16rem;
+  }
+  .hcards {
+    display: flex;
+    gap: 0.9rem;
+    flex-wrap: wrap;
+  }
+  .hcard {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.3rem;
+    max-width: 7.5rem;
+  }
+  .cardbox {
+    position: relative;
+  }
+  .badge {
+    position: absolute;
+    top: -0.5rem;
+    right: -0.5rem;
+    width: 1.4rem;
+    height: 1.4rem;
+    border-radius: 999px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #fff;
+    opacity: 0;
+    transform: scale(0.3);
+    box-shadow: 0 1px 3px rgb(0 0 0 / 0.4);
+  }
+  .badge.ok {
+    background: var(--green);
+  }
+  .badge.no {
+    background: var(--red);
+  }
+  :global(.anim.play) .badge {
+    animation: pop 0.3s ease-out forwards;
+    animation-delay: calc(0.35s + var(--i) * 0.3s);
+  }
+  @keyframes pop {
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+  .why {
+    font-size: 0.72rem;
+    color: var(--muted);
+    text-align: center;
+    line-height: 1.35;
+  }
+  .replay {
+    position: absolute;
+    top: 0.45rem;
+    right: 0.45rem;
+    border: 1px solid var(--edge);
+    border-radius: 999px;
+    width: 1.7rem;
+    height: 1.7rem;
+    background: var(--cream);
+    color: var(--ink);
+    font-size: 0.95rem;
+    line-height: 1;
+    cursor: pointer;
+  }
+  .replay:hover {
+    background: var(--white);
+  }
+  figcaption {
+    font-size: 0.9rem;
+    color: var(--muted);
+    margin-top: 0.5rem;
+  }
+</style>

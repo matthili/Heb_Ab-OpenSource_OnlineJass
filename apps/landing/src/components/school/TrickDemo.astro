@@ -1,0 +1,173 @@
+---
+/**
+ * Animierter Beispiel-Stich: Karten fliegen nacheinander auf den Filz,
+ * der Gewinner bekommt ein Gold-Band „Stich!". Die Animation startet,
+ * sobald die Demo ins Bild scrollt (IntersectionObserver in rules.astro,
+ * Klasse `.play` auf `.anim`); ↻ spielt sie erneut ab.
+ *
+ * Bei `prefers-reduced-motion` springt alles in den Endzustand
+ * (globale Regel in styles.css).
+ */
+import PlayingCard from "./PlayingCard.astro";
+
+interface Played {
+  card: string;
+  who: string;
+  /** Kleine gelbe Notiz unter der Karte, z.B. "Trumpf!" oder "+10". */
+  note?: string;
+}
+interface Props {
+  cards: Played[];
+  /** Index (0-basiert) der Gewinner-Karte. */
+  winner: number;
+  caption: string;
+  winnerLabel?: string;
+}
+const { cards, winner, caption, winnerLabel = "Stich!" } = Astro.props;
+const ROTS = [-6, 4, -3, 6];
+---
+
+<figure class="anim trick">
+  <div class="felt" style={`--n:${cards.length}`}>
+    {
+      cards.map((c, i) => (
+        <div class={`slot${i === winner ? " winner" : ""}`} style={`--i:${i}; --rot:${ROTS[i % 4]}deg`}>
+          <span class="who">
+            {i + 1}. {c.who}
+          </span>
+          <div class="cardwrap">
+            <PlayingCard card={c.card} w={70} />
+          </div>
+          <span class="under">
+            {i === winner && <span class="crown">{winnerLabel}</span>}
+            {c.note && <span class="note">{c.note}</span>}
+          </span>
+        </div>
+      ))
+    }
+    <button type="button" class="replay" aria-label="Animation erneut abspielen">↻</button>
+  </div>
+  <figcaption>{caption}</figcaption>
+</figure>
+
+<style>
+  .trick {
+    margin: 1.25rem 0;
+  }
+  .felt {
+    position: relative;
+    display: flex;
+    gap: 0.9rem;
+    justify-content: center;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    padding: 1rem 2.4rem 1.1rem 1rem;
+    border-radius: 0.75rem;
+    background-color: var(--green-dark);
+    background-image: radial-gradient(circle at 50% 30%, rgb(255 255 255 / 0.08), transparent 70%);
+    border: 1px solid rgb(0 0 0 / 0.25);
+  }
+  .slot {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.3rem;
+    min-width: 76px;
+  }
+  /* Schrift liegt auf dem (immer dunklen) Filz → fix helle Tinte. */
+  .who {
+    font-size: 0.72rem;
+    color: #f0e6cf;
+    opacity: 0.85;
+    white-space: nowrap;
+  }
+  .cardwrap {
+    opacity: 0;
+    transform: translateY(26px) rotate(var(--rot)) scale(0.85);
+  }
+  :global(.anim.play) .cardwrap {
+    animation: deal 0.5s cubic-bezier(0.2, 0.7, 0.3, 1.05) forwards;
+    animation-delay: calc(var(--i) * 0.6s);
+  }
+  @keyframes deal {
+    to {
+      opacity: 1;
+      transform: translateY(0) rotate(var(--rot)) scale(1);
+    }
+  }
+  /* Gold-Glow auf der Gewinner-Karte, nachdem alle Karten liegen. */
+  :global(.anim.play) .winner .cardwrap {
+    animation:
+      deal 0.5s cubic-bezier(0.2, 0.7, 0.3, 1.05) forwards,
+      glow 0.45s ease-out forwards;
+    animation-delay: calc(var(--i) * 0.6s), calc(var(--n) * 0.6s + 0.1s);
+  }
+  @keyframes glow {
+    to {
+      filter: drop-shadow(0 0 7px #e6b324);
+    }
+  }
+  .under {
+    min-height: 1.3rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.15rem;
+  }
+  .crown {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #241b14;
+    background: #e6b324;
+    border-radius: 999px;
+    padding: 0.05rem 0.55rem;
+    opacity: 0;
+    transform: scale(0.4);
+  }
+  :global(.anim.play) .crown {
+    animation: pop 0.35s ease-out forwards;
+    animation-delay: calc(var(--n) * 0.6s + 0.2s);
+  }
+  .note {
+    font-size: 0.72rem;
+    color: #e6b324;
+    opacity: 0;
+  }
+  :global(.anim.play) .note {
+    animation: fadein 0.3s ease-out forwards;
+    animation-delay: calc(var(--i) * 0.6s + 0.35s);
+  }
+  @keyframes pop {
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+  @keyframes fadein {
+    to {
+      opacity: 1;
+    }
+  }
+  .replay {
+    position: absolute;
+    top: 0.45rem;
+    right: 0.45rem;
+    border: none;
+    border-radius: 999px;
+    width: 1.7rem;
+    height: 1.7rem;
+    background: rgb(0 0 0 / 0.3);
+    color: #f0e6cf;
+    font-size: 0.95rem;
+    line-height: 1;
+    cursor: pointer;
+  }
+  .replay:hover {
+    background: rgb(0 0 0 / 0.5);
+  }
+  figcaption {
+    font-size: 0.9rem;
+    color: var(--muted);
+    margin-top: 0.5rem;
+  }
+</style>
