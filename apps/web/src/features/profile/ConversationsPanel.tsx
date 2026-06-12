@@ -182,6 +182,7 @@ function ConversationView({ partnerId }: { partnerId: string }) {
           <option value="during-game">{t("profile.conversations.filterDuringGame")}</option>
           <option value="no-game">{t("profile.conversations.filterNoGame")}</option>
         </select>
+        <BlockControl partnerId={partnerId} />
       </div>
 
       {conv.isPending && (
@@ -219,6 +220,51 @@ function ConversationView({ partnerId }: { partnerId: string }) {
           </button>
         </form>
       )}
+    </div>
+  );
+}
+
+/**
+ * „PN-Erlaubnis entziehen" pro Partner. Legt serverseitig einen `DmBlock` an
+ * (overruled die dmPolicy-Einstellung) bzw. hebt ihn wieder auf. Der Block
+ * verhindert, dass dieser Partner dir Privatnachrichten schickt.
+ */
+function BlockControl({ partnerId }: { partnerId: string }) {
+  const { t } = useTranslation();
+  const queryClient = useQueryClient();
+  const blocks = useQuery<{ blockedUserIds: string[] }>({
+    queryKey: ["chat", "dm-blocks"],
+    queryFn: () => api("/api/chat/dm-blocks"),
+    staleTime: 30_000,
+  });
+  const blocked = blocks.data?.blockedUserIds.includes(partnerId) ?? false;
+
+  const toggle = useMutation({
+    mutationFn: () =>
+      api(`/api/chat/dm-blocks/${partnerId}`, { method: blocked ? "DELETE" : "POST" }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["chat", "dm-blocks"] }),
+  });
+
+  if (blocks.isPending) return null;
+
+  return (
+    <div className="ml-auto flex items-center gap-2">
+      {blocked && (
+        <span className="rounded bg-rose-50 px-1.5 py-0.5 text-xs font-medium text-rose-700">
+          {t("profile.conversations.blockedBadge")}
+        </span>
+      )}
+      <button
+        type="button"
+        onClick={() => toggle.mutate()}
+        disabled={toggle.isPending}
+        className={
+          "text-xs underline decoration-dotted hover:decoration-solid disabled:opacity-50 " +
+          (blocked ? "text-emerald-700" : "text-rose-700")
+        }
+      >
+        {blocked ? t("profile.conversations.unblockDm") : t("profile.conversations.blockDm")}
+      </button>
     </div>
   );
 }

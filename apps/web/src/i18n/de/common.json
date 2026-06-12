@@ -98,6 +98,20 @@
       },
       "statsLegend": "Spielstatistik",
       "statsVisibilityQuestion": "Wer darf deine Spiel-Statistik (Partien, Siege, Siegesrate, Ø-Punkte je Variante) in deinem Profil sehen?",
+      "privacyLegend": "Nachrichten & Präsenz",
+      "dmPolicyQuestion": "Wer darf dir Privatnachrichten senden?",
+      "dmPolicyLabel": "PN-Empfang",
+      "dmPolicy": {
+        "ALL": "Alle eingeloggten User",
+        "FRIENDS": "Nur Freunde"
+      },
+      "presenceQuestion": "Wer sieht deinen Online-Status (online / zuletzt gesehen)?",
+      "presenceLabel": "Sichtbarkeit",
+      "presence": {
+        "LOGGED_IN": "Alle eingeloggten User",
+        "FRIENDS": "Nur Freunde",
+        "PRIVATE": "Niemand"
+      },
       "leaderboardLegend": "Leaderboard",
       "leaderboardOptIn": "Im <link>öffentlichen Leaderboard</link> erscheinen (Opt-in). Sichtbar bleibt nur dein Spitzname und die aggregierte Bilanz; ein Klick reicht zum Aussteigen.",
       "save": "Speichern",
@@ -176,7 +190,10 @@
       "relativeJustNow": "gerade eben",
       "relativeMinutes": "vor {{count}} Min",
       "relativeHours": "vor {{count}} Std",
-      "relativeDays": "vor {{count}} T"
+      "relativeDays": "vor {{count}} T",
+      "blockDm": "PN-Erlaubnis entziehen",
+      "unblockDm": "PN wieder erlauben",
+      "blockedBadge": "PN gesperrt"
     },
     "sessions": {
       "title": "Aktive Sitzungen",
@@ -926,7 +943,8 @@
     "markdownHintItalic": "*kursiv*",
     "markdownHintCode": "`code`",
     "send": "Senden",
-    "sendFailed": "Senden fehlgeschlagen."
+    "sendFailed": "Senden fehlgeschlagen.",
+    "dmBlockedHint": "Eine gewählte Empfangs-Einstellung verhindert, dass hier eine Privatnachricht gesendet werden kann."
   },
 
   "admin": {

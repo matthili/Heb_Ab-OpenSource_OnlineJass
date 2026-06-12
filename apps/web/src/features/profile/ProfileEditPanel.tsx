@@ -27,6 +27,12 @@ import { PushTogglePanel } from "./PushTogglePanel";
 const VISIBILITY_LEVELS = ["PUBLIC", "LOGGED_IN", "FRIENDS", "PRIVATE"] as const;
 type VisibilityLevel = (typeof VISIBILITY_LEVELS)[number];
 
+/** Präsenz kennt nur drei sinnvolle Stufen (PUBLIC ≙ LOGGED_IN). */
+const PRESENCE_LEVELS = ["LOGGED_IN", "FRIENDS", "PRIVATE"] as const;
+
+const DM_POLICIES = ["ALL", "FRIENDS"] as const;
+type DmPolicy = (typeof DM_POLICIES)[number];
+
 type FieldName =
   | "realFirstName"
   | "realLastName"
@@ -37,7 +43,9 @@ type FieldName =
   | "bio"
   | "avatarUrl"
   // Pseudo-Feld: steuert die Sichtbarkeit der Spiel-Statistik (kein Eingabe-Feld).
-  | "stats";
+  | "stats"
+  // Pseudo-Feld: steuert, wer den Online-/Zuletzt-gesehen-Status sieht.
+  | "presence";
 
 interface MyProfileView {
   id: string;
@@ -59,6 +67,7 @@ interface MyProfileView {
     avatarUrl: string | null;
     visibility: Record<FieldName, VisibilityLevel>;
     publicLeaderboard: boolean;
+    dmPolicy: DmPolicy;
   };
 }
 
@@ -73,6 +82,7 @@ interface FormState {
   avatarUrl: string;
   visibility: Record<FieldName, VisibilityLevel>;
   publicLeaderboard: boolean;
+  dmPolicy: DmPolicy;
 }
 
 const EMPTY_VISIBILITY: Record<FieldName, VisibilityLevel> = {
@@ -85,6 +95,7 @@ const EMPTY_VISIBILITY: Record<FieldName, VisibilityLevel> = {
   bio: "PUBLIC",
   avatarUrl: "PUBLIC",
   stats: "LOGGED_IN",
+  presence: "LOGGED_IN",
 };
 
 export function ProfileEditPanel() {
@@ -110,6 +121,7 @@ export function ProfileEditPanel() {
         avatarUrl: "",
         visibility: { ...EMPTY_VISIBILITY },
         publicLeaderboard: false,
+        dmPolicy: "ALL",
       };
     }
     const p = data.profile;
@@ -124,6 +136,7 @@ export function ProfileEditPanel() {
       avatarUrl: p.avatarUrl ?? "",
       visibility: { ...p.visibility },
       publicLeaderboard: p.publicLeaderboard,
+      dmPolicy: p.dmPolicy,
     };
   }, [data]);
 
@@ -173,6 +186,7 @@ export function ProfileEditPanel() {
       avatarUrl: trimmedOrNull(form.avatarUrl),
       visibility: form.visibility,
       publicLeaderboard: form.publicLeaderboard,
+      dmPolicy: form.dmPolicy,
     });
   }
 
@@ -343,6 +357,46 @@ export function ProfileEditPanel() {
               {VISIBILITY_LEVELS.map((lvl) => (
                 <option key={lvl} value={lvl}>
                   {t(`profile.edit.visibility.${lvl}`)}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+      </fieldset>
+
+      <fieldset className="border-t border-stone-200 pt-3">
+        <legend className="text-sm font-medium text-stone-700">
+          {t("profile.edit.privacyLegend")}
+        </legend>
+        <div className="mt-1 grid grid-cols-1 sm:grid-cols-[1fr_14rem] items-start gap-2 sm:gap-3">
+          <p className="text-sm text-stone-600">{t("profile.edit.dmPolicyQuestion")}</p>
+          <label className="block space-y-1">
+            <span className="block text-xs text-stone-500">{t("profile.edit.dmPolicyLabel")}</span>
+            <select
+              value={form.dmPolicy}
+              onChange={(e) => setField("dmPolicy", e.currentTarget.value as DmPolicy)}
+              className="w-full rounded border border-stone-300 bg-white px-2 py-1 text-sm"
+            >
+              {DM_POLICIES.map((p) => (
+                <option key={p} value={p}>
+                  {t(`profile.edit.dmPolicy.${p}`)}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+        <div className="mt-2 grid grid-cols-1 sm:grid-cols-[1fr_14rem] items-start gap-2 sm:gap-3">
+          <p className="text-sm text-stone-600">{t("profile.edit.presenceQuestion")}</p>
+          <label className="block space-y-1">
+            <span className="block text-xs text-stone-500">{t("profile.edit.presenceLabel")}</span>
+            <select
+              value={form.visibility.presence}
+              onChange={(e) => setVisibility("presence", e.currentTarget.value as VisibilityLevel)}
+              className="w-full rounded border border-stone-300 bg-white px-2 py-1 text-sm"
+            >
+              {PRESENCE_LEVELS.map((lvl) => (
+                <option key={lvl} value={lvl}>
+                  {t(`profile.edit.presence.${lvl}`)}
                 </option>
               ))}
             </select>

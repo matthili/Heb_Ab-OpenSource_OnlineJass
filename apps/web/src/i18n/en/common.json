@@ -98,6 +98,20 @@
       },
       "statsLegend": "Game statistics",
       "statsVisibilityQuestion": "Who may see your game statistics (matches, wins, win rate, avg points per variant) on your profile?",
+      "privacyLegend": "Messages & presence",
+      "dmPolicyQuestion": "Who may send you direct messages?",
+      "dmPolicyLabel": "DM reception",
+      "dmPolicy": {
+        "ALL": "All logged-in users",
+        "FRIENDS": "Friends only"
+      },
+      "presenceQuestion": "Who can see your online status (online / last seen)?",
+      "presenceLabel": "Visibility",
+      "presence": {
+        "LOGGED_IN": "All logged-in users",
+        "FRIENDS": "Friends only",
+        "PRIVATE": "Nobody"
+      },
       "leaderboardLegend": "Leaderboard",
       "leaderboardOptIn": "Appear on the <link>public leaderboard</link> (opt-in). Only your nickname and aggregated record stay visible; one click opts you back out.",
       "save": "Save",
@@ -176,7 +190,10 @@
       "relativeJustNow": "just now",
       "relativeMinutes": "{{count}} min ago",
       "relativeHours": "{{count}} h ago",
-      "relativeDays": "{{count}} d ago"
+      "relativeDays": "{{count}} d ago",
+      "blockDm": "Revoke DM permission",
+      "unblockDm": "Allow DMs again",
+      "blockedBadge": "DMs blocked"
     },
     "sessions": {
       "title": "Active sessions",
@@ -926,7 +943,8 @@
     "markdownHintItalic": "*italic*",
     "markdownHintCode": "`code`",
     "send": "Send",
-    "sendFailed": "Sending failed."
+    "sendFailed": "Sending failed.",
+    "dmBlockedHint": "A chosen reception setting prevents a direct message from being sent here."
   },
 
   "admin": {

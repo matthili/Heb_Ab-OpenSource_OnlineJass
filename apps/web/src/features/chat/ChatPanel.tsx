@@ -11,13 +11,25 @@
  *   - Submit-Button für Touch-Devices
  *   - Markdown-Hint („**fett** *kursiv* `code`")
  */
+import { useQuery } from "@tanstack/react-query";
 import { type FormEvent, type KeyboardEvent, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { useSession } from "~/lib/auth-client";
-import { ApiError } from "~/lib/api";
+import { api, ApiError } from "~/lib/api";
 import { ChatBubble } from "./ChatBubble";
 import { useChat } from "./useChat";
+
+/**
+ * Bei einem DM-Kanal (`dm:<a>:<b>`) die Gegenseite (≠ ich) bestimmen — für die
+ * Vorab-Prüfung der PN-Empfangsrechte. Nicht-DM-Kanäle liefern `null`.
+ */
+function dmRecipientId(channelKey: string, myUserId: string | undefined): string | null {
+  if (!channelKey.startsWith("dm:") || !myUserId) return null;
+  const [, a, b] = channelKey.split(":");
+  if (!a || !b) return null;
+  return a === myUserId ? b : a;
+}
 
 interface Props {
   channelKey: string;
@@ -35,6 +47,19 @@ export function ChatPanel({ channelKey, title, className = "", hideHeader = fals
   const { messages, isLoading, error, sendMessage, isSending, sendError } = useChat(channelKey);
   const [draft, setDraft] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  // PN-Empfangsrechte: Bei DM-Kanälen vorab prüfen, ob wir an die Gegenseite
+  // schreiben dürfen (dmPolicy / DmBlock). Ist es verboten, sperren wir den
+  // Composer und zeigen einen Hinweis — der Server würde sonst mit 403 ablehnen.
+  const recipientId = dmRecipientId(channelKey, myUserId);
+  const canDmQuery = useQuery({
+    queryKey: ["chat", "can-dm", recipientId],
+    queryFn: () =>
+      api<{ allowed: boolean; reason: string | null }>(`/api/chat/can-dm/${recipientId}`),
+    enabled: recipientId !== null,
+    staleTime: 30_000,
+  });
+  const dmBlocked = recipientId !== null && canDmQuery.data?.allowed === false;
 
   // Auto-Scroll an's Ende, wenn neue Messages reinkommen.
   useEffect(() => {
@@ -93,6 +118,11 @@ export function ChatPanel({ channelKey, title, className = "", hideHeader = fals
       </div>
 
       <form onSubmit={onSubmit} className="border-t border-stone-200 p-2 space-y-1">
+        {dmBlocked && (
+          <p role="status" className="rounded bg-rose-50 px-2 py-1 text-xs text-rose-700">
+            {t("chat.dmBlockedHint")}
+          </p>
+        )}
         <textarea
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
@@ -100,7 +130,8 @@ export function ChatPanel({ channelKey, title, className = "", hideHeader = fals
           placeholder={t("chat.composerPlaceholder")}
           rows={2}
           maxLength={2000}
-          className="w-full rounded border border-stone-300 px-2 py-1 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-amber-500"
+          disabled={dmBlocked}
+          className="w-full rounded border border-stone-300 px-2 py-1 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-amber-500 disabled:bg-stone-100 disabled:text-stone-400"
           aria-label={t("chat.composerAria")}
         />
         <div className="flex items-center justify-between gap-2">
@@ -110,7 +141,7 @@ export function ChatPanel({ channelKey, title, className = "", hideHeader = fals
           </span>
           <button
             type="submit"
-            disabled={isSending || draft.trim().length === 0}
+            disabled={isSending || draft.trim().length === 0 || dmBlocked}
             className="rounded bg-stone-900 px-3 py-1 text-sm text-white hover:bg-stone-700 disabled:opacity-50"
           >
             {isSending ? "…" : t("chat.send")}
