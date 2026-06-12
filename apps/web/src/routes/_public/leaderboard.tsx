@@ -9,6 +9,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import { UserName } from "~/features/social/UserName";
 import { api } from "~/lib/api";
 
 interface LeaderboardEntry {
@@ -89,7 +90,9 @@ function LeaderboardPage() {
             {data.entries.map((e) => (
               <tr key={e.userId} className="border-b border-stone-100">
                 <td className="py-2 pr-3 tabular-nums text-stone-500">{e.rank}</td>
-                <td className="py-2 pr-3 font-medium">{e.name}</td>
+                <td className="py-2 pr-3 font-medium">
+                  <UserName userId={e.userId} name={e.name} />
+                </td>
                 <td className="py-2 pr-3 text-right tabular-nums">{e.gamesPlayed}</td>
                 <td className="py-2 pr-3 text-right tabular-nums">{e.gamesWon}</td>
                 <td className="py-2 pr-3 text-right tabular-nums">

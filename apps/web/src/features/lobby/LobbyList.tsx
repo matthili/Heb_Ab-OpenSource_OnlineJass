@@ -17,6 +17,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { useCallback } from "react";
 import { useTranslation } from "react-i18next";
 
+import { UserName } from "~/features/social/UserName";
 import { api, ApiError } from "~/lib/api";
 import { useSession } from "~/lib/auth-client";
 import { useLobbyListEvents } from "~/lib/ws";
@@ -79,7 +80,11 @@ export function LobbyList() {
         <li key={tbl.id} className="card-jass px-4 py-3 flex items-center gap-4">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
-              <strong className="text-jass-ink font-serif text-lg">{tbl.ownerName}</strong>
+              <UserName
+                userId={tbl.ownerId}
+                name={tbl.ownerName}
+                className="text-jass-ink font-serif text-lg"
+              />
               <VariantBadge variant={tbl.variant} />
               <ModeBadge mode={tbl.joinMode} />
               <StatusBadge status={tbl.status} />

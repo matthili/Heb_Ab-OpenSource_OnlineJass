@@ -26,6 +26,7 @@ import { useEffect, useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
 
 import { seatDisplayName } from "~/features/game/aiNames";
+import { UserName } from "~/features/social/UserName";
 import { AnnounceOverlay, ModeWatermark } from "~/features/game/AnnounceVisuals";
 import type { SeatView } from "~/features/lobby/types";
 import type { BodenseeAnnouncement, BodenseeView } from "./types";
@@ -174,7 +175,11 @@ export function BodenseeBoard({
       {/* Gegner-Bereich */}
       <section className="rounded-lg border border-jass-paperEdge bg-jass-paper p-3 space-y-2">
         <div className="flex items-center justify-between text-sm">
-          <span className="font-semibold text-jass-ink">{seatName(oppSeat)}</span>
+          <UserName
+            userId={seats.find((x) => x.seat === oppSeat)?.user?.id}
+            name={seatName(oppSeat)}
+            className="font-semibold text-jass-ink"
+          />
           <span className="text-jass-inkSoft">
             {t("bodensee.opponent.handAndHidden", {
               hand: view.opponentHandCount,

@@ -17,7 +17,6 @@
 import { Hand, Scoreboard, Trick } from "@jass/ui";
 import { effectiveVariant } from "@jass/engine";
 import type { Card } from "@jass/engine";
-import { Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
 
@@ -29,6 +28,7 @@ import { DealCinematic } from "./DealCinematic";
 import { MatschOverlay } from "./MatschOverlay";
 import { VoidOverlay } from "./VoidOverlay";
 import { relativeSlot, SEAT_LABEL_POS } from "./seat-layout";
+import { UserName } from "~/features/social/UserName";
 import type { AnnouncementDecision, PlayerView } from "./types";
 import { useDisplayedTrick } from "./useDisplayedTrick";
 import { TrickMini } from "./TrickMini";
@@ -526,33 +526,16 @@ function PlayingArea({
                 "bg-jass-cream text-jass-ink ring-1 ring-jass-yellowDark"
               : "bg-jass-paper text-jass-ink",
         ].join(" ");
-        const content = (
-          <>
-            {label}
+        // Menschliche Sitze → klickbarer <UserName> (Menü: PN/Profil/Freund).
+        // KI-Sitze bleiben statische Labels (keine Interaktion).
+        return (
+          <div key={s.seat} className={`${wrapperCls} pointer-events-auto`}>
+            {s.user?.id ? <UserName userId={s.user.id} name={label} /> : label}
             {isLastWinner && (
               <span className="ml-1 text-jass-yellowDark" aria-hidden="true">
                 ★
               </span>
             )}
-          </>
-        );
-        // Menschliche Sitze sind klickbar → Public-Profile. KI-Sitze
-        // bleiben statische Labels (kein Profil zum Anzeigen).
-        if (s.user?.id) {
-          return (
-            <Link
-              key={s.seat}
-              to="/users/$id"
-              params={{ id: s.user.id }}
-              className={`${wrapperCls} hover:underline pointer-events-auto`}
-            >
-              {content}
-            </Link>
-          );
-        }
-        return (
-          <div key={s.seat} className={wrapperCls}>
-            {content}
           </div>
         );
       })}

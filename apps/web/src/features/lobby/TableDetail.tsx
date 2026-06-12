@@ -21,6 +21,7 @@ import { BodenseeBoard } from "~/features/bodensee/BodenseeBoard";
 import { BodenseeRematchPanel } from "~/features/bodensee/BodenseeRematchPanel";
 import { useBodenseeView } from "~/features/bodensee/useBodenseeView";
 import { ChatPanel } from "~/features/chat/ChatPanel";
+import { UserName } from "~/features/social/UserName";
 import { aiName } from "~/features/game/aiNames";
 import { DisconnectOverlay } from "~/features/game/DisconnectOverlay";
 import { GameBoard } from "~/features/game/GameBoard";
@@ -186,14 +187,14 @@ function SeatRow({ seats, nameSeed }: { seats: TableDetailView["seats"]; nameSee
           className="rounded border border-stone-200 px-3 py-2 flex items-center gap-3"
         >
           <span className="rounded bg-stone-100 text-stone-600 px-2 py-0.5 text-xs">
-            {t("lobby.tableDetail.seat", { n: s.seat })}
+            {t("lobby.tableDetail.seat", { n: s.seat + 1 })}
           </span>
           {s.isEmpty ? (
             <span className="text-stone-400 text-sm italic">
               {t("lobby.tableDetail.seatEmpty")}
             </span>
           ) : s.user ? (
-            <span className="font-medium">{s.user.name}</span>
+            <UserName userId={s.user.id} name={s.user.name} className="font-medium" />
           ) : s.aiSeatType ? (
             <span className="text-stone-600">{aiName(`${nameSeed}:${s.seat}`, s.aiSeatType)}</span>
           ) : null}

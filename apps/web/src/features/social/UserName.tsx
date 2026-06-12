@@ -37,8 +37,9 @@ export function UserName({ userId, name, className = "" }: Props) {
     []
   );
 
-  // KI- oder eigener Name → nicht interaktiv.
-  if (!userId || userId === myId) {
+  // KI-Sitz (keine ID), eigener Name, oder nicht eingeloggt (öffentliche
+  // Seiten) → nicht interaktiv. Social-Aktionen erfordern eine Session.
+  if (!userId || !myId || userId === myId) {
     return <span className={className}>{name}</span>;
   }
 
