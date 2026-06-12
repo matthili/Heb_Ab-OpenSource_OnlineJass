@@ -68,6 +68,13 @@ export class ChatService {
   async send(senderId: string, channelKey: string, rawBody: string): Promise<ChatMessageView> {
     const channel = this.classifyChannel(channelKey);
     await this.requireMembership(senderId, channel, channelKey);
+    // PN-Empfangsrechte des Empfängers durchsetzen (nur beim Senden, nicht beim
+    // Lesen der eigenen Historie).
+    if (channel === ChatChannel.DM) {
+      const [, a, b] = channelKey.split(":");
+      const recipient = a === senderId ? b : a;
+      if (recipient) await this.assertCanDm(senderId, recipient);
+    }
     await this.enforceRateLimit(senderId, channelKey);
 
     // Wortfilter VOR der Markdown-Sanitization — das Rohformat ist eindeutig,
@@ -187,6 +194,71 @@ export class ChatService {
   }
 
   // ─── Channel-Klassifikation + Access-Control ───────────────────────
+
+  // ─── PN-Empfangsrechte (Policy + Per-Sender-Sperre) ─────────────────
+
+  /** Darf `senderId` an `recipientId` eine PN senden? */
+  async canDm(
+    senderId: string,
+    recipientId: string
+  ): Promise<{ allowed: boolean; reason: string | null }> {
+    if (senderId === recipientId) return { allowed: true, reason: null };
+    // Per-Sender-Sperre überschreibt alles (auch FRIENDS).
+    const block = await this.prisma.dmBlock.findUnique({
+      where: { blockerId_blockedId: { blockerId: recipientId, blockedId: senderId } },
+      select: { blockerId: true },
+    });
+    if (block) return { allowed: false, reason: "DM_BLOCKED" };
+    const profile = await this.prisma.profile.findUnique({
+      where: { userId: recipientId },
+      select: { dmPolicy: true },
+    });
+    if (profile?.dmPolicy === "FRIENDS") {
+      const friends = await this.prisma.friendship.findFirst({
+        where: {
+          status: "ACCEPTED",
+          OR: [
+            { requesterId: senderId, addresseeId: recipientId },
+            { requesterId: recipientId, addresseeId: senderId },
+          ],
+        },
+        select: { status: true },
+      });
+      if (!friends) return { allowed: false, reason: "DM_FRIENDS_ONLY" };
+    }
+    return { allowed: true, reason: null };
+  }
+
+  private async assertCanDm(senderId: string, recipientId: string): Promise<void> {
+    const { allowed } = await this.canDm(senderId, recipientId);
+    if (!allowed) {
+      throw new ForbiddenException(
+        "Eine gewählte Empfangs-Einstellung verhindert, dass hier eine Privatnachricht gesendet werden kann."
+      );
+    }
+  }
+
+  /** User-IDs, die ICH (für PN) gesperrt habe. */
+  async listDmBlocks(meId: string): Promise<string[]> {
+    const rows = await this.prisma.dmBlock.findMany({
+      where: { blockerId: meId },
+      select: { blockedId: true },
+    });
+    return rows.map((r) => r.blockedId);
+  }
+
+  async blockDm(blockerId: string, blockedId: string): Promise<void> {
+    if (blockerId === blockedId) throw new BadRequestException("Selbst-Sperre nicht möglich.");
+    await this.prisma.dmBlock.upsert({
+      where: { blockerId_blockedId: { blockerId, blockedId } },
+      create: { blockerId, blockedId },
+      update: {},
+    });
+  }
+
+  async unblockDm(blockerId: string, blockedId: string): Promise<void> {
+    await this.prisma.dmBlock.deleteMany({ where: { blockerId, blockedId } });
+  }
 
   private classifyChannel(channelKey: string): ChatChannel {
     if (channelKey === "lobby:global") return ChatChannel.LOBBY;

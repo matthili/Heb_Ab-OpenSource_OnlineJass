@@ -9,7 +9,18 @@
  * Nach erfolgreichem Send pusht der Controller selbst via Gateway —
  * dadurch sehen alle Subscriber die Nachricht sofort.
  */
-import { Body, Controller, Get, Param, Post, Query, Req, UseGuards } from "@nestjs/common";
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  Param,
+  Post,
+  Query,
+  Req,
+  UseGuards,
+} from "@nestjs/common";
 import type { FastifyRequest } from "fastify";
 import { z } from "zod";
 
@@ -91,5 +102,35 @@ export class ChatController {
       ...(query.before !== undefined ? { before: query.before } : {}),
     });
     return { messages };
+  }
+
+  // ─── PN-Empfangsrechte ─────────────────────────────────────────────
+
+  @Get("can-dm/:userId")
+  async canDm(
+    @Req() req: FastifyRequest,
+    @Param("userId") userId: string
+  ): Promise<{ allowed: boolean; reason: string | null }> {
+    return this.chat.canDm(req.user!.id, userId);
+  }
+
+  @Get("dm-blocks")
+  async listDmBlocks(@Req() req: FastifyRequest): Promise<{ blockedUserIds: string[] }> {
+    return { blockedUserIds: await this.chat.listDmBlocks(req.user!.id) };
+  }
+
+  @Post("dm-blocks/:userId")
+  async blockDm(
+    @Req() req: FastifyRequest,
+    @Param("userId") userId: string
+  ): Promise<{ ok: true }> {
+    await this.chat.blockDm(req.user!.id, userId);
+    return { ok: true };
+  }
+
+  @Delete("dm-blocks/:userId")
+  @HttpCode(204)
+  async unblockDm(@Req() req: FastifyRequest, @Param("userId") userId: string): Promise<void> {
+    await this.chat.unblockDm(req.user!.id, userId);
   }
 }

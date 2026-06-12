@@ -14,6 +14,7 @@ import { Injectable } from "@nestjs/common";
 
 import { PerUserSocketRegistry } from "../game/per-user-socket-registry.service.js";
 import { PrismaService } from "../prisma/prisma.service.js";
+import { resolvePresenceVisibility, type VisibilityMap } from "../users/visibility.js";
 
 export interface PresenceUser {
   id: string;
@@ -29,16 +30,72 @@ export class PresenceService {
 
   /**
    * Liste der aktuell verbundenen User, sortiert nach Spitzname.
+   *
+   * Respektiert die Präsenz-Sichtbarkeit jedes verbundenen Users (`presence`
+   * in `Profile.visibility`): PRIVATE → für niemanden sichtbar, FRIENDS → nur
+   * für bestätigte Freunde, LOGGED_IN (Default) → für alle eingeloggten User.
+   * Der `viewerId` sieht sich selbst stets — unabhängig von der eigenen Wahl.
+   *
    * Limit kappt die Liste hart (UI-/Performance-Schutz bei Mega-Online).
    */
-  async list(limit: number = 200): Promise<PresenceUser[]> {
+  async list(viewerId: string, limit: number = 200): Promise<PresenceUser[]> {
     const userIds = await this.registry.listConnectedUserIds(limit);
     if (userIds.length === 0) return [];
     const users = await this.prisma.user.findMany({
       where: { id: { in: userIds }, status: "ACTIVE" },
-      select: { id: true, name: true },
+      select: { id: true, name: true, profile: { select: { visibility: true } } },
     });
-    users.sort((a, b) => a.name.localeCompare(b.name, "de"));
-    return users;
+
+    // FRIENDS-beschränkte User sammeln, um die Freundschaften in EINER Query
+    // gegen den Viewer aufzulösen (statt N Einzelabfragen).
+    const friendsOnlyIds = users
+      .filter((u) => {
+        if (u.id === viewerId) return false;
+        const vis = (u.profile?.visibility ?? {}) as VisibilityMap;
+        return resolvePresenceVisibility(vis) === "FRIENDS";
+      })
+      .map((u) => u.id);
+
+    const friendIds = await this.acceptedFriendIds(viewerId, friendsOnlyIds);
+
+    const visible = users.filter((u) => {
+      if (u.id === viewerId) return true; // Self sieht sich immer.
+      const vis = (u.profile?.visibility ?? {}) as VisibilityMap;
+      const level = resolvePresenceVisibility(vis);
+      switch (level) {
+        case "PRIVATE":
+          return false;
+        case "FRIENDS":
+          return friendIds.has(u.id);
+        default: // LOGGED_IN / PUBLIC → für alle Eingeloggten
+          return true;
+      }
+    });
+
+    visible.sort((a, b) => a.name.localeCompare(b.name, "de"));
+    return visible.map((u) => ({ id: u.id, name: u.name }));
+  }
+
+  /**
+   * Teilmenge von `candidateIds`, mit denen `viewerId` eine ACCEPTED-Freundschaft
+   * hat (in beliebiger Richtung). Leere Kandidatenliste → leeres Set ohne Query.
+   */
+  private async acceptedFriendIds(viewerId: string, candidateIds: string[]): Promise<Set<string>> {
+    if (candidateIds.length === 0) return new Set();
+    const friendships = await this.prisma.friendship.findMany({
+      where: {
+        status: "ACCEPTED",
+        OR: [
+          { requesterId: viewerId, addresseeId: { in: candidateIds } },
+          { addresseeId: viewerId, requesterId: { in: candidateIds } },
+        ],
+      },
+      select: { requesterId: true, addresseeId: true },
+    });
+    const ids = new Set<string>();
+    for (const f of friendships) {
+      ids.add(f.requesterId === viewerId ? f.addresseeId : f.requesterId);
+    }
+    return ids;
   }
 }

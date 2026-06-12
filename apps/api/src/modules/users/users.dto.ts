@@ -31,6 +31,8 @@ export const UpdateProfileDtoSchema = z
     visibility: VisibilityMapSchema.optional(),
     /** Spec „Leaderboard (Opt-in pro Nutzer)". `true` = im öffentlichen Ranking sichtbar. */
     publicLeaderboard: z.boolean().optional(),
+    /** PN-Empfangsrecht: von allen (`ALL`) oder nur von Freunden (`FRIENDS`). */
+    dmPolicy: z.enum(["ALL", "FRIENDS"]).optional(),
   })
   .strict();
 

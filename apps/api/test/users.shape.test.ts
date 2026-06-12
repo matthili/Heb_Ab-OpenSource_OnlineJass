@@ -42,6 +42,7 @@ const PROFILE: Profile = {
     // country, hobbies, bio, avatarUrl ungesetzt → Defaults
   },
   publicLeaderboard: false,
+  dmPolicy: "ALL",
   createdAt: new Date("2026-01-01"),
   updatedAt: new Date("2026-01-01"),
 };

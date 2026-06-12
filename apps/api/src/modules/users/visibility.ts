@@ -59,10 +59,22 @@ export const DEFAULT_VISIBILITY: Readonly<Record<ProfileFieldName, VisibilityLev
 export const STATS_VISIBILITY_KEY = "stats" as const;
 export const DEFAULT_STATS_VISIBILITY: VisibilityLevel = "LOGGED_IN";
 
-/** Alle konfigurierbaren Visibility-Schlüssel: Profil-Felder + `stats`. */
+/**
+ * Pseudo-Feld „presence": steuert, wer den Online-/Zuletzt-gesehen-Status
+ * sieht (Präsenzliste + Online-Punkt). Sinnvoll sind nur drei der vier Stufen:
+ *   PRIVATE   — niemand (außer dem User selbst)
+ *   FRIENDS   — nur bestätigte Freunde
+ *   LOGGED_IN — alle eingeloggten User
+ * PUBLIC ergibt für Präsenz keinen Sinn und wird wie LOGGED_IN behandelt.
+ */
+export const PRESENCE_VISIBILITY_KEY = "presence" as const;
+export const DEFAULT_PRESENCE_VISIBILITY: VisibilityLevel = "LOGGED_IN";
+
+/** Alle konfigurierbaren Visibility-Schlüssel: Profil-Felder + `stats` + `presence`. */
 export const CONFIGURABLE_VISIBILITY_KEYS = [
   ...VISIBLE_PROFILE_FIELDS,
   STATS_VISIBILITY_KEY,
+  PRESENCE_VISIBILITY_KEY,
 ] as const;
 export type ConfigurableVisibilityKey = (typeof CONFIGURABLE_VISIBILITY_KEYS)[number];
 
@@ -77,6 +89,13 @@ export function resolveStatsVisibility(
   userVisibility: VisibilityMap | null | undefined
 ): VisibilityLevel {
   return userVisibility?.[STATS_VISIBILITY_KEY] ?? DEFAULT_STATS_VISIBILITY;
+}
+
+/** Resolved Visibility für die Präsenz (`presence`-Pseudo-Feld). */
+export function resolvePresenceVisibility(
+  userVisibility: VisibilityMap | null | undefined
+): VisibilityLevel {
+  return userVisibility?.[PRESENCE_VISIBILITY_KEY] ?? DEFAULT_PRESENCE_VISIBILITY;
 }
 
 export interface ViewerContext {

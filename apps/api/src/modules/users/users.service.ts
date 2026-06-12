@@ -18,6 +18,7 @@ import { PrismaService } from "../prisma/prisma.service.js";
 import { UserStatsService, type UserStats } from "./user-stats.service.js";
 import {
   DEFAULT_VISIBILITY,
+  PRESENCE_VISIBILITY_KEY,
   STATS_VISIBILITY_KEY,
   VISIBLE_PROFILE_FIELDS,
   type ConfigurableVisibilityKey,
@@ -26,6 +27,7 @@ import {
   type VisibilityMap,
   type ViewerContext,
   canSeeField,
+  resolvePresenceVisibility,
   resolveStatsVisibility,
   resolveVisibility,
 } from "./visibility.js";
@@ -41,6 +43,7 @@ export interface UpdateProfileInput {
   avatarUrl?: string | null | undefined;
   visibility?: VisibilityMap | undefined;
   publicLeaderboard?: boolean | undefined;
+  dmPolicy?: "ALL" | "FRIENDS" | undefined;
 }
 
 /** Antwort von getMyProfile — voller Eigenblick. */
@@ -64,6 +67,7 @@ export interface MyProfileView {
     avatarUrl: string | null;
     visibility: Readonly<Record<ConfigurableVisibilityKey, VisibilityLevel>>;
     publicLeaderboard: boolean;
+    dmPolicy: "ALL" | "FRIENDS";
   };
 }
 
@@ -138,6 +142,18 @@ export class UsersService {
       ...(input.visibility ?? {}),
     };
 
+    // Unter-16-Schutz für PN-Empfangsrechte: Trifft der User in diesem Vorgang
+    // keine explizite dmPolicy-Wahl (Feld nicht mitgesendet) und ergibt das
+    // effektive Geburtsdatum ein Alter < 16, defaulten wir auf „nur Freunde".
+    // Eine explizite Wahl (auch „ALL") gewinnt immer und bleibt änderbar — das
+    // Edit-Panel sendet dmPolicy stets mit, daher wird nichts überschrieben.
+    const effectiveBirthDate =
+      input.birthDate !== undefined ? input.birthDate : (existing?.birthDate ?? null);
+    let dmPolicy = input.dmPolicy;
+    if (dmPolicy === undefined && effectiveBirthDate && isUnder16(effectiveBirthDate)) {
+      dmPolicy = "FRIENDS";
+    }
+
     await this.prisma.profile.upsert({
       where: { userId },
       create: {
@@ -154,6 +170,7 @@ export class UsersService {
         ...(input.publicLeaderboard !== undefined && {
           publicLeaderboard: input.publicLeaderboard,
         }),
+        ...(dmPolicy !== undefined && { dmPolicy }),
       },
       update: {
         ...(input.realFirstName !== undefined && { realFirstName: input.realFirstName }),
@@ -168,6 +185,7 @@ export class UsersService {
         ...(input.publicLeaderboard !== undefined && {
           publicLeaderboard: input.publicLeaderboard,
         }),
+        ...(dmPolicy !== undefined && { dmPolicy }),
       },
     });
 
@@ -199,6 +217,7 @@ function shapeMyProfile(user: User, profile: Profile | null): MyProfileView {
   const visibility: Record<ConfigurableVisibilityKey, VisibilityLevel> = {
     ...DEFAULT_VISIBILITY,
     [STATS_VISIBILITY_KEY]: resolveStatsVisibility(userVisibility),
+    [PRESENCE_VISIBILITY_KEY]: resolvePresenceVisibility(userVisibility),
   };
   for (const f of VISIBLE_PROFILE_FIELDS) {
     visibility[f] = resolveVisibility(f, userVisibility);
@@ -223,8 +242,19 @@ function shapeMyProfile(user: User, profile: Profile | null): MyProfileView {
       avatarUrl: profile?.avatarUrl ?? null,
       visibility,
       publicLeaderboard: profile?.publicLeaderboard ?? false,
+      dmPolicy: profile?.dmPolicy ?? "ALL",
     },
   };
+}
+
+/**
+ * Ist die Person am Stichtag „heute" jünger als 16? Vergleich über das
+ * 16-Jahres-Datum, damit Monats-/Tagesgrenzen und Schaltjahre korrekt sitzen.
+ */
+function isUnder16(birthDate: Date): boolean {
+  const sixteenth = new Date(birthDate);
+  sixteenth.setFullYear(sixteenth.getFullYear() + 16);
+  return sixteenth.getTime() > Date.now();
 }
 
 /**

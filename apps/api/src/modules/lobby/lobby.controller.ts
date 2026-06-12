@@ -57,8 +57,8 @@ export class LobbyController {
    * (typisch ~15 s); kein WS-Push nötig, weil die Liste nicht zeitkritisch ist.
    */
   @Get("presence")
-  async listPresence(): Promise<{ users: PresenceUser[] }> {
-    const users = await this.presence.list();
+  async listPresence(@Req() req: FastifyRequest): Promise<{ users: PresenceUser[] }> {
+    const users = await this.presence.list(req.user!.id);
     return { users };
   }
 
