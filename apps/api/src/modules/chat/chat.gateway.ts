@@ -89,6 +89,17 @@ export class ChatGateway {
   }
 
   /**
+   * **Neue-PN-Hinweis** an den Empfänger — auch wenn er den DM-Channel gerade
+   * NICHT abonniert hat (kein offenes DM-Fenster). Genutzt vom Frontend für
+   * Toast + Ungelesen-Zähler. Wir emitten in den persönlichen Raum
+   * `lobby:user:<id>` (vom LobbyGateway beim Connect gejoint; derselbe
+   * Socket.IO-Server, daher hier direkt nutzbar — kein Modul-Coupling nötig).
+   */
+  notifyDmReceived(recipientId: string, view: ChatMessageView): void {
+    this.server.to(`lobby:user:${recipientId}`).emit("chat:dm-received", view);
+  }
+
+  /**
    * **System-Nachricht** an einen Channel. Ephemer — keine DB-Persistenz,
    * nur Live-Broadcast. Wird z.B. vom DisconnectVoteService genutzt, um
    * KI-Stimmen und Phasen-Hinweise an den Game-Chat zu posten.

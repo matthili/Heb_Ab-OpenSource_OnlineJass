@@ -13,7 +13,8 @@
     "dm": {
       "minimize": "Minimize",
       "restore": "Restore",
-      "close": "Close"
+      "close": "Close",
+      "unread": "{{count}} unread"
     },
     "cancel": "Cancel",
     "report": {

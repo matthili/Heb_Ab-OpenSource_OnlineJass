@@ -87,8 +87,16 @@ export class ChatController {
     @Req() req: FastifyRequest,
     @Body(new ZodValidationPipe(SendChatDtoSchema)) dto: SendChatDto
   ): Promise<ChatMessageView> {
-    const view = await this.chat.send(req.user!.id, dto.channelKey, dto.body);
+    const senderId = req.user!.id;
+    const view = await this.chat.send(senderId, dto.channelKey, dto.body);
     this.gateway.broadcastMessage(view);
+    // Bei einer DM zusätzlich den Empfänger persönlich benachrichtigen (Toast +
+    // Ungelesen-Zähler), auch wenn er den Channel gerade nicht abonniert hat.
+    if (dto.channelKey.startsWith("dm:")) {
+      const [, a, b] = dto.channelKey.split(":");
+      const recipientId = a === senderId ? b : a;
+      if (recipientId) this.gateway.notifyDmReceived(recipientId, view);
+    }
     return view;
   }
 
