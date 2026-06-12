@@ -13,7 +13,8 @@
       "minimize": "Minimieren",
       "restore": "Wiederherstellen",
       "close": "Schließen"
-    }
+    },
+    "cancel": "Abbrechen"
   },
   "appTagline": "Der OpenSource-Jass nach vorarlberger Spielart.",
 
@@ -122,6 +123,8 @@
       "accept": "Annehmen",
       "decline": "Ablehnen",
       "unfriend": "Entfreunden",
+      "unfriendConfirmTitle": "Freund entfernen?",
+      "unfriendConfirmMessage": "{{name}} wirklich aus deinen Freunden entfernen?",
       "withdraw": "Zurückziehen",
       "since": "seit {{date}}",
       "noFriendsHint": "Noch keine Freunde. Klick im Spiel auf einen Mitspieler-Namen → „Freundschaft anfragen“.",

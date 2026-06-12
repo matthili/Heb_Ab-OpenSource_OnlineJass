@@ -13,9 +13,11 @@
  * immer sichtbar.
  */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link } from "@tanstack/react-router";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import { ConfirmDialog } from "~/features/social/ConfirmDialog";
+import { UserName } from "~/features/social/UserName";
 import { api } from "~/lib/api";
 
 interface FriendListEntry {
@@ -35,6 +37,7 @@ export function FriendsPanel() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const queryKey = ["friends", "list"] as const;
+  const [unfriendTarget, setUnfriendTarget] = useState<{ id: string; name: string } | null>(null);
   const { data, isPending, error } = useQuery<FriendsList>({
     queryKey,
     queryFn: () => api<FriendsList>("/api/users/me/friends"),
@@ -79,13 +82,7 @@ export function FriendsPanel() {
                 className="flex items-center gap-3 rounded border border-jass-paperEdge bg-jass-paper px-3 py-2"
               >
                 <Avatar entry={u} />
-                <Link
-                  to="/users/$id"
-                  params={{ id: u.id }}
-                  className="font-medium text-jass-ink hover:underline"
-                >
-                  {u.name}
-                </Link>
+                <UserName userId={u.id} name={u.name} className="font-medium text-jass-ink" />
                 <div className="ml-auto flex gap-2">
                   <button
                     type="button"
@@ -121,13 +118,7 @@ export function FriendsPanel() {
                 className="flex items-center gap-3 rounded border border-jass-paperEdge bg-jass-paper px-3 py-2"
               >
                 <Avatar entry={u} />
-                <Link
-                  to="/users/$id"
-                  params={{ id: u.id }}
-                  className="font-medium text-jass-ink hover:underline"
-                >
-                  {u.name}
-                </Link>
+                <UserName userId={u.id} name={u.name} className="font-medium text-jass-ink" />
                 <span className="text-xs text-jass-inkSoft ml-2">
                   {t("profile.friends.since", {
                     date: new Date(u.since).toLocaleDateString("de-AT"),
@@ -135,7 +126,7 @@ export function FriendsPanel() {
                 </span>
                 <button
                   type="button"
-                  onClick={() => remove.mutate(u.id)}
+                  onClick={() => setUnfriendTarget({ id: u.id, name: u.name })}
                   disabled={remove.isPending}
                   className="ml-auto btn-jass-secondary text-sm"
                 >
@@ -156,13 +147,7 @@ export function FriendsPanel() {
                 className="flex items-center gap-3 rounded border border-jass-paperEdge bg-jass-paper px-3 py-2"
               >
                 <Avatar entry={u} />
-                <Link
-                  to="/users/$id"
-                  params={{ id: u.id }}
-                  className="font-medium text-jass-ink hover:underline"
-                >
-                  {u.name}
-                </Link>
+                <UserName userId={u.id} name={u.name} className="font-medium text-jass-ink" />
                 <button
                   type="button"
                   onClick={() => remove.mutate(u.id)}
@@ -180,6 +165,21 @@ export function FriendsPanel() {
       {empty && (
         <p className="text-sm italic text-jass-inkSoft">{t("profile.friends.emptyHint")}</p>
       )}
+
+      <ConfirmDialog
+        open={unfriendTarget !== null}
+        title={t("profile.friends.unfriendConfirmTitle")}
+        message={t("profile.friends.unfriendConfirmMessage", { name: unfriendTarget?.name ?? "" })}
+        confirmLabel={t("profile.friends.unfriend")}
+        cancelLabel={t("social.cancel")}
+        pending={remove.isPending}
+        danger
+        onCancel={() => setUnfriendTarget(null)}
+        onConfirm={() => {
+          if (unfriendTarget) remove.mutate(unfriendTarget.id);
+          setUnfriendTarget(null);
+        }}
+      />
     </div>
   );
 }

@@ -13,7 +13,8 @@
       "minimize": "Minimize",
       "restore": "Restore",
       "close": "Close"
-    }
+    },
+    "cancel": "Cancel"
   },
   "appTagline": "The open-source Jass in the Vorarlberg tradition.",
 
@@ -122,6 +123,8 @@
       "accept": "Accept",
       "decline": "Decline",
       "unfriend": "Unfriend",
+      "unfriendConfirmTitle": "Remove friend?",
+      "unfriendConfirmMessage": "Really remove {{name}} from your friends?",
       "withdraw": "Withdraw",
       "since": "since {{date}}",
       "noFriendsHint": "No friends yet. In a game, click a fellow player's name → “Request friendship”.",
