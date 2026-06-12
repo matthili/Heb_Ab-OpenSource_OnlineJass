@@ -195,11 +195,11 @@ function FinalScoreView({
           t("rematch.matschFor", {
             name: isSolo
               ? seatLabel(score.matsch_team)
-              : t("rematch.team", { team: score.matsch_team }),
+              : t("rematch.team", { team: score.matsch_team + 1 }),
           })}
         {winner !== null &&
           t("rematch.winFor", {
-            name: isSolo ? seatLabel(winner) : t("rematch.team", { team: winner }),
+            name: isSolo ? seatLabel(winner) : t("rematch.team", { team: winner + 1 }),
           })}
       </p>
     </div>
@@ -266,7 +266,7 @@ function MatchProgress({
             key={i}
             className={s === max && max > 0 ? "font-bold text-jass-ink" : "text-jass-inkSoft"}
           >
-            {isSolo ? seatLabel(i) : t("rematch.team", { team: i })}: {s}
+            {isSolo ? seatLabel(i) : t("rematch.team", { team: i + 1 })}: {s}
           </span>
         ))}
         <span className="ml-auto text-xs text-jass-inkSoft">

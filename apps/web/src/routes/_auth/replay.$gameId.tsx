@@ -236,7 +236,7 @@ function FinalScoreCard({
           {[0, 1].map((team) => (
             <tr key={team} className={team === myTeam ? "font-medium" : ""}>
               <td className="py-1 pr-2">
-                {t("replay.finalScore.teamRow", { team, players: seatsInTeam(team) })}
+                {t("replay.finalScore.teamRow", { team: team + 1, players: seatsInTeam(team) })}
               </td>
               <td className="py-1 text-right tabular-nums">{teams[team]}</td>
               <td className="py-1 pl-2">

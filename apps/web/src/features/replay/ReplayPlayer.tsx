@@ -100,7 +100,7 @@ export function ReplayPlayer({ bundle, frames, mySeat }: Props) {
       : t("replay.player.moveProgress", { seq: frame.moveSeq, total: frames.length - 1 }) +
         (frame.played
           ? t("replay.player.movePlays", {
-              seat: frame.played.seat,
+              seat: frame.played.seat + 1,
               suit: t(`game.announce.suit.${frame.played.card.suit}`),
               rank: t(`replay.rank.${frame.played.card.rank}`),
             })
@@ -181,7 +181,7 @@ function PlayingArea({
           s.displayName ??
           (s.aiSeatType
             ? aiName(`${bundle.gameId}:${s.seat}`, s.aiSeatType)
-            : t("replay.player.seatFallback", { n: s.seat }));
+            : t("replay.player.seatFallback", { n: s.seat + 1 }));
         return (
           <div
             key={s.seat}
@@ -198,7 +198,7 @@ function PlayingArea({
         {t("replay.player.youSuffix", {
           name:
             bundle.seats.find((s) => s.seat === mySeat)?.displayName ??
-            t("replay.player.seatFallback", { n: mySeat }),
+            t("replay.player.seatFallback", { n: mySeat + 1 }),
         })}
       </div>
 
@@ -235,7 +235,7 @@ function MoveList({
       s?.displayName ??
       (s?.aiSeatType
         ? aiName(`${gameId}:${seat}`, s.aiSeatType)
-        : t("replay.player.seatFallback", { n: seat }))
+        : t("replay.player.seatFallback", { n: seat + 1 }))
     );
   };
   return (

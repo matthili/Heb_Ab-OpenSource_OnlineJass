@@ -96,7 +96,7 @@ export function MatchOverOverlay({ gameId, cumulativeScores, mySeat, seats, name
           isWinner: seat === winnerIndex,
         }))
       : cumulativeScores.map((score, team) => ({
-          label: t("rematch.team", { team }),
+          label: t("rematch.team", { team: team + 1 }),
           score,
           isWinner: team === winnerIndex,
         }))

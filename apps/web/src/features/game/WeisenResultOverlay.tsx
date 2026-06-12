@@ -110,7 +110,9 @@ export function WeisenResultOverlay({ gameId, weisen, seats, mySeat, nameSeed, t
             <p className="mt-1 text-jass-inkSoft">
               <Trans
                 i18nKey={isSolo ? "game.weisen.result.soloWins" : "game.weisen.result.teamWins"}
-                values={isSolo ? { name: winnerName, points } : { team: winningTeam, points }}
+                values={
+                  isSolo ? { name: winnerName, points } : { team: (winningTeam ?? 0) + 1, points }
+                }
                 components={{
                   strong: <strong className="text-jass-ink" />,
                   points: <span className="font-bold text-jass-green" />,
@@ -140,7 +142,7 @@ export function WeisenResultOverlay({ gameId, weisen, seats, mySeat, nameSeed, t
               >
                 <div className="flex items-baseline justify-between mb-2">
                   <div className="font-semibold text-jass-ink">
-                    {seatNames.get(seat) ?? t("game.seatFallback", { n: seat })}
+                    {seatNames.get(seat) ?? t("game.seatFallback", { n: seat + 1 })}
                     {seat === mySeat && (
                       <span className="ml-1 text-xs text-jass-inkSoft">
                         {t("game.weisen.result.you")}
@@ -148,7 +150,7 @@ export function WeisenResultOverlay({ gameId, weisen, seats, mySeat, nameSeed, t
                     )}
                   </div>
                   <div className="text-xs text-jass-inkSoft">
-                    {!isSolo && t("game.weisen.result.team", { team: teamOfSeat })}
+                    {!isSolo && t("game.weisen.result.team", { team: teamOfSeat + 1 })}
                     {isWinner && (
                       <span className="ml-2 text-jass-yellowDark font-bold">
                         {t("game.weisen.result.winner")}

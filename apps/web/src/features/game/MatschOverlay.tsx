@@ -92,7 +92,7 @@ export function MatschOverlay({ gameId, finalScore, mySeat, teams, seats, nameSe
           ? seatDisplayName(s, nameSeed, t("game.seatFallback", { n: matschTeam + 1 }))
           : t("game.seatFallback", { n: matschTeam + 1 });
       })()
-    : t("rematch.team", { team: matschTeam });
+    : t("rematch.team", { team: matschTeam + 1 });
 
   return (
     <div

@@ -86,6 +86,9 @@ function GameHistoryItem({ game }: { game: UserGameSummary }) {
         <time className="text-xs text-stone-500" dateTime={game.startedAt}>
           {new Date(game.startedAt).toLocaleString("de-AT")}
         </time>
+        <span className="rounded bg-stone-100 px-2 py-0.5 text-xs font-medium text-stone-700">
+          {t(`profile.stats.variant.${game.variant}`)}
+        </span>
         <span className={`text-xs rounded px-2 py-0.5 ${badgeClass}`}>{badgeLabel}</span>
         {game.status === "finished" ? (
           <span className="text-sm tabular-nums">
