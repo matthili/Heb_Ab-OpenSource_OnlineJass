@@ -21,6 +21,7 @@ import { Trans, useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 
 import { makeDmChannelKey } from "~/features/chat/dm";
+import { EmojiPicker } from "~/features/chat/EmojiPicker";
 import { UserName } from "~/features/social/UserName";
 import { api } from "~/lib/api";
 import { useSession } from "~/lib/auth-client";
@@ -202,8 +203,9 @@ function ConversationView({ partnerId }: { partnerId: string }) {
             const body = draft.trim();
             if (body) send.mutate(body);
           }}
-          className="flex gap-2"
+          className="flex items-center gap-2"
         >
+          <EmojiPicker onPick={(e) => setDraft((d) => d + e)} />
           <input
             value={draft}
             onChange={(e) => setDraft(e.target.value)}

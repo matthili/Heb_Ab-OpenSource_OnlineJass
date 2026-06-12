@@ -18,6 +18,7 @@ import { useTranslation } from "react-i18next";
 import { useSession } from "~/lib/auth-client";
 import { api, ApiError } from "~/lib/api";
 import { ChatBubble } from "./ChatBubble";
+import { EmojiPicker } from "./EmojiPicker";
 import { useChat } from "./useChat";
 
 /**
@@ -47,6 +48,24 @@ export function ChatPanel({ channelKey, title, className = "", hideHeader = fals
   const { messages, isLoading, error, sendMessage, isSending, sendError } = useChat(channelKey);
   const [draft, setDraft] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Emoji an der Cursor-Position einfügen (Fallback: ans Ende anhängen).
+  function insertEmoji(emoji: string) {
+    const el = textareaRef.current;
+    if (!el) {
+      setDraft((d) => d + emoji);
+      return;
+    }
+    const start = el.selectionStart ?? draft.length;
+    const end = el.selectionEnd ?? draft.length;
+    setDraft(draft.slice(0, start) + emoji + draft.slice(end));
+    requestAnimationFrame(() => {
+      el.focus();
+      const pos = start + emoji.length;
+      el.setSelectionRange(pos, pos);
+    });
+  }
 
   // PN-Empfangsrechte: Bei DM-Kanälen vorab prüfen, ob wir an die Gegenseite
   // schreiben dürfen (dmPolicy / DmBlock). Ist es verboten, sperren wir den
@@ -124,6 +143,7 @@ export function ChatPanel({ channelKey, title, className = "", hideHeader = fals
           </p>
         )}
         <textarea
+          ref={textareaRef}
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={onKeyDown}
@@ -135,10 +155,14 @@ export function ChatPanel({ channelKey, title, className = "", hideHeader = fals
           aria-label={t("chat.composerAria")}
         />
         <div className="flex items-center justify-between gap-2">
-          <span className="text-xs text-stone-400">
-            <code>{t("chat.markdownHintBold")}</code> · <code>{t("chat.markdownHintItalic")}</code>{" "}
-            · <code>{t("chat.markdownHintCode")}</code>
-          </span>
+          <div className="flex items-center gap-2">
+            <EmojiPicker onPick={insertEmoji} disabled={dmBlocked} />
+            <span className="text-xs text-stone-400">
+              <code>{t("chat.markdownHintBold")}</code> ·{" "}
+              <code>{t("chat.markdownHintItalic")}</code> ·{" "}
+              <code>{t("chat.markdownHintCode")}</code>
+            </span>
+          </div>
           <button
             type="submit"
             disabled={isSending || draft.trim().length === 0 || dmBlocked}

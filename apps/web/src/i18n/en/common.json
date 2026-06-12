@@ -944,7 +944,10 @@
     "markdownHintCode": "`code`",
     "send": "Send",
     "sendFailed": "Sending failed.",
-    "dmBlockedHint": "A chosen reception setting prevents a direct message from being sent here."
+    "dmBlockedHint": "A chosen reception setting prevents a direct message from being sent here.",
+    "emoji": {
+      "label": "Insert emoji"
+    }
   },
 
   "admin": {

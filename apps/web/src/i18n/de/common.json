@@ -944,7 +944,10 @@
     "markdownHintCode": "`code`",
     "send": "Senden",
     "sendFailed": "Senden fehlgeschlagen.",
-    "dmBlockedHint": "Eine gewählte Empfangs-Einstellung verhindert, dass hier eine Privatnachricht gesendet werden kann."
+    "dmBlockedHint": "Eine gewählte Empfangs-Einstellung verhindert, dass hier eine Privatnachricht gesendet werden kann.",
+    "emoji": {
+      "label": "Emoji einfügen"
+    }
   },
 
   "admin": {
