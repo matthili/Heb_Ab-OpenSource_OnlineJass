@@ -98,18 +98,20 @@
 }
 
 /* Marken-Logo hell/dunkel je Theme (Muster aus der Spiel-SPA):
- * beide Varianten sind im DOM, das Theme blendet die passende ein. */
+ * beide Varianten sind im DOM, das Theme blendet die passende ein.
+ * !important, weil Layout-Regeln wie `.nav-brand img { display:block }`
+ * spezifischer sind und den Switch sonst überstimmen würden. */
 .brand-light {
-  display: block;
+  display: block !important;
 }
 .brand-dark {
-  display: none;
+  display: none !important;
 }
 :root[data-theme="dark"] .brand-light {
-  display: none;
+  display: none !important;
 }
 :root[data-theme="dark"] .brand-dark {
-  display: block;
+  display: block !important;
 }
 
 * {
