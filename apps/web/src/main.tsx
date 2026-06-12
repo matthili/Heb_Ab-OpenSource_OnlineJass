@@ -23,6 +23,7 @@ import { createRoot } from "react-dom/client";
 import "@fontsource/eb-garamond/400.css";
 import "@fontsource/eb-garamond/600.css";
 import "./i18n/index.js"; // Side-Effect: initialisiert i18next vor dem ersten Render
+import { DmWindowProvider } from "./lib/dm-windows.js";
 import { applyThemeFromStorage } from "./lib/theme.js";
 import { ToastProvider } from "./lib/toast.js";
 import { registerServiceWorker } from "./lib/pwa.js";
@@ -66,7 +67,9 @@ createRoot(rootEl).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
       <ToastProvider>
-        <RouterProvider router={router} />
+        <DmWindowProvider>
+          <RouterProvider router={router} />
+        </DmWindowProvider>
       </ToastProvider>
     </QueryClientProvider>
   </StrictMode>

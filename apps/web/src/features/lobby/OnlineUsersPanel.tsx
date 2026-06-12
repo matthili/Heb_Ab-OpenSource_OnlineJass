@@ -7,6 +7,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 
+import { UserName } from "~/features/social/UserName";
 import { api } from "~/lib/api";
 
 interface PresenceUser {
@@ -52,7 +53,7 @@ export function OnlineUsersPanel() {
                 aria-hidden="true"
                 className="inline-block size-2 rounded-full bg-emerald-500"
               />
-              <span>{u.name}</span>
+              <UserName userId={u.id} name={u.name} />
             </li>
           ))}
         </ul>

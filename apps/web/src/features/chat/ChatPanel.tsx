@@ -24,9 +24,11 @@ interface Props {
   /** Anzeigetitel (z.B. "Lobby" / "Tisch-Chat" / "Mit @<name>"). */
   title: string;
   className?: string;
+  /** Kopfzeile ausblenden (z.B. wenn ein DM-Fenster seinen eigenen Titel hat). */
+  hideHeader?: boolean;
 }
 
-export function ChatPanel({ channelKey, title, className = "" }: Props) {
+export function ChatPanel({ channelKey, title, className = "", hideHeader = false }: Props) {
   const { t } = useTranslation();
   const { data: session } = useSession();
   const myUserId = session?.user?.id;
@@ -64,9 +66,11 @@ export function ChatPanel({ channelKey, title, className = "" }: Props) {
 
   return (
     <section className={`flex flex-col rounded border border-stone-200 bg-white ${className}`}>
-      <header className="px-3 py-2 border-b border-stone-200 text-sm font-medium text-stone-700">
-        {title}
-      </header>
+      {!hideHeader && (
+        <header className="px-3 py-2 border-b border-stone-200 text-sm font-medium text-stone-700">
+          {title}
+        </header>
+      )}
 
       <div
         ref={scrollRef}

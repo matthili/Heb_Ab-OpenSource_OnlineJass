@@ -16,14 +16,12 @@
  */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { ChatPanel } from "~/features/chat/ChatPanel";
-import { makeDmChannelKey } from "~/features/chat/dm";
 import { StatsTable, type UserStatsData } from "~/features/profile/UserStatsPanel";
 import { api, ApiError } from "~/lib/api";
 import { useSession } from "~/lib/auth-client";
+import { useDmWindows } from "~/lib/dm-windows";
 
 export const Route = createFileRoute("/_auth/users/$id")({
   component: PublicProfilePage,
@@ -56,7 +54,7 @@ function PublicProfilePage() {
   const { data: session } = useSession();
   const myId = session?.user?.id;
   const isSelf = myId === id;
-  const [dmOpen, setDmOpen] = useState(false);
+  const { open: openDm } = useDmWindows();
 
   const { data, isPending, error } = useQuery<PublicProfileView>({
     queryKey: ["users", "public", id],
@@ -108,8 +106,7 @@ function PublicProfilePage() {
               <FriendButton targetId={id} />
               <button
                 type="button"
-                onClick={() => setDmOpen((o) => !o)}
-                aria-expanded={dmOpen}
+                onClick={() => openDm(id, data.name)}
                 className="btn-jass-secondary text-sm"
               >
                 {t("profile.publicProfile.sendMessage")}
@@ -118,13 +115,6 @@ function PublicProfilePage() {
           ) : null}
         </div>
       </header>
-
-      {dmOpen && myId && !isSelf && (
-        <ChatPanel
-          channelKey={makeDmChannelKey(myId, id)}
-          title={t("profile.publicProfile.dmTitle", { name: data.name })}
-        />
-      )}
 
       <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 text-sm">
         {data.birthDate && (

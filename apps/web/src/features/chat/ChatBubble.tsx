@@ -10,6 +10,7 @@
 import DOMPurify from "dompurify";
 import { useMemo } from "react";
 
+import { UserName } from "~/features/social/UserName";
 import type { ChatMessageView } from "./types";
 
 const ALLOWED_TAGS = ["p", "strong", "em", "code", "a", "br"];
@@ -48,7 +49,12 @@ export function ChatBubble({ message, isOwn }: Props) {
       data-message-id={message.id}
     >
       <div className="text-xs text-stone-500 mb-0.5 px-1">
-        <strong>{message.senderName}</strong> · {formatTime(message.createdAt)}
+        <UserName
+          userId={message.senderId}
+          name={message.senderName}
+          className="font-semibold text-stone-600"
+        />{" "}
+        · {formatTime(message.createdAt)}
       </div>
       <div
         className={`rounded-lg px-3 py-1.5 text-sm max-w-[80%] ${

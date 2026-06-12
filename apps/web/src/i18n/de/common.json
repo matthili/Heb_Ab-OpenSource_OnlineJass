@@ -1,5 +1,20 @@
 {
   "appName": "Heb ab!",
+  "social": {
+    "menu": {
+      "message": "Privatnachricht",
+      "profile": "Profilseite",
+      "addFriend": "Freundschaft anfragen",
+      "requestPending": "Anfrage ausstehend",
+      "acceptFriend": "Anfrage annehmen",
+      "areFriends": "Freunde"
+    },
+    "dm": {
+      "minimize": "Minimieren",
+      "restore": "Wiederherstellen",
+      "close": "Schließen"
+    }
+  },
   "appTagline": "Der OpenSource-Jass nach vorarlberger Spielart.",
 
   "nav": {

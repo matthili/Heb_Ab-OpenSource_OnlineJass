@@ -1,5 +1,20 @@
 {
   "appName": "Heb ab!",
+  "social": {
+    "menu": {
+      "message": "Direct message",
+      "profile": "Profile",
+      "addFriend": "Add friend",
+      "requestPending": "Request pending",
+      "acceptFriend": "Accept request",
+      "areFriends": "Friends"
+    },
+    "dm": {
+      "minimize": "Minimize",
+      "restore": "Restore",
+      "close": "Close"
+    }
+  },
   "appTagline": "The open-source Jass in the Vorarlberg tradition.",
 
   "nav": {
