@@ -50,10 +50,11 @@ export function OnlineUsersPanel() {
           {data.users.map((u) => (
             <li key={u.id} className="flex items-center gap-2 text-jass-ink">
               <span
-                aria-hidden="true"
+                title={t("social.presence.online")}
+                aria-label={t("social.presence.online")}
                 className="inline-block size-2 rounded-full bg-emerald-500"
               />
-              <UserName userId={u.id} name={u.name} />
+              <UserName userId={u.id} name={u.name} showPresence={false} />
             </li>
           ))}
         </ul>

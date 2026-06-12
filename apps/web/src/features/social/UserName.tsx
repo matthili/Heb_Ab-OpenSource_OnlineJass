@@ -23,9 +23,15 @@ interface Props {
   userId: string | null | undefined;
   name: string;
   className?: string;
+  /**
+   * Online-Punkt vor dem Namen zeigen. Default `true`. Ausschalten, wo der
+   * Kontext Online-Sein ohnehin impliziert und schon einen eigenen Punkt
+   * rendert (z.B. die Lobby-Online-Liste) — sonst gäbe es zwei Punkte.
+   */
+  showPresence?: boolean;
 }
 
-export function UserName({ userId, name, className = "" }: Props) {
+export function UserName({ userId, name, className = "", showPresence = true }: Props) {
   const { data: session } = useSession();
   const myId = session?.user?.id;
   const { open: openDm } = useDmWindows();
@@ -71,7 +77,7 @@ export function UserName({ userId, name, className = "" }: Props) {
   return (
     <>
       <span className="inline-flex items-center gap-1">
-        <PresenceDot userId={userId} />
+        {showPresence && <PresenceDot userId={userId} />}
         <button
           type="button"
           onClick={handleClick}
