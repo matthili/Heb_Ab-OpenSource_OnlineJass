@@ -1,7 +1,12 @@
 ---
 /**
- * Basis-Layout für alle Marketing-Seiten. Enthält Header, Footer und das
- * vanilla-CSS-Stylesheet. Inhalts-Seiten füllen den `<slot />`.
+ * Basis-Layout für alle Marketing-Seiten. Enthält Header (mit Theme-Toggle),
+ * Footer und das vanilla-CSS-Stylesheet. Inhalts-Seiten füllen den `<slot />`.
+ *
+ * **Theme**: identische Mechanik wie die Spiel-SPA — localStorage-Key
+ * `jass-theme` (`dark` | `hi-contrast`, sonst hell), `data-theme` auf <html>.
+ * Das Inline-Script unten läuft VOR dem ersten Paint (kein Flash); der
+ * Toggle-Button zykelt hell → dunkel → hoher Kontrast → hell.
  */
 import "../styles.css";
 
@@ -17,23 +22,45 @@ const { title, description } = Astro.props;
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#1f2937" />
+    <meta name="theme-color" content="#f0e6cf" />
     <link rel="icon" href="/favicon.ico" sizes="32x32" />
     <link rel="icon" type="image/png" href="/favicon-96x96.png" sizes="96x96" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <title>{title}</title>
     {description && <meta name="description" content={description} />}
+    <script is:inline>
+      // Theme VOR dem ersten Paint anwenden — gleicher Key wie die Spiel-SPA.
+      (function () {
+        try {
+          var t = localStorage.getItem("jass-theme");
+          if (t === "dark" || t === "hi-contrast") {
+            document.documentElement.setAttribute("data-theme", t);
+          }
+        } catch (e) {
+          /* localStorage gesperrt (Privacy-Modus) → Default hell */
+        }
+      })();
+    </script>
   </head>
   <body>
     <div class="page">
       <header class="nav">
         <nav class="nav-inner">
           <a href="/" class="nav-brand" aria-label="Heb ab!">
-            <img src="/logo/lockup-horizontal-hell.svg" alt="Heb ab!" />
+            <img src="/logo/lockup-horizontal-hell.svg" alt="Heb ab!" class="brand-light" />
+            <img src="/logo/lockup-horizontal-dunkel.svg" alt="" class="brand-dark" />
           </a>
-          <a href="/rules" class="nav-link">Regeln</a>
-          <a href="/about" class="nav-link">Über</a>
-          <a href="/app/" class="nav-cta">Zum Spiel</a>
+          <div class="nav-right">
+            <a href="/rules" class="nav-link">Jassen lernen</a>
+            <a href="/about" class="nav-link">Über</a>
+            <button
+              type="button"
+              id="theme-toggle"
+              class="theme-toggle"
+              aria-label="Farbschema wechseln">◐</button
+            >
+            <a href="/app/" class="nav-cta">Zum Spiel</a>
+          </div>
         </nav>
       </header>
       <main class="main">
@@ -46,5 +73,38 @@ const { title, description } = Astro.props;
         </div>
       </footer>
     </div>
+    <script is:inline>
+      // Theme-Toggle: hell → dunkel → hoher Kontrast → hell.
+      (function () {
+        var btn = document.getElementById("theme-toggle");
+        if (!btn) return;
+        var NEXT = { default: "dark", dark: "hi-contrast", "hi-contrast": "default" };
+        var LABEL = {
+          default: "Dunkles Design aktivieren",
+          dark: "Hohen Kontrast aktivieren",
+          "hi-contrast": "Helles Design aktivieren",
+        };
+        function current() {
+          var t = document.documentElement.getAttribute("data-theme");
+          return t === "dark" || t === "hi-contrast" ? t : "default";
+        }
+        function refreshTitle() {
+          btn.title = LABEL[current()];
+        }
+        btn.addEventListener("click", function () {
+          var next = NEXT[current()];
+          try {
+            if (next === "default") localStorage.removeItem("jass-theme");
+            else localStorage.setItem("jass-theme", next);
+          } catch (e) {
+            /* Privacy-Modus: Theme gilt dann nur für diese Seite */
+          }
+          if (next === "default") document.documentElement.removeAttribute("data-theme");
+          else document.documentElement.setAttribute("data-theme", next);
+          refreshTitle();
+        });
+        refreshTitle();
+      })();
+    </script>
   </body>
 </html>

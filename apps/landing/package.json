@@ -5,7 +5,9 @@
   "description": "Statische Marketing-Site für Heb ab! — Astro 6 mit React-Islands. Index, Rules, About, Privacy, Imprint. Wird von Caddy unter `/` serviert; die Spiel-SPA hängt unter `/app/`.",
   "type": "module",
   "scripts": {
+    "predev": "node ../../scripts/sync-landing-cards.mjs",
     "dev": "astro dev",
+    "prebuild": "node ../../scripts/sync-landing-cards.mjs",
     "build": "astro build",
     "preview": "astro preview",
     "typecheck": "astro check",

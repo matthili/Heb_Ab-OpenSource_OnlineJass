@@ -1,20 +1,115 @@
 /**
- * Vanilla-CSS für die Marketing-Site (M7-A). Reduziert auf das Minimum:
- * lesbare Typo, dezente Farben, brauchbare Knöpfe.
+ * Vanilla-CSS für die Marketing-Site. Bewusst KEIN Tailwind (siehe
+ * astro.config.mjs); stattdessen dieselbe Heb-ab!-Farbpalette wie die
+ * Spiel-SPA, als CSS-Variablen mit drei Themes.
  *
- * Wir nutzen hier bewusst KEIN Tailwind (siehe astro.config.mjs für den
- * Grund). Wenn die Marketing-Seite mehr Polish braucht (M7-F), kann hier
- * der Style entweder ausgebaut werden oder Tailwind nachgezogen werden,
- * sobald der Vite-8-Bug behoben ist.
+ * Theme-Mechanik = identisch zur Spiel-SPA (apps/web/src/lib/theme.ts):
+ * localStorage-Key `jass-theme` (`dark` | `hi-contrast`, Default = hell),
+ * `data-theme`-Attribut auf <html>. Das Inline-Script in Base.astro setzt
+ * das Attribut VOR dem ersten Paint — kein Theme-Flash.
  */
 
+/* ── Heb-ab!-Palette — gespiegelt aus apps/web/src/styles.css ───────── */
 :root {
-  --bg: #fafaf9;
-  --fg: #1c1917;
-  --muted: #78716c;
-  --border: #e7e5e4;
-  --accent: #1c1917;
-  --accent-hover: #44403c;
+  --paper: #f0e6cf;
+  --card-bg: #faf3e0;
+  --cream: #f7efd9;
+  --white: #fcf7e6;
+  --edge: #d8c79e;
+  --rule: #b6a583;
+  --ink: #241b14;
+  --ink-soft: #5b4a3a;
+  --red: #bd2a26;
+  --red-dark: #7a1714;
+  --yellow: #e6b324;
+  --yellow-dark: #b88410;
+  --green: #3f9a36;
+  --green-dark: #1f6a2a;
+  --brown-dark: #3a2010;
+  --blue: #2c4a7a;
+
+  /* Aliase, auf denen die Landing-Styles aufbauen. */
+  --bg: var(--paper);
+  --fg: var(--ink);
+  --muted: var(--ink-soft);
+  --border: var(--edge);
+  --surface: var(--cream);
+  --accent: var(--ink);
+  --accent-hover: #4a3826;
+  --accent-fg: var(--cream);
+}
+
+:root[data-theme="dark"] {
+  /* „Wirtshaus bei Kerzenlicht" — Werte aus der Spiel-SPA. */
+  --paper: #251f18;
+  --card-bg: #2b241c;
+  --cream: #322a20;
+  --white: #3c3328;
+  --edge: #4e4133;
+  --rule: #67543c;
+  --ink: #efe3cd;
+  --ink-soft: #c1aa8c;
+  --red: #d6453f;
+  --red-dark: #8f231f;
+  --yellow: #e8bd49;
+  --yellow-dark: #b3831a;
+  --green: #49a541;
+  --green-dark: #1d4a28;
+  --brown-dark: #3f2415;
+  --blue: #6f93c8;
+
+  --bg: #14110d;
+  --surface: var(--paper);
+  --accent: var(--yellow);
+  --accent-hover: var(--yellow-dark);
+  --accent-fg: #241b14;
+}
+
+:root[data-theme="hi-contrast"] {
+  /* Reines Schwarz auf Weiß, satte Symbolfarben. */
+  --paper: #ffffff;
+  --card-bg: #ffffff;
+  --cream: #f5f5f5;
+  --white: #ffffff;
+  --edge: #000000;
+  --rule: #000000;
+  --ink: #000000;
+  --ink-soft: #333333;
+  --red: #d40000;
+  --red-dark: #800000;
+  --yellow: #ffcc00;
+  --yellow-dark: #806600;
+  --green: #008000;
+  --green-dark: #004d00;
+  --brown-dark: #000000;
+  --blue: #0000cc;
+
+  --bg: #ffffff;
+  --surface: #ffffff;
+  --accent: #000000;
+  --accent-hover: #333333;
+  --accent-fg: #ffffff;
+}
+
+/* Verstärkte Fokus-Ringe für Tastatur-Navigation im Hi-Contrast. */
+:root[data-theme="hi-contrast"] *:focus-visible {
+  outline: 3px solid #000000;
+  outline-offset: 2px;
+}
+
+/* Marken-Logo hell/dunkel je Theme (Muster aus der Spiel-SPA):
+ * beide Varianten sind im DOM, das Theme blendet die passende ein. */
+.brand-light {
+  display: block;
+}
+.brand-dark {
+  display: none;
+}
+:root[data-theme="dark"] .brand-light {
+  display: none;
+}
+:root[data-theme="dark"] .brand-dark {
+  display: block;
 }
 
 * {
@@ -50,9 +145,10 @@ a:hover {
   flex-direction: column;
 }
 
+/* ── Navigation ─────────────────────────────────────────────────────── */
 .nav {
   border-bottom: 1px solid var(--border);
-  background: #fff;
+  background: var(--surface);
   /* relative + z-index, damit das überhängende Logo über dem Inhalt liegt. */
   position: relative;
   z-index: 10;
@@ -65,11 +161,9 @@ a:hover {
   height: 4rem;
   display: flex;
   align-items: center;
-  gap: 1.5rem;
+  gap: 1rem;
 }
 .nav-brand {
-  font-size: 1.125rem;
-  font-weight: 600;
   display: flex;
   align-items: center;
   /* Logo oben ausrichten → der Überhang fällt nach unten über die Linie. */
@@ -80,12 +174,58 @@ a:hover {
   width: auto;
   display: block;
 }
-/* Mobil: kein Überhang (würde die schmale Navi sprengen) — Logo passt in die
-   Bar und ist mittig. */
+/* Rechte Gruppe: Links + Theme-Toggle + CTA — Position wie im Spiel-Header. */
+.nav-right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+/* Nav-Links im Stil des „Servus, …"-Headers der Spiel-SPA:
+ * 0.875rem, font-medium, gedämpfte Tinte → volle Tinte bei Hover. */
+.nav-link {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--ink-soft);
+  transition: color 0.15s ease;
+}
+.nav-link:hover {
+  color: var(--ink);
+  text-decoration: none;
+}
+.nav-cta {
+  background: var(--accent);
+  color: var(--accent-fg) !important;
+  padding: 0.375rem 0.75rem;
+  border-radius: 0.25rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+.nav-cta:hover {
+  background: var(--accent-hover);
+  text-decoration: none;
+}
+/* Theme-Toggle — gleicher Look wie der ◐-Button der Spiel-SPA. */
+.theme-toggle {
+  border: 1px solid var(--edge);
+  background: var(--paper);
+  color: var(--ink);
+  border-radius: 0.25rem;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.875rem;
+  line-height: 1.4;
+  cursor: pointer;
+}
+.theme-toggle:hover {
+  background: var(--cream);
+}
+
+/* Mobil: kein Überhang (würde die schmale Navi sprengen). */
 @media (max-width: 640px) {
   .nav-inner {
     height: auto;
     padding: 0.5rem 1rem;
+    flex-wrap: wrap;
   }
   .nav-brand {
     align-self: center;
@@ -93,33 +233,21 @@ a:hover {
   .nav-brand img {
     height: 48px;
   }
+  .nav-right {
+    gap: 0.75rem;
+  }
   .main {
     padding-top: 2.5rem;
   }
 }
-.nav-link {
-  font-size: 0.875rem;
-  color: var(--muted);
-}
-.nav-cta {
-  margin-left: auto;
-  background: var(--accent);
-  color: #fff !important;
-  padding: 0.375rem 0.75rem;
-  border-radius: 0.25rem;
-  font-size: 0.875rem;
-}
-.nav-cta:hover {
-  background: var(--accent-hover);
-  text-decoration: none;
-}
 
+/* ── Inhalt ─────────────────────────────────────────────────────────── */
 .main {
   flex: 1;
   max-width: 48rem;
   margin: 0 auto;
-  /* Mehr Luft oben (3.25rem) → der Logo-Überhang aus der Navi berührt die
-     erste Überschrift nicht. Mobil unten wieder reduziert (kein Überhang). */
+  /* Luft oben → der Logo-Überhang aus der Navi berührt die erste
+     Überschrift nicht. */
   padding: 3.25rem 1rem 2.5rem;
   width: 100%;
 }
@@ -143,18 +271,46 @@ a:hover {
   display: inline-block;
   margin-top: 1rem;
   background: var(--accent);
-  color: #fff;
+  color: var(--accent-fg);
   padding: 0.5rem 1rem;
   border-radius: 0.25rem;
+  font-weight: 500;
 }
 .cta:hover {
   background: var(--accent-hover);
   text-decoration: none;
 }
+.cta-secondary {
+  display: inline-block;
+  margin-top: 1rem;
+  background: var(--paper);
+  color: var(--ink);
+  border: 1px solid var(--edge);
+  padding: 0.5rem 1rem;
+  border-radius: 0.25rem;
+  font-weight: 500;
+}
+.cta-secondary:hover {
+  background: var(--cream);
+  text-decoration: none;
+}
 
+/* Reduzierte Bewegung: Animationen springen direkt in den Endzustand.
+ * (Demos in der Jass-Schule bleiben damit vollständig lesbar.) */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001s !important;
+    animation-delay: 0s !important;
+    transition-duration: 0.001s !important;
+  }
+}
+
+/* ── Footer ─────────────────────────────────────────────────────────── */
 .footer {
   border-top: 1px solid var(--border);
-  background: #fff;
+  background: var(--surface);
 }
 .footer-inner {
   max-width: 64rem;
