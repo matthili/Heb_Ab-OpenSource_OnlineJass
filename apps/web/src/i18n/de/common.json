@@ -16,6 +16,10 @@
       "close": "Schließen",
       "unread": "{{count}} ungelesen"
     },
+    "presence": {
+      "online": "Online",
+      "lastSeenAt": "Zuletzt gesehen: {{when}}"
+    },
     "cancel": "Abbrechen",
     "report": {
       "title": "{{name}} melden",

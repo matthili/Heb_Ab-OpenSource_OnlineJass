@@ -43,6 +43,7 @@ import type { Server, Socket } from "socket.io";
 import { AuditService } from "../audit/audit.service.js";
 import { AuthService } from "../auth/auth.service.js";
 import { ChatGateway } from "../chat/chat.gateway.js";
+import { PrismaService } from "../prisma/prisma.service.js";
 import { RedisService } from "../redis/redis.service.js";
 import { BodenseeGameService, type BodenseePlayerView } from "./bodensee-game.service.js";
 import { DisconnectVoteService } from "./disconnect-vote.service.js";
@@ -118,7 +119,8 @@ export class GameGateway
     private readonly audit: AuditService,
     private readonly userRegistry: PerUserSocketRegistry,
     private readonly disconnectVote: DisconnectVoteService,
-    private readonly chatGateway: ChatGateway
+    private readonly chatGateway: ChatGateway,
+    private readonly prisma: PrismaService
   ) {
     // Defensive: alle DI-Params sollten von NestJS gefüllt sein. Wenn nicht,
     // ist das ein Setup-Problem (z.B. fehlende `reflect-metadata` /
@@ -133,7 +135,8 @@ export class GameGateway
       !audit ||
       !userRegistry ||
       !disconnectVote ||
-      !chatGateway
+      !chatGateway ||
+      !prisma
     ) {
       throw new Error(
         "GameGateway: Constructor-DI unvollständig. " +
@@ -259,6 +262,13 @@ export class GameGateway
       const remaining = await this.userRegistry.countSockets(userId);
       if (remaining === 0) {
         // User ist real offline — alle Tabs/Geräte weg.
+        // „Zuletzt gesehen" = jetzt (für die Präsenz-Anzeige). Best-effort,
+        // blockt den Disconnect-Flow nicht.
+        this.prisma.user
+          .update({ where: { id: userId }, data: { lastSeenAt: new Date() } })
+          .catch((err: unknown) =>
+            this.log.warn({ err, userId }, "lastSeenAt-Update fehlgeschlagen")
+          );
         // Wenn er an einem laufenden Game sitzt, Disconnect-Flow triggern:
         // Kreuz/Solo via mehrstufigem Vote, Bodensee via KI-Übernahme.
         await this.triggerDisconnectVotesForUser(userId);

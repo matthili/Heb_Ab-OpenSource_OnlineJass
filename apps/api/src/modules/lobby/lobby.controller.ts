@@ -62,6 +62,24 @@ export class LobbyController {
     return { users };
   }
 
+  /**
+   * Präsenz-Status (online + zuletzt-gesehen) für gezielte User-IDs — für die
+   * Online-Punkte an Namen. `?ids=a,b,c` (komma-separiert, max. 100). Pro Ziel
+   * wird die Präsenz-Sichtbarkeit des Users durchgesetzt.
+   */
+  @Get("presence/status")
+  async presenceStatus(
+    @Req() req: FastifyRequest,
+    @Query("ids") ids?: string
+  ): Promise<{ statuses: Record<string, { online: boolean; lastSeenAt: string | null }> }> {
+    const list = (ids ?? "")
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+    const statuses = await this.presence.statusFor(req.user!.id, list);
+    return { statuses };
+  }
+
   // ─── Tisch-CRUD ────────────────────────────────────────────────────
 
   @Post("tables")

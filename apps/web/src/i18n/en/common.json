@@ -16,6 +16,10 @@
       "close": "Close",
       "unread": "{{count}} unread"
     },
+    "presence": {
+      "online": "Online",
+      "lastSeenAt": "Last seen: {{when}}"
+    },
     "cancel": "Cancel",
     "report": {
       "title": "Report {{name}}",

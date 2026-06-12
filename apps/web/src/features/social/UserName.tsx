@@ -14,6 +14,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { useDmWindows } from "~/lib/dm-windows";
 import { useSession } from "~/lib/auth-client";
+import { PresenceDot } from "~/lib/presence";
 import { ReportDialog } from "./ReportDialog";
 import { UserContextMenu } from "./UserContextMenu";
 
@@ -69,14 +70,17 @@ export function UserName({ userId, name, className = "" }: Props) {
 
   return (
     <>
-      <button
-        type="button"
-        onClick={handleClick}
-        onDoubleClick={handleDoubleClick}
-        className={`cursor-pointer rounded hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 ${className}`}
-      >
-        {name}
-      </button>
+      <span className="inline-flex items-center gap-1">
+        <PresenceDot userId={userId} />
+        <button
+          type="button"
+          onClick={handleClick}
+          onDoubleClick={handleDoubleClick}
+          className={`cursor-pointer rounded hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 ${className}`}
+        >
+          {name}
+        </button>
+      </span>
       {menuAt && (
         <UserContextMenu
           userId={userId}

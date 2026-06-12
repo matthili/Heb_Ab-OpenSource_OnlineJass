@@ -21,6 +21,7 @@ const USER: User = {
   status: "ACTIVE",
   locale: "de",
   deletedAt: null,
+  lastSeenAt: null,
   adminNote: null,
 };
 

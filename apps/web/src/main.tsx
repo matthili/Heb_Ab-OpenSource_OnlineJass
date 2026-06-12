@@ -24,6 +24,7 @@ import "@fontsource/eb-garamond/400.css";
 import "@fontsource/eb-garamond/600.css";
 import "./i18n/index.js"; // Side-Effect: initialisiert i18next vor dem ersten Render
 import { DmWindowProvider } from "./lib/dm-windows.js";
+import { PresenceProvider } from "./lib/presence.js";
 import { applyThemeFromStorage } from "./lib/theme.js";
 import { ToastProvider } from "./lib/toast.js";
 import { registerServiceWorker } from "./lib/pwa.js";
@@ -66,11 +67,13 @@ if (!rootEl) throw new Error("#root nicht im DOM gefunden");
 createRoot(rootEl).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
-      <ToastProvider>
-        <DmWindowProvider>
-          <RouterProvider router={router} />
-        </DmWindowProvider>
-      </ToastProvider>
+      <PresenceProvider>
+        <ToastProvider>
+          <DmWindowProvider>
+            <RouterProvider router={router} />
+          </DmWindowProvider>
+        </ToastProvider>
+      </PresenceProvider>
     </QueryClientProvider>
   </StrictMode>
 );

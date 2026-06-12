@@ -77,6 +77,52 @@ export class PresenceService {
   }
 
   /**
+   * Präsenz-Status (online + zuletzt-gesehen) für eine gezielte Menge von
+   * User-IDs — für die Online-Punkte an Namen. Respektiert pro Ziel-User die
+   * Präsenz-Sichtbarkeit: darf der Viewer sie nicht sehen, kommt
+   * `{ online: false, lastSeenAt: null }` zurück (kein Leak). Self ist immer
+   * sichtbar. IDs werden dedupliziert und hart bei 100 gekappt.
+   */
+  async statusFor(
+    viewerId: string,
+    ids: string[]
+  ): Promise<Record<string, { online: boolean; lastSeenAt: string | null }>> {
+    const unique = [...new Set(ids)].slice(0, 100);
+    if (unique.length === 0) return {};
+    const users = await this.prisma.user.findMany({
+      where: { id: { in: unique }, status: "ACTIVE" },
+      select: { id: true, lastSeenAt: true, profile: { select: { visibility: true } } },
+    });
+
+    const friendsOnlyIds = users
+      .filter((u) => {
+        if (u.id === viewerId) return false;
+        const vis = (u.profile?.visibility ?? {}) as VisibilityMap;
+        return resolvePresenceVisibility(vis) === "FRIENDS";
+      })
+      .map((u) => u.id);
+    const friendIds = await this.acceptedFriendIds(viewerId, friendsOnlyIds);
+
+    const result: Record<string, { online: boolean; lastSeenAt: string | null }> = {};
+    for (const u of users) {
+      const vis = (u.profile?.visibility ?? {}) as VisibilityMap;
+      const level = resolvePresenceVisibility(vis);
+      const maySee =
+        u.id === viewerId ||
+        level === "LOGGED_IN" ||
+        level === "PUBLIC" ||
+        (level === "FRIENDS" && friendIds.has(u.id));
+      if (!maySee) {
+        result[u.id] = { online: false, lastSeenAt: null };
+        continue;
+      }
+      const online = (await this.registry.countSockets(u.id)) > 0;
+      result[u.id] = { online, lastSeenAt: u.lastSeenAt ? u.lastSeenAt.toISOString() : null };
+    }
+    return result;
+  }
+
+  /**
    * Teilmenge von `candidateIds`, mit denen `viewerId` eine ACCEPTED-Freundschaft
    * hat (in beliebiger Richtung). Leere Kandidatenliste → leeres Set ohne Query.
    */

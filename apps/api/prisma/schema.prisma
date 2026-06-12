@@ -51,6 +51,9 @@ model User {
   status    UserStatus @default(ACTIVE)
   locale    String     @default("de")
   deletedAt DateTime? // Soft-Delete (Anonymisierung in M10)
+  /// Zeitpunkt des letzten „offline gehen" (letzter Socket getrennt) — für die
+  /// „zuletzt gesehen"-Anzeige. Null = noch nie online gewesen / unbekannt.
+  lastSeenAt DateTime?
   /// Admin-Notiz pro Nutzer (z.B. „Rookie3000 = Martin Meier"). Nur für Admins
   /// sichtbar; v.a. für den LAN-Mode (Admin-Freischaltung statt E-Mail).
   adminNote String?
