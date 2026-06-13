@@ -247,7 +247,7 @@ function CumulativeScoreBar({ table }: { table: TableDetailView }) {
 
   return (
     <section
-      className="rounded-lg border border-jass-paperEdge bg-jass-paper p-3 space-y-2"
+      className="rounded-lg border border-jass-paperEdge bg-jass-paper p-3 space-y-2 panel-jass"
       aria-label={t("lobby.tableDetail.scoreLabel")}
     >
       <div className="flex items-baseline justify-between text-sm text-jass-inkSoft">

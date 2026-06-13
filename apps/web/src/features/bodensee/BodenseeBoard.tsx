@@ -136,7 +136,7 @@ export function BodenseeBoard({
     <div className="space-y-3 relative">
       {announceInfo && <AnnounceOverlay gameId={view.gameId} info={announceInfo} />}
       {/* Status-Leiste */}
-      <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-jass-paperEdge bg-jass-cream px-4 py-2 text-sm">
+      <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-jass-paperEdge bg-jass-cream px-4 py-2 text-sm panel-jass">
         <span className="text-jass-inkSoft">
           <Trans
             i18nKey="bodensee.status.trick"
@@ -173,7 +173,7 @@ export function BodenseeBoard({
       )}
 
       {/* Gegner-Bereich */}
-      <section className="rounded-lg border border-jass-paperEdge bg-jass-paper p-3 space-y-2">
+      <section className="rounded-lg border border-jass-paperEdge bg-jass-paper p-3 space-y-2 panel-jass">
         <div className="flex items-center justify-between text-sm">
           <UserName
             userId={seats.find((x) => x.seat === oppSeat)?.user?.id}
@@ -247,7 +247,7 @@ export function BodenseeBoard({
       )}
 
       {/* Eigener Bereich */}
-      <section className="rounded-lg border border-jass-paperEdge bg-jass-paper p-3 space-y-3">
+      <section className="rounded-lg border border-jass-paperEdge bg-jass-paper p-3 space-y-3 panel-jass">
         {/* min-h reserviert die Zeilenhöhe, damit das 2-s-Ausblenden das
             Layout darunter nicht hochrutschen lässt. */}
         <div className="text-sm min-h-[1.5rem]">
@@ -319,7 +319,7 @@ export function BodenseeBoard({
             announceLevel={view.announcement.announceLevel}
           />
         ) : (
-          <p className="rounded-lg border border-jass-paperEdge bg-jass-cream px-4 py-3 text-sm text-jass-inkSoft">
+          <p className="rounded-lg border border-jass-paperEdge bg-jass-cream px-4 py-3 text-sm text-jass-inkSoft panel-jass">
             {t("bodensee.announce.otherChoosing", {
               name: seatName(view.announcement?.announcerSeat ?? oppSeat),
             })}

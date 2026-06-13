@@ -37,7 +37,7 @@ export function OnlineUsersPanel() {
 
   if (isPending) {
     return (
-      <aside className="rounded border border-jass-paperEdge bg-jass-paper p-3 text-sm">
+      <aside className="rounded border border-jass-paperEdge bg-jass-paper p-3 text-sm panel-jass">
         <p className="text-jass-inkSoft">{t("lobby.onlineUsers.loading")}</p>
       </aside>
     );
@@ -47,7 +47,7 @@ export function OnlineUsersPanel() {
   }
 
   return (
-    <aside className="rounded border border-jass-paperEdge bg-jass-paper p-3 text-sm">
+    <aside className="rounded border border-jass-paperEdge bg-jass-paper p-3 text-sm panel-jass">
       <h3 className="font-semibold mb-2 text-jass-ink">
         {t("lobby.onlineUsers.heading")}{" "}
         <span className="text-jass-inkSoft font-normal">({data.users.length})</span>

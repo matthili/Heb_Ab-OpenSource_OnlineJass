@@ -232,6 +232,17 @@ h1 {
     0 6px 12px 0 rgba(0, 0, 0, 0.12);
 }
 
+/* Panel-Politur: dezente „Schwebe"-Tiefe + Oberlicht-Saum für Info-/Status-
+ * Panels (Lobby-Seitenpanel, Online-Liste, Bodensee-Bereiche, Rematch,
+ * Weisen-Auswahl …). NUR Schatten — Hintergrund/Rand/Radius bringen die
+ * Panels selbst (Tailwind). Pendant zu `.card-jass`, aber ohne Hover-Lift
+ * (Panels sind nicht klickbar). Macht den Glanz vom Filz/Buttons konsistent. */
+.panel-jass {
+  box-shadow:
+    0 1px 0 0 var(--color-jass-white) inset,
+    0 6px 16px -8px rgba(0, 0, 0, 0.16);
+}
+
 /* ─── Spiel-Animationen ──────────────────────────────────────────── */
 
 /* Karten-Eintritt: eine gespielte Karte „fällt" mit kurzem Fade + leichtem
@@ -1029,6 +1040,9 @@ h1 {
 /* Sekundär-Button + Lobby-Karten: schwarze Schatten tragen auf Dunkel nicht
  * → dezente helle Inset-Kante + stärkerer dunkler Schatten für die „Tiefe“. */
 :root[data-theme="dark"] .btn-jass-secondary {
+  /* Der helle Porzellan-Glanz (0.45) aus der Basis-Regel ist auf der dunklen
+     Holzfläche zu grell → hier auf einen dezenten Schimmer zurücknehmen. */
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0) 50%);
   box-shadow:
     inset 0 1px 0 0 rgba(255, 255, 255, 0.05),
     0 2px 3px 0 rgba(0, 0, 0, 0.4);
@@ -1042,6 +1056,13 @@ h1 {
   box-shadow:
     inset 0 1px 0 0 rgba(255, 255, 255, 0.05),
     0 8px 16px 0 rgba(0, 0, 0, 0.55);
+}
+/* Panel-Politur auf Dunkel: heller Saum zurücknehmen (sonst zu grell wie beim
+   Sekundär-Button), Schatten kräftiger, damit die Tiefe auf Dunkel trägt. */
+:root[data-theme="dark"] .panel-jass {
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.05),
+    0 8px 20px -8px rgba(0, 0, 0, 0.55);
 }
 
 /* Abheben-Label: der helle Text-Halo (für dunklen Text auf hell) wäscht auf

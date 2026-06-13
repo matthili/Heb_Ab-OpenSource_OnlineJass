@@ -229,7 +229,7 @@ function SelectionPanel(props: SelectionProps) {
 
   return (
     <div
-      className="rounded-lg border-2 border-jass-yellowDark bg-jass-cream p-3 space-y-3 shadow-md"
+      className="rounded-lg border-2 border-jass-yellowDark bg-jass-cream p-3 space-y-3 panel-jass"
       role="region"
       aria-label={t("game.weisen.selectAria")}
     >
