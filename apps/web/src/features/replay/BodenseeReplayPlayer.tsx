@@ -132,7 +132,7 @@ export function BodenseeReplayPlayer({ bundle, frames, mySeat }: Props) {
       />
 
       {/* Stich-Mitte */}
-      <section className="min-h-[9rem] rounded-xl bg-emerald-800 px-4 py-5 text-center text-emerald-50 shadow-inner">
+      <section className="min-h-[9rem] rounded-xl bg-jass-felt px-4 py-5 text-center text-white/90">
         <TrickArea state={state} mySeat={mySeat} seatName={seatName} t={t} />
       </section>
 
@@ -277,7 +277,7 @@ function TrickArea({
     const starter = state.current_trick_starter;
     return (
       <div>
-        <p className="mb-2 text-xs uppercase tracking-wide text-emerald-200">
+        <p className="mb-2 text-xs uppercase tracking-wide text-white/70">
           {t("bodensee.trick.running")}
         </p>
         <TrickCards
@@ -298,7 +298,7 @@ function TrickArea({
     const winner = state.trick_winners[lastIdx]!;
     return (
       <div>
-        <p className="mb-2 text-sm font-semibold uppercase tracking-wide text-emerald-100">
+        <p className="mb-2 text-sm font-semibold uppercase tracking-wide text-white/80">
           {winner === mySeat
             ? t("bodensee.trick.lastWonByYou")
             : t("bodensee.trick.lastWonByOther", { name: seatName(winner) })}
@@ -315,7 +315,7 @@ function TrickArea({
     );
   }
 
-  return <p className="text-sm text-emerald-100">{t("bodensee.trick.starting")}</p>;
+  return <p className="text-sm text-white/80">{t("bodensee.trick.starting")}</p>;
 }
 
 function TrickCards({
@@ -343,7 +343,7 @@ function TrickCards({
             <div className={isWinner ? "rounded-lg ring-2 ring-amber-400 ring-offset-1" : ""}>
               <Card card={c} size="md" />
             </div>
-            <p className="text-xs text-emerald-100">
+            <p className="text-xs text-white/80">
               {seat === mySeat ? t("game.you") : seatName(seat)}
             </p>
           </div>

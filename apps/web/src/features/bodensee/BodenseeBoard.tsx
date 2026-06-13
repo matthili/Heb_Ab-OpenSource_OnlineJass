@@ -213,7 +213,7 @@ export function BodenseeBoard({
 
       {/* Stich-Mitte — mit Modus-Wasserzeichen dahinter (gut sichtbar statt
           des zu kleinen Icons oben). */}
-      <section className="relative min-h-[10rem] overflow-hidden rounded-xl bg-emerald-800 px-4 py-5 text-center text-emerald-50 shadow-inner">
+      <section className="relative min-h-[10rem] overflow-hidden rounded-xl bg-jass-felt px-4 py-5 text-center text-white/90">
         {announceInfo && (
           <ModeWatermark info={announceInfo} currentMode={watermarkMode} align="left" />
         )}
@@ -362,7 +362,7 @@ function TrickArea({
   if (live.cards.length > 0) {
     return (
       <div>
-        <p className="text-xs uppercase tracking-wide text-emerald-200 mb-2">
+        <p className="text-xs uppercase tracking-wide text-white/70 mb-2">
           {t("bodensee.trick.running")}
         </p>
         <div className="flex items-end justify-center gap-4">
@@ -371,7 +371,7 @@ function TrickArea({
             return (
               <div key={`ct-${i}`} className="space-y-1">
                 <Card card={c} size="md" />
-                <p className="text-xs text-emerald-100">
+                <p className="text-xs text-white/80">
                   {seat === view.mySeat ? t("game.you") : seatName(seat)}
                 </p>
               </div>
@@ -395,7 +395,7 @@ function TrickArea({
   }
 
   // 4) Noch kein Stich.
-  return <p className="text-sm text-emerald-100">{t("bodensee.trick.starting")}</p>;
+  return <p className="text-sm text-white/80">{t("bodensee.trick.starting")}</p>;
 }
 
 /**
@@ -418,7 +418,7 @@ function CompletedTrickView({
   const { t } = useTranslation();
   return (
     <div>
-      <p className="text-sm uppercase tracking-wide text-emerald-100 mb-2 font-semibold">
+      <p className="text-sm uppercase tracking-wide text-white/80 mb-2 font-semibold">
         {trick.winner === mySeat
           ? t("bodensee.trick.lastWonByYou")
           : t("bodensee.trick.lastWonByOther", { name: seatName(trick.winner) })}
@@ -438,7 +438,7 @@ function CompletedTrickView({
               >
                 <Card card={c} size="md" />
               </div>
-              <p className="text-xs text-emerald-100">
+              <p className="text-xs text-white/80">
                 {seat === mySeat ? t("game.you") : seatName(seat)}
               </p>
             </div>
