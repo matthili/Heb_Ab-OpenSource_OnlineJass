@@ -54,12 +54,17 @@ const TRUMP_CARDS = [
   { card: "eichel-7", pts: "0" },
   { card: "eichel-6", pts: "0" },
 ];
+/**
+ * Ansage-Symbole mit ihrer Breite bei 44px Höhe (= Originalformat respektiert,
+ * gerundet aus den PNG-Maßen): Eichel 1:1, Gumpf 1.48:1, Bock/Geiß 1.72:1,
+ * Slalom 2.2:1. Beide Maße im `<img>` gesetzt → kein Layout-Sprung beim Laden.
+ */
 const MODE_ICONS = [
-  "/cards/suits/eichel.png",
-  "/cards/suits/eichel_gumpf.png",
-  "/cards/suits/bock.png",
-  "/cards/suits/geiss.png",
-  "/cards/suits/slalom.png",
+  { src: "/cards/suits/eichel.png", w: 44 },
+  { src: "/cards/suits/eichel_gumpf.png", w: 65 },
+  { src: "/cards/suits/bock.png", w: 76 },
+  { src: "/cards/suits/geiss.png", w: 76 },
+  { src: "/cards/suits/slalom.png", w: 97 },
 ];
 
 interface RulesContent {
@@ -893,7 +898,7 @@ const c = CONTENT[lang];
         {
           c.modes.map((m, i) => (
             <div class="mode">
-              <img src={MODE_ICONS[i]} alt="" width="44" height="44" loading="lazy" />
+              <img src={MODE_ICONS[i].src} alt="" width={MODE_ICONS[i].w} height="44" loading="lazy" />
               <h3>{m.title}</h3>
               <p>{m.text}</p>
             </div>
@@ -909,7 +914,7 @@ const c = CONTENT[lang];
       <TrickDemo lang={lang} cards={c.demoGumpf.cards} winner={c.demoGumpf.winner} caption={c.demoGumpf.caption} />
       <div class="slalom-strip" aria-label={c.slalom.title}>
         <span class="ss-title">
-          <img src="/cards/suits/slalom.png" alt="" width="22" height="22" /> {c.slalom.title}
+          <img src="/cards/suits/slalom.png" alt="" width="48" height="22" /> {c.slalom.title}
         </span>
         <span class="ss-step up">{c.slalom.steps[0]}</span>
         <span class="ss-arrow">→</span>
@@ -1241,9 +1246,8 @@ const c = CONTENT[lang];
   /* §4 Trumpf-Reihe */
   .trump-order {
     display: flex;
-    gap: 0.45rem;
-    overflow-x: auto;
-    padding: 0.85rem 0.6rem 0.6rem;
+    gap: 0.5rem;
+    padding: 0.85rem 0.7rem 0.6rem;
     border: 1px solid var(--edge);
     border-radius: 0.6rem;
     background: var(--card-bg);
@@ -1255,7 +1259,16 @@ const c = CONTENT[lang];
     flex-direction: column;
     align-items: center;
     gap: 0.2rem;
-    min-width: 58px;
+    /* Gleichmäßig die volle Breite ausnutzen — neun Karten = neun gleich
+       breite Spalten; die Karten skalieren mit (siehe .pcard-Regel unten). */
+    flex: 1 1 0;
+    min-width: 0;
+  }
+  /* Karten in der Trumpf-Reihe füllen ihre Spalte (überschreibt die feste
+     Pixel-Breite des PlayingCard-`w`-Props). */
+  .trump-order :global(.pcard) {
+    width: 100%;
+    height: auto;
   }
   .to-label {
     font-size: 0.72rem;

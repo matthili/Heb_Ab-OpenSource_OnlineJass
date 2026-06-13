@@ -256,7 +256,17 @@ const CONTENT: Record<Lang, AboutContent> = {
 
 const c = CONTENT[lang];
 const rulesHref = lang === "en" ? "/en/rules" : "/rules";
-const SYMBOLS = ["eichel", "schelle", "herz", "laub", "bock", "geiss", "slalom"];
+// Breite bei 36px Höhe (Originalformat respektiert): Farben 1:1, Bock/Geiß
+// 1.72:1, Slalom 2.2:1.
+const SYMBOLS = [
+  { id: "eichel", w: 36 },
+  { id: "schelle", w: 36 },
+  { id: "herz", w: 36 },
+  { id: "laub", w: 36 },
+  { id: "bock", w: 62 },
+  { id: "geiss", w: 62 },
+  { id: "slalom", w: 79 },
+];
 const FAN = ["eichel-U", "schelle-9", "herz-A", "schelle-6-weli"];
 ---
 
@@ -308,7 +318,7 @@ const FAN = ["eichel-U", "schelle-9", "herz-A", "schelle-6-weli"];
         <div class="cr-symbols">
           {
             SYMBOLS.map((sym) => (
-              <img src={`/cards/suits/${sym}.png`} alt="" width="36" height="36" loading="lazy" />
+              <img src={`/cards/suits/${sym.id}.png`} alt="" width={sym.w} height="36" loading="lazy" />
             ))
           }
         </div>
