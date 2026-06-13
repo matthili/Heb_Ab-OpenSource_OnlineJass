@@ -477,7 +477,7 @@ function PlayingArea({
       // gekreuzten Linear-Gradients, kein PNG). Min-Höhe 32rem damit die
       // h-32-Karten in den 3×3-Slots ohne Überlappung passen; clamp
       // skaliert auf großen Bildschirmen bis 48rem hoch.
-      className="grid grid-cols-3 grid-rows-[auto_1fr_auto] gap-2 min-h-[32rem] h-[clamp(32rem,65vh,48rem)] rounded-lg p-4 relative shadow-inner bg-jass-felt"
+      className="grid grid-cols-3 grid-rows-[auto_1fr_auto] gap-2 min-h-[32rem] h-[clamp(32rem,65vh,48rem)] rounded-lg p-4 relative bg-jass-felt"
       style={{ border: "2px solid var(--color-jass-brownDark)" }}
       role="region"
       aria-label={t("game.playingArea")}

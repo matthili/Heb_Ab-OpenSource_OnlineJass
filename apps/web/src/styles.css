@@ -109,6 +109,9 @@ h1 {
 .bg-jass-felt {
   background-color: var(--color-jass-greenDark);
   background-image:
+    /* Gloss-Layer (oben): weiches Oberlicht — lässt den Filz „beleuchtet"
+       statt matt wirken, ohne die Wärme zu verlieren. */
+    radial-gradient(135% 80% at 50% -10%, rgba(255, 255, 255, 0.13), transparent 58%),
     radial-gradient(
       ellipse at center,
       color-mix(in srgb, var(--color-jass-green) 55%, transparent),
@@ -128,12 +131,21 @@ h1 {
       color-mix(in srgb, var(--color-jass-greenDark) 70%, transparent) 3px,
       color-mix(in srgb, var(--color-jass-greenDark) 70%, transparent) 4px
     );
+  /* „Schwebe-Tiefe" statt matt-versenkt: feiner Lichtsaum oben innen +
+     weicher, großer Außenschatten — der Tisch hebt sich poliert ab.
+     (Ersetzt das frühere `shadow-inner` am GameBoard-Element.) */
+  box-shadow:
+    0 1px 0 0 rgba(255, 255, 255, 0.1) inset,
+    0 16px 36px -14px rgba(0, 0, 0, 0.5);
 }
 
 /* Wirtshaus-Buttons: Tiefe via Box-Shadow, Hover lift. Wirkt wie
  * gepresste Pappe statt Web-Flat-Buttons. */
 .btn-jass-primary {
   background-color: var(--color-jass-ink);
+  /* Glanz-Verlauf: feines Oberlicht von oben — poliert, ohne das warme
+     Wirtshaus-Relief (Inset-Saum + brauner Schlagschatten) aufzugeben. */
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0) 48%);
   color: var(--color-jass-cream);
   font-weight: 600;
   padding: 0.5rem 1rem;
@@ -168,6 +180,8 @@ h1 {
 
 .btn-jass-secondary {
   background-color: var(--color-jass-paper);
+  /* Dezenter Porzellan-Glanz — Pendant zum Primär-Button. */
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.45), rgba(255, 255, 255, 0) 50%);
   color: var(--color-jass-ink);
   font-weight: 500;
   padding: 0.5rem 1rem;
