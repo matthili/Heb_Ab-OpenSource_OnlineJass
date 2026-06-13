@@ -417,14 +417,14 @@ function StatusBanner({
   const { t } = useTranslation();
   if (view.status === "finished") {
     return (
-      <div className="rounded bg-jass-cream border border-jass-paperEdge px-3 py-2 text-jass-ink">
+      <div className="rounded bg-jass-cream border border-jass-paperEdge px-3 py-2 text-jass-ink flex items-center min-h-[2.75rem]">
         {t("game.finished")}
       </div>
     );
   }
   if (view.myTurn) {
     return (
-      <div className="jass-your-turn-glow rounded bg-jass-yellow border border-jass-yellowDark px-3 py-2 text-jass-ink font-semibold">
+      <div className="jass-your-turn-glow rounded bg-jass-yellow border border-jass-yellowDark px-3 py-2 text-jass-ink font-semibold flex items-center min-h-[2.75rem]">
         {t("game.yourTurn")}
       </div>
     );
@@ -434,12 +434,14 @@ function StatusBanner({
     ? seatDisplayName(playerSeat, nameSeed, t("game.seatFallback", { n: view.whoseTurnSeat + 1 }))
     : t("game.seatFallback", { n: view.whoseTurnSeat + 1 });
   return (
-    <div className="rounded bg-jass-paper border border-jass-paperEdge px-3 py-2 text-jass-inkSoft">
-      <Trans
-        i18nKey="game.otherTurn"
-        values={{ name }}
-        components={{ strong: <strong className="text-jass-ink" /> }}
-      />
+    <div className="rounded bg-jass-paper border border-jass-paperEdge px-3 py-2 text-jass-inkSoft flex items-center min-h-[2.75rem]">
+      <span>
+        <Trans
+          i18nKey="game.otherTurn"
+          values={{ name }}
+          components={{ strong: <strong className="text-jass-ink" /> }}
+        />
+      </span>
     </div>
   );
 }

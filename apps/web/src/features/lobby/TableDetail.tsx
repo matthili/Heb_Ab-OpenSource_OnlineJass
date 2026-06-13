@@ -226,8 +226,9 @@ function CumulativeScoreBar({ table }: { table: TableDetailView }) {
   const { t } = useTranslation();
   const scores = table.cumulativeScores;
   const target = table.targetScore;
-  // Falls noch kein Game gespielt wurde: Balken weglassen.
-  if (scores.every((s) => s === 0)) return null;
+  // Immer einblenden, sobald es Punktekonten gibt — auch vor dem ersten Spiel
+  // (zeigt Ziel + 0:0), damit der Partie-Stand nicht erst nach Spiel 1 „einpoppt".
+  if (scores.length === 0) return null;
   const isPerPlayer = table.variant === "SOLO_4P" || table.variant === "BODENSEE_2P";
   const winner = scores.findIndex((s) => s >= target); // -1 = noch offen
 

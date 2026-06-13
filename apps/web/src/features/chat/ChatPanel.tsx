@@ -109,7 +109,7 @@ export function ChatPanel({ channelKey, title, className = "", hideHeader = fals
     sendError instanceof ApiError ? sendError.message : sendError ? t("chat.sendFailed") : null;
 
   return (
-    <section className={`flex flex-col rounded border border-stone-200 bg-white ${className}`}>
+    <section className={`flex flex-col rounded border border-stone-200 bg-white panel-jass ${className}`}>
       {!hideHeader && (
         <header className="px-3 py-2 border-b border-stone-200 text-sm font-medium text-stone-700">
           {title}
