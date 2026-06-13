@@ -22,24 +22,43 @@ interface Props {
   caption: string;
   /** Trumpf-Farbe als Suit-ID ("eichel" | "schelle" | "herz" | "laub"). */
   trumpSuit?: string;
+  lang?: "de" | "en";
 }
-const { table, hand, caption, trumpSuit } = Astro.props;
+const { table, hand, caption, trumpSuit, lang = "de" } = Astro.props;
 const SUIT_NAMES: Record<string, string> = {
   eichel: "Eichel",
   schelle: "Schelle",
   herz: "Herz",
   laub: "Laub",
 };
+const T = {
+  de: {
+    pile: "Im Stich liegt",
+    trump: "Trumpf:",
+    hand: "Deine Hand — was ist erlaubt?",
+    allowed: "erlaubt",
+    forbidden: "verboten",
+    replay: "Animation erneut abspielen",
+  },
+  en: {
+    pile: "In the trick",
+    trump: "Trump:",
+    hand: "Your hand — what’s allowed?",
+    allowed: "allowed",
+    forbidden: "forbidden",
+    replay: "Replay animation",
+  },
+}[lang];
 ---
 
 <figure class="anim choice">
   <div class="board">
     <div class="pile">
-      <span class="lbl">Im Stich liegt</span>
+      <span class="lbl">{T.pile}</span>
       {
         trumpSuit && (
           <span class="trump">
-            Trumpf:
+            {T.trump}
             <img src={`/cards/suits/${trumpSuit}.png`} alt="" width="18" height="18" />
             {SUIT_NAMES[trumpSuit]}
           </span>
@@ -57,14 +76,14 @@ const SUIT_NAMES: Record<string, string> = {
       </div>
     </div>
     <div class="hand">
-      <span class="lbl">Deine Hand — was ist erlaubt?</span>
+      <span class="lbl">{T.hand}</span>
       <div class="hcards">
         {
           hand.map((h, i) => (
             <div class="hcard" style={`--i:${i}`}>
               <div class="cardbox">
                 <PlayingCard card={h.card} w={62} />
-                <span class={`badge ${h.ok ? "ok" : "no"}`} aria-label={h.ok ? "erlaubt" : "verboten"}>
+                <span class={`badge ${h.ok ? "ok" : "no"}`} aria-label={h.ok ? T.allowed : T.forbidden}>
                   {h.ok ? "✓" : "✗"}
                 </span>
               </div>
@@ -74,7 +93,7 @@ const SUIT_NAMES: Record<string, string> = {
         }
       </div>
     </div>
-    <button type="button" class="replay" aria-label="Animation erneut abspielen">↻</button>
+    <button type="button" class="replay" aria-label={T.replay}>↻</button>
   </div>
   <figcaption>{caption}</figcaption>
 </figure>

@@ -1,24 +1,72 @@
 ---
 /**
- * Basis-Layout für alle Marketing-Seiten. Enthält Header (mit Theme-Toggle),
- * Footer und das vanilla-CSS-Stylesheet. Inhalts-Seiten füllen den `<slot />`.
+ * Basis-Layout für alle Marketing-Seiten. Enthält Header (mit Theme-Toggle
+ * und Sprach-Umschalter), Footer und das vanilla-CSS-Stylesheet.
+ * Inhalts-Seiten füllen den `<slot />`.
+ *
+ * **Zweisprachig**: `lang` ("de" | "en") steuert Nav-/Footer-Labels und das
+ * URL-Präfix (`/en/...`). `altHref` ist die URL derselben Seite in der jeweils
+ * anderen Sprache — Ziel des DE|EN-Umschalters. DE-Seiten leben unter `/`,
+ * EN-Seiten unter `/en/`.
  *
  * **Theme**: identische Mechanik wie die Spiel-SPA — localStorage-Key
  * `jass-theme` (`dark` | `hi-contrast`, sonst hell), `data-theme` auf <html>.
- * Das Inline-Script unten läuft VOR dem ersten Paint (kein Flash); der
- * Toggle-Button zykelt hell → dunkel → hoher Kontrast → hell.
+ * Das Inline-Script läuft VOR dem ersten Paint (kein Flash); der Toggle
+ * zykelt hell → dunkel → hoher Kontrast → hell. Toggle-Labels folgen der
+ * Seitensprache (gelesen aus `document.documentElement.lang`).
  */
 import "../styles.css";
+
+type Lang = "de" | "en";
 
 interface Props {
   title: string;
   description?: string;
+  lang?: Lang;
+  /** URL derselben Seite in der anderen Sprache (für den DE|EN-Umschalter). */
+  altHref: string;
 }
-const { title, description } = Astro.props;
+const { title, description, lang = "de", altHref } = Astro.props;
+
+const STRINGS = {
+  de: {
+    home: "/",
+    rules: "/rules",
+    about: "/about",
+    privacy: "/privacy",
+    imprint: "/imprint",
+    app: "/app/",
+    navRules: "Jassen lernen",
+    navAbout: "Über",
+    navCta: "Zum Spiel",
+    footPrivacy: "Datenschutz",
+    footImprint: "Impressum",
+    switchLabel: "EN",
+    switchTitle: "Switch to English",
+    themeAria: "Farbschema wechseln",
+  },
+  en: {
+    home: "/en/",
+    rules: "/en/rules",
+    about: "/en/about",
+    privacy: "/en/privacy",
+    imprint: "/en/imprint",
+    app: "/app/",
+    navRules: "Learn to Jass",
+    navAbout: "About",
+    navCta: "Play now",
+    footPrivacy: "Privacy",
+    footImprint: "Imprint",
+    switchLabel: "DE",
+    switchTitle: "Auf Deutsch wechseln",
+    themeAria: "Switch color theme",
+  },
+} as const;
+const s = STRINGS[lang];
 ---
 
 <!doctype html>
-<html lang="de">
+<html lang={lang}>
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -46,20 +94,18 @@ const { title, description } = Astro.props;
     <div class="page">
       <header class="nav">
         <nav class="nav-inner">
-          <a href="/" class="nav-brand" aria-label="Heb ab!">
+          <a href={s.home} class="nav-brand" aria-label="Heb ab!">
             <img src="/logo/lockup-horizontal-hell.svg" alt="Heb ab!" class="brand-light" />
             <img src="/logo/lockup-horizontal-dunkel.svg" alt="" class="brand-dark" />
           </a>
           <div class="nav-right">
-            <a href="/rules" class="nav-link">Jassen lernen</a>
-            <a href="/about" class="nav-link">Über</a>
-            <button
-              type="button"
-              id="theme-toggle"
-              class="theme-toggle"
-              aria-label="Farbschema wechseln">◐</button
+            <a href={s.rules} class="nav-link">{s.navRules}</a>
+            <a href={s.about} class="nav-link">{s.navAbout}</a>
+            <a href={altHref} class="nav-link lang-switch" title={s.switchTitle}>{s.switchLabel}</a>
+            <button type="button" id="theme-toggle" class="theme-toggle" aria-label={s.themeAria}
+              >◐</button
             >
-            <a href="/app/" class="nav-cta">Zum Spiel</a>
+            <a href={s.app} class="nav-cta">{s.navCta}</a>
           </div>
         </nav>
       </header>
@@ -68,28 +114,37 @@ const { title, description } = Astro.props;
       </main>
       <footer class="footer">
         <div class="footer-inner">
-          <a href="/privacy" class="nav-link">Datenschutz</a>
-          <a href="/imprint" class="nav-link">Impressum</a>
+          <a href={s.privacy} class="nav-link">{s.footPrivacy}</a>
+          <a href={s.imprint} class="nav-link">{s.footImprint}</a>
         </div>
       </footer>
     </div>
     <script is:inline>
       // Theme-Toggle: hell → dunkel → hoher Kontrast → hell.
+      // Labels folgen der Seitensprache (<html lang>).
       (function () {
         var btn = document.getElementById("theme-toggle");
         if (!btn) return;
         var NEXT = { default: "dark", dark: "hi-contrast", "hi-contrast": "default" };
-        var LABEL = {
-          default: "Dunkles Design aktivieren",
-          dark: "Hohen Kontrast aktivieren",
-          "hi-contrast": "Helles Design aktivieren",
+        var LABELS = {
+          de: {
+            default: "Dunkles Design aktivieren",
+            dark: "Hohen Kontrast aktivieren",
+            "hi-contrast": "Helles Design aktivieren",
+          },
+          en: {
+            default: "Switch to dark theme",
+            dark: "Switch to high contrast",
+            "hi-contrast": "Switch to light theme",
+          },
         };
+        var lang = document.documentElement.lang === "en" ? "en" : "de";
         function current() {
           var t = document.documentElement.getAttribute("data-theme");
           return t === "dark" || t === "hi-contrast" ? t : "default";
         }
         function refreshTitle() {
-          btn.title = LABEL[current()];
+          btn.title = LABELS[lang][current()];
         }
         btn.addEventListener("click", function () {
           var next = NEXT[current()];

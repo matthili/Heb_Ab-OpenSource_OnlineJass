@@ -1,0 +1,1542 @@
+---
+/**
+ * Die Jass-Schule / The Jass school — zweisprachig über `lang`.
+ *
+ * Der gesamte Inhalt (Daten-Arrays, Demo-Konfigurationen mit Captions, Prosa)
+ * liegt je Sprache im `CONTENT`-Objekt; Markup, scoped Styles und das
+ * Animations-Script existieren genau einmal. Fachlich 1:1 aus der Engine
+ * (packages/engine): Punktwerte, TRUMP_RANK_ORDER, legalMoves (Farbzwang,
+ * Buur-Ausnahme, kein Untertrumpfen), Weis-Werte, Bodensee-Aufbau.
+ */
+import Base from "../../layouts/Base.astro";
+import PlayingCard from "../school/PlayingCard.astro";
+import TrickDemo from "../school/TrickDemo.astro";
+import HandChoiceDemo from "../school/HandChoiceDemo.astro";
+
+type Lang = "de" | "en";
+interface Props {
+  lang?: Lang;
+}
+const { lang = "de" } = Astro.props;
+
+interface PlayedCard {
+  card: string;
+  who: string;
+  note?: string;
+}
+interface TrickCfg {
+  cards: PlayedCard[];
+  winner: number;
+  caption: string;
+}
+interface ChoiceCfg {
+  trumpSuit?: string;
+  table: { card: string; who: string }[];
+  hand: { card: string; ok: boolean; why: string }[];
+  caption: string;
+}
+
+const SUITS = [
+  { id: "eichel", name: "Eichel" },
+  { id: "schelle", name: "Schelle" },
+  { id: "herz", name: "Herz" },
+  { id: "laub", name: "Laub" },
+];
+/** Trumpf-Stichordnung (stärkste zuerst), Karten + Punkte — sprachneutral. */
+const TRUMP_CARDS = [
+  { card: "eichel-U", pts: "20" },
+  { card: "eichel-9", pts: "14" },
+  { card: "eichel-A", pts: "11" },
+  { card: "eichel-K", pts: "4" },
+  { card: "eichel-O", pts: "3" },
+  { card: "eichel-10", pts: "10" },
+  { card: "eichel-8", pts: "0" },
+  { card: "eichel-7", pts: "0" },
+  { card: "eichel-6", pts: "0" },
+];
+const MODE_ICONS = [
+  "/cards/suits/eichel.png",
+  "/cards/suits/eichel_gumpf.png",
+  "/cards/suits/bock.png",
+  "/cards/suits/geiss.png",
+  "/cards/suits/slalom.png",
+];
+
+interface RulesContent {
+  title: string;
+  description: string;
+  h1: string;
+  lead: string;
+  deckAlt: string;
+  toc: [string, string][];
+  s1H2: string;
+  s1Intro: string;
+  suitAll: string;
+  suitOne: string;
+  weliHtml: string;
+  s2H2: string;
+  s2Intro: string;
+  pointsHead: [string, string, string, string];
+  pointsRows: [string, string, string, string][];
+  facts: string[];
+  s3H2: string;
+  s3Intro: string;
+  demoStich: TrickCfg;
+  s4H2: string;
+  s4P1: string;
+  demoTrumpStich: TrickCfg;
+  s4P2: string;
+  trumpLabels: string[];
+  trumpBest: string;
+  demoBuur: TrickCfg;
+  s5H2: string;
+  s5P1: string;
+  demoFarbzwang: ChoiceCfg;
+  s5P2: string;
+  demoBuurEx: ChoiceCfg;
+  s5P3: string;
+  demoUnter: ChoiceCfg;
+  s6H2: string;
+  s6P1: string;
+  demoSchmieren: TrickCfg;
+  stoeckHtml: string;
+  s7H2: string;
+  s7P1: string;
+  modes: { title: string; text: string }[];
+  demoUntenAnsage: TrickCfg;
+  demoGumpf: TrickCfg;
+  slalom: { title: string; steps: string[] };
+  ansagenNote: string;
+  s8H2: string;
+  s8Intro: string;
+  weisHead: [string, string, string];
+  weisRows: [string, string, string][];
+  weisExamplePre: string;
+  weisExamplePost: string;
+  s8P2: string;
+  weisTip: string;
+  s9H2: string;
+  variants: { h3: string; sub: string; p: string }[];
+  bodenseeCaption: string;
+  bodenseeHiddenLabel: string;
+  s10H2: string;
+  s10Intro: string;
+  mockTitle: string;
+  mockSub: string;
+  mockSolo: string;
+  mockSecs: { label: string; pills: { t: string; on?: boolean }[] }[];
+  legend: string[];
+  s11H2: string;
+  features: { icon: string; title: string; text: string }[];
+  outroHtml: string;
+  outroCta: string;
+  altHref: string;
+}
+
+const CONTENT: Record<Lang, RulesContent> = {
+  de: {
+    title: "Jassen lernen — die Jass-Schule von Heb ab!",
+    description:
+      "Vorarlberger Jassen von Grund auf: Karten, Punkte, Trumpf, Farbzwang, Weisen, Kreuz-/Solo-/Bodensee-Jass — bebildert, animiert und mit Plattform-Anleitung.",
+    h1: "Die Jass-Schule",
+    lead: "Vom ersten Blick auf die Karten bis zur fertigen Partie: Hier lernst du das Vorarlberger Jassen Schritt für Schritt — mit echten Karten, animierten Beispielen und allem, was die Plattform kann. Vorkenntnisse braucht es keine.",
+    deckAlt: "Alle 36 Jasskarten des Heb-ab!-Decks in der Übersicht",
+    toc: [
+      ["karten", "Die Karten"],
+      ["punkte", "Punktwerte"],
+      ["stich", "Der Stich"],
+      ["trumpf", "Trumpf"],
+      ["bedienen", "Bedien-Regeln"],
+      ["taktik", "Team-Taktik"],
+      ["ansagen", "Ansagearten"],
+      ["weisen", "Weisen"],
+      ["spielarten", "Die 3 Spielarten"],
+      ["tisch", "Tisch eröffnen"],
+      ["plattform", "Die Plattform"],
+    ],
+    s1H2: "Die Karten",
+    s1Intro:
+      "Gejasst wird mit <strong>36 Karten</strong>: vier Farben zu je neun Karten. Die Reihenfolge innerhalb einer Farbe, von schwach nach stark: <strong>6 · 7 · 8 · 9 · 10 · Unter · Ober · König · Ass</strong>.",
+    suitAll: "Alle neun",
+    suitOne: "-Karten",
+    weliHtml:
+      '<strong>Das WELI</strong> — die Schelle-Sechs trägt ein eigenes Bild und eine besondere Rolle: Beim <a href="#spielarten">Bodensee-Jass</a> bestimmt sie, wer die erste Runde ansagt, und auf Wunsch, wer ein Folgespiel beginnt. Im Stich selbst ist sie eine ganz normale Sechs — kein Joker.',
+    s2H2: "Punktwerte",
+    s2Intro:
+      "Am Ende jeder Runde zählt jede Seite die Punkte ihrer gewonnenen Stiche. Welche Karte wie viel zählt, hängt von der Ansage ab:",
+    pointsHead: ["Karte", "Normale Farbe", "Trumpf-Farbe", "Oben / Unten / Slalom"],
+    pointsRows: [
+      ["Ass", "11", "11", "11"],
+      ["König", "4", "4", "4"],
+      ["Ober", "3", "3", "3"],
+      ["Unter", "2", "20 — der Buur!", "2"],
+      ["Zehn", "10", "10", "10"],
+      ["Neun", "0", "14 — das Nell!", "0"],
+      ["Acht", "0", "0", "8"],
+      ["Sieben", "0", "0", "0"],
+      ["Sechs", "0", "0", "0"],
+    ],
+    facts: [
+      "Der <strong>letzte Stich</strong> bringt <strong>+5</strong> — zusammen also <strong>157 Punkte</strong> pro Runde.",
+      'Gewinnt eine Seite <strong>alle Stiche</strong> („Match"), gibt es <strong>+100</strong> obendrauf.',
+      "Bei Oben/Unten/Slalom übernehmen die <strong>Achter (je 8 Punkte)</strong> die Rolle der fehlenden Trumpf-Punkte.",
+    ],
+    s3H2: "Der Stich",
+    s3Intro:
+      "Reihum legt jede Person <strong>eine Karte</strong>. Wer die stärkste spielt, gewinnt den Stich, zieht die Karten zu sich — und spielt zum nächsten Stich an. Die Grundregel: <strong>Die höchste Karte der angespielten Farbe gewinnt.</strong>",
+    demoStich: {
+      cards: [
+        { card: "herz-K", who: "Anna" },
+        { card: "herz-O", who: "Beat" },
+        { card: "herz-A", who: "Clara" },
+        { card: "herz-7", who: "Du" },
+      ],
+      winner: 2,
+      caption:
+        "Herz ist angespielt — Claras Herz-Ass ist die höchste Herz-Karte und gewinnt den Stich.",
+    },
+    s4H2: "Trumpf — die Farbe, die alles sticht",
+    s4P1: "Bei einer Trumpf-Ansage wird eine Farbe zur <strong>Trumpf-Farbe</strong>: Jede ihrer Karten schlägt <em>jede</em> Karte der anderen Farben — selbst die kleinste.",
+    demoTrumpStich: {
+      cards: [
+        { card: "herz-A", who: "Anna" },
+        { card: "herz-10", who: "Beat" },
+        { card: "schelle-7", who: "Du", note: "Trumpf!" },
+        { card: "herz-K", who: "Clara" },
+      ],
+      winner: 2,
+      caption:
+        "Schelle ist Trumpf: Deine Schelle-7 sticht sogar das Herz-Ass — Trumpf schlägt jede andere Farbe.",
+    },
+    s4P2: "Innerhalb der Trumpf-Farbe gilt eine eigene Rangfolge — ganz oben stehen zwei Karten, die sonst unscheinbar sind: der <strong>Unter (Buur)</strong> und die <strong>Neun (Nell)</strong>.",
+    trumpLabels: ["Buur", "Nell", "Ass", "König", "Ober", "Zehn", "Acht", "Sieben", "Sechs"],
+    trumpBest: "stärkste",
+    demoBuur: {
+      cards: [
+        { card: "eichel-A", who: "Anna" },
+        { card: "eichel-9", who: "Beat", note: "Nell (14)" },
+        { card: "eichel-U", who: "Du", note: "Buur (20)" },
+        { card: "eichel-K", who: "Clara" },
+      ],
+      winner: 2,
+      caption:
+        "Eichel ist Trumpf, alle spielen Trumpf: Der Buur schlägt Nell, Ass und König — er ist die stärkste Karte des Spiels.",
+    },
+    s5H2: "Bedienen: Farbzwang, Buur-Ausnahme, Untertrumpfen",
+    s5P1: "Du darfst nicht einfach irgendeine Karte werfen — es gilt <strong>Farbzwang</strong>: Die angespielte Farbe muss bedient werden, solange du sie hast. Trumpfen ist (fast) immer erlaubt.",
+    demoFarbzwang: {
+      trumpSuit: "schelle",
+      table: [{ card: "herz-O", who: "Anna spielt an" }],
+      hand: [
+        { card: "herz-6", ok: true, why: "Herz bedient — immer erlaubt." },
+        { card: "schelle-9", ok: true, why: "Trumpfen ist trotz Farbzwang erlaubt." },
+        { card: "laub-A", ok: false, why: "Abwerfen verboten — du hast noch Herz!" },
+      ],
+      caption:
+        "Herz ist angespielt und du hältst noch Herz: bedienen oder trumpfen — aber keine dritte Farbe abwerfen.",
+    },
+    s5P2: 'Erst wenn du die angespielte Farbe <em>nicht</em> mehr hast, darfst du frei abwerfen oder trumpfen. Und es gibt eine berühmte Ausnahme: <strong>der Buur muss nie „geopfert" werden.</strong>',
+    demoBuurEx: {
+      trumpSuit: "eichel",
+      table: [{ card: "eichel-K", who: "Anna spielt Trumpf an" }],
+      hand: [
+        { card: "eichel-U", ok: true, why: "Darfst du spielen — musst du aber nicht." },
+        { card: "herz-7", ok: true, why: "Erlaubt: dein einziger Trumpf ist der Buur." },
+        { card: "laub-9", ok: true, why: "Ebenfalls erlaubt — Buur-Ausnahme." },
+      ],
+      caption:
+        "Trumpf ist angespielt, dein einziger Trumpf ist der Buur: Du darfst ihn zurückhalten und stattdessen abwerfen.",
+    },
+    s5P3: 'Die zweite wichtige Beschränkung: <strong>Untertrumpfen ist verboten.</strong> Liegt schon ein Trumpf im Stich, darfst du keinen <em>tieferen</em> Trumpf „ohne Not" hineingeben.',
+    demoUnter: {
+      trumpSuit: "eichel",
+      table: [
+        { card: "herz-10", who: "Anna spielt an" },
+        { card: "eichel-O", who: "Beat trumpft" },
+      ],
+      hand: [
+        { card: "eichel-U", ok: true, why: "Übertrumpfen ist immer erlaubt." },
+        { card: "laub-K", ok: true, why: "Abwerfen ist erlaubt (kein Herz auf der Hand)." },
+        { card: "eichel-7", ok: false, why: "Untertrumpfen — verboten, solange du anderes hast." },
+      ],
+      caption:
+        "Beat hat mit dem Eichel-Ober getrumpft. Dein Eichel-Sieben wäre Untertrumpfen — nur erlaubt, wenn du außer tieferen Trümpfen gar nichts mehr hältst.",
+    },
+    s6H2: "Team-Taktik: Schmieren & Stöck",
+    s6P1: 'Beim Kreuz-Jass spielst du im Team. Gewinnt dein Partner den Stich sicher, gibst du ihm deine Punktekarten dazu — das heißt <strong>schmieren</strong>. Der Klassiker: dem Partner „noch eine Zehn geben".',
+    demoSchmieren: {
+      cards: [
+        { card: "herz-6", who: "Gegnerin" },
+        { card: "herz-A", who: "Partner" },
+        { card: "herz-9", who: "Gegner" },
+        { card: "herz-10", who: "Du", note: "+10 geschmiert" },
+      ],
+      winner: 1,
+      caption:
+        "Dein Partner gewinnt den Stich sicher mit dem Ass — statt eine wertlose Karte zu werfen, schmierst du ihm die Zehn: 21 Punkte für euer Team.",
+    },
+    stoeckHtml:
+      '<strong>Stöck:</strong> Hältst du <em>Ober und König der Trumpf-Farbe</em>, sind das die „Stöck". Rufe beim Ausspielen der zweiten der beiden Karten <em>„Stöck!"</em> — dann gibt es <strong>+20 Punkte</strong>. Ohne Ansage verfallen sie.',
+    s7H2: "Die Ansagearten",
+    s7P1: "Vor jeder Runde bestimmt die ansagende Person, <em>wie</em> gespielt wird. Beim Kreuz-Jass darf sie auch <strong>schieben</strong> — dann muss der Partner ansagen.",
+    modes: [
+      {
+        title: "Trumpf",
+        text: "Eine Farbe sticht alle anderen. In der Trumpf-Farbe regieren Buur (20 Punkte) und Nell (14).",
+      },
+      {
+        title: "Gumpf",
+        text: "Die Königsdisziplin: Die Trumpf-Farbe spielt normal (mit Buur & Nell) — in allen anderen Farben gewinnt die tiefste Karte.",
+      },
+      {
+        title: "Oben (Bock)",
+        text: "Kein Trumpf — die höchste Karte der angespielten Farbe gewinnt. Die Achter zählen je 8 Punkte.",
+      },
+      {
+        title: "Unten (Geiß)",
+        text: "Kein Trumpf — die tiefste Karte gewinnt. Das Ass ist zum Stechen wertlos, seine 11 Punkte zählen trotzdem. Achter zählen 8.",
+      },
+      {
+        title: "Slalom",
+        text: "Stich für Stich im Wechsel Oben ↔ Unten. Mit welcher Richtung es losgeht, entscheidet die Ansage.",
+      },
+    ],
+    demoUntenAnsage: {
+      cards: [
+        { card: "laub-A", who: "Anna" },
+        { card: "laub-9", who: "Beat" },
+        { card: "laub-6", who: "Du" },
+        { card: "laub-K", who: "Clara" },
+      ],
+      winner: 2,
+      caption:
+        "Ansage „Unten“: Die tiefste Karte gewinnt — deine Laub-Sechs sticht das Ass. Dessen 11 Punkte wandern trotzdem in den Stich.",
+    },
+    demoGumpf: {
+      cards: [
+        { card: "herz-A", who: "Anna" },
+        { card: "herz-6", who: "Du" },
+        { card: "herz-K", who: "Beat" },
+        { card: "herz-O", who: "Clara" },
+      ],
+      winner: 1,
+      caption:
+        "Gumpf (Trumpf wäre Eichel): In den Nicht-Trumpf-Farben gewinnt wie bei „Unten“ die tiefste Karte — nur die Trumpf-Farbe selbst spielt normal, mit Buur und Nell.",
+    },
+    slalom: {
+      title: "Slalom:",
+      steps: ["Stich 1 · Oben", "Stich 2 · Unten", "Stich 3 · Oben", "… und so weiter"],
+    },
+    ansagenNote:
+      "<strong>Welche Ansagen sind am Tisch erlaubt?</strong> Das bestimmt, wer den Tisch eröffnet — als aufsteigende Leiter: <em>Nur Trumpf</em> → <em>+ Oben &amp; Unten (Bock/Geiß)</em> → <em>+ Slalom</em> → <em>Alles (+ Gumpf)</em>. Die Stufe gilt für Mensch und KI gleichermaßen.",
+    s8H2: "Weisen — Extra-Punkte für die Hand",
+    s8Intro:
+      'Bestimmte Kartenkombinationen auf der Hand bringen Zusatzpunkte, wenn du sie beim ersten Stich <strong>ansagst („weist")</strong>:',
+    weisHead: ["Weis", "Bedeutung", "Punkte"],
+    weisRows: [
+      ["Dreiblatt", "3 aufeinanderfolgende Karten derselben Farbe", "20"],
+      ["Vierblatt", "4 aufeinanderfolgende Karten derselben Farbe", "50"],
+      ["Fünfblatt", "5 aufeinanderfolgende Karten derselben Farbe", "100"],
+      ["Sechs und mehr", "6+ aufeinanderfolgende Karten derselben Farbe", "120"],
+      ["Vier Gleiche (10/O/K/A)", "z.B. alle vier Könige", "100"],
+      ["Vier Nell", "alle vier Neuner", "150"],
+      ["Vier Buur", "alle vier Unter", "200"],
+    ],
+    weisExamplePre: "Ein Dreiblatt zum Anfassen:",
+    weisExamplePost: "= 20 Punkte. Vierlinge aus Sechsern, Siebnern oder Achtern zählen nicht.",
+    s8P2: "Weisen <strong>beide Seiten</strong>, gewinnt der wertvollere Weis — bei Gleichstand entscheidet die höhere Karte, dann Trumpf vor Nicht-Trumpf, zuletzt die Vorhand. Nur die Gewinnerseite darf <em>alle</em> ihre Weise schreiben.",
+    weisTip:
+      '<strong>Hausregeln beim Tisch-Eröffnen:</strong> <em>„Weis nur mit Stich"</em> — wer die ganze Runde keinen Stich macht, verliert seine Weis-Punkte wieder. <em>„Sack (mind. 21)"</em> — wer unter 21 Kartenpunkten bleibt, ist „im Sack": Runden- und Weis-Punkte verfallen komplett.',
+    s9H2: "Die drei Spielarten von „Heb ab!“",
+    variants: [
+      {
+        h3: "Kreuz-Jass",
+        sub: "zu viert · 2 Teams",
+        p: "Der Klassiker: Sitz 1+3 gegen Sitz 2+4 — die Partner sitzen übers Kreuz. Schieben an den Partner erlaubt, Stöck gelten, geschrieben wird über mehrere Runden bis <strong>1000 Punkte</strong>.",
+      },
+      {
+        h3: "Solo-Jass",
+        sub: "zu viert · jeder für sich",
+        p: "Gleiche Regeln, kein Partner: Vier Spieler, jede Person schreibt für sich, kein Schieben, kein Schmieren — Ziel <strong>500 Punkte</strong>.",
+      },
+      {
+        h3: "Bodensee-Jass",
+        sub: "zu zweit",
+        p: "Das Duell: Jede Seite erhält <strong>6 Handkarten</strong> und <strong>6 Tisch-Stapel</strong> aus je einer verdeckten und einer offenen Karte — gespielt wird aus Hand <em>und</em> vom Tisch, insgesamt 18 Stiche. Ziel <strong>500 Punkte</strong>.",
+      },
+    ],
+    bodenseeCaption:
+      "Der Bodensee-Aufbau: oben die sechs Tisch-Stapel (offene Karte auf verdeckter), unten die Hand. Spielst du die offene Karte eines Stapels, wird die verdeckte darunter aufgedeckt. Wer das <strong>WELI</strong> erhält, sagt die erste Runde an. Auch hier gilt: alle 18 Stiche = Match, +100.",
+    bodenseeHiddenLabel: "verdeckte Karte",
+    s10H2: "Einen Tisch eröffnen — der Dialog erklärt",
+    s10Intro:
+      "So sieht der „Neuen Tisch öffnen“-Dialog im Spiel aus (originalgetreu nachgebaut, damit diese Anleitung nie veraltet). Die Nummern erklären jede Option:",
+    mockTitle: "Neuen Tisch öffnen",
+    mockSub: "Lege Beitritts-Regeln, Gegner und Punkteziel fest.",
+    mockSolo: "🎯 Direkt allein gegen 3 KI starten",
+    mockSecs: [
+      {
+        label: "Spielart",
+        pills: [
+          { t: "Kreuz-Jass (zu viert)", on: true },
+          { t: "Solo-Jass (zu viert)" },
+          { t: "Bodensee-Jass" },
+        ],
+      },
+      {
+        label: "Wer darf an den Tisch?",
+        pills: [{ t: "Offen", on: true }, { t: "Auf Anfrage" }, { t: "Nur Einladung" }],
+      },
+      {
+        label: "Welche KI füllt freie Sitze?",
+        pills: [{ t: "Heuristik", on: true }, { t: "Neuronales Netz" }, { t: "Zufall" }],
+      },
+      { label: "Auto-Fill leerer Sitze", pills: [{ t: "An", on: true }, { t: "Aus" }] },
+      { label: "Punkteziel der Partie", pills: [{ t: "1000", on: true }] },
+      {
+        label: "Wer beginnt das nächste Spiel?",
+        pills: [{ t: "Sieger gibt", on: true }, { t: "WELI ausspielen" }],
+      },
+      {
+        label: "Erlaubte Ansage-Arten",
+        pills: [{ t: "Trumpf" }, { t: "+ Bock/Geiß" }, { t: "+ Slalom" }, { t: "Alles", on: true }],
+      },
+      {
+        label: "Hausregeln",
+        pills: [{ t: "Weis nur mit Stich" }, { t: "Sack (mind. 21)" }, { t: "Echtes Abheben", on: true }],
+      },
+    ],
+    legend: [
+      "<strong>Schnellstart:</strong> ein Klick — privater Tisch, alle freien Sitze übernimmt die gewählte KI.",
+      "<strong>Spielart:</strong> Kreuz (Teams), Solo (jeder für sich) oder Bodensee (zu zweit) — siehe Kapitel 9.",
+      "<strong>Beitritt:</strong> Offen = jeder setzt sich dazu · Auf Anfrage = du bestätigst jeden Beitritt · Nur Einladung = der Tisch ist nur für Eingeladene sichtbar.",
+      "<strong>KI-Stärke</strong> für automatisch besetzte Sitze: solide Heuristik, das trainierte neuronale Netz oder Zufall zum Üben.",
+      "<strong>Auto-Fill:</strong> Bleibt ein Sitz leer, übernimmt nach kurzer Wartezeit die KI — niemand wartet ewig.",
+      "<strong>Punkteziel:</strong> Wie weit kumuliert wird (Vorschlag: Kreuz 1000, Solo/Bodensee 500).",
+      "<strong>Folgespiel:</strong> Klassisch gibt der Sieger — oder es wird ausgeteilt, und wer das WELI hat, beginnt.",
+      "<strong>Ansage-Leiter:</strong> von „nur Trumpf“ bis „Alles“ inkl. Gumpf (Kapitel 7).",
+      "<strong>Hausregeln:</strong> Weis nur mit Stich und Sack-Regel (Kapitel 8) sowie echtes Abheben: Vor dem Geben hebt die Person rechts vom Geber wirklich ab — oder klopft.",
+    ],
+    s11H2: "Was die Plattform sonst noch kann",
+    features: [
+      { icon: "🪑", title: "Lobby & Tische", text: "Tische eröffnen, beitreten (offen, auf Anfrage oder nur per Einladung) — freie Plätze füllt auf Wunsch die KI." },
+      { icon: "🤖", title: "KI-Mitspieler", text: "Drei Stärken: Zufall (zum Üben), solide Heuristik und ein trainiertes neuronales Netz als stärkster Gegner." },
+      { icon: "💬", title: "Chats", text: "Lobby-Chat für alle, Tisch-Chat ab der Warte-Phase (lebt im Spiel weiter) und private Unterhaltungen." },
+      { icon: "✉️", title: "Privatnachrichten", text: "Namen anklicken → Privatnachricht. Wer dir schreiben darf, bestimmst du: alle oder nur Freunde; einzelne Personen lassen sich sperren." },
+      { icon: "🤝", title: "Freunde", text: "Anfragen, annehmen, entfreunden — und an Geburtstagen erinnert dich die Lobby ans Gratulieren." },
+      { icon: "🟢", title: "Präsenz & Pause", text: "Vier Status am Namenspunkt: grün online, blau am Tisch, orange abwesend (AFK-Knopf), grau offline mit „zuletzt gesehen“." },
+      { icon: "🎬", title: "Replays", text: "Jede Partie lässt sich Zug für Zug nachspielen — inklusive Weis-Ansagen. Auf Wunsch öffentlich teilbar per Link." },
+      { icon: "📊", title: "Statistik & Leaderboard", text: "Partien, Siege, Quoten pro Spielart im Profil; das öffentliche Leaderboard ist strikt Opt-in." },
+      { icon: "🛡️", title: "Privatsphäre", text: "Jedes Profilfeld einzeln sichtbar für: alle, Eingeloggte, Freunde oder niemanden. Gilt auch für Online-Status und Statistik." },
+      { icon: "🚨", title: "Melden & Moderation", text: "Übergriffiges Verhalten direkt am Namen melden; Admins prüfen jeden Fall. Dazu Wortfilter im Chat." },
+      { icon: "🔔", title: "Nichts verpassen", text: "Browser-Push bei Beitritts-Anfragen, Hinweis bei neuen Nachrichten, Wiedereinstieg nach Verbindungsabbruch." },
+      { icon: "🌗", title: "Komfort", text: "Deutsch & Englisch, helles, dunkles und kontrastreiches Design, installierbar als App (PWA)." },
+    ],
+    outroHtml:
+      "<strong>Bereit für den ersten Stich?</strong> Am schnellsten lernst du es im Spiel — die KI hat unendlich Geduld.",
+    outroCta: "Jetzt mitspielen",
+    altHref: "/en/rules",
+  },
+  en: {
+    title: "Learn to Jass — the Jass school of Heb ab!",
+    description:
+      "Vorarlberg-style Jass from the ground up: cards, points, trump, follow-suit rules, Weis, Kreuz/Solo/Bodensee — illustrated, animated, with a platform guide.",
+    h1: "The Jass School",
+    lead: "From the first glance at the cards to a finished game: here you learn Vorarlberg-style Jass step by step — with real cards, animated examples and everything the platform can do. No prior knowledge needed.",
+    deckAlt: "Overview of all 36 cards of the Heb ab! deck",
+    toc: [
+      ["karten", "The cards"],
+      ["punkte", "Card values"],
+      ["stich", "The trick"],
+      ["trumpf", "Trump"],
+      ["bedienen", "Follow-suit rules"],
+      ["taktik", "Team tactics"],
+      ["ansagen", "Announcements"],
+      ["weisen", "Weis (melds)"],
+      ["spielarten", "The 3 variants"],
+      ["tisch", "Open a table"],
+      ["plattform", "The platform"],
+    ],
+    s1H2: "The cards",
+    s1Intro:
+      "Jass is played with <strong>36 cards</strong>: four suits of nine cards each. The order within a suit, from weak to strong: <strong>6 · 7 · 8 · 9 · 10 · Unter · Ober · King · Ace</strong>. (The suits keep their German names — Eichel = acorns, Schelle = bells, Herz = hearts, Laub = leaves.)",
+    suitAll: "All nine",
+    suitOne: " cards",
+    weliHtml:
+      '<strong>The WELI</strong> — the bells-six carries its own artwork and a special role: in <a href="#spielarten">Bodensee Jass</a> it decides who announces the first round, and optionally who begins a follow-up game. In the trick itself it is an ordinary six — not a joker.',
+    s2H2: "Card values",
+    s2Intro:
+      "At the end of each round, each side counts the points of the tricks it won. How much a card is worth depends on the announcement:",
+    pointsHead: ["Card", "Normal suit", "Trump suit", "Oben / Unten / Slalom"],
+    pointsRows: [
+      ["Ace", "11", "11", "11"],
+      ["King", "4", "4", "4"],
+      ["Ober", "3", "3", "3"],
+      ["Unter", "2", "20 — the Buur!", "2"],
+      ["Ten", "10", "10", "10"],
+      ["Nine", "0", "14 — the Nell!", "0"],
+      ["Eight", "0", "0", "8"],
+      ["Seven", "0", "0", "0"],
+      ["Six", "0", "0", "0"],
+    ],
+    facts: [
+      "The <strong>last trick</strong> scores <strong>+5</strong> — so <strong>157 points</strong> per round in total.",
+      'If one side wins <strong>every trick</strong> (a “match”), there is <strong>+100</strong> on top.',
+      "In Oben/Unten/Slalom the <strong>eights (8 points each)</strong> take over the role of the missing trump points.",
+    ],
+    s3H2: "The trick",
+    s3Intro:
+      "In turn, each player lays <strong>one card</strong>. Whoever plays the strongest wins the trick, takes the cards — and leads to the next trick. The basic rule: <strong>the highest card of the suit led wins.</strong>",
+    demoStich: {
+      cards: [
+        { card: "herz-K", who: "Anna" },
+        { card: "herz-O", who: "Beat" },
+        { card: "herz-A", who: "Clara" },
+        { card: "herz-7", who: "You" },
+      ],
+      winner: 2,
+      caption: "Hearts was led — Clara’s hearts-ace is the highest heart and wins the trick.",
+    },
+    s4H2: "Trump — the suit that beats everything",
+    s4P1: "With a trump announcement, one suit becomes the <strong>trump suit</strong>: each of its cards beats <em>every</em> card of the other suits — even the lowest one.",
+    demoTrumpStich: {
+      cards: [
+        { card: "herz-A", who: "Anna" },
+        { card: "herz-10", who: "Beat" },
+        { card: "schelle-7", who: "You", note: "Trump!" },
+        { card: "herz-K", who: "Clara" },
+      ],
+      winner: 2,
+      caption:
+        "Bells is trump: your bells-7 even beats the hearts-ace — trump beats every other suit.",
+    },
+    s4P2: "Within the trump suit there is a special ranking — at the very top stand two cards that are otherwise inconspicuous: the <strong>Unter (Buur)</strong> and the <strong>Nine (Nell)</strong>.",
+    trumpLabels: ["Buur", "Nell", "Ace", "King", "Ober", "Ten", "Eight", "Seven", "Six"],
+    trumpBest: "strongest",
+    demoBuur: {
+      cards: [
+        { card: "eichel-A", who: "Anna" },
+        { card: "eichel-9", who: "Beat", note: "Nell (14)" },
+        { card: "eichel-U", who: "You", note: "Buur (20)" },
+        { card: "eichel-K", who: "Clara" },
+      ],
+      winner: 2,
+      caption:
+        "Acorns is trump, everyone plays trump: the Buur beats Nell, ace and king — it is the strongest card in the game.",
+    },
+    s5H2: "Following suit: follow-suit duty, Buur exception, undertrumping",
+    s5P1: "You may not simply throw any card — <strong>follow-suit duty</strong> applies: you must follow the suit led as long as you hold it. Trumping is (almost) always allowed.",
+    demoFarbzwang: {
+      trumpSuit: "schelle",
+      table: [{ card: "herz-O", who: "Anna leads" }],
+      hand: [
+        { card: "herz-6", ok: true, why: "Follows hearts — always allowed." },
+        { card: "schelle-9", ok: true, why: "Trumping is allowed despite follow-suit duty." },
+        { card: "laub-A", ok: false, why: "Discarding forbidden — you still have a heart!" },
+      ],
+      caption:
+        "Hearts is led and you still hold a heart: follow suit or trump — but do not discard a third suit.",
+    },
+    s5P2: "Only once you <em>no longer</em> hold the suit led may you discard freely or trump. And there is a famous exception: <strong>the Buur never has to be “sacrificed”.</strong>",
+    demoBuurEx: {
+      trumpSuit: "eichel",
+      table: [{ card: "eichel-K", who: "Anna leads trump" }],
+      hand: [
+        { card: "eichel-U", ok: true, why: "You may play it — but you don’t have to." },
+        { card: "herz-7", ok: true, why: "Allowed: your only trump is the Buur." },
+        { card: "laub-9", ok: true, why: "Also allowed — Buur exception." },
+      ],
+      caption:
+        "Trump is led and your only trump is the Buur: you may hold it back and discard instead.",
+    },
+    s5P3: "The second important restriction: <strong>undertrumping is forbidden.</strong> If a trump already lies in the trick, you may not throw in a <em>lower</em> trump “without need”.",
+    demoUnter: {
+      trumpSuit: "eichel",
+      table: [
+        { card: "herz-10", who: "Anna leads" },
+        { card: "eichel-O", who: "Beat trumps" },
+      ],
+      hand: [
+        { card: "eichel-U", ok: true, why: "Overtrumping is always allowed." },
+        { card: "laub-K", ok: true, why: "Discarding is allowed (no heart in hand)." },
+        { card: "eichel-7", ok: false, why: "Undertrumping — forbidden while you hold other cards." },
+      ],
+      caption:
+        "Beat trumped with the acorns-Ober. Your acorns-seven would be undertrumping — only allowed if you hold nothing but lower trumps.",
+    },
+    s6H2: "Team tactics: smearing & Stöck",
+    s6P1: "In Kreuz-Jass you play in a team. If your partner wins the trick for sure, you add your point cards to it — that is called <strong>smearing</strong>. The classic: giving your partner “another ten”.",
+    demoSchmieren: {
+      cards: [
+        { card: "herz-6", who: "Opponent" },
+        { card: "herz-A", who: "Partner" },
+        { card: "herz-9", who: "Opponent" },
+        { card: "herz-10", who: "You", note: "+10 smeared" },
+      ],
+      winner: 1,
+      caption:
+        "Your partner wins the trick safely with the ace — instead of throwing a worthless card, you smear the ten: 21 points for your team.",
+    },
+    stoeckHtml:
+      '<strong>Stöck:</strong> if you hold the <em>Ober and King of the trump suit</em>, those are the “Stöck”. Call <em>“Stöck!”</em> when you play the second of the two cards — that scores <strong>+20 points</strong>. Without the call they are forfeited.',
+    s7H2: "The announcements",
+    s7P1: "Before each round the announcing player decides <em>how</em> it is played. In Kreuz-Jass they may also <strong>pass (schieben)</strong> — then the partner must announce.",
+    modes: [
+      {
+        title: "Trump",
+        text: "One suit beats all others. In the trump suit, the Buur (20 points) and Nell (14) reign.",
+      },
+      {
+        title: "Gumpf",
+        text: "The supreme discipline: the trump suit plays normally (with Buur & Nell) — in all other suits the lowest card wins.",
+      },
+      {
+        title: "Oben (Bock)",
+        text: "No trump — the highest card of the suit led wins. The eights score 8 points each.",
+      },
+      {
+        title: "Unten (Geiß)",
+        text: "No trump — the lowest card wins. The ace is worthless for winning, yet its 11 points still count. Eights score 8.",
+      },
+      {
+        title: "Slalom",
+        text: "Trick by trick, alternating Oben ↔ Unten. Which direction it starts with is set by the announcement.",
+      },
+    ],
+    demoUntenAnsage: {
+      cards: [
+        { card: "laub-A", who: "Anna" },
+        { card: "laub-9", who: "Beat" },
+        { card: "laub-6", who: "You" },
+        { card: "laub-K", who: "Clara" },
+      ],
+      winner: 2,
+      caption:
+        "Announcement “Unten”: the lowest card wins — your leaves-six beats the ace. Its 11 points still go into the trick.",
+    },
+    demoGumpf: {
+      cards: [
+        { card: "herz-A", who: "Anna" },
+        { card: "herz-6", who: "You" },
+        { card: "herz-K", who: "Beat" },
+        { card: "herz-O", who: "Clara" },
+      ],
+      winner: 1,
+      caption:
+        "Gumpf (trump would be acorns): in the non-trump suits the lowest card wins as in “Unten” — only the trump suit itself plays normally, with Buur and Nell.",
+    },
+    slalom: {
+      title: "Slalom:",
+      steps: ["Trick 1 · Oben", "Trick 2 · Unten", "Trick 3 · Oben", "… and so on"],
+    },
+    ansagenNote:
+      "<strong>Which announcements are allowed at the table?</strong> That is set by whoever opens the table — as a rising ladder: <em>Trump only</em> → <em>+ Oben &amp; Unten (Bock/Geiß)</em> → <em>+ Slalom</em> → <em>Everything (+ Gumpf)</em>. The tier applies to humans and AI alike.",
+    s8H2: "Weis — extra points for your hand",
+    s8Intro:
+      "Certain card combinations in your hand score extra points if you <strong>announce (“weisen”)</strong> them on the first trick:",
+    weisHead: ["Weis", "Meaning", "Points"],
+    weisRows: [
+      ["Three-card run", "3 consecutive cards of the same suit", "20"],
+      ["Four-card run", "4 consecutive cards of the same suit", "50"],
+      ["Five-card run", "5 consecutive cards of the same suit", "100"],
+      ["Six or more", "6+ consecutive cards of the same suit", "120"],
+      ["Four of a kind (10/O/K/A)", "e.g. all four kings", "100"],
+      ["Four Nells", "all four nines", "150"],
+      ["Four Buurs", "all four Unter", "200"],
+    ],
+    weisExamplePre: "A three-card run to touch:",
+    weisExamplePost: "= 20 points. Four-of-a-kind of sixes, sevens or eights does not count.",
+    s8P2: "If <strong>both sides</strong> weisen, the more valuable Weis wins — on a tie the higher card decides, then trump before non-trump, lastly the lead. Only the winning side may write <em>all</em> of its Weis.",
+    weisTip:
+      '<strong>House rules when opening a table:</strong> <em>“Weis only with a trick”</em> — anyone who takes no trick the whole round loses their Weis points again. <em>“Sack (min. 21)”</em> — anyone below 21 card points is “in the sack”: round and Weis points are forfeited entirely.',
+    s9H2: "The three variants of “Heb ab!”",
+    variants: [
+      {
+        h3: "Kreuz-Jass",
+        sub: "four players · 2 teams",
+        p: "The classic: seats 1+3 against seats 2+4 — partners sit crosswise. Passing to the partner allowed, Stöck count, scoring runs over several rounds up to <strong>1000 points</strong>.",
+      },
+      {
+        h3: "Solo-Jass",
+        sub: "four players · everyone for themselves",
+        p: "Same rules, no partner: four players, each scores for themselves, no passing, no smearing — target <strong>500 points</strong>.",
+      },
+      {
+        h3: "Bodensee-Jass",
+        sub: "two players",
+        p: "The duel: each side gets <strong>6 hand cards</strong> and <strong>6 table stacks</strong> of one face-down and one face-up card each — you play from hand <em>and</em> from the table, 18 tricks in total. Target <strong>500 points</strong>.",
+      },
+    ],
+    bodenseeCaption:
+      "The Bodensee layout: on top the six table stacks (face-up card on a face-down one), below it the hand. When you play the face-up card of a stack, the face-down one beneath is revealed. Whoever gets the <strong>WELI</strong> announces the first round. Here too: all 18 tricks = match, +100.",
+    bodenseeHiddenLabel: "face-down card",
+    s10H2: "Opening a table — the dialog explained",
+    s10Intro:
+      "This is what the “Open new table” dialog looks like in the game (rebuilt faithfully so this guide never goes stale). The numbers explain each option:",
+    mockTitle: "Open new table",
+    mockSub: "Set the join rules, opponents and point target.",
+    mockSolo: "🎯 Start solo against 3 AI right away",
+    mockSecs: [
+      {
+        label: "Variant",
+        pills: [
+          { t: "Kreuz-Jass (four players)", on: true },
+          { t: "Solo-Jass (four players)" },
+          { t: "Bodensee-Jass" },
+        ],
+      },
+      {
+        label: "Who may join the table?",
+        pills: [{ t: "Open", on: true }, { t: "On request" }, { t: "Invite only" }],
+      },
+      {
+        label: "Which AI fills empty seats?",
+        pills: [{ t: "Heuristic", on: true }, { t: "Neural network" }, { t: "Random" }],
+      },
+      { label: "Auto-fill empty seats", pills: [{ t: "On", on: true }, { t: "Off" }] },
+      { label: "Point target of the game", pills: [{ t: "1000", on: true }] },
+      {
+        label: "Who begins the next game?",
+        pills: [{ t: "Winner deals", on: true }, { t: "Play the WELI" }],
+      },
+      {
+        label: "Allowed announcements",
+        pills: [{ t: "Trump" }, { t: "+ Bock/Geiß" }, { t: "+ Slalom" }, { t: "Everything", on: true }],
+      },
+      {
+        label: "House rules",
+        pills: [{ t: "Weis only with a trick" }, { t: "Sack (min. 21)" }, { t: "Real cutting", on: true }],
+      },
+    ],
+    legend: [
+      "<strong>Quick start:</strong> one click — private table, all empty seats taken by the chosen AI.",
+      "<strong>Variant:</strong> Kreuz (teams), Solo (everyone for themselves) or Bodensee (two players) — see chapter 9.",
+      "<strong>Joining:</strong> Open = anyone sits down · On request = you confirm each join · Invite only = the table is visible to invitees only.",
+      "<strong>AI strength</strong> for auto-filled seats: solid heuristic, the trained neural network, or random for practice.",
+      "<strong>Auto-fill:</strong> if a seat stays empty, the AI takes over after a short wait — nobody waits forever.",
+      "<strong>Point target:</strong> how far it accumulates (suggested: Kreuz 1000, Solo/Bodensee 500).",
+      "<strong>Follow-up game:</strong> classically the winner deals — or it is dealt out and whoever holds the WELI begins.",
+      "<strong>Announcement ladder:</strong> from “trump only” to “everything” incl. Gumpf (chapter 7).",
+      "<strong>House rules:</strong> Weis only with a trick and the Sack rule (chapter 8), plus real cutting: before the deal, the person to the dealer’s right actually cuts — or knocks.",
+    ],
+    s11H2: "What else the platform can do",
+    features: [
+      { icon: "🪑", title: "Lobby & tables", text: "Open tables, join (open, on request or invite only) — the AI fills free seats on request." },
+      { icon: "🤖", title: "AI players", text: "Three strengths: random (for practice), a solid heuristic, and a trained neural network as the strongest opponent." },
+      { icon: "💬", title: "Chats", text: "Lobby chat for everyone, table chat from the waiting phase (lives on into the game), and private conversations." },
+      { icon: "✉️", title: "Direct messages", text: "Click a name → direct message. You decide who may write you: everyone or friends only; individuals can be blocked." },
+      { icon: "🤝", title: "Friends", text: "Request, accept, unfriend — and on birthdays the lobby reminds you to send congratulations." },
+      { icon: "🟢", title: "Presence & pause", text: "Four states on the name dot: green online, blue at a table, orange away (AFK button), grey offline with “last seen”." },
+      { icon: "🎬", title: "Replays", text: "Every game can be replayed move by move — including Weis announcements. Shareable publicly via link on request." },
+      { icon: "📊", title: "Stats & leaderboard", text: "Games, wins, rates per variant in your profile; the public leaderboard is strictly opt-in." },
+      { icon: "🛡️", title: "Privacy", text: "Every profile field individually visible to: everyone, logged-in users, friends or nobody. Also for online status and stats." },
+      { icon: "🚨", title: "Reporting & moderation", text: "Report abusive behavior right at the name; admins review every case. Plus a word filter in chat." },
+      { icon: "🔔", title: "Miss nothing", text: "Browser push for join requests, a hint on new messages, re-entry after a connection drop." },
+      { icon: "🌗", title: "Comfort", text: "German & English, light, dark and high-contrast themes, installable as an app (PWA)." },
+    ],
+    outroHtml:
+      "<strong>Ready for your first trick?</strong> The fastest way to learn is in the game — the AI has infinite patience.",
+    outroCta: "Play now",
+    altHref: "/rules",
+  },
+};
+
+const c = CONTENT[lang];
+---
+
+<Base title={c.title} description={c.description} lang={lang} altHref={c.altHref}>
+  <article class="school">
+    <header class="intro">
+      <h1>{c.h1}</h1>
+      <p class="lead">{c.lead}</p>
+      <img
+        src="/cards/overview/alle-karten.png"
+        alt={c.deckAlt}
+        class="deck-overview"
+        loading="lazy"
+        decoding="async"
+      />
+    </header>
+
+    <nav class="toc" aria-label={lang === "en" ? "Chapters" : "Kapitel"}>
+      {c.toc.map(([id, label], i) => <a href={`#${id}`}>{i + 1}. {label}</a>)}
+    </nav>
+
+    <section class="lesson" id="karten">
+      <h2><span class="num">1</span>{c.s1H2}</h2>
+      <p set:html={c.s1Intro} />
+      <div class="suit-grid">
+        {
+          SUITS.map((s) => (
+            <figure class="suit">
+              <img src={`/cards/suits/${s.id}.png`} alt="" width="40" height="40" />
+              <figcaption>{s.name}</figcaption>
+              <img
+                src={`/cards/overview/${s.id}.png`}
+                alt={`${c.suitAll} ${s.name}${c.suitOne}`}
+                class="suit-overview"
+                loading="lazy"
+                decoding="async"
+              />
+            </figure>
+          ))
+        }
+      </div>
+      <aside class="note">
+        <div class="note-card"><PlayingCard card="schelle-6-weli" w={84} /></div>
+        <div set:html={c.weliHtml} />
+      </aside>
+    </section>
+
+    <section class="lesson" id="punkte">
+      <h2><span class="num">2</span>{c.s2H2}</h2>
+      <p>{c.s2Intro}</p>
+      <div class="table-wrap">
+        <table class="points">
+          <thead>
+            <tr>{c.pointsHead.map((h) => <th>{h}</th>)}</tr>
+          </thead>
+          <tbody>
+            {
+              c.pointsRows.map(([k, n, t, ou]) => (
+                <tr>
+                  <th>{k}</th>
+                  <td>{n}</td>
+                  <td class={t.includes("—") ? "hot" : ""}>{t}</td>
+                  <td class={ou === "8" ? "hot" : ""}>{ou}</td>
+                </tr>
+              ))
+            }
+          </tbody>
+        </table>
+      </div>
+      <ul class="facts">
+        {c.facts.map((f) => <li set:html={f} />)}
+      </ul>
+    </section>
+
+    <section class="lesson" id="stich">
+      <h2><span class="num">3</span>{c.s3H2}</h2>
+      <p set:html={c.s3Intro} />
+      <TrickDemo lang={lang} cards={c.demoStich.cards} winner={c.demoStich.winner} caption={c.demoStich.caption} />
+    </section>
+
+    <section class="lesson" id="trumpf">
+      <h2><span class="num">4</span>{c.s4H2}</h2>
+      <p set:html={c.s4P1} />
+      <TrickDemo
+        lang={lang}
+        cards={c.demoTrumpStich.cards}
+        winner={c.demoTrumpStich.winner}
+        caption={c.demoTrumpStich.caption}
+      />
+      <p set:html={c.s4P2} />
+      <div class="trump-order" role="img" aria-label={c.s4H2}>
+        {
+          TRUMP_CARDS.map((t, i) => (
+            <div class="to-item">
+              <PlayingCard card={t.card} w={54} />
+              <span class="to-label">{c.trumpLabels[i]}</span>
+              <span class="to-pts">{t.pts} P.</span>
+              {i === 0 && <span class="to-best">{c.trumpBest}</span>}
+            </div>
+          ))
+        }
+      </div>
+      <TrickDemo lang={lang} cards={c.demoBuur.cards} winner={c.demoBuur.winner} caption={c.demoBuur.caption} />
+    </section>
+
+    <section class="lesson" id="bedienen">
+      <h2><span class="num">5</span>{c.s5H2}</h2>
+      <p set:html={c.s5P1} />
+      <HandChoiceDemo
+        lang={lang}
+        trumpSuit={c.demoFarbzwang.trumpSuit}
+        table={c.demoFarbzwang.table}
+        hand={c.demoFarbzwang.hand}
+        caption={c.demoFarbzwang.caption}
+      />
+      <p set:html={c.s5P2} />
+      <HandChoiceDemo
+        lang={lang}
+        trumpSuit={c.demoBuurEx.trumpSuit}
+        table={c.demoBuurEx.table}
+        hand={c.demoBuurEx.hand}
+        caption={c.demoBuurEx.caption}
+      />
+      <p set:html={c.s5P3} />
+      <HandChoiceDemo
+        lang={lang}
+        trumpSuit={c.demoUnter.trumpSuit}
+        table={c.demoUnter.table}
+        hand={c.demoUnter.hand}
+        caption={c.demoUnter.caption}
+      />
+    </section>
+
+    <section class="lesson" id="taktik">
+      <h2><span class="num">6</span>{c.s6H2}</h2>
+      <p set:html={c.s6P1} />
+      <TrickDemo
+        lang={lang}
+        cards={c.demoSchmieren.cards}
+        winner={c.demoSchmieren.winner}
+        caption={c.demoSchmieren.caption}
+      />
+      <aside class="tip" set:html={c.stoeckHtml} />
+    </section>
+
+    <section class="lesson" id="ansagen">
+      <h2><span class="num">7</span>{c.s7H2}</h2>
+      <p set:html={c.s7P1} />
+      <div class="mode-grid">
+        {
+          c.modes.map((m, i) => (
+            <div class="mode">
+              <img src={MODE_ICONS[i]} alt="" width="44" height="44" loading="lazy" />
+              <h3>{m.title}</h3>
+              <p>{m.text}</p>
+            </div>
+          ))
+        }
+      </div>
+      <TrickDemo
+        lang={lang}
+        cards={c.demoUntenAnsage.cards}
+        winner={c.demoUntenAnsage.winner}
+        caption={c.demoUntenAnsage.caption}
+      />
+      <TrickDemo lang={lang} cards={c.demoGumpf.cards} winner={c.demoGumpf.winner} caption={c.demoGumpf.caption} />
+      <div class="slalom-strip" aria-label={c.slalom.title}>
+        <span class="ss-title">
+          <img src="/cards/suits/slalom.png" alt="" width="22" height="22" /> {c.slalom.title}
+        </span>
+        <span class="ss-step up">{c.slalom.steps[0]}</span>
+        <span class="ss-arrow">→</span>
+        <span class="ss-step down">{c.slalom.steps[1]}</span>
+        <span class="ss-arrow">→</span>
+        <span class="ss-step up">{c.slalom.steps[2]}</span>
+        <span class="ss-arrow">→</span>
+        <span class="ss-step">{c.slalom.steps[3]}</span>
+      </div>
+      <aside class="note"><div set:html={c.ansagenNote} /></aside>
+    </section>
+
+    <section class="lesson" id="weisen">
+      <h2><span class="num">8</span>{c.s8H2}</h2>
+      <p set:html={c.s8Intro} />
+      <div class="table-wrap">
+        <table class="points">
+          <thead>
+            <tr>{c.weisHead.map((h) => <th>{h}</th>)}</tr>
+          </thead>
+          <tbody>
+            {
+              c.weisRows.map(([w, b, p]) => (
+                <tr>
+                  <th>{w}</th>
+                  <td>{b}</td>
+                  <td>{p}</td>
+                </tr>
+              ))
+            }
+          </tbody>
+        </table>
+      </div>
+      <p class="example-row">
+        {c.weisExamplePre}
+        <span class="mini-cards">
+          <PlayingCard card="herz-6" w={46} />
+          <PlayingCard card="herz-7" w={46} />
+          <PlayingCard card="herz-8" w={46} />
+        </span>
+        {c.weisExamplePost}
+      </p>
+      <p set:html={c.s8P2} />
+      <aside class="tip" set:html={c.weisTip} />
+    </section>
+
+    <section class="lesson" id="spielarten">
+      <h2><span class="num">9</span>{c.s9H2}</h2>
+      <div class="variant-grid">
+        {
+          c.variants.map((v) => (
+            <div class="variant">
+              <h3>
+                {v.h3} <span class="vsub">{v.sub}</span>
+              </h3>
+              <p set:html={v.p} />
+            </div>
+          ))
+        }
+      </div>
+      <figure class="bodensee">
+        <div class="bs-row" aria-label="Bodensee">
+          {
+            ["eichel-9", "herz-K", "laub-7", "schelle-10", "eichel-A", "herz-8"].map((card) => (
+              <div class="bs-stack">
+                <div class="bs-hidden" aria-label={c.bodenseeHiddenLabel} />
+                <div class="bs-open">
+                  <PlayingCard card={card} w={56} />
+                </div>
+              </div>
+            ))
+          }
+        </div>
+        <div class="bs-hand" aria-hidden="true">
+          {
+            ["schelle-6-weli", "eichel-U", "herz-A", "laub-10", "schelle-K", "herz-6"].map(
+              (card, i) => (
+                <div class="bs-fan" style={`--i:${i}`}>
+                  <PlayingCard card={card} w={56} />
+                </div>
+              )
+            )
+          }
+        </div>
+        <figcaption set:html={c.bodenseeCaption} />
+      </figure>
+    </section>
+
+    <section class="lesson" id="tisch">
+      <h2><span class="num">10</span>{c.s10H2}</h2>
+      <p>{c.s10Intro}</p>
+      <div class="mock-wrap">
+        <div class="mock" role="img" aria-label={c.mockTitle}>
+          <div class="mock-head">
+            <strong>{c.mockTitle}</strong>
+            <span class="mock-sub">{c.mockSub}</span>
+          </div>
+          <div class="mock-solo"><span class="mark">1</span>{c.mockSolo}</div>
+          {
+            c.mockSecs.map((sec, i) => (
+              <div class="mock-sec">
+                <span class="mark">{i + 2}</span>
+                <span class="mock-label">{sec.label}</span>
+                {sec.pills.map((p) => (
+                  <span class={p.on ? "pill on" : "pill"}>{p.t}</span>
+                ))}
+              </div>
+            ))
+          }
+        </div>
+        <ol class="mock-legend">
+          {c.legend.map((l) => <li set:html={l} />)}
+        </ol>
+      </div>
+    </section>
+
+    <section class="lesson" id="plattform">
+      <h2><span class="num">11</span>{c.s11H2}</h2>
+      <div class="feature-grid">
+        {
+          c.features.map((f) => (
+            <div class="feature">
+              <span class="f-icon" aria-hidden="true">
+                {f.icon}
+              </span>
+              <h3>{f.title}</h3>
+              <p>{f.text}</p>
+            </div>
+          ))
+        }
+      </div>
+    </section>
+
+    <div class="outro">
+      <p set:html={c.outroHtml} />
+      <a href="/app/" class="cta">{c.outroCta}</a>
+    </div>
+  </article>
+</Base>
+
+<script is:inline>
+  // Demo-Animationen: starten beim Hereinscrollen, ↻ spielt erneut ab.
+  (function () {
+    var els = document.querySelectorAll(".anim");
+    if (!("IntersectionObserver" in window)) {
+      els.forEach(function (e) {
+        e.classList.add("play");
+      });
+    } else {
+      var io = new IntersectionObserver(
+        function (entries) {
+          entries.forEach(function (en) {
+            if (en.isIntersecting) {
+              en.target.classList.add("play");
+              io.unobserve(en.target);
+            }
+          });
+        },
+        { threshold: 0.35 }
+      );
+      els.forEach(function (e) {
+        io.observe(e);
+      });
+    }
+    document.addEventListener("click", function (ev) {
+      var btn = ev.target && ev.target.closest ? ev.target.closest(".replay") : null;
+      if (!btn) return;
+      var anim = btn.closest(".anim");
+      if (!anim) return;
+      anim.classList.remove("play");
+      void anim.offsetWidth; // Reflow erzwingen → Animationen starten neu
+      anim.classList.add("play");
+    });
+  })();
+</script>
+
+<style>
+  .intro .lead {
+    max-width: 42rem;
+  }
+  .deck-overview {
+    width: 100%;
+    height: auto;
+    border-radius: 0.75rem;
+    border: 1px solid var(--edge);
+    margin-top: 1rem;
+    display: block;
+  }
+
+  /* Kapitel-Navigation als Chips — bleibt beim Scrollen oben kleben. */
+  .toc {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin: 1.5rem 0 0.5rem;
+    position: sticky;
+    top: 0;
+    background: var(--bg);
+    padding: 0.6rem 0;
+    z-index: 5;
+  }
+  .toc a {
+    font-size: 0.78rem;
+    font-weight: 500;
+    color: var(--ink-soft);
+    border: 1px solid var(--edge);
+    background: var(--surface);
+    border-radius: 999px;
+    padding: 0.15rem 0.6rem;
+    white-space: nowrap;
+  }
+  .toc a:hover {
+    color: var(--ink);
+    background: var(--cream);
+    text-decoration: none;
+  }
+
+  .lesson {
+    margin-top: 2.75rem;
+    scroll-margin-top: 4.5rem;
+  }
+  .lesson h2 {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-size: 1.45rem;
+    line-height: 1.25;
+    border-bottom: 2px solid var(--edge);
+    padding-bottom: 0.4rem;
+  }
+  .num {
+    flex: 0 0 auto;
+    width: 1.9rem;
+    height: 1.9rem;
+    border-radius: 999px;
+    background: var(--accent);
+    color: var(--accent-fg);
+    font-size: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .lesson h3 {
+    font-size: 1.05rem;
+    margin: 0.4rem 0;
+  }
+
+  /* §1 Karten */
+  .suit-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+    gap: 1rem;
+    margin: 1rem 0;
+  }
+  .suit {
+    margin: 0;
+    border: 1px solid var(--edge);
+    border-radius: 0.6rem;
+    background: var(--card-bg);
+    padding: 0.75rem;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    align-items: center;
+    gap: 0.25rem 0.6rem;
+  }
+  .suit figcaption {
+    font-weight: 600;
+  }
+  .suit-overview {
+    grid-column: 1 / -1;
+    width: 100%;
+    height: auto;
+    border-radius: 0.4rem;
+  }
+
+  .note,
+  .tip {
+    border: 1px solid var(--edge);
+    border-left: 4px solid var(--yellow);
+    background: var(--card-bg);
+    border-radius: 0.5rem;
+    padding: 0.8rem 1rem;
+    margin: 1.1rem 0;
+    font-size: 0.95rem;
+  }
+  .note {
+    display: flex;
+    gap: 0.9rem;
+    align-items: flex-start;
+  }
+  .tip {
+    border-left-color: var(--green);
+  }
+  .note-card {
+    flex: 0 0 auto;
+  }
+
+  /* §2/§8 Tabellen */
+  .table-wrap {
+    overflow-x: auto;
+  }
+  table.points {
+    border-collapse: collapse;
+    width: 100%;
+    font-size: 0.92rem;
+    background: var(--card-bg);
+    border: 1px solid var(--edge);
+  }
+  table.points th,
+  table.points td {
+    border: 1px solid var(--edge);
+    padding: 0.35rem 0.6rem;
+    text-align: left;
+  }
+  table.points thead th {
+    background: var(--cream);
+  }
+  table.points td.hot {
+    font-weight: 700;
+    color: var(--red);
+  }
+  .facts {
+    margin-top: 0.9rem;
+  }
+  .facts li {
+    margin: 0.25rem 0;
+  }
+
+  /* §4 Trumpf-Reihe */
+  .trump-order {
+    display: flex;
+    gap: 0.45rem;
+    overflow-x: auto;
+    padding: 0.85rem 0.6rem 0.6rem;
+    border: 1px solid var(--edge);
+    border-radius: 0.6rem;
+    background: var(--card-bg);
+    margin: 1rem 0;
+  }
+  .to-item {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.2rem;
+    min-width: 58px;
+  }
+  .to-label {
+    font-size: 0.72rem;
+    font-weight: 600;
+  }
+  .to-pts {
+    font-size: 0.68rem;
+    color: var(--muted);
+  }
+  .to-best {
+    position: absolute;
+    top: -0.7rem;
+    font-size: 0.62rem;
+    font-weight: 700;
+    background: var(--yellow);
+    color: #241b14;
+    border-radius: 999px;
+    padding: 0 0.45rem;
+    white-space: nowrap;
+  }
+  .to-item:first-child :global(.pcard) {
+    outline: 2px solid var(--yellow);
+    outline-offset: 1px;
+  }
+
+  /* §7 Ansagearten */
+  .mode-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+    gap: 0.9rem;
+    margin: 1rem 0;
+  }
+  .mode {
+    border: 1px solid var(--edge);
+    border-radius: 0.6rem;
+    background: var(--card-bg);
+    padding: 0.85rem;
+  }
+  .mode img {
+    display: block;
+  }
+  .mode h3 {
+    margin: 0.45rem 0 0.25rem;
+  }
+  .mode p {
+    margin: 0;
+    font-size: 0.88rem;
+    color: var(--muted);
+  }
+  .slalom-strip {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    border: 1px solid var(--edge);
+    border-radius: 0.6rem;
+    background: var(--card-bg);
+    padding: 0.7rem 0.9rem;
+    margin: 1rem 0;
+    font-size: 0.88rem;
+  }
+  .ss-title {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-weight: 600;
+  }
+  .ss-step {
+    border-radius: 999px;
+    padding: 0.1rem 0.6rem;
+    border: 1px solid var(--edge);
+  }
+  .ss-step.up {
+    background: var(--cream);
+  }
+  .ss-step.down {
+    background: var(--paper);
+  }
+  .ss-arrow {
+    color: var(--muted);
+  }
+
+  /* §8 Weis-Beispiel */
+  .example-row {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+  }
+  .mini-cards {
+    display: inline-flex;
+    gap: 0.3rem;
+  }
+
+  /* §9 Spielarten */
+  .variant-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+    gap: 0.9rem;
+    margin: 1rem 0;
+  }
+  .variant {
+    border: 1px solid var(--edge);
+    border-radius: 0.6rem;
+    background: var(--card-bg);
+    padding: 0.85rem;
+  }
+  .variant p {
+    margin: 0.3rem 0 0;
+    font-size: 0.9rem;
+  }
+  .vsub {
+    display: block;
+    font-size: 0.72rem;
+    font-weight: 500;
+    color: var(--muted);
+  }
+  .bodensee {
+    margin: 1.25rem 0 0;
+    border: 1px solid var(--edge);
+    border-radius: 0.75rem;
+    background-color: var(--green-dark);
+    background-image: radial-gradient(circle at 50% 25%, rgb(255 255 255 / 0.07), transparent 70%);
+    padding: 1.1rem 1rem;
+  }
+  .bs-row {
+    display: flex;
+    gap: 0.7rem;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  .bs-stack {
+    position: relative;
+    padding-top: 0.55rem;
+  }
+  .bs-hidden {
+    position: absolute;
+    top: 0;
+    left: 0.45rem;
+    width: 56px;
+    height: 84px;
+    border-radius: 6px;
+    background: repeating-linear-gradient(45deg, #7a1714 0 6px, #5d0f0d 6px 12px);
+    border: 2px solid #f0e6cf;
+    box-shadow: 0 1px 3px rgb(0 0 0 / 0.4);
+  }
+  .bs-open {
+    position: relative;
+  }
+  .bs-hand {
+    display: flex;
+    justify-content: center;
+    margin-top: 1.2rem;
+  }
+  .bs-fan {
+    transform: rotate(calc((var(--i) - 2.5) * 7deg))
+      translateY(calc((var(--i) - 2.5) * (var(--i) - 2.5) * 2px));
+    margin: 0 -0.4rem;
+  }
+  .bodensee figcaption {
+    color: #f0e6cf;
+    font-size: 0.88rem;
+    margin-top: 1.1rem;
+    text-align: center;
+  }
+
+  /* §10 Dialog-Mock */
+  .mock-wrap {
+    display: grid;
+    gap: 1.25rem;
+    margin-top: 1rem;
+  }
+  .mock {
+    border: 1px solid var(--edge);
+    border-radius: 0.75rem;
+    background: var(--card-bg);
+    padding: 1rem;
+    box-shadow: 0 2px 8px rgb(0 0 0 / 0.12);
+  }
+  .mock-head {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 0.75rem;
+  }
+  .mock-sub {
+    font-size: 0.8rem;
+    color: var(--muted);
+  }
+  .mock-solo {
+    border: 1px dashed var(--edge);
+    border-radius: 0.5rem;
+    background: var(--cream);
+    padding: 0.5rem 0.7rem;
+    font-size: 0.88rem;
+    font-weight: 600;
+    margin-bottom: 0.75rem;
+  }
+  .mock-sec {
+    padding: 0.45rem 0;
+    border-top: 1px solid var(--edge);
+    font-size: 0.85rem;
+  }
+  .mock-label {
+    display: inline-block;
+    font-weight: 600;
+    margin-right: 0.5rem;
+  }
+  .pill {
+    display: inline-block;
+    border: 1px solid var(--edge);
+    border-radius: 999px;
+    padding: 0.05rem 0.55rem;
+    margin: 0.15rem 0.15rem 0.15rem 0;
+    font-size: 0.78rem;
+    color: var(--muted);
+    background: var(--paper);
+  }
+  .pill.on {
+    background: var(--accent);
+    color: var(--accent-fg);
+    border-color: var(--accent);
+  }
+  .mark {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.3rem;
+    height: 1.3rem;
+    border-radius: 999px;
+    background: var(--red);
+    color: #fff;
+    font-size: 0.74rem;
+    font-weight: 700;
+    margin-right: 0.45rem;
+    vertical-align: middle;
+  }
+  .mock-legend {
+    margin: 0;
+    padding-left: 1.25rem;
+    font-size: 0.92rem;
+  }
+  .mock-legend li {
+    margin: 0.45rem 0;
+  }
+  .mock-legend li::marker {
+    color: var(--red);
+    font-weight: 700;
+  }
+
+  /* §11 Feature-Grid */
+  .feature-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+    gap: 0.9rem;
+    margin-top: 1rem;
+  }
+  .feature {
+    border: 1px solid var(--edge);
+    border-radius: 0.6rem;
+    background: var(--card-bg);
+    padding: 0.85rem;
+  }
+  .f-icon {
+    font-size: 1.4rem;
+  }
+  .feature h3 {
+    margin: 0.3rem 0 0.2rem;
+    font-size: 0.98rem;
+  }
+  .feature p {
+    margin: 0;
+    font-size: 0.86rem;
+    color: var(--muted);
+  }
+
+  .outro {
+    margin-top: 3rem;
+    text-align: center;
+    border: 1px solid var(--edge);
+    border-radius: 0.75rem;
+    background: var(--card-bg);
+    padding: 1.5rem 1rem 1.75rem;
+  }
+</style>

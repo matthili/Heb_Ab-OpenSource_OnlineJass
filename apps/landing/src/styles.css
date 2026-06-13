@@ -207,6 +207,18 @@ a:hover {
   background: var(--accent-hover);
   text-decoration: none;
 }
+/* Sprach-Umschalter (DE|EN) — schlanke Pille im Nav-Stil. */
+.lang-switch {
+  border: 1px solid var(--edge);
+  border-radius: 0.25rem;
+  padding: 0.15rem 0.45rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+}
+.lang-switch:hover {
+  background: var(--cream);
+}
+
 /* Theme-Toggle — gleicher Look wie der ◐-Button der Spiel-SPA. */
 .theme-toggle {
   border: 1px solid var(--edge);

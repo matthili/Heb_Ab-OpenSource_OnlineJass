@@ -1,0 +1,289 @@
+---
+/**
+ * Datenschutzerklärung / Privacy policy — zweisprachig über `lang`.
+ *
+ * Der Inhalt ist reiner Fließtext, daher liegt er je Sprache als Abschnitts-
+ * Liste `{ heading, html }` vor und wird per `set:html` gerendert (Inhalt von
+ * uns verfasst, kein User-Input → unbedenklich). Inhaltlich identisch zur
+ * bisherigen deutschen Erklärung (Stand 2026-05-18); nur die hartkodierten
+ * Farben wurden auf Theme-Variablen umgestellt.
+ */
+import Base from "../../layouts/Base.astro";
+
+type Lang = "de" | "en";
+interface Props {
+  lang?: Lang;
+}
+const { lang = "de" } = Astro.props;
+
+interface Section {
+  heading: string;
+  html: string;
+}
+interface PrivacyContent {
+  title: string;
+  description: string;
+  h1: string;
+  intro: string;
+  sections: Section[];
+  note: string;
+  altHref: string;
+}
+
+const CONTENT: Record<Lang, PrivacyContent> = {
+  de: {
+    title: "Datenschutz — Heb ab!",
+    description:
+      "Wer wir sind, welche Daten wir verarbeiten, wie lange und auf welcher Rechtsgrundlage.",
+    h1: "Datenschutzerklärung",
+    intro:
+      '„Heb ab!" ist eine selbst-gehostete Multiplayer-Plattform für Vorarlberger Kreuz-Jass. Diese Erklärung beschreibt, welche personenbezogenen Daten beim Spielen entstehen, wie wir sie verarbeiten, an wen sie weitergegeben werden — und welche Rechte du als Spieler:in hast.',
+    sections: [
+      {
+        heading: "1. Verantwortlicher",
+        html: 'Verantwortlich für die Datenverarbeitung ist der jeweilige Betreiber dieser Instanz. Konkrete Kontaktdaten und Anschrift findest du im <a href="/imprint">Impressum</a>.',
+      },
+      {
+        heading: "2. Welche Daten wir verarbeiten",
+        html: `
+          <h3>2.1 Beim Registrieren</h3>
+          <ul>
+            <li><strong>E-Mail-Adresse</strong> — Pflicht. Wir nutzen sie zum Bestätigen des Accounts und für Passwort-Resets.</li>
+            <li><strong>Spielername</strong> — der öffentlich angezeigte Name.</li>
+            <li><strong>Passwort-Hash (Argon2id)</strong> — wir speichern niemals dein Passwort im Klartext.</li>
+          </ul>
+          <h3>2.2 Optionale Profildaten</h3>
+          <ul>
+            <li>Vorname, Nachname, Geburtstag, Wohnort, Land, Hobbys, Bio, Avatar.</li>
+            <li>Pro Feld kannst du selbst entscheiden, ob es <em>privat</em>, <em>nur für eingeloggte Spieler</em>, <em>nur für Freunde</em> oder <em>öffentlich</em> sichtbar ist. Das gilt auch für deinen Online-Status und deine Statistik.</li>
+          </ul>
+          <h3>2.3 Spiel-Daten</h3>
+          <ul>
+            <li>Welche Karten du wann gespielt hast (für Replays + Statistiken).</li>
+            <li>Mit wem du gespielt hast und ob ihr gewonnen habt.</li>
+            <li>Chat-Nachrichten (Lobby / Tisch / Private Nachrichten).</li>
+          </ul>
+          <h3>2.4 Technische Daten</h3>
+          <ul>
+            <li><strong>Login-Cookie</strong> (HttpOnly, Secure, SameSite=Lax). Nötig zum Eingeloggt-Bleiben; kein Tracking.</li>
+            <li><strong>Server-Logs</strong> (IP, User-Agent, Pfad, Status). Dienen der Fehlersuche und Missbrauchsabwehr. Standard-Aufbewahrung: 30 Tage.</li>
+            <li><strong>Audit-Log</strong> für sicherheitsrelevante Aktionen (Login, Admin-Eingriffe). Aufbewahrung dauerhaft, aus Rechenschaftspflicht nach Art. 5(2) DSGVO.</li>
+          </ul>`,
+      },
+      {
+        heading: "3. Rechtsgrundlagen",
+        html: `
+          <ul>
+            <li><strong>Vertrag</strong> (Art. 6(1)(b) DSGVO) — Bereitstellen des Spielebetriebs.</li>
+            <li><strong>Berechtigtes Interesse</strong> (Art. 6(1)(f)) — Sicherheit, Anti-Missbrauch, Fehleranalyse.</li>
+            <li><strong>Einwilligung</strong> (Art. 6(1)(a)) — z. B. wenn wir später optionale Statistik-Cookies anbieten (Stand heute: keine).</li>
+          </ul>`,
+      },
+      {
+        heading: "4. Cookies",
+        html: `
+          <p>Wir setzen <strong>nur technisch notwendige Cookies</strong>:</p>
+          <ul>
+            <li><code>better-auth.session_token</code> — dein Login. Wenn du dich abmeldest oder das Konto löschst, ist es weg.</li>
+            <li><code>heb-ab.consent</code> — speichert, dass du diesen Hinweis gesehen hast (ein einziges Boolean, keinerlei Tracking-Werte).</li>
+          </ul>
+          <p>Tracking-Cookies, Werbe-Pixel und Drittanbieter-Analytics setzen wir nicht.</p>`,
+      },
+      {
+        heading: "5. Empfänger / Weitergabe",
+        html: "Daten verlassen unseren Server nicht — es gibt keine Werbenetzwerke, keine US-Analyse-Dienste, kein CDN-Tracking. Ausnahme: wenn ein Spielzug an einen KI-Mitspieler geht, wird der pseudonymisierte Spielzustand (ohne deine Identität) kurz an den Inferenz-Service geschickt — der läuft auf derselben Infrastruktur.",
+      },
+      {
+        heading: "6. Speicherdauer",
+        html: `
+          <ul>
+            <li><strong>Account</strong>: bis du ihn löschst.</li>
+            <li><strong>Server-Logs</strong>: 30 Tage, danach automatisch rotiert.</li>
+            <li><strong>Lobby-Chat</strong>: 12 Stunden, dann automatisch entfernt.</li>
+            <li><strong>Spiel-/Tisch-Chat / Private Nachrichten</strong>: solange das Spiel/Profil existiert oder du sie nicht selbst löschst.</li>
+            <li><strong>Audit-Log</strong>: dauerhaft (Rechenschaftspflicht).</li>
+          </ul>`,
+      },
+      {
+        heading: "7. Deine Rechte",
+        html: `
+          <ul>
+            <li><strong>Auskunft</strong> (Art. 15) — du kannst deine Daten jederzeit als JSON herunterladen unter <a href="/app/profile?tab=data">Profil → Meine Daten</a>.</li>
+            <li><strong>Berichtigung</strong> (Art. 16) — Profil-Felder kannst du im Profil-Editor selbst ändern.</li>
+            <li><strong>Löschung</strong> (Art. 17) — über <a href="/app/profile?tab=data">Profil → Meine Daten → Konto löschen</a>. Wir anonymisieren deinen Account; deine Spiel-Historie bleibt für Mitspieler sichtbar, aber dein Name wird durch <code>anonym-…</code> ersetzt.</li>
+            <li><strong>Datenübertragbarkeit</strong> (Art. 20) — JSON-Export wie oben.</li>
+            <li><strong>Widerspruch</strong> (Art. 21) — schreib uns über die im Impressum genannten Kontaktdaten.</li>
+            <li><strong>Beschwerde</strong> bei einer Aufsichtsbehörde (Datenschutzbehörde, www.dsb.gv.at).</li>
+          </ul>`,
+      },
+      {
+        heading: "8. Sicherheit",
+        html: `
+          <ul>
+            <li>Verschlüsselter Transport (TLS).</li>
+            <li>Passwörter mit Argon2id gehasht.</li>
+            <li>Administrative Geheimnisse (z.B. SMTP-Passwörter) AES-256-GCM-verschlüsselt in der Datenbank.</li>
+            <li>Rate-Limiting auf Login + Chat + WebSocket-Events.</li>
+          </ul>`,
+      },
+      {
+        heading: "9. Änderungen dieser Erklärung",
+        html: "Bei substanziellen Änderungen informieren wir eingeloggte User per E-Mail und blenden beim nächsten Besuch einen Hinweis ein.",
+      },
+    ],
+    note: "Stand: 2026-05-18. Diese Erklärung kann jederzeit von der jeweiligen Instanz angepasst werden — bitte beim Betreiber prüfen.",
+    altHref: "/en/privacy",
+  },
+  en: {
+    title: "Privacy — Heb ab!",
+    description:
+      "Who we are, which data we process, for how long, and on what legal basis.",
+    h1: "Privacy Policy",
+    intro:
+      '“Heb ab!” is a self-hosted multiplayer platform for the Vorarlberg style of Jass. This policy explains which personal data arises while you play, how we process it, who it is shared with — and what rights you have as a player.',
+    sections: [
+      {
+        heading: "1. Controller",
+        html: 'The party responsible for data processing is the respective operator of this instance. You will find concrete contact details and address in the <a href="/en/imprint">imprint</a>.',
+      },
+      {
+        heading: "2. Which data we process",
+        html: `
+          <h3>2.1 When you register</h3>
+          <ul>
+            <li><strong>Email address</strong> — required. We use it to confirm your account and for password resets.</li>
+            <li><strong>Player name</strong> — the publicly displayed nickname.</li>
+            <li><strong>Password hash (Argon2id)</strong> — we never store your password in plain text.</li>
+          </ul>
+          <h3>2.2 Optional profile data</h3>
+          <ul>
+            <li>First name, last name, birthday, city, country, hobbies, bio, avatar.</li>
+            <li>For each field you decide yourself whether it is <em>private</em>, <em>visible to logged-in players only</em>, <em>friends only</em> or <em>public</em>. The same applies to your online status and your statistics.</li>
+          </ul>
+          <h3>2.3 Game data</h3>
+          <ul>
+            <li>Which cards you played and when (for replays + statistics).</li>
+            <li>Whom you played with and whether you won.</li>
+            <li>Chat messages (lobby / table / direct messages).</li>
+          </ul>
+          <h3>2.4 Technical data</h3>
+          <ul>
+            <li><strong>Login cookie</strong> (HttpOnly, Secure, SameSite=Lax). Needed to keep you signed in; no tracking.</li>
+            <li><strong>Server logs</strong> (IP, user agent, path, status). For troubleshooting and abuse prevention. Default retention: 30 days.</li>
+            <li><strong>Audit log</strong> for security-relevant actions (login, admin interventions). Retained permanently, for accountability under Art. 5(2) GDPR.</li>
+          </ul>`,
+      },
+      {
+        heading: "3. Legal bases",
+        html: `
+          <ul>
+            <li><strong>Contract</strong> (Art. 6(1)(b) GDPR) — providing the game service.</li>
+            <li><strong>Legitimate interest</strong> (Art. 6(1)(f)) — security, anti-abuse, error analysis.</li>
+            <li><strong>Consent</strong> (Art. 6(1)(a)) — e.g. if we later offer optional analytics cookies (as of today: none).</li>
+          </ul>`,
+      },
+      {
+        heading: "4. Cookies",
+        html: `
+          <p>We set <strong>only technically necessary cookies</strong>:</p>
+          <ul>
+            <li><code>better-auth.session_token</code> — your login. When you sign out or delete your account, it is gone.</li>
+            <li><code>heb-ab.consent</code> — remembers that you have seen this notice (a single boolean, no tracking values whatsoever).</li>
+          </ul>
+          <p>We do not use tracking cookies, advertising pixels or third-party analytics.</p>`,
+      },
+      {
+        heading: "5. Recipients / disclosure",
+        html: "Data does not leave our server — there are no ad networks, no US analytics services, no CDN tracking. Exception: when a move goes to an AI player, the pseudonymized game state (without your identity) is briefly sent to the inference service — which runs on the same infrastructure.",
+      },
+      {
+        heading: "6. Retention",
+        html: `
+          <ul>
+            <li><strong>Account</strong>: until you delete it.</li>
+            <li><strong>Server logs</strong>: 30 days, then rotated automatically.</li>
+            <li><strong>Lobby chat</strong>: 12 hours, then removed automatically.</li>
+            <li><strong>Game/table chat / direct messages</strong>: as long as the game/profile exists or until you delete them yourself.</li>
+            <li><strong>Audit log</strong>: permanent (accountability).</li>
+          </ul>`,
+      },
+      {
+        heading: "7. Your rights",
+        html: `
+          <ul>
+            <li><strong>Access</strong> (Art. 15) — you can download your data as JSON at any time under <a href="/app/profile?tab=data">Profile → My data</a>.</li>
+            <li><strong>Rectification</strong> (Art. 16) — you can change profile fields yourself in the profile editor.</li>
+            <li><strong>Erasure</strong> (Art. 17) — via <a href="/app/profile?tab=data">Profile → My data → Delete account</a>. We anonymize your account; your game history stays visible to fellow players, but your name is replaced by <code>anonym-…</code>.</li>
+            <li><strong>Data portability</strong> (Art. 20) — JSON export as above.</li>
+            <li><strong>Objection</strong> (Art. 21) — contact us via the details in the imprint.</li>
+            <li><strong>Complaint</strong> to a supervisory authority (in Austria: Datenschutzbehörde, www.dsb.gv.at).</li>
+          </ul>`,
+      },
+      {
+        heading: "8. Security",
+        html: `
+          <ul>
+            <li>Encrypted transport (TLS).</li>
+            <li>Passwords hashed with Argon2id.</li>
+            <li>Administrative secrets (e.g. SMTP passwords) encrypted with AES-256-GCM in the database.</li>
+            <li>Rate limiting on login + chat + WebSocket events.</li>
+          </ul>`,
+      },
+      {
+        heading: "9. Changes to this policy",
+        html: "For substantial changes we notify logged-in users by email and show a notice on the next visit.",
+      },
+    ],
+    note: "Last updated: 2026-05-18. This policy may be adapted at any time by the respective instance — please check with the operator.",
+    altHref: "/privacy",
+  },
+};
+
+const c = CONTENT[lang];
+---
+
+<Base title={c.title} description={c.description} lang={lang} altHref={c.altHref}>
+  <article class="prose">
+    <h1>{c.h1}</h1>
+    <p>{c.intro}</p>
+    {
+      c.sections.map((sec) => (
+        <>
+          <h2>{sec.heading}</h2>
+          <div set:html={sec.html} />
+        </>
+      ))
+    }
+    <p class="muted">{c.note}</p>
+  </article>
+</Base>
+
+<style>
+  .prose {
+    max-width: 48rem;
+    line-height: 1.6;
+  }
+  .prose h2 {
+    margin-top: 2rem;
+    margin-bottom: 0.5rem;
+  }
+  .prose :global(h3) {
+    margin-top: 1.25rem;
+    margin-bottom: 0.25rem;
+  }
+  .prose :global(ul) {
+    padding-left: 1.25rem;
+  }
+  .prose :global(code) {
+    background: var(--cream);
+    border: 1px solid var(--edge);
+    padding: 0.1rem 0.3rem;
+    border-radius: 0.25rem;
+    font-size: 0.875em;
+  }
+  .muted {
+    color: var(--muted);
+    font-size: 0.875rem;
+    margin-top: 2rem;
+  }
+</style>

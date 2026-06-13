@@ -22,9 +22,12 @@ interface Props {
   winner: number;
   caption: string;
   winnerLabel?: string;
+  lang?: "de" | "en";
 }
-const { cards, winner, caption, winnerLabel = "Stich!" } = Astro.props;
+const { cards, winner, caption, lang = "de", winnerLabel } = Astro.props;
 const ROTS = [-6, 4, -3, 6];
+const crownLabel = winnerLabel ?? (lang === "en" ? "Trick!" : "Stich!");
+const replayAria = lang === "en" ? "Replay animation" : "Animation erneut abspielen";
 ---
 
 <figure class="anim trick">
@@ -39,13 +42,13 @@ const ROTS = [-6, 4, -3, 6];
             <PlayingCard card={c.card} w={70} />
           </div>
           <span class="under">
-            {i === winner && <span class="crown">{winnerLabel}</span>}
+            {i === winner && <span class="crown">{crownLabel}</span>}
             {c.note && <span class="note">{c.note}</span>}
           </span>
         </div>
       ))
     }
-    <button type="button" class="replay" aria-label="Animation erneut abspielen">↻</button>
+    <button type="button" class="replay" aria-label={replayAria}>↻</button>
   </div>
   <figcaption>{caption}</figcaption>
 </figure>

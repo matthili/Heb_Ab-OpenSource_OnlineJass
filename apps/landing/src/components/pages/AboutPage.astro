@@ -1,0 +1,517 @@
+---
+/**
+ * Über-Seite / About — zweisprachig über `lang`. Strukturierte Daten
+ * (Grundsätze, Stack, Zahlen) als Arrays, Fließtext-Abschnitte als
+ * HTML-Blöcke (von uns verfasst → `set:html` unbedenklich). Karten-/Symbol-
+ * Sektion ist rein bildlich und damit sprachneutral.
+ */
+import Base from "../../layouts/Base.astro";
+import PlayingCard from "../school/PlayingCard.astro";
+
+type Lang = "de" | "en";
+interface Props {
+  lang?: Lang;
+}
+const { lang = "de" } = Astro.props;
+
+const GH = "https://github.com/matthili/vorarlberger_jass_app";
+
+interface AboutContent {
+  title: string;
+  description: string;
+  h1: string;
+  lead: string;
+  whyNameH2: string;
+  whyNameHtml: string;
+  whyExistH2: string;
+  whyExistHtml: string;
+  principlesH2: string;
+  principles: { icon: string; title: string; text: string }[];
+  cardsH2: string;
+  cardsText: string;
+  aiH2: string;
+  aiHtml: string;
+  stackH2: string;
+  stackIntro: string;
+  stack: { area: string; items: string }[];
+  ghHtml: string;
+  numbersH2: string;
+  numbers: [string, string][];
+  whoH2: string;
+  whoHtml: string;
+  thanks: string;
+  ctaPlay: string;
+  ctaLearn: string;
+  altHref: string;
+}
+
+const CONTENT: Record<Lang, AboutContent> = {
+  de: {
+    title: "Über das Projekt — Heb ab!",
+    description:
+      "Warum es Heb ab! gibt: Vorarlberger Jass-Kultur als Open-Source-Plattform — selbst hostbar, ohne Tracking, mit eigener Engine, eigenen Karten und trainierter KI.",
+    h1: "Über Heb ab!",
+    lead: "<strong>Heb ab!</strong> ist eine Open-Source-Plattform für den Vorarlberger Jass — gegen Menschen, gegen KI oder gemischt. Server-autoritativ, ohne Werbung, ohne Tracking, und so gebaut, dass jede und jeder sie selbst betreiben kann.",
+    whyNameH2: "Warum „Heb ab!“?",
+    whyNameHtml:
+      'Wer beim Jassen gibt, lässt vorher <em>abheben</em>: Die Person rechts vom Geber teilt den Stapel — oder klopft drauf und lässt ihn ganz. Diese kleine Geste gehört zum Spiel wie der Stammtisch zum Wirtshaus; bei uns gibt es sie sogar als zuschaltbare Hausregel („Echtes Abheben"). Und dass <em>abheben</em> auch „durchstarten" heißt — das nehmen wir gerne mit.',
+    whyExistH2: "Warum gibt es das?",
+    whyExistHtml:
+      'Online-Jass gibt es viele — aber fast immer als Schweizer Schieber. Der <strong>Vorarlberger</strong> Jass mit seinen Eigenheiten kommt dabei zu kurz: <em>Gumpf</em>, <em>Bock und Geiß</em>, <em>Slalom</em>, das <em>WELI</em>, der <em>Bodensee-Jass</em> zu zweit. Heb ab! will genau diese Spielkultur digital erhalten — mit denselben Regeln, denselben Begriffen und derselben Sturheit beim Untertrumpf-Verbot wie am echten Tisch. Wie das alles funktioniert, zeigt die <a href="/rules">Jass-Schule</a>.',
+    principlesH2: "Grundsätze",
+    principles: [
+      {
+        icon: "🔓",
+        title: "Open Source",
+        text: "Der komplette Code ist offen. Karten-Spielen gehört allen — eine Plattform dafür auch.",
+      },
+      {
+        icon: "🏠",
+        title: "Selbst hostbar",
+        text: "Gedacht für das Familien-NAS, das Vereinsheim oder den Hobby-Server für die Freundesrunde.",
+      },
+      {
+        icon: "⚖️",
+        title: "Server-autoritativ",
+        text: "Alle Regeln prüft der Server. Was die Jass-Schule erklärt, wird am Tisch durchgesetzt — schummeln ist technisch aussichtslos.",
+      },
+      {
+        icon: "🚫",
+        title: "Keine Werbung, kein Tracking",
+        text: "Nur technisch notwendige Cookies. Keine Analytics-Drittanbieter, keine Datenverwertung.",
+      },
+      {
+        icon: "🛡️",
+        title: "Privatsphäre als Default",
+        text: "Jedes Profilfeld, der Online-Status, die Statistik: sichtbar nur für die, die du wählst. Leaderboard strikt Opt-in.",
+      },
+      {
+        icon: "🗣️",
+        title: "Mundart im Produkt",
+        text: "Buur, Nell, Gumpf, Bock und Geiß, das WELI — die Vorarlberger Begriffe bleiben, wo sie hingehören: im Spiel.",
+      },
+    ],
+    cardsH2: "Eigene Karten, eigene Symbole",
+    cardsText:
+      "Das komplette Blatt ist eigens für Heb ab! gestaltet — alle 36 Karten, das WELI mit eigenem Bild und die Symbole der Ansagearten. Keine Stock-Grafiken, kein fremdes Karten-Deck: Was du am Tisch siehst, gibt es nur hier.",
+    aiH2: "Die KI am Tisch",
+    aiHtml:
+      "Freie Sitze müssen niemanden aufhalten — sie übernimmt auf Wunsch die KI, in drei Stufen: <strong>Zufall</strong> zum lockeren Üben, eine solide <strong>Heuristik</strong> als Standard-Gegner, und ein eigens trainiertes <strong>neuronales Netz</strong> als stärkste Ausbaustufe. Das Netz lernt in einer Self-Play-Pipeline aus Millionen von Zügen und spielt über einen eigenen Inferenz-Dienst mit — und es wird laufend weitertrainiert.",
+    stackH2: "Der Tech-Stack",
+    stackIntro:
+      "Heb ab! ist nebenbei auch eine Tech-Demo: durchgehend aktuelle Major-Versionen, ein Monorepo, ein Stack, der zeigt, was sich heute mit offenem Werkzeug bauen lässt.",
+    stack: [
+      {
+        area: "Spiel-Client",
+        items:
+          "React 19 · Vite 8 · TanStack Router & Query · Tailwind CSS 4 · i18next (DE/EN) · PWA",
+      },
+      {
+        area: "Server",
+        items: "NestJS 11 auf Fastify 5 · Socket.IO · Better Auth (Argon2id, Pwned-Passwords-Check)",
+      },
+      {
+        area: "Daten",
+        items: "PostgreSQL 16 · Prisma 7 · Redis 7 (Live-State, Präsenz, Locks)",
+      },
+      {
+        area: "Spiel-Engine",
+        items: "Eigenes TypeScript-Paket — Regeln, Punkte und Weis-Logik spec-getrieben und testbar",
+      },
+      {
+        area: "KI",
+        items:
+          "Training in Python/Keras (Self-Play-Pipeline) · Inferenz als eigener TensorFlow.js-Microservice",
+      },
+      {
+        area: "Drumherum",
+        items:
+          "TypeScript überall · pnpm 10 + Turborepo · Vitest + Testcontainers · Docker + Caddy · Astro 6 (diese Seite)",
+      },
+    ],
+    ghHtml: `<a href="${GH}">Der Code liegt auf GitHub</a> — Issues und Pull-Requests sind willkommen.`,
+    numbersH2: "Zahlen, die wir mögen",
+    numbers: [
+      ["36", "Karten im Blatt"],
+      ["157", "Punkte pro Runde"],
+      ["3", "Spielarten"],
+      ["18", "Stiche beim Bodensee"],
+      ["2", "Sprachen"],
+      ["3", "Farbschemata"],
+      ["0", "Tracker & Werbung"],
+      ["1", "echtes WELI"],
+    ],
+    whoH2: "Wer steckt dahinter?",
+    whoHtml: `Kein Studio, kein Startup — ein einzelner Bastler mit einem Faible für den Vorarlberger Jass, im Netz unterwegs als <strong>matthili</strong>. Das Projekt ist bewusst pseudonym: Eine Plattform, die Privatsphäre als Standardeinstellung ernst nimmt, darf das auch für ihren Autor tun. Wer reden mag, erreicht mich am besten über <a href="${GH}/issues">GitHub-Issues</a>.`,
+    thanks: "Und ein Dank an die Spielerin der ersten Stunde — sie weiß, wer gemeint ist. 🃏",
+    ctaPlay: "Jetzt mitspielen",
+    ctaLearn: "Jassen lernen",
+    altHref: "/en/about",
+  },
+  en: {
+    title: "About the project — Heb ab!",
+    description:
+      "Why Heb ab! exists: Vorarlberg Jass culture as an open-source platform — self-hostable, no tracking, with its own engine, its own cards and a trained AI.",
+    h1: "About Heb ab!",
+    lead: "<strong>Heb ab!</strong> is an open-source platform for the Vorarlberg style of Jass — against humans, against AI, or mixed. Server-authoritative, no ads, no tracking, and built so that anyone can run it themselves.",
+    whyNameH2: "Why “Heb ab!”?",
+    whyNameHtml:
+      'Before the deal, a Jass player lets the deck be <em>cut</em> — in dialect, “abheben”: the person to the dealer’s right splits the pile, or knocks on it to leave it whole. That small gesture belongs to the game like the regulars’ table belongs to the pub; we even offer it as an optional house rule (“real cutting”). And that <em>abheben</em> also means “to take off” — we happily take that with us.',
+    whyExistH2: "Why does it exist?",
+    whyExistHtml:
+      'There is plenty of online Jass — but almost always the Swiss “Schieber”. The <strong>Vorarlberg</strong> variant with its quirks gets short shrift: <em>Gumpf</em>, <em>Bock and Geiß</em>, <em>Slalom</em>, the <em>WELI</em>, the two-player <em>Bodensee Jass</em>. Heb ab! aims to preserve exactly this playing culture digitally — with the same rules, the same terms and the same stubbornness about the no-undertrumping rule as at a real table. How it all works is shown in the <a href="/en/rules">Jass school</a>.',
+    principlesH2: "Principles",
+    principles: [
+      {
+        icon: "🔓",
+        title: "Open source",
+        text: "The complete code is open. Card games belong to everyone — so should a platform for them.",
+      },
+      {
+        icon: "🏠",
+        title: "Self-hostable",
+        text: "Made for the family NAS, the clubhouse or the hobby server for your circle of friends.",
+      },
+      {
+        icon: "⚖️",
+        title: "Server-authoritative",
+        text: "The server checks every rule. What the Jass school explains is enforced at the table — cheating is technically hopeless.",
+      },
+      {
+        icon: "🚫",
+        title: "No ads, no tracking",
+        text: "Only technically necessary cookies. No analytics third parties, no data exploitation.",
+      },
+      {
+        icon: "🛡️",
+        title: "Privacy by default",
+        text: "Every profile field, your online status, your statistics: visible only to those you choose. Leaderboard strictly opt-in.",
+      },
+      {
+        icon: "🗣️",
+        title: "Dialect in the product",
+        text: "Buur, Nell, Gumpf, Bock and Geiß, the WELI — the Vorarlberg terms stay where they belong: in the game.",
+      },
+    ],
+    cardsH2: "Our own cards, our own symbols",
+    cardsText:
+      "The entire deck was designed specifically for Heb ab! — all 36 cards, the WELI with its own artwork, and the symbols of the announcement modes. No stock graphics, no borrowed deck: what you see at the table exists only here.",
+    aiH2: "The AI at the table",
+    aiHtml:
+      "Empty seats need hold nobody up — on request the AI takes over, in three tiers: <strong>random</strong> for casual practice, a solid <strong>heuristic</strong> as the default opponent, and a purpose-trained <strong>neural network</strong> as the strongest tier. The network learns from millions of moves in a self-play pipeline and plays via its own inference service — and it keeps being trained further.",
+    stackH2: "The tech stack",
+    stackIntro:
+      "Heb ab! is also a tech demo on the side: current major versions throughout, a monorepo, a stack that shows what you can build with open tooling today.",
+    stack: [
+      {
+        area: "Game client",
+        items:
+          "React 19 · Vite 8 · TanStack Router & Query · Tailwind CSS 4 · i18next (DE/EN) · PWA",
+      },
+      {
+        area: "Server",
+        items:
+          "NestJS 11 on Fastify 5 · Socket.IO · Better Auth (Argon2id, Pwned-Passwords check)",
+      },
+      {
+        area: "Data",
+        items: "PostgreSQL 16 · Prisma 7 · Redis 7 (live state, presence, locks)",
+      },
+      {
+        area: "Game engine",
+        items:
+          "Own TypeScript package — rules, scoring and Weis logic, spec-driven and testable",
+      },
+      {
+        area: "AI",
+        items:
+          "Training in Python/Keras (self-play pipeline) · inference as its own TensorFlow.js microservice",
+      },
+      {
+        area: "Around it",
+        items:
+          "TypeScript everywhere · pnpm 10 + Turborepo · Vitest + Testcontainers · Docker + Caddy · Astro 6 (this site)",
+      },
+    ],
+    ghHtml: `<a href="${GH}">The code lives on GitHub</a> — issues and pull requests are welcome.`,
+    numbersH2: "Numbers we like",
+    numbers: [
+      ["36", "cards in the deck"],
+      ["157", "points per round"],
+      ["3", "game variants"],
+      ["18", "tricks in Bodensee"],
+      ["2", "languages"],
+      ["3", "color themes"],
+      ["0", "trackers & ads"],
+      ["1", "real WELI"],
+    ],
+    whoH2: "Who is behind this?",
+    whoHtml: `No studio, no startup — a single tinkerer with a soft spot for the Vorarlberg Jass, online known as <strong>matthili</strong>. The project is deliberately pseudonymous: a platform that takes privacy seriously as a default setting may do the same for its author. If you’d like to talk, reach me best via <a href="${GH}/issues">GitHub issues</a>.`,
+    thanks: "And thanks to the player of the first hour — she knows who is meant. 🃏",
+    ctaPlay: "Play now",
+    ctaLearn: "Learn to Jass",
+    altHref: "/about",
+  },
+};
+
+const c = CONTENT[lang];
+const rulesHref = lang === "en" ? "/en/rules" : "/rules";
+const SYMBOLS = ["eichel", "schelle", "herz", "laub", "bock", "geiss", "slalom"];
+const FAN = ["eichel-U", "schelle-9", "herz-A", "schelle-6-weli"];
+---
+
+<Base title={c.title} description={c.description} lang={lang} altHref={c.altHref}>
+  <article class="about">
+    <h1>{c.h1}</h1>
+    <p class="lead" set:html={c.lead} />
+
+    <section class="sec">
+      <h2>{c.whyNameH2}</h2>
+      <p set:html={c.whyNameHtml} />
+    </section>
+
+    <section class="sec">
+      <h2>{c.whyExistH2}</h2>
+      <p set:html={c.whyExistHtml} />
+    </section>
+
+    <section class="sec">
+      <h2>{c.principlesH2}</h2>
+      <div class="grid">
+        {
+          c.principles.map((p) => (
+            <div class="tile">
+              <span class="t-icon" aria-hidden="true">
+                {p.icon}
+              </span>
+              <h3>{p.title}</h3>
+              <p>{p.text}</p>
+            </div>
+          ))
+        }
+      </div>
+    </section>
+
+    <section class="sec">
+      <h2>{c.cardsH2}</h2>
+      <p>{c.cardsText}</p>
+      <div class="cards-row" aria-hidden="true">
+        <div class="cr-fan">
+          {
+            FAN.map((card, i) => (
+              <div class="cr-card" style={`--i:${i}`}>
+                <PlayingCard card={card} w={84} />
+              </div>
+            ))
+          }
+        </div>
+        <div class="cr-symbols">
+          {
+            SYMBOLS.map((sym) => (
+              <img src={`/cards/suits/${sym}.png`} alt="" width="36" height="36" loading="lazy" />
+            ))
+          }
+        </div>
+      </div>
+    </section>
+
+    <section class="sec">
+      <h2>{c.aiH2}</h2>
+      <p set:html={c.aiHtml} />
+    </section>
+
+    <section class="sec">
+      <h2>{c.stackH2}</h2>
+      <p>{c.stackIntro}</p>
+      <div class="stack">
+        {
+          c.stack.map((row) => (
+            <div class="stack-row">
+              <span class="stack-area">{row.area}</span>
+              <span class="stack-items">{row.items}</span>
+            </div>
+          ))
+        }
+      </div>
+      <p class="ghlink" set:html={c.ghHtml} />
+    </section>
+
+    <section class="sec">
+      <h2>{c.numbersH2}</h2>
+      <div class="numbers">
+        {
+          c.numbers.map(([n, label]) => (
+            <div class="numtile">
+              <span class="num">{n}</span>
+              <span class="numlabel">{label}</span>
+            </div>
+          ))
+        }
+      </div>
+    </section>
+
+    <section class="sec">
+      <h2>{c.whoH2}</h2>
+      <p set:html={c.whoHtml} />
+      <!--
+        Sobald die ViennaTools-Seite online ist, hier einkommentieren:
+        <p>Heb ab! ist ein Open-Source-Projekt von <a href="https://…">ViennaTools</a>.</p>
+      -->
+      <p class="thanks">{c.thanks}</p>
+    </section>
+
+    <div class="cta-row">
+      <a href="/app/" class="cta">{c.ctaPlay}</a>
+      <a href={rulesHref} class="cta-secondary">{c.ctaLearn}</a>
+    </div>
+  </article>
+</Base>
+
+<style>
+  .lead {
+    max-width: 42rem;
+  }
+  .sec {
+    margin-top: 2.25rem;
+  }
+  .sec h2 {
+    font-size: 1.35rem;
+    border-bottom: 2px solid var(--edge);
+    padding-bottom: 0.35rem;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+    gap: 0.9rem;
+    margin-top: 1rem;
+  }
+  .tile {
+    border: 1px solid var(--edge);
+    border-radius: 0.6rem;
+    background: var(--card-bg);
+    padding: 0.85rem;
+  }
+  .t-icon {
+    font-size: 1.4rem;
+  }
+  .tile h3 {
+    margin: 0.3rem 0 0.2rem;
+    font-size: 0.98rem;
+  }
+  .tile p {
+    margin: 0;
+    font-size: 0.86rem;
+    color: var(--muted);
+  }
+
+  /* Karten-Sektion */
+  .cards-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 2rem;
+    flex-wrap: wrap;
+    border: 1px solid var(--edge);
+    border-radius: 0.75rem;
+    background: var(--card-bg);
+    padding: 1.25rem 1rem;
+  }
+  .cr-fan {
+    display: flex;
+  }
+  .cr-card {
+    margin: 0 -0.9rem;
+    transform: rotate(calc((var(--i) - 1.5) * 8deg))
+      translateY(calc((var(--i) - 1.5) * (var(--i) - 1.5) * 4px));
+    transition: transform 0.2s ease;
+  }
+  .cr-card:hover {
+    transform: rotate(calc((var(--i) - 1.5) * 8deg))
+      translateY(calc((var(--i) - 1.5) * (var(--i) - 1.5) * 4px - 8px));
+    z-index: 2;
+  }
+  .cr-symbols {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+  .cr-symbols img {
+    display: block;
+  }
+
+  /* Stack-Tabelle */
+  .stack {
+    border: 1px solid var(--edge);
+    border-radius: 0.6rem;
+    background: var(--card-bg);
+    overflow: hidden;
+    margin-top: 1rem;
+  }
+  .stack-row {
+    display: grid;
+    grid-template-columns: 9rem 1fr;
+    gap: 0.75rem;
+    padding: 0.55rem 0.85rem;
+    font-size: 0.9rem;
+  }
+  .stack-row + .stack-row {
+    border-top: 1px solid var(--edge);
+  }
+  .stack-area {
+    font-weight: 600;
+  }
+  .stack-items {
+    color: var(--muted);
+  }
+  @media (max-width: 540px) {
+    .stack-row {
+      grid-template-columns: 1fr;
+      gap: 0.15rem;
+    }
+  }
+  .ghlink {
+    margin-top: 0.9rem;
+  }
+  .ghlink :global(a) {
+    text-decoration: underline;
+  }
+
+  /* Zahlen-Kacheln */
+  .numbers {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr));
+    gap: 0.7rem;
+    margin-top: 1rem;
+  }
+  .numtile {
+    border: 1px solid var(--edge);
+    border-radius: 0.6rem;
+    background: var(--card-bg);
+    padding: 0.75rem 0.5rem;
+    text-align: center;
+  }
+  .num {
+    display: block;
+    font-size: 1.7rem;
+    font-weight: 700;
+    color: var(--red);
+    line-height: 1.1;
+  }
+  .numlabel {
+    font-size: 0.78rem;
+    color: var(--muted);
+  }
+
+  .thanks {
+    color: var(--muted);
+    font-size: 0.95rem;
+  }
+
+  .cta-row {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    margin-top: 2.5rem;
+  }
+</style>
