@@ -77,7 +77,11 @@ import { InferenceUnavailableError } from "../inference/inference-client.service
 import { PrismaService } from "../prisma/prisma.service.js";
 import { RedisService } from "../redis/redis.service.js";
 import { AIPlayerFactory } from "./players/ai-player.factory.js";
-import { HeuristicPlayer } from "./players/heuristic-player.js";
+import {
+  HeuristicPlayer,
+  KREUZ_ANNOUNCE_PARAMS,
+  SOLO_ANNOUNCE_PARAMS,
+} from "./players/heuristic-player.js";
 import { RandomLegalMovePlayer } from "./players/random-player.js";
 
 const REDIS_STATE_TTL_SECONDS = 6 * 60 * 60; // 6h ohne Move → State läuft ab
@@ -1538,7 +1542,9 @@ export class GameService {
     // filtert Kandidaten nach allowedModes/allowSlalom. TRUMPF ist auf jeder
     // Stufe erlaubt → es gibt immer mindestens eine wählbare Ansage.
     const { allowedModes, allowSlalom } = announceConstraints(pending.announceLevel ?? "ALLES");
-    const heur = new HeuristicPlayer({ allowedModes, allowSlalom });
+    // Getunte Ansage-Parameter je Spielart (NN-Briefings v0.7.2 Kreuz / v0.8.2 Solo).
+    const tuned = pending.isSolo ? SOLO_ANNOUNCE_PARAMS : KREUZ_ANNOUNCE_PARAMS;
+    const heur = new HeuristicPlayer({ allowedModes, allowSlalom, ...tuned });
     const ann = heur.chooseAnnouncement(hand, canPush);
     if (ann === null) {
       // HeuristicPlayer wollte pushen; Partner muss dann entscheiden.

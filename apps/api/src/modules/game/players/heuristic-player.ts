@@ -102,11 +102,50 @@ export interface HeuristicOptions {
   slalomBaseFactor?: number;
   slalomConcentrationFactor?: number;
   slalomSpreadFactor?: number;
+  /**
+   * Familien-Multiplikatoren auf den Ansage-Score VOR dem argmax (Trumpf =
+   * Anker, immer 1.0). Per Win-Rate-Suche im NN-Repo getunt (Briefings
+   * v0.7.2/v0.8.2). Default 1 = neutral (kein Effekt). Wirkt nur auf die
+   * jeweiligen Kandidaten; Slalom rechnet bewusst mit den Roh-Scores.
+   */
+  gumpfScale?: number;
+  obenScale?: number;
+  untenScale?: number;
   /** Hausregel: erlaubte Modi für die Ansage. `undefined` = alle. */
   allowedModes?: ReadonlySet<PlayMode>;
   /** Wenn `false`, wird Slalom nicht in Betracht gezogen. */
   allowSlalom?: boolean;
 }
+
+/**
+ * Getunte Ansage-Parameter je Spielart (NN-Repo-Briefings v0.7.2 / v0.8.2,
+ * per Win-Rate-Suche optimiert). Werden in `game.service` an den
+ * `HeuristicPlayer` für die KI-Ansage übergeben.
+ *
+ * **Bodensee** hat hier bewusst keinen Eintrag: Die Bodensee-KI-Ansage ist
+ * ein eigener, simpler Trumpf-Picker (`bodensee-game.service`), kein Port
+ * dieser Heuristik — die Bodensee-Tuning-Werte aus dem Briefing v0.9.2 hätten
+ * dort keinen Angriffspunkt.
+ */
+export const KREUZ_ANNOUNCE_PARAMS: HeuristicOptions = {
+  pushThreshold: 64,
+  slalomBaseFactor: 0.9,
+  slalomConcentrationFactor: 2,
+  slalomSpreadFactor: 1,
+  gumpfScale: 1.15,
+  obenScale: 0.96,
+  untenScale: 1.08,
+};
+
+export const SOLO_ANNOUNCE_PARAMS: HeuristicOptions = {
+  // Im Solo-Jass gibt es kein Schieben → pushThreshold ist irrelevant.
+  slalomBaseFactor: 0.94,
+  slalomConcentrationFactor: 1,
+  slalomSpreadFactor: 1,
+  gumpfScale: 1.06,
+  obenScale: 0.91,
+  untenScale: 1.1,
+};
 
 interface AnnouncementWithScore {
   readonly announcement: Announcement;
@@ -118,6 +157,9 @@ export class HeuristicPlayer implements AIPlayer {
   private readonly slalomBaseFactor: number;
   private readonly slalomConcentrationFactor: number;
   private readonly slalomSpreadFactor: number;
+  private readonly gumpfScale: number;
+  private readonly obenScale: number;
+  private readonly untenScale: number;
   private readonly allowedModes: ReadonlySet<PlayMode> | undefined;
   private readonly allowSlalom: boolean;
 
@@ -126,6 +168,9 @@ export class HeuristicPlayer implements AIPlayer {
     this.slalomBaseFactor = opts.slalomBaseFactor ?? 0.95;
     this.slalomConcentrationFactor = opts.slalomConcentrationFactor ?? 2;
     this.slalomSpreadFactor = opts.slalomSpreadFactor ?? 1;
+    this.gumpfScale = opts.gumpfScale ?? 1;
+    this.obenScale = opts.obenScale ?? 1;
+    this.untenScale = opts.untenScale ?? 1;
     this.allowedModes = opts.allowedModes;
     this.allowSlalom = opts.allowSlalom ?? true;
   }
@@ -149,23 +194,26 @@ export class HeuristicPlayer implements AIPlayer {
       });
     }
 
-    // GUMPF × 4 Farben (gleiche Trumpf-Logik, aber Non-Trumpf wie Geiss)
+    // GUMPF × 4 Farben (gleiche Trumpf-Logik, aber Non-Trumpf wie Geiss).
+    // gumpfScale: getunter Familien-Multiplikator (Default 1 = neutral).
     for (const suit of SUITS) {
       candidates.push({
         announcement: { variant: { mode: "GUMPF", trump_suit: suit }, slalom: false },
-        score: this.scoreGumpf(hand, suit),
+        score: this.scoreGumpf(hand, suit) * this.gumpfScale,
       });
     }
 
+    // Roh-Scores: Slalom (unten) rechnet bewusst mit diesen, die Familien-
+    // Skalierung (oben/unten) wirkt nur auf die jeweiligen Kandidaten.
     const obenScore = this.scoreOben(hand);
     const untenScore = this.scoreUnten(hand);
     candidates.push({
       announcement: { variant: { mode: "OBEN" }, slalom: false },
-      score: obenScore,
+      score: obenScore * this.obenScale,
     });
     candidates.push({
       announcement: { variant: { mode: "UNTEN" }, slalom: false },
-      score: untenScore,
+      score: untenScore * this.untenScale,
     });
 
     // Slalom: Basis = stärkere Single-Variante × baseFactor; plus Bonus

@@ -13,17 +13,17 @@
     "repo": "matthili/jass-neuronales-netz",
     "models": {
       "kreuz": {
-        "version": "v0.7.1",
+        "version": "v0.7.2",
         "encodingVersion": "3.0.0",
         "specVersion": "1.2.0"
       },
       "solo": {
-        "version": "v0.8.1",
+        "version": "v0.8.2",
         "encodingVersion": "3.0.0",
         "specVersion": "1.2.0"
       },
       "bodensee": {
-        "version": "v0.9.1",
+        "version": "v0.9.2",
         "encodingVersion": "bodensee_1.0.0",
         "specVersion": "1.2.0"
       }
