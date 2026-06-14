@@ -17,6 +17,7 @@ import { randomBytes } from "node:crypto";
 import type { Prisma } from "@prisma/client";
 
 import {
+  announceConstraints,
   applyBodenseeMove,
   bodenseeEncoderInput,
   bodenseeHandOf,
@@ -50,8 +51,12 @@ import {
 } from "../inference/inference-client.service.js";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { RedisService } from "../redis/redis.service.js";
+import { BodenseeHeuristicPlayer } from "./players/bodensee-heuristic-player.js";
 
 const REDIS_TTL_SECONDS = 6 * 60 * 60;
+
+/** Zustandsloser Heuristik-Player (deterministisch) — Ansage + leichte Karten-KI. */
+const BODENSEE_HEURISTIC = new BodenseeHeuristicPlayer();
 
 function bstateKey(gameId: string): string {
   return `game:${gameId}:bstate`;
@@ -507,27 +512,26 @@ export class BodenseeGameService {
     return ai ? { kind: "move", seat: turn, aiSeatType: ai } : null;
   }
 
-  /** KI-Ansage: einfache Heuristik — Trumpf in der stärksten eigenen Farbe. */
+  /**
+   * KI-Ansage über die Bodensee-Heuristik (Pool = Hand + sichtbarer Tisch),
+   * gebunden an die Erlaubte-Ansagen-Stufe des Tisches. Nutzen ALLE KI-Typen
+   * (auch NN — das NN-Modell entscheidet nur Karten, nicht die Ansage).
+   */
   async aiChooseAnnouncement(gameId: string, seat: number): Promise<Announcement> {
     const pending = await this.loadPending(gameId);
     if (!pending) throw new BadRequestException("Kein Ansage-Modus.");
     const pool = [...(pending.hands[seat] ?? []), ...visibleTableCards(pending.tables[seat] ?? [])];
-    // Häufigste Farbe im Pool als Trumpf.
-    const bySuit = new Map<Suit, number>();
-    for (const c of pool) bySuit.set(c.suit, (bySuit.get(c.suit) ?? 0) + 1);
-    let best: Suit = "EICHEL";
-    let bestN = -1;
-    for (const [s, n] of bySuit) {
-      if (n > bestN) {
-        bestN = n;
-        best = s;
-      }
-    }
-    return { variant: { mode: "TRUMPF", trump_suit: best }, slalom: false };
+    const constraints = announceConstraints(pending.announceLevel ?? "ALLES");
+    return BODENSEE_HEURISTIC.chooseAnnouncement(pool, constraints);
   }
 
-  /** KI-Move via Inferenz-Service; bei Ausfall Fallback auf zufällig-legal. */
-  async aiChooseMove(gameId: string, seat: number): Promise<Card> {
+  /**
+   * KI-Move je nach Sitz-Typ:
+   *   - `heuristic` → Bodensee-Heuristik (leichterer Gegner, ohne NN),
+   *   - `random`    → zufällig-legal,
+   *   - sonst (`nn` / `nn-*`) → Inferenz-Service, bei Ausfall Fallback zufällig.
+   */
+  async aiChooseMove(gameId: string, seat: number, aiSeatType: string): Promise<Card> {
     const state = await this.loadState(gameId);
     const encInput = bodenseeEncoderInput(state, seat);
     const mask = legalActionMaskBodensee(encInput);
@@ -540,6 +544,15 @@ export class BodenseeGameService {
     if (legalCards.length === 0) {
       throw new Error("aiChooseMove: keine legale Karte gefunden.");
     }
+
+    // Leichtere Gegner: Sitz-Typ ehren, ohne das NN zu fragen.
+    if (aiSeatType === "random") {
+      return legalCards[Math.floor(Math.random() * legalCards.length)] as Card;
+    }
+    if (aiSeatType === "heuristic") {
+      return BODENSEE_HEURISTIC.chooseCard(legalCards, state.current_trick_cards, state.variant);
+    }
+
     try {
       const vec = encodeBodenseeState(encInput);
       const res = await this.inference.predict({

@@ -32,7 +32,9 @@
 import {
   cardStrength,
   cardValue,
+  inferForbiddenCards,
   legalMoves,
+  seatIsVoidInTrump,
   type Announcement,
   type Card,
   type GameState,
@@ -47,7 +49,7 @@ import type { AIPlayer } from "./random-player.js";
 
 // ─── Score-Tabellen (1:1 aus heuristic_player.py) ───────────────────────
 
-const TRUMP_HAND_VALUES: Readonly<Record<Rank, number>> = {
+export const TRUMP_HAND_VALUES: Readonly<Record<Rank, number>> = {
   UNTER: 25, // Buur
   NEUN: 18, // Nell
   ASS: 12,
@@ -59,14 +61,14 @@ const TRUMP_HAND_VALUES: Readonly<Record<Rank, number>> = {
   SECHS: 1,
 };
 
-const NON_TRUMP_HAND_VALUES: Partial<Record<Rank, number>> = {
+export const NON_TRUMP_HAND_VALUES: Partial<Record<Rank, number>> = {
   ASS: 9,
   ZEHN: 5,
   KOENIG: 3,
   OBER: 1,
 };
 
-const OBEN_HAND_VALUES: Partial<Record<Rank, number>> = {
+export const OBEN_HAND_VALUES: Partial<Record<Rank, number>> = {
   ASS: 13,
   KOENIG: 8,
   ZEHN: 7,
@@ -76,7 +78,7 @@ const OBEN_HAND_VALUES: Partial<Record<Rank, number>> = {
   NEUN: 1,
 };
 
-const UNTEN_HAND_VALUES: Partial<Record<Rank, number>> = {
+export const UNTEN_HAND_VALUES: Partial<Record<Rank, number>> = {
   SECHS: 13,
   SIEBEN: 9,
   ACHT: 8, // stark UND 8 Punkte
@@ -84,7 +86,7 @@ const UNTEN_HAND_VALUES: Partial<Record<Rank, number>> = {
   ZEHN: 2,
 };
 
-const GUMPF_NON_TRUMP_VALUES: Partial<Record<Rank, number>> = {
+export const GUMPF_NON_TRUMP_VALUES: Partial<Record<Rank, number>> = {
   SECHS: 6,
   SIEBEN: 4,
   ACHT: 4,
@@ -115,6 +117,13 @@ export interface HeuristicOptions {
   allowedModes?: ReadonlySet<PlayMode>;
   /** Wenn `false`, wird Slalom nicht in Betracht gezogen. */
   allowSlalom?: boolean;
+  /**
+   * Trumpf-Disziplin beim Anspielen: Sind beim Lead in TRUMPF/GUMPF beide
+   * Gegner beweisbar trumpffrei (Buur ignoriert), keine hohen Trümpfe mehr
+   * ziehen — man zöge sonst nur dem Partner die Trümpfe. Default `true`.
+   * (NN-Briefing v0.7.2/v0.8.2, Punkt 2b.)
+   */
+  trumpVoidAwareness?: boolean;
 }
 
 /**
@@ -162,6 +171,7 @@ export class HeuristicPlayer implements AIPlayer {
   private readonly untenScale: number;
   private readonly allowedModes: ReadonlySet<PlayMode> | undefined;
   private readonly allowSlalom: boolean;
+  private readonly trumpVoidAwareness: boolean;
 
   constructor(opts: HeuristicOptions = {}) {
     this.pushThreshold = opts.pushThreshold ?? 55;
@@ -173,6 +183,7 @@ export class HeuristicPlayer implements AIPlayer {
     this.untenScale = opts.untenScale ?? 1;
     this.allowedModes = opts.allowedModes;
     this.allowSlalom = opts.allowSlalom ?? true;
+    this.trumpVoidAwareness = opts.trumpVoidAwareness ?? true;
   }
 
   // ─── Ansage ────────────────────────────────────────────────────────
@@ -400,14 +411,38 @@ export class HeuristicPlayer implements AIPlayer {
     ]);
   }
 
+  /**
+   * True, wenn ALLE Gegner beweisbar trumpffrei sind (Buur ignoriert) — dann
+   * bringt Trumpf-Ziehen nichts, man zöge nur dem Partner die Trümpfe. Leitet
+   * die Voids aus der Stichhistorie (`completed_tricks`) ab.
+   */
+  private opponentsVoidInTrump(state: GameState, trumpf: Suit): boolean {
+    if (!this.trumpVoidAwareness) return false;
+    const forbidden = inferForbiddenCards(state.completed_tricks, trumpf, state.num_players);
+    const myTeam = state.teams[state.player_idx];
+    const opponents: number[] = [];
+    for (let s = 0; s < state.num_players; s++) {
+      if (state.teams[s] !== myTeam) opponents.push(s);
+    }
+    if (opponents.length === 0) return false;
+    return opponents.every((s) =>
+      seatIsVoidInTrump(forbidden.get(s) ?? new Set<string>(), trumpf)
+    );
+  }
+
   private chooseOpening(legal: readonly Card[], state: GameState): Card {
     const variant: Variant = state.variant;
     if (variant.mode === "TRUMPF") {
       const trumpf = variant.trump_suit!;
-      // Hohe Trümpfe ziehen
-      for (const rank of ["UNTER", "NEUN", "ASS"] as const) {
-        const found = legal.find((c) => c.suit === trumpf && c.rank === rank);
-        if (found) return found;
+      // Hohe Trümpfe ziehen — aber nur, solange die Gegner überhaupt noch
+      // Trumpf haben können. Sind beide blank, spielt man hohe Seitenkarten an
+      // und behält die Trümpfe als sichere Sticher (sonst zieht man im Team nur
+      // sich selbst die Trümpfe aus der Hand).
+      if (!this.opponentsVoidInTrump(state, trumpf)) {
+        for (const rank of ["UNTER", "NEUN", "ASS"] as const) {
+          const found = legal.find((c) => c.suit === trumpf && c.rank === rank);
+          if (found) return found;
+        }
       }
       // Asse nicht-trumpf
       const nonTrumpAce = legal.find((c) => c.suit !== trumpf && c.rank === "ASS");
@@ -421,9 +456,13 @@ export class HeuristicPlayer implements AIPlayer {
 
     if (variant.mode === "GUMPF") {
       const trumpf = variant.trump_suit!;
-      for (const rank of ["UNTER", "NEUN", "ASS"] as const) {
-        const found = legal.find((c) => c.suit === trumpf && c.rank === rank);
-        if (found) return found;
+      // Trumpf-Disziplin wie bei TRUMPF: keine hohen Trümpfe ziehen, wenn die
+      // Gegner schon trumpffrei sind.
+      if (!this.opponentsVoidInTrump(state, trumpf)) {
+        for (const rank of ["UNTER", "NEUN", "ASS"] as const) {
+          const found = legal.find((c) => c.suit === trumpf && c.rank === rank);
+          if (found) return found;
+        }
       }
       // In Nicht-Trumpf-Farben: 6er sind die sicheren Sticher (Geiss-Logik).
       const nonTrumpSix = legal.find((c) => c.suit !== trumpf && c.rank === "SECHS");
@@ -486,7 +525,7 @@ function compareTuple(a: number | number[], b: number | number[]): number {
   return aa.length - bb.length;
 }
 
-function minBy<T>(items: readonly T[], key: (x: T) => number | number[]): T {
+export function minBy<T>(items: readonly T[], key: (x: T) => number | number[]): T {
   let best = items[0]!;
   let bestKey = key(best);
   for (let i = 1; i < items.length; i++) {
@@ -499,7 +538,7 @@ function minBy<T>(items: readonly T[], key: (x: T) => number | number[]): T {
   return best;
 }
 
-function maxBy<T>(items: readonly T[], key: (x: T) => number | number[]): T {
+export function maxBy<T>(items: readonly T[], key: (x: T) => number | number[]): T {
   let best = items[0]!;
   let bestKey = key(best);
   for (let i = 1; i < items.length; i++) {

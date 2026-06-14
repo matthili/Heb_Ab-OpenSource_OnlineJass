@@ -1010,7 +1010,7 @@ export class GameGateway
         continue;
       }
 
-      const card = await this.bodenseeGames.aiChooseMove(gameId, action.seat);
+      const card = await this.bodenseeGames.aiChooseMove(gameId, action.seat, action.aiSeatType);
       const { view } = await this.bodenseeGames.playMoveAsSeat(gameId, action.seat, card);
       await this.broadcastBodenseeState(gameId);
       if (view.status === "finished") {
