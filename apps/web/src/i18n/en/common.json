@@ -460,6 +460,12 @@
       "confirmInGame": "Leave anyway (AI takes over)",
       "confirmWaiting": "Leave table"
     },
+    "dissolve": {
+      "confirmTitle": "Dissolve table?",
+      "confirmBody": "The table will be closed <strong>for everyone</strong> and disappear from the lobby. This cannot be undone.",
+      "confirm": "Dissolve table",
+      "dissolving": "Dissolving…"
+    },
     "openTable": {
       "title": "Open a new table",
       "subtitle": "Set the join rules, opponents and target score.",
@@ -603,6 +609,7 @@
       "startingMatch": "Starting …",
       "newMatch": "Start a new match",
       "leaveTable": "Leave table",
+      "dissolveTable": "Dissolve table",
       "requests": "Requests ({{count}})",
       "approve": "Accept",
       "deny": "Decline",

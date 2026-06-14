@@ -460,6 +460,12 @@
       "confirmInGame": "Trotzdem aussteigen (KI übernimmt)",
       "confirmWaiting": "Tisch verlassen"
     },
+    "dissolve": {
+      "confirmTitle": "Tisch auflösen?",
+      "confirmBody": "Der Tisch wird <strong>für alle</strong> geschlossen und verschwindet aus der Lobby. Das lässt sich nicht rückgängig machen.",
+      "confirm": "Tisch auflösen",
+      "dissolving": "Löse auf…"
+    },
     "openTable": {
       "title": "Neuen Tisch öffnen",
       "subtitle": "Lege Beitritts-Regeln, Gegner und Punkteziel fest.",
@@ -603,6 +609,7 @@
       "startingMatch": "Starte …",
       "newMatch": "Neue Partie starten",
       "leaveTable": "Tisch verlassen",
+      "dissolveTable": "Tisch auflösen",
       "requests": "Anfragen ({{count}})",
       "approve": "Annehmen",
       "deny": "Ablehnen",

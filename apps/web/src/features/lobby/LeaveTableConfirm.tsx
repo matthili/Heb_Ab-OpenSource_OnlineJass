@@ -24,9 +24,18 @@ interface Props {
   pending: boolean;
   onCancel: () => void;
   onConfirm: () => void;
+  /** Owner-Variante „Tisch auflösen" (schließt für alle) statt „verlassen". */
+  dissolve?: boolean;
 }
 
-export function LeaveTableConfirm({ open, tableStatus, pending, onCancel, onConfirm }: Props) {
+export function LeaveTableConfirm({
+  open,
+  tableStatus,
+  pending,
+  onCancel,
+  onConfirm,
+  dissolve = false,
+}: Props) {
   const { t } = useTranslation();
   const ref = useRef<HTMLDialogElement>(null);
 
@@ -46,9 +55,15 @@ export function LeaveTableConfirm({ open, tableStatus, pending, onCancel, onConf
       className="rounded-lg p-0 backdrop:bg-black/40 w-full max-w-md bg-jass-paper text-jass-ink"
     >
       <div className="p-6 space-y-4">
-        <h2 className="text-xl font-bold text-jass-ink">{t("lobby.leave.confirmTitle")}</h2>
+        <h2 className="text-xl font-bold text-jass-ink">
+          {dissolve ? t("lobby.dissolve.confirmTitle") : t("lobby.leave.confirmTitle")}
+        </h2>
 
-        {isInGame ? (
+        {dissolve ? (
+          <p className="text-sm text-rose-900">
+            <Trans i18nKey="lobby.dissolve.confirmBody" components={{ strong: <strong /> }} />
+          </p>
+        ) : isInGame ? (
           <>
             <p className="text-sm text-jass-inkSoft">
               <Trans i18nKey="lobby.leave.inGameIntro" components={{ strong: <strong /> }} />
@@ -82,10 +97,14 @@ export function LeaveTableConfirm({ open, tableStatus, pending, onCancel, onConf
             className="rounded bg-jass-red px-4 py-2 text-jass-cream hover:bg-jass-redDark disabled:opacity-50"
           >
             {pending
-              ? t("lobby.leave.leaving")
-              : isInGame
-                ? t("lobby.leave.confirmInGame")
-                : t("lobby.leave.confirmWaiting")}
+              ? dissolve
+                ? t("lobby.dissolve.dissolving")
+                : t("lobby.leave.leaving")
+              : dissolve
+                ? t("lobby.dissolve.confirm")
+                : isInGame
+                  ? t("lobby.leave.confirmInGame")
+                  : t("lobby.leave.confirmWaiting")}
           </button>
         </div>
       </div>

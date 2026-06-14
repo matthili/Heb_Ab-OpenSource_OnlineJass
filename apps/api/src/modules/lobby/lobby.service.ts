@@ -960,7 +960,17 @@ export class LobbyService {
       let tableClosed = false;
       if (remainingHumanCount === 0) {
         if (tablePre.status === LobbyTableStatus.IN_GAME) {
-          await this.games.driveAIsToEnd(tablePre.currentGameId);
+          // Robust: ein Fehler beim KI-Fertigspielen darf das Schließen NICHT
+          // verhindern — sonst bleibt der Tisch als Waise (Owner nicht gesetzt,
+          // nur KI) zurück, den niemand mehr schließen kann.
+          try {
+            await this.games.driveAIsToEnd(tablePre.currentGameId);
+          } catch (err) {
+            this.log.warn(
+              { tableId, gameId: tablePre.currentGameId, err },
+              "driveAIsToEnd fehlgeschlagen — schließe Tisch trotzdem"
+            );
+          }
         }
         await this.prisma.lobbyTable.update({
           where: { id: tableId },
@@ -1106,6 +1116,71 @@ export class LobbyService {
       await this.pushTableState(tableId);
     }
     return result;
+  }
+
+  /**
+   * **Owner löst seinen Tisch auf** — schließt ihn für alle, UNABHÄNGIG davon,
+   * ob der Owner gerade sitzt, und in jedem nicht-geschlossenen Zustand.
+   *
+   * Behebt den verwaisten Tisch („Owner nicht gesetzt, nur KI"): `leaveTable`
+   * verlangt einen Sitz (`Du sitzt nicht an diesem Tisch.`) und greift dort
+   * nicht. Owner-only.
+   *
+   * Bewusst KEIN `driveAIsToEnd`: ein evtl. laufendes Spiel wird einfach
+   * abgebrochen (der Tisch ist CLOSED → keine neuen KI-Trigger). Das hält die
+   * Methode variantensicher (Kreuz/Solo/Bodensee) und robust.
+   */
+  async closeTableAsOwner(tableId: string, userId: string): Promise<{ tableClosed: boolean }> {
+    const table = await this.prisma.lobbyTable.findUnique({
+      where: { id: tableId },
+      select: { status: true, ownerId: true },
+    });
+    if (!table) throw new NotFoundException(`Tisch ${tableId} nicht gefunden`);
+    if (table.ownerId !== userId) {
+      throw new ForbiddenException("Nur der Tisch-Owner kann den Tisch auflösen.");
+    }
+    if (table.status === LobbyTableStatus.CLOSED) {
+      return { tableClosed: true }; // idempotent — schon zu, Wunsch erfüllt
+    }
+
+    const pendingRequesters = await this.prisma.gameJoinRequest.findMany({
+      where: { tableId, status: JoinRequestStatus.PENDING },
+      select: { userId: true },
+    });
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.lobbyTable.update({
+        where: { id: tableId },
+        data: { status: LobbyTableStatus.CLOSED, closedAt: new Date() },
+      });
+      await tx.gameJoinRequest.updateMany({
+        where: { tableId, status: JoinRequestStatus.PENDING },
+        data: { status: JoinRequestStatus.CANCELLED, decidedAt: new Date() },
+      });
+      await tx.tableInvite.updateMany({
+        where: { tableId, status: InviteStatus.PENDING },
+        data: { status: InviteStatus.EXPIRED, respondedAt: new Date() },
+      });
+    });
+    await this.audit.record({
+      action: "lobby.table.dissolve",
+      actorId: userId,
+      target: tableId,
+      meta: { reason: "owner-dissolve", previousStatus: table.status },
+    });
+
+    // Pushes wie beim Schließen via leaveTable (Fall C).
+    this.gateway.broadcastTableClosed(tableId);
+    this.gateway.broadcastLobbyListUpdate("table-closed", tableId);
+    for (const req of pendingRequesters) {
+      this.gateway.pushToUser(req.userId, "lobby:request-decided", {
+        tableId,
+        approved: false,
+        reason: "table-closed",
+      });
+    }
+    await this.pushTableState(tableId);
+    return { tableClosed: true };
   }
 
   // ───────────────────────────────────────────────────────────────────

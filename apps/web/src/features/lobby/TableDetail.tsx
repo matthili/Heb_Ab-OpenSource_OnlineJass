@@ -328,6 +328,7 @@ function OwnerPanel(props: { table: TableDetailView; queryKey: readonly unknown[
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [confirmLeave, setConfirmLeave] = useState(false);
+  const [confirmDissolve, setConfirmDissolve] = useState(false);
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey });
 
@@ -368,6 +369,30 @@ function OwnerPanel(props: { table: TableDetailView; queryKey: readonly unknown[
       }
       // eslint-disable-next-line no-console
       console.error("Leave-Table-Fehler:", err);
+    },
+  });
+  // Owner löst den Tisch auf — schließt ihn für alle, auch wenn der Owner nicht
+  // (mehr) sitzt. Behebt verwaiste Tische, bei denen „Verlassen" nicht greift.
+  const closeMut = useMutation({
+    mutationFn: () =>
+      api<{ tableClosed: boolean }>(`/api/lobby/tables/${table.id}/close`, { method: "POST" }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["lobby", "my-tables"] });
+      queryClient.invalidateQueries({ queryKey: ["lobby", "list"] });
+      setConfirmDissolve(false);
+      void navigate({ to: "/lobby" });
+    },
+    onError: (err: unknown) => {
+      // 404/409 → Tisch existiert nicht mehr / ist schon zu → Wunsch erfüllt.
+      if (err instanceof ApiError && (err.status === 404 || err.status === 409)) {
+        queryClient.invalidateQueries({ queryKey: ["lobby", "my-tables"] });
+        queryClient.invalidateQueries({ queryKey: ["lobby", "list"] });
+        setConfirmDissolve(false);
+        void navigate({ to: "/lobby" });
+        return;
+      }
+      // eslint-disable-next-line no-console
+      console.error("Tisch-auflösen-Fehler:", err);
     },
   });
   const approveMut = useMutation({
@@ -420,6 +445,14 @@ function OwnerPanel(props: { table: TableDetailView; queryKey: readonly unknown[
         >
           {t("lobby.tableDetail.leaveTable")}
         </button>
+        <button
+          type="button"
+          onClick={() => setConfirmDissolve(true)}
+          disabled={closeMut.isPending}
+          className="rounded border border-jass-red px-4 py-2 text-jass-red hover:bg-jass-red/10 disabled:opacity-50"
+        >
+          {t("lobby.tableDetail.dissolveTable")}
+        </button>
       </div>
       <LeaveTableConfirm
         open={confirmLeave}
@@ -427,6 +460,14 @@ function OwnerPanel(props: { table: TableDetailView; queryKey: readonly unknown[
         pending={leaveMut.isPending}
         onCancel={() => setConfirmLeave(false)}
         onConfirm={() => leaveMut.mutate()}
+      />
+      <LeaveTableConfirm
+        open={confirmDissolve}
+        tableStatus={table.status}
+        pending={closeMut.isPending}
+        dissolve
+        onCancel={() => setConfirmDissolve(false)}
+        onConfirm={() => closeMut.mutate()}
       />
       {startError && (
         <p role="alert" className="text-sm text-rose-700">

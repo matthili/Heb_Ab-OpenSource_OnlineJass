@@ -189,6 +189,18 @@ export class LobbyController {
   }
 
   /**
+   * Owner löst den Tisch auf — schließt ihn für alle, auch wenn der Owner
+   * nicht (mehr) sitzt. Behebt verwaiste Tische, die `leave` nicht greift.
+   */
+  @Post("tables/:id/close")
+  async close(
+    @Req() req: FastifyRequest,
+    @Param("id") tableId: string
+  ): Promise<{ tableClosed: boolean }> {
+    return this.lobby.closeTableAsOwner(tableId, req.user!.id);
+  }
+
+  /**
    * Owner startet das Spiel manuell — überspringt den Auto-Fill-Timer.
    * Wenn der Tisch noch leere Sitze hat, werden sie mit dem Tisch-
    * Default-KI-Typ gefüllt, dann startet das Game.
