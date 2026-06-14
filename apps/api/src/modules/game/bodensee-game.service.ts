@@ -72,6 +72,8 @@ interface BodenseePending {
   announcerIdx: number;
   /** Erlaubte-Ansagen-Stufe (optional → alte Pending-Objekte = ALLES). */
   announceLevel?: AnnounceLevel;
+  /** Tisch-Option „Sack" (optional → alte Pending-Objekte = aus). */
+  sackRule?: boolean;
 }
 
 /** Sitz-Zuordnung für ein Bodensee-Game (genau 2). */
@@ -182,17 +184,17 @@ export class BodenseeGameService {
     // der Caller den (alternierenden) Ansager explizit.
     const announcerIdx = input.announcerSeat ?? findWeliHolderBodensee(hands, tables);
 
+    // Tisch-Regeln (Ansage-Stufe + Sack) einmal laden.
+    const tableRules = input.tableId
+      ? await this.prisma.lobbyTable.findUnique({
+          where: { id: input.tableId },
+          select: { announceLevel: true, sackRule: true },
+        })
+      : null;
     // Erlaubte-Ansagen-Stufe: explizit > vom Tisch geladen > ALLES.
     const announceLevel: AnnounceLevel =
-      input.announceLevel ??
-      (input.tableId
-        ? ((
-            await this.prisma.lobbyTable.findUnique({
-              where: { id: input.tableId },
-              select: { announceLevel: true },
-            })
-          )?.announceLevel ?? "ALLES")
-        : "ALLES");
+      input.announceLevel ?? tableRules?.announceLevel ?? "ALLES";
+    const sackRule = tableRules?.sackRule ?? false;
 
     const game = await this.prisma.$transaction(async (tx) => {
       const created = await tx.game.create({
@@ -231,7 +233,7 @@ export class BodenseeGameService {
       return created;
     });
 
-    await this.writePending(game.id, { hands, tables, announcerIdx, announceLevel });
+    await this.writePending(game.id, { hands, tables, announcerIdx, announceLevel, sackRule });
     await this.audit.record({
       action: "bodensee.game.created",
       target: game.id,
@@ -269,6 +271,7 @@ export class BodenseeGameService {
       hands: pending.hands,
       tables: pending.tables,
       announcerIdx: pending.announcerIdx,
+      sackRule: pending.sackRule ?? false,
     });
     await this.prisma.roundDecision.update({
       where: { gameId_roundIdx: { gameId, roundIdx: 0 } },

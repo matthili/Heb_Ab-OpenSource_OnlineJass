@@ -10,7 +10,13 @@
 import { cardsEqual, isWeli } from "../cards.js";
 import { trickPoints, trickWinner } from "../rules.js";
 import { freshDeck, shuffleDeck, type RandomFn } from "../state.js";
-import { MATCH_BONUS, type Announcement, type Card, type Variant } from "../types.js";
+import {
+  MATCH_BONUS,
+  SACK_MIN_POINTS,
+  type Announcement,
+  type Card,
+  type Variant,
+} from "../types.js";
 import { cardSource, hiddenTableCount, legalMovesBodensee, visibleTableCards } from "./rules.js";
 import {
   BODENSEE_HAND_SIZE,
@@ -124,6 +130,8 @@ interface NewBodenseeRoundOptions {
   /** Wer spielt den ersten Stich an + hat angesagt (= WELI-Halter). */
   announcerIdx: number;
   roundIdx?: number;
+  /** Tisch-Option „Sack": < SACK_MIN_POINTS Kartenpunkte → nichts gewertet. */
+  sackRule?: boolean;
 }
 
 export function newBodenseeRound(opts: NewBodenseeRoundOptions): BodenseeRoundState {
@@ -141,6 +149,7 @@ export function newBodenseeRound(opts: NewBodenseeRoundOptions): BodenseeRoundSt
     announcer_idx: opts.announcerIdx,
     round_idx: roundIdx,
     trick_idx: 0,
+    sack_rule: opts.sackRule ?? false,
   };
 }
 
@@ -276,11 +285,24 @@ export function finalBodenseeScore(state: BodenseeRoundState): BodenseeRoundScor
       break;
     }
   }
-  const player_total_points = [...state.player_card_points];
-  if (matsch_player !== null) {
-    player_total_points[matsch_player] = (player_total_points[matsch_player] ?? 0) + MATCH_BONUS;
-  }
-  return { player_total_points, matsch_player, trick_winners: state.trick_winners };
+  // „Sack" (Tisch-Option): Spieler mit < SACK_MIN_POINTS Kartenpunkten bekommt
+  // GAR NICHTS gewertet (verfällt, kein Transfer). Pro Runde kann höchstens
+  // einer betroffen sein — die Gesamtpunkte (157) heben den anderen klar drüber.
+  const sackRule = state.sack_rule === true;
+  const voided: { player: number; cardPoints: number }[] = [];
+  const player_total_points = state.player_card_points.map((cardPts, p) => {
+    if (sackRule && cardPts < SACK_MIN_POINTS) {
+      voided.push({ player: p, cardPoints: cardPts });
+      return 0;
+    }
+    return p === matsch_player ? cardPts + MATCH_BONUS : cardPts;
+  });
+  return {
+    player_total_points,
+    matsch_player,
+    trick_winners: state.trick_winners,
+    ...(voided.length > 0 ? { voided } : {}),
+  };
 }
 
 // ──────────────────────────────────────────────────────────────────────

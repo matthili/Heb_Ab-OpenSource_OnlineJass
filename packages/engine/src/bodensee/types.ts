@@ -59,6 +59,9 @@ export interface BodenseeRoundState {
   readonly announcer_idx: number;
   readonly round_idx: number;
   readonly trick_idx: number; // 0..17
+  /** Tisch-Option „Sack": < SACK_MIN_POINTS Kartenpunkte → nichts gewertet.
+   *  (Alt-State ohne Feld = aus.) */
+  readonly sack_rule?: boolean;
 }
 
 /**
@@ -125,4 +128,9 @@ export interface BodenseeRoundScore {
   /** Spieler (0 | 1), der alle 18 Stiche gewann — sonst null. */
   readonly matsch_player: number | null;
   readonly trick_winners: readonly number[];
+  /**
+   * Spieler, deren Punkte durch „Sack" (< SACK_MIN_POINTS Kartenpunkte)
+   * verfallen sind — weggelassen, wenn keiner betroffen war.
+   */
+  readonly voided?: readonly { player: number; cardPoints: number }[];
 }
