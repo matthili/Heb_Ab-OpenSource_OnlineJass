@@ -593,6 +593,7 @@
       "scoreProgress": "Partie-Stand (Ziel: <strong>{{target}}</strong>)",
       "scoreResult": "Partie-Ergebnis",
       "scoreWinner": "{{name}} hat die Partie gewonnen!",
+      "sackedHint": "{{n}} Punkte im Sack",
       "teamLabel": "Sitz {{n}}",
       "team0": "Team 1 (Sitz 1 + 3)",
       "team1": "Team 2 (Sitz 2 + 4)",

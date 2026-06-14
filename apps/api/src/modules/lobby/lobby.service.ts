@@ -75,6 +75,11 @@ export interface TableListEntry {
    * Länge 2 bei Kreuz-Jass, 4 bei Solo-Jass (ein Konto pro Spieler).
    */
   cumulativeScores: readonly number[];
+  /**
+   * „Im Sack" verfallene Punkte je Konto, kumuliert über die Partie. Reine
+   * Info (zählen nie zur Wertung); parallel zu `cumulativeScores`.
+   */
+  sackedPoints: readonly number[];
   seatsTaken: number; // 1..4
   hasPendingRequest: boolean; // ist der Caller eingetragen?
   createdAt: Date;
@@ -302,6 +307,7 @@ export class LobbyService {
       restartMode: t.restartMode as "WELI" | "SIEGER_GIBT",
       targetScore: t.targetScore,
       cumulativeScores: buildCumulativeScores(t),
+      sackedPoints: buildSackedPoints(t),
       seatsTaken: t.seats.length,
       hasPendingRequest: t.joinRequests.length > 0,
       createdAt: t.createdAt,
@@ -346,6 +352,7 @@ export class LobbyService {
       restartMode: t.restartMode as "WELI" | "SIEGER_GIBT",
       targetScore: t.targetScore,
       cumulativeScores: buildCumulativeScores(t),
+      sackedPoints: buildSackedPoints(t),
       seatsTaken: t.seats.length,
       hasPendingRequest: t.joinRequests.length > 0,
       createdAt: t.createdAt,
@@ -412,6 +419,7 @@ export class LobbyService {
       restartMode: table.restartMode as "WELI" | "SIEGER_GIBT",
       targetScore: table.targetScore,
       cumulativeScores: buildCumulativeScores(table),
+      sackedPoints: buildSackedPoints(table),
       seatsTaken: table.seats.length,
       hasPendingRequest: callerHasPendingRequest > 0,
       createdAt: table.createdAt,
@@ -1833,6 +1841,26 @@ function buildCumulativeScores(t: {
     t.cumulativeScoreTeam1,
     t.cumulativeScoreTeam2,
     t.cumulativeScoreTeam3,
+  ];
+  return t.variant === "SOLO_4P" ? all : all.slice(0, 2);
+}
+
+/**
+ * Wie `buildCumulativeScores`, aber für die über die Partie „im Sack"
+ * verfallenen Punkte (reine Info-Anzeige, zählen nie zur Wertung).
+ */
+function buildSackedPoints(t: {
+  variant: string;
+  sackedPointsTeam0: number;
+  sackedPointsTeam1: number;
+  sackedPointsTeam2: number;
+  sackedPointsTeam3: number;
+}): number[] {
+  const all = [
+    t.sackedPointsTeam0,
+    t.sackedPointsTeam1,
+    t.sackedPointsTeam2,
+    t.sackedPointsTeam3,
   ];
   return t.variant === "SOLO_4P" ? all : all.slice(0, 2);
 }

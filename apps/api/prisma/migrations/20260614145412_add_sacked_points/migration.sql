@@ -1,0 +1,5 @@
+-- AlterTable
+ALTER TABLE "LobbyTable" ADD COLUMN     "sackedPointsTeam0" INTEGER NOT NULL DEFAULT 0,
+ADD COLUMN     "sackedPointsTeam1" INTEGER NOT NULL DEFAULT 0,
+ADD COLUMN     "sackedPointsTeam2" INTEGER NOT NULL DEFAULT 0,
+ADD COLUMN     "sackedPointsTeam3" INTEGER NOT NULL DEFAULT 0;

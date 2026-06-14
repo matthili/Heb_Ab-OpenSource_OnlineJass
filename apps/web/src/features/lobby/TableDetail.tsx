@@ -276,6 +276,7 @@ function CumulativeScoreBar({ table }: { table: TableDetailView }) {
           score={score}
           pct={Math.min(100, Math.round((score / target) * 100))}
           highlight={winner === i}
+          sacked={table.sackedPoints[i] ?? 0}
         />
       ))}
     </section>
@@ -287,18 +288,27 @@ function ScoreRow({
   score,
   pct,
   highlight,
+  sacked,
 }: {
   label: string;
   score: number;
   pct: number;
   highlight: boolean;
+  /** Über die Partie „im Sack" verfallene Punkte dieses Kontos (reine Info). */
+  sacked: number;
 }) {
+  const { t } = useTranslation();
   return (
     <div>
       <div className="flex justify-between text-sm">
         <span className="text-jass-ink">{label}</span>
         <span className={highlight ? "font-bold text-jass-yellowDark" : "text-jass-ink"}>
           {score}
+          {sacked > 0 && (
+            <span className="ml-1 text-xs font-normal text-jass-inkSoft">
+              ({t("lobby.tableDetail.sackedHint", { n: sacked })})
+            </span>
+          )}
         </span>
       </div>
       <div className="h-2 rounded-full bg-jass-cream overflow-hidden">

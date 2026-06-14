@@ -593,6 +593,7 @@
       "scoreProgress": "Match standing (target: <strong>{{target}}</strong>)",
       "scoreResult": "Match result",
       "scoreWinner": "{{name}} has won the match!",
+      "sackedHint": "{{n}} points in the sack",
       "teamLabel": "Seat {{n}}",
       "team0": "Team 1 (seats 1 + 3)",
       "team1": "Team 2 (seats 2 + 4)",

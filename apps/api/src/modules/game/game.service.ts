@@ -772,6 +772,12 @@ export class GameService {
         // schlicht +0. So zählt auch eine Solo-Partie für alle 4 Spieler
         // korrekt mit.
         const pts = score.team_card_points;
+        // „Im Sack" verfallene Kartenpunkte je Team mitführen (reine Info —
+        // zählen NIE zur Wertung; cumulativeScore* bleibt davon unberührt).
+        const sacked = [0, 0, 0, 0];
+        for (const v of score.voided ?? []) {
+          if (v.reason === "sack") sacked[v.team] = (sacked[v.team] ?? 0) + v.cardPoints;
+        }
         const tableAfter = await this.prisma.lobbyTable.update({
           where: { id: updated.tableId },
           data: {
@@ -779,6 +785,10 @@ export class GameService {
             cumulativeScoreTeam1: { increment: pts[1] ?? 0 },
             cumulativeScoreTeam2: { increment: pts[2] ?? 0 },
             cumulativeScoreTeam3: { increment: pts[3] ?? 0 },
+            sackedPointsTeam0: { increment: sacked[0] ?? 0 },
+            sackedPointsTeam1: { increment: sacked[1] ?? 0 },
+            sackedPointsTeam2: { increment: sacked[2] ?? 0 },
+            sackedPointsTeam3: { increment: sacked[3] ?? 0 },
           },
           select: {
             targetScore: true,

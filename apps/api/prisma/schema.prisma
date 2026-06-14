@@ -435,6 +435,14 @@ model LobbyTable {
   cumulativeScoreTeam2 Int @default(0)
   cumulativeScoreTeam3 Int @default(0)
 
+  // **„Im Sack" verfallene Punkte** (reine Info, kumuliert über die Partie).
+  // Zählen NIE zur Wertung — cumulativeScore* bleibt davon unberührt; nur zur
+  // Anzeige im Partie-Stand (… und zum Lästern). Index = Konto wie oben.
+  sackedPointsTeam0 Int @default(0)
+  sackedPointsTeam1 Int @default(0)
+  sackedPointsTeam2 Int @default(0)
+  sackedPointsTeam3 Int @default(0)
+
   status LobbyTableStatus @default(WAITING)
 
   // Aktuelles oder zuletzt-aktives Game am Tisch. In WAITING = null.

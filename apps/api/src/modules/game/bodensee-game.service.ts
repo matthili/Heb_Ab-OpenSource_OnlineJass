@@ -467,11 +467,19 @@ export class BodenseeGameService {
     if (updated.tableId) {
       const p0 = score.player_total_points[0] ?? 0;
       const p1 = score.player_total_points[1] ?? 0;
+      // „Im Sack" verfallene Kartenpunkte je Spieler mitführen (reine Info —
+      // zählen NIE zur Wertung; cumulativeScore* bleibt davon unberührt).
+      const sacked = [0, 0];
+      for (const v of score.voided ?? []) {
+        sacked[v.player] = (sacked[v.player] ?? 0) + v.cardPoints;
+      }
       const after = await this.prisma.lobbyTable.update({
         where: { id: updated.tableId },
         data: {
           cumulativeScoreTeam0: { increment: p0 },
           cumulativeScoreTeam1: { increment: p1 },
+          sackedPointsTeam0: { increment: sacked[0] ?? 0 },
+          sackedPointsTeam1: { increment: sacked[1] ?? 0 },
         },
         select: { targetScore: true, cumulativeScoreTeam0: true, cumulativeScoreTeam1: true },
       });

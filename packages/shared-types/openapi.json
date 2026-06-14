@@ -271,6 +271,28 @@
               "BODENSEE_2P"
             ]
           },
+          "announceLevel": {
+            "default": "ALLES",
+            "type": "string",
+            "enum": [
+              "TRUMPF",
+              "GEISS_BOCK",
+              "SLALOM",
+              "ALLES"
+            ]
+          },
+          "sackRule": {
+            "default": false,
+            "type": "boolean"
+          },
+          "weisNeedsTrick": {
+            "default": false,
+            "type": "boolean"
+          },
+          "cutEnabled": {
+            "default": true,
+            "type": "boolean"
+          },
           "aiSeatType": {
             "default": "heuristic",
             "type": "string",
@@ -535,6 +557,15 @@
               "maximum": 9007199254740991
             }
           },
+          "sackedPoints": {
+            "readOnly": true,
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            }
+          },
           "seatsTaken": {
             "type": "integer",
             "minimum": -9007199254740991,
@@ -559,6 +590,7 @@
           "restartMode",
           "targetScore",
           "cumulativeScores",
+          "sackedPoints",
           "seatsTaken",
           "hasPendingRequest",
           "createdAt"
@@ -631,6 +663,15 @@
             "maximum": 9007199254740991
           },
           "cumulativeScores": {
+            "readOnly": true,
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            }
+          },
+          "sackedPoints": {
             "readOnly": true,
             "type": "array",
             "items": {
@@ -763,6 +804,7 @@
           "restartMode",
           "targetScore",
           "cumulativeScores",
+          "sackedPoints",
           "seatsTaken",
           "hasPendingRequest",
           "createdAt",

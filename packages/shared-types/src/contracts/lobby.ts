@@ -210,6 +210,8 @@ export const TableListEntrySchema = z.object({
   restartMode: RestartModeSchema,
   targetScore: z.number().int(),
   cumulativeScores: z.array(z.number().int()).readonly(),
+  /** „Im Sack" verfallene Punkte je Konto (reine Info, zählen nie zur Wertung). */
+  sackedPoints: z.array(z.number().int()).readonly(),
   seatsTaken: z.number().int(),
   hasPendingRequest: z.boolean(),
   createdAt: z.string(), // ISO
