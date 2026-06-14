@@ -72,6 +72,13 @@ body {
    * horizontal, sobald ein vertikaler Scrollbalken auftaucht/verschwindet
    * (z.B. beim Turn-Wechsel, wenn der „Du bist dran"-Balken erscheint). */
   scrollbar-gutter: stable;
+  /* Scroll-Anchoring abschalten: sonst „hält" der Browser ein sichtbares
+   * Element fest und scrollt nach, wenn sich darüber etwas ändert (z.B. eine
+   * Karte wird für den Farbzwang angehoben oder der Stich wird aufgelöst) →
+   * genau das beobachtete Rest-Hüpfen. Am Scroll-Container (body) gesetzt deckt
+   * es ALLE Kind-Elemente ab — anders als `overflow-anchor` auf einem einzelnen
+   * <section>, das nur das Element selbst, nicht seine Kinder, ausschließt. */
+  overflow-anchor: none;
   background-color: var(--jass-bg);
   background-image:
     radial-gradient(

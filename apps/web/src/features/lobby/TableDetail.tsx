@@ -109,10 +109,9 @@ export function TableDetail({ tableId }: Props) {
     (data.status === "IN_GAME" || data.status === "POST_GAME" || data.status === "MATCH_OVER");
 
   return (
-    // `overflow-anchor:none`: schaltet das Browser-Scroll-Anchoring für den
-    // Tisch-Bereich ab. Sonst „hält" der Browser ein sichtbares Element fest
-    // und scrollt nach, wenn sich darüber etwas ändert → das beobachtete Hüpfen.
-    <section className="space-y-6 [overflow-anchor:none]">
+    // Scroll-Anchoring ist global am body abgeschaltet (siehe styles.css) —
+    // das deckt diesen Tisch-Bereich samt aller Kind-Elemente ab.
+    <section className="space-y-6">
       <header className="space-y-1">
         <div className="flex items-center gap-3">
           <h1 className="text-2xl font-bold">
