@@ -1021,6 +1021,10 @@
       "reports": {
         "title": "Reports",
         "desc": "Review and resolve reported users."
+      },
+      "tables": {
+        "title": "Tables",
+        "desc": "Review active tables and dissolve them (moderation / cleanup)."
       }
     },
     "reports": {
@@ -1034,6 +1038,15 @@
       "reportedBy": "reported by",
       "empty": "No reports.",
       "loading": "Loading …"
+    },
+    "tables": {
+      "intro": "Active tables on the server. Orphaned ones (owner not seated) are flagged.",
+      "loading": "Loading tables …",
+      "empty": "No active tables right now.",
+      "orphan": "orphaned",
+      "owner": "Owner:",
+      "seats": "{{humans}} human(s), {{ai}} AI",
+      "close": "Dissolve table"
     },
     "audit": {
       "prefixPlaceholder": "Action prefix, e.g. auth. or admin.blocklist.",

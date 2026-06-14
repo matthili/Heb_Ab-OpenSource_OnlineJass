@@ -1021,6 +1021,10 @@
       "reports": {
         "title": "Meldungen",
         "desc": "Gemeldete User prüfen und bearbeiten."
+      },
+      "tables": {
+        "title": "Tische",
+        "desc": "Aktive Tische einsehen und auflösen (Moderation / Aufräumen)."
       }
     },
     "reports": {
@@ -1034,6 +1038,15 @@
       "reportedBy": "gemeldet von",
       "empty": "Keine Meldungen.",
       "loading": "Lade …"
+    },
+    "tables": {
+      "intro": "Aktive Tische am Server. Verwaiste (Owner nicht gesetzt) sind markiert.",
+      "loading": "Lade Tische …",
+      "empty": "Aktuell keine aktiven Tische.",
+      "orphan": "verwaist",
+      "owner": "Owner:",
+      "seats": "{{humans}} Mensch(en), {{ai}} KI",
+      "close": "Tisch auflösen"
     },
     "audit": {
       "prefixPlaceholder": "Action-Prefix, z.B. auth. oder admin.blocklist.",

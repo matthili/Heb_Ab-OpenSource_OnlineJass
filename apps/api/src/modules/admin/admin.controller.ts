@@ -26,6 +26,7 @@ import { SessionGuard } from "../../common/guards/session.guard.js";
 import { ZodValidationPipe } from "../../common/pipes/zod.pipe.js";
 import { BannedWordsService, type BannedWordView } from "../chat/banned-words.service.js";
 import { LobbySettingsService, type LobbySettings } from "../lobby/lobby-settings.service.js";
+import { LobbyService, type AdminTableView } from "../lobby/lobby.service.js";
 import {
   ListReportsQuerySchema,
   SetReportStatusDtoSchema,
@@ -68,7 +69,8 @@ export class AdminController {
     private readonly admin: AdminService,
     private readonly bannedWords: BannedWordsService,
     private readonly lobbySettings: LobbySettingsService,
-    private readonly reports: ReportsService
+    private readonly reports: ReportsService,
+    private readonly lobby: LobbyService
   ) {}
 
   // ─── Meldungen (Reports) ───────────────────────────────────────────
@@ -175,6 +177,24 @@ export class AdminController {
   ): Promise<LobbySettings> {
     await this.lobbySettings.update(req.user!.id, dto);
     return this.lobbySettings.getAll();
+  }
+
+  // ─── Tische (Moderation / Aufräumen) ───────────────────────────────
+
+  /** Alle aktiven (nicht geschlossenen) Tische — für die Admin-Übersicht. */
+  @Get("tables")
+  async listTables(): Promise<{ tables: AdminTableView[] }> {
+    const tables = await this.lobby.listActiveTablesForAdmin();
+    return { tables };
+  }
+
+  /** Admin löst einen beliebigen Tisch auf (Override). */
+  @Post("tables/:id/close")
+  async closeTable(
+    @Req() req: FastifyRequest,
+    @Param("id") tableId: string
+  ): Promise<{ tableClosed: boolean }> {
+    return this.lobby.closeTableAsAdmin(req.user!.id, tableId);
   }
 
   // ─── User-Mgmt ─────────────────────────────────────────────────────

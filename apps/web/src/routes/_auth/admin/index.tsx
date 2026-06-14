@@ -62,6 +62,13 @@ function AdminDashboard() {
           <strong>{t("admin.index.reports.title")}</strong>
           <p className="text-sm text-stone-500">{t("admin.index.reports.desc")}</p>
         </Link>
+        <Link
+          to="/admin/tables"
+          className="block rounded border border-stone-200 px-4 py-3 hover:bg-stone-50"
+        >
+          <strong>{t("admin.index.tables.title")}</strong>
+          <p className="text-sm text-stone-500">{t("admin.index.tables.desc")}</p>
+        </Link>
       </ul>
     </section>
   );

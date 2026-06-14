@@ -94,6 +94,21 @@ export interface TableDetailView extends TableListEntry {
   invites?: { id: string; inviteeUserId: string; inviteeName: string; createdAt: Date }[];
 }
 
+/** Ein aktiver Tisch in der Admin-Übersicht (Moderation / Aufräumen). */
+export interface AdminTableView {
+  id: string;
+  ownerId: string;
+  ownerName: string;
+  status: LobbyTableStatus;
+  variant: string;
+  createdAt: string; // ISO
+  humanCount: number;
+  aiCount: number;
+  humanNames: string[];
+  /** Sitzt der Owner selbst? Wenn nein = „hängengebliebener"/verwaister Tisch. */
+  ownerSeated: boolean;
+}
+
 /** Offene Einladung AN den eingeloggten User — für die bleibende Lobby-Liste
  *  „Du wurdest eingeladen" (Empfänger-Sicht, anders als die Owner-Invites oben). */
 export interface IncomingInviteView {
@@ -1155,11 +1170,76 @@ export class LobbyService {
       );
     }
 
+    await this.audit.record({
+      action: "lobby.table.dissolve",
+      actorId: userId,
+      target: tableId,
+      meta: { reason: "owner-dissolve", previousStatus: table.status },
+    });
+    await this.dissolveTableCore(tableId);
+    return { tableClosed: true };
+  }
+
+  /**
+   * **Admin** löst EINEN beliebigen Tisch auf — Override ohne Owner-/Mitspieler-
+   * Check (Moderation / globales Aufräumen). Für die Admin-Tisch-Übersicht.
+   */
+  async closeTableAsAdmin(adminId: string, tableId: string): Promise<{ tableClosed: boolean }> {
+    const table = await this.prisma.lobbyTable.findUnique({
+      where: { id: tableId },
+      select: { status: true },
+    });
+    if (!table) throw new NotFoundException(`Tisch ${tableId} nicht gefunden`);
+    if (table.status === LobbyTableStatus.CLOSED) {
+      return { tableClosed: true };
+    }
+    await this.audit.record({
+      action: "admin.table.dissolve",
+      actorId: adminId,
+      target: tableId,
+      meta: { previousStatus: table.status },
+    });
+    await this.dissolveTableCore(tableId);
+    return { tableClosed: true };
+  }
+
+  /** Aktive (nicht geschlossene) Tische für die Admin-Übersicht. */
+  async listActiveTablesForAdmin(): Promise<AdminTableView[]> {
+    const tables = await this.prisma.lobbyTable.findMany({
+      where: { status: { not: LobbyTableStatus.CLOSED } },
+      include: {
+        owner: { select: { id: true, name: true } },
+        seats: { select: { userId: true, user: { select: { name: true } } } },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+    return tables.map((t) => {
+      const humans = t.seats.filter((s) => s.userId !== null);
+      return {
+        id: t.id,
+        ownerId: t.ownerId,
+        ownerName: t.owner.name,
+        status: t.status,
+        variant: t.variant,
+        createdAt: t.createdAt.toISOString(),
+        humanCount: humans.length,
+        aiCount: t.seats.length - humans.length,
+        humanNames: humans.map((s) => s.user?.name ?? "?"),
+        ownerSeated: t.seats.some((s) => s.userId === t.ownerId),
+      };
+    });
+  }
+
+  /**
+   * Gemeinsamer Schließ-Kern: Status CLOSED + offene Requests/Invites canceln +
+   * Broadcasts/Pushes. Genutzt von Owner- (`closeTableAsOwner`) und Admin-
+   * Auflösen (`closeTableAsAdmin`).
+   */
+  private async dissolveTableCore(tableId: string): Promise<void> {
     const pendingRequesters = await this.prisma.gameJoinRequest.findMany({
       where: { tableId, status: JoinRequestStatus.PENDING },
       select: { userId: true },
     });
-
     await this.prisma.$transaction(async (tx) => {
       await tx.lobbyTable.update({
         where: { id: tableId },
@@ -1174,14 +1254,6 @@ export class LobbyService {
         data: { status: InviteStatus.EXPIRED, respondedAt: new Date() },
       });
     });
-    await this.audit.record({
-      action: "lobby.table.dissolve",
-      actorId: userId,
-      target: tableId,
-      meta: { reason: "owner-dissolve", previousStatus: table.status },
-    });
-
-    // Pushes wie beim Schließen via leaveTable (Fall C).
     this.gateway.broadcastTableClosed(tableId);
     this.gateway.broadcastLobbyListUpdate("table-closed", tableId);
     for (const req of pendingRequesters) {
@@ -1192,7 +1264,6 @@ export class LobbyService {
       });
     }
     await this.pushTableState(tableId);
-    return { tableClosed: true };
   }
 
   // ───────────────────────────────────────────────────────────────────
