@@ -563,7 +563,7 @@
         },
         "WELI": {
           "title": "WELI ausspielen",
-          "hint": "Karten austeilen — wer das WELI hat, beginnt das nächste Spiel."
+          "hint": "Karten austeilen — wer den WELI hat, beginnt das nächste Spiel."
         }
       },
       "summary": {
@@ -691,10 +691,10 @@
       "waitingCut": "Wartet aufs Abheben …",
       "cutDone": "Abgehoben!",
       "dealing": "Karten werden gegeben …",
-      "weli": "Das WELI! ✨"
+      "weli": "Der WELI! ✨"
     },
     "weli": {
-      "youHaveWeli": "✨ Du hast den WELI — du sagst an!"
+      "youHaveWeli": "✨ Du hast vorhin beim Austeilen den WELI erhalten — du sagst an!"
     },
     "trickMini": {
       "first": "Erster Stich",

@@ -200,7 +200,7 @@ describe("Sprint C — Trumpf-Ansage-Flow", () => {
 
   it("WELI-Inhaber wird Default-Announcer bei Spiel 1", async () => {
     // Wir nutzen die public Card-API um eine deterministische Hand zu
-    // bauen, in der Sitz 2 das WELI hat. Da `dealCards` aber zufällig
+    // bauen, in der Sitz 2 den WELI hat. Da `dealCards` aber zufällig
     // ist, geben wir explizite `hands` mit.
     const fullDeck: { suit: "EICHEL" | "SCHELLE" | "HERZ" | "LAUB"; rank: string }[] = [];
     for (const s of ["EICHEL", "SCHELLE", "HERZ", "LAUB"] as const) {
@@ -225,7 +225,7 @@ describe("Sprint C — Trumpf-Ansage-Flow", () => {
     const hands: { suit: typeof weli.suit; rank: string }[][] = [
       rest.slice(0, 9),
       rest.slice(9, 18),
-      rest.slice(18, 26).concat(weli), // Sitz 2 bekommt das WELI als 9. Karte
+      rest.slice(18, 26).concat(weli), // Sitz 2 bekommt den WELI als 9. Karte
       rest.slice(26, 35),
     ];
 

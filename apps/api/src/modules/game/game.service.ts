@@ -1818,9 +1818,9 @@ function suitToInt(s: Card["suit"]): number {
 }
 
 /**
- * Sucht den Sitz, der das WELI (Schelle-Sechs) auf der Hand hat. Wird in
+ * Sucht den Sitz, der den WELI (Schelle-Sechs) auf der Hand hat. Wird in
  * Spiel 1 zur Bestimmung des Ansagers genutzt (Vorarlberger Tradition).
- * Bei `null`: kein Sitz hat das WELI (sollte nie passieren, weil das WELI
+ * Bei `null`: kein Sitz hat den WELI (sollte nie passieren, weil der WELI
  * Teil des regulären 36er-Decks ist — defensiver Fallback).
  */
 function findWeliHolder(hands: readonly (readonly Card[])[]): number | null {

@@ -121,12 +121,12 @@ export function GameBoard({
   }
 
   if (view.status === "announcing") {
-    // WELI-Highlight: Das WELI bestimmt den Ansager NUR beim Match-Start
+    // WELI-Highlight: Der WELI bestimmt den Ansager NUR beim Match-Start
     // (erste Hand → `dealCinematicMode === "full"`). Danach rotiert der
     // Ansager im Uhrzeigersinn — dann darf die WELI-Enthüllung NICHT mehr
     // erscheinen. Wir binden es an `iAmAnnouncer` (= WELI-Halter aus der
     // Ermittlung), NICHT an die reale Hand: durch das echte Abheben wird die
-    // Spielhand neu verteilt und enthält das WELI evtl. gar nicht mehr.
+    // Spielhand neu verteilt und enthält den WELI evtl. gar nicht mehr.
     const iHaveWeli = dealCinematicMode === "full" && view.announcement?.iAmAnnouncer === true;
     const announcerSeat = view.announcement?.announcerSeat ?? 0;
     return (

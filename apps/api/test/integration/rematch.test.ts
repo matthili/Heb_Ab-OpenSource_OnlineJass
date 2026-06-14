@@ -188,7 +188,7 @@ describe("M6-E rematch flow", () => {
       { method: "POST", body: JSON.stringify({ vote: "YES" }) }
     );
     expect(vote.body.kind).toBe("rematch-started");
-    // Innerhalb des Matches: nächster Sitz im Uhrzeigersinn — das WELI
+    // Innerhalb des Matches: nächster Sitz im Uhrzeigersinn — der WELI
     // bestimmt den Ansager NUR beim Match-Start, nicht zwischen den Händen.
     expect(vote.body.starter).toBe((lastStarter + 1) % 4);
   });

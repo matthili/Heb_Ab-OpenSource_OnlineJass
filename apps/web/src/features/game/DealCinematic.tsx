@@ -163,7 +163,7 @@ export function DealCinematic({
     } else if (phase === "cut") next("deal", T_CUT);
     // Die WELI-Reveal-Phase gehört NUR zum Match-Start (full): da ist der
     // Ansager der WELI-Inhaber. Innerhalb eines Matches (short, Spiel 2+)
-    // rotiert der Ansager im Uhrzeigersinn — er hält das WELI i.d.R. NICHT,
+    // rotiert der Ansager im Uhrzeigersinn — er hält den WELI i.d.R. NICHT,
     // also überspringen wir die Phase (sonst „WELI mitten im Match").
     else if (phase === "deal") next(mode === "short" ? "done" : "weli", T_DEAL);
     else if (phase === "weli") next("done", T_WELI);

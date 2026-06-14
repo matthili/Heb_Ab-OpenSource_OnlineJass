@@ -11,7 +11,7 @@ Karten-PNGs für das Vorarlberger Deck. Migriert via `pnpm import:cards` aus `ja
 - Datei-Schema: `{suit}-{rank}.png`
 - Suits: `eichel`, `schelle`, `herz`, `laub`
 - Ranks: `6`, `7`, `8`, `9`, `10`, `U` (Unter), `O` (Ober), `K` (König), `A` (Ass)
-- Sonderfall: `schelle-6-weli.png` für den Weli (zählt im Spielverlauf wie eine normale Schelle-6)
+- Sonderfall: `schelle-6-weli.png` für den WELI (zählt im Spielverlauf wie eine normale Schelle-6)
 
 ### `cards/suits/`
 

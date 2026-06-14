@@ -1493,7 +1493,7 @@ export class LobbyService {
 
     // Alle YES → neues Game starten.
     // Bodensee: eigener 2-Spieler-Service. Innerhalb eines Matches alterniert
-    // der Ansager (2 Spieler = „nächster im Uhrzeigersinn"); das WELI bestimmt
+    // der Ansager (2 Spieler = „nächster im Uhrzeigersinn"); der WELI bestimmt
     // den Ansager nur am Match-Start. Wir reichen den alternierenden Sitz
     // explizit durch, damit `createGame` nicht wieder den WELI-Halter nimmt.
     if (game.table.variant === "BODENSEE_2P") {
@@ -1525,7 +1525,7 @@ export class LobbyService {
     // Innerhalb eines Matches (Punkteziel noch nicht erreicht) rotiert der
     // Ansager im Uhrzeigersinn zum nächsten Sitz. Der `restartMode`
     // (WELI / „Sieger gibt") gilt NUR beim Match-Start, NICHT zwischen den
-    // Händen — Vorarlberger Regel: das WELI bestimmt nur den allerersten
+    // Händen — Vorarlberger Regel: der WELI bestimmt nur den allerersten
     // Ansager, danach gibt einfach der Nächste. Frisch austeilen, Ansager
     // explizit setzen (sonst liefe `createGame` in den WELI-Fallback).
     const lastStarter = game.rounds[game.rounds.length - 1]?.starter ?? 0;

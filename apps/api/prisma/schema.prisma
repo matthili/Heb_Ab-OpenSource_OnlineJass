@@ -751,7 +751,7 @@ enum JoinMode {
 
 enum RestartMode {
   // Vorarlberger Tradition: zwei Modi für die Starter-Bestimmung beim Re-Match.
-  WELI // Karten werden neu ausgeteilt, wer das WELI (Schelle-6) bekommt, beginnt
+  WELI // Karten werden neu ausgeteilt, wer den WELI (Schelle-6) bekommt, beginnt
   SIEGER_GIBT // Sieger gibt, der links davon (im Uhrzeigersinn) kommt raus
 }
 
