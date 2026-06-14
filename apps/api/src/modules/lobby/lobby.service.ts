@@ -1142,6 +1142,18 @@ export class LobbyService {
     if (table.status === LobbyTableStatus.CLOSED) {
       return { tableClosed: true }; // idempotent — schon zu, Wunsch erfüllt
     }
+    // Schutz: Sitzen noch ECHTE Mitspieler (≠ Owner) am Tisch, wird NICHT
+    // aufgelöst — sonst könnte der Owner anderen ein laufendes Spiel zerschießen.
+    // Er soll dann „Verlassen" nutzen (Sitz → KI, Spiel läuft für die anderen
+    // weiter). „Auflösen" bleibt damit reines Aufräum-Werkzeug für KI-/Wartetische.
+    const otherHumans = await this.prisma.lobbyTableSeat.count({
+      where: { tableId, userId: { not: null, notIn: [userId] } },
+    });
+    if (otherHumans > 0) {
+      throw new ConflictException(
+        'Am Tisch sitzen noch andere Menschen — bitte „Verlassen" statt „Auflösen" nutzen.'
+      );
+    }
 
     const pendingRequesters = await this.prisma.gameJoinRequest.findMany({
       where: { tableId, status: JoinRequestStatus.PENDING },

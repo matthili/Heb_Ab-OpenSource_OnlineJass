@@ -166,7 +166,7 @@ export function TableDetail({ tableId }: Props) {
       )}
 
       {isOwner ? (
-        <OwnerPanel table={data} queryKey={queryKey} />
+        <OwnerPanel table={data} queryKey={queryKey} ownerSeated={amIAtTable} />
       ) : amIAtTable ? (
         <PlayerPanel tableId={tableId} tableStatus={data.status} queryKey={queryKey} />
       ) : null}
@@ -322,9 +322,14 @@ function ScoreRow({
   );
 }
 
-function OwnerPanel(props: { table: TableDetailView; queryKey: readonly unknown[] }) {
+function OwnerPanel(props: {
+  table: TableDetailView;
+  queryKey: readonly unknown[];
+  /** Sitzt der Owner selbst am Tisch? Wenn nein = „hängengebliebener" Tisch. */
+  ownerSeated: boolean;
+}) {
   const { t } = useTranslation();
-  const { table, queryKey } = props;
+  const { table, queryKey, ownerSeated } = props;
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [confirmLeave, setConfirmLeave] = useState(false);
@@ -445,14 +450,19 @@ function OwnerPanel(props: { table: TableDetailView; queryKey: readonly unknown[
         >
           {t("lobby.tableDetail.leaveTable")}
         </button>
-        <button
-          type="button"
-          onClick={() => setConfirmDissolve(true)}
-          disabled={closeMut.isPending}
-          className="rounded border border-jass-red px-4 py-2 text-jass-red hover:bg-jass-red/10 disabled:opacity-50"
-        >
-          {t("lobby.tableDetail.dissolveTable")}
-        </button>
+        {/* „Tisch auflösen" erscheint NUR im hängengebliebenen Zustand: der
+            Owner ist nicht (mehr) gesetzt (er hat „Verlassen" gedrückt, aber der
+            Tisch wurde nicht sauber geschlossen). Im Normalfall nie sichtbar. */}
+        {!ownerSeated && (
+          <button
+            type="button"
+            onClick={() => setConfirmDissolve(true)}
+            disabled={closeMut.isPending}
+            className="rounded border border-jass-red px-4 py-2 text-jass-red hover:bg-jass-red/10 disabled:opacity-50"
+          >
+            {t("lobby.tableDetail.dissolveTable")}
+          </button>
+        )}
       </div>
       <LeaveTableConfirm
         open={confirmLeave}
