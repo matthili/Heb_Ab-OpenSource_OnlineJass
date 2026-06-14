@@ -417,14 +417,14 @@ function StatusBanner({
   const { t } = useTranslation();
   if (view.status === "finished") {
     return (
-      <div className="rounded bg-jass-cream border border-jass-paperEdge px-3 py-2 text-jass-ink flex items-center min-h-[2.75rem]">
+      <div className="rounded bg-jass-cream border border-jass-paperEdge px-3 py-2 text-jass-ink flex items-center h-[2.75rem] overflow-hidden whitespace-nowrap">
         {t("game.finished")}
       </div>
     );
   }
   if (view.myTurn) {
     return (
-      <div className="jass-your-turn-glow rounded bg-jass-yellow border border-jass-yellowDark px-3 py-2 text-jass-ink font-semibold flex items-center min-h-[2.75rem]">
+      <div className="jass-your-turn-glow rounded bg-jass-yellow border border-jass-yellowDark px-3 py-2 text-jass-brownDark font-semibold flex items-center h-[2.75rem] overflow-hidden whitespace-nowrap">
         {t("game.yourTurn")}
       </div>
     );
@@ -479,7 +479,10 @@ function PlayingArea({
       // gekreuzten Linear-Gradients, kein PNG). Min-Höhe 32rem damit die
       // h-32-Karten in den 3×3-Slots ohne Überlappung passen; clamp
       // skaliert auf großen Bildschirmen bis 48rem hoch.
-      className="grid grid-cols-3 grid-rows-[auto_1fr_auto] gap-2 min-h-[32rem] h-[clamp(32rem,65vh,48rem)] rounded-lg p-4 relative bg-jass-felt"
+      // `svh` statt `vh`: die „small viewport height" ändert sich NICHT, wenn
+      // mobil die URL-Leiste beim Scrollen ein-/ausblendet → der Tisch behält
+      // seine Größe (sonst „hüpfte" das ganze Layout beim Scrollen).
+      className="grid grid-cols-3 grid-rows-[auto_1fr_auto] gap-2 min-h-[32rem] h-[clamp(32rem,65svh,48rem)] rounded-lg p-4 relative bg-jass-felt"
       style={{ border: "2px solid var(--color-jass-brownDark)" }}
       role="region"
       aria-label={t("game.playingArea")}

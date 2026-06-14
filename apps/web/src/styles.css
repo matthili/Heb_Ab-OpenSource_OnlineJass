@@ -265,6 +265,27 @@ h1 {
   animation: jass-card-enter 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
+/* Stich-Abschluss: die 3 Nicht-Gewinner-Karten erst kurz liegen lassen (Stich
+ * bleibt erkennbar), dann hinter die Gewinner-Karte gleiten und verschwinden.
+ * Richtung je Karte über --collect-x/--collect-y (Vektor zum Gewinner-Slot,
+ * vom Caller gesetzt). Ersetzt den früheren „Gummi-Hüpf" der Verlierer-Karten.
+ * Dauer < LINGER_MS (1800 ms), damit der Sweep vor dem Stich-Clear fertig ist. */
+@keyframes jass-trick-collect {
+  0%,
+  55% {
+    opacity: 1;
+    transform: translate(0, 0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--collect-x, 0), var(--collect-y, 0)) scale(0.6);
+  }
+}
+
+.jass-trick-collect {
+  animation: jass-trick-collect 1.5s ease-in forwards;
+}
+
 /* Pulse für den Stich-Gewinner während des 1,8-s-Linger — ein
  * expandierender Goldschein um den ring-4-ring-amber-400 herum. */
 @keyframes jass-trick-win-pulse {
@@ -790,6 +811,7 @@ h1 {
 
 @media (prefers-reduced-motion: reduce) {
   .jass-card-enter,
+  .jass-trick-collect,
   .jass-trick-win-pulse,
   .jass-your-turn-glow,
   .jass-seat-active-pulse,

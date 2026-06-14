@@ -59,7 +59,20 @@ function relativeSlot(absolute: number, mySeat: number): Slot {
   return SLOTS[idx]!;
 }
 
+// Richtungs-Vektoren der Slots (Einheiten, Mitte = Ursprung; +y = unten). Für
+// die Stich-Abschluss-Animation: die Verlierer-Karten gleiten Richtung Gewinner.
+const SLOT_VEC: Record<Slot, readonly [number, number]> = {
+  bottom: [0, 1],
+  top: [0, -1],
+  left: [-1, 0],
+  right: [1, 0],
+};
+/** rem pro Slot-Einheit — grobe Konvergenz Richtung Gewinner-Karte (tunebar). */
+const COLLECT_REM_PER_UNIT = 9;
+
 export function Trick({ cards, starter, mySeat, winnerSeat }: TrickProps) {
+  const trickDone = winnerSeat !== undefined;
+  const winnerSlot = trickDone ? relativeSlot(winnerSeat, mySeat) : null;
   return (
     <div
       // Feste Höhe — damit das Trick-Sub-Grid nicht kollabiert, wenn der
@@ -72,12 +85,28 @@ export function Trick({ cards, starter, mySeat, winnerSeat }: TrickProps) {
       {cards.map((c, i) => {
         const absoluteSeat = (starter + i) % 4;
         const slot = relativeSlot(absoluteSeat, mySeat);
-        const isWinner = winnerSeat !== undefined && absoluteSeat === winnerSeat;
-        const winnerCls = isWinner ? "ring-4 ring-amber-400 rounded-md jass-trick-win-pulse" : "";
+        const isWinner = trickDone && absoluteSeat === winnerSeat;
+        // Stich fertig: Gewinner glüht (win-pulse); die anderen 3 gleiten hinter
+        // die Gewinner-Karte und verschwinden. Sonst: normale Einflug-Animation.
+        const animCls = isWinner
+          ? "ring-4 ring-amber-400 rounded-md jass-trick-win-pulse"
+          : trickDone
+            ? "jass-trick-collect"
+            : "jass-card-enter";
+        let collectStyle: React.CSSProperties | undefined;
+        if (trickDone && !isWinner && winnerSlot) {
+          const [lx, ly] = SLOT_VEC[slot];
+          const [wx, wy] = SLOT_VEC[winnerSlot];
+          collectStyle = {
+            "--collect-x": `${(wx - lx) * COLLECT_REM_PER_UNIT}rem`,
+            "--collect-y": `${(wy - ly) * COLLECT_REM_PER_UNIT}rem`,
+          } as React.CSSProperties;
+        }
         return (
           <div
             key={`${c.suit}-${c.rank}-${i}`}
-            className={`${SLOT_POS[slot]} jass-card-enter relative ${winnerCls}`}
+            className={`${SLOT_POS[slot]} ${animCls} relative`}
+            {...(collectStyle ? { style: collectStyle } : {})}
           >
             <Card card={c} size="md" />
             {isWinner && <Sparkles />}
