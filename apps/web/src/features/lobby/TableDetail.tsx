@@ -102,9 +102,17 @@ export function TableDetail({ tableId }: Props) {
   if (!data) return null;
   const isOwner = data.ownerId === myUserId;
   const amIAtTable = data.seats.some((s) => s.user?.id === myUserId);
+  // „Im Spiel" = eine Game-Section wird gerendert (Felt + Chat-Seitenleiste).
+  // Dann wandern die Sitze in die Seitenleiste (unter den Chat) statt nach oben.
+  const inGame =
+    !!data.currentGameId &&
+    (data.status === "IN_GAME" || data.status === "POST_GAME" || data.status === "MATCH_OVER");
 
   return (
-    <section className="space-y-6">
+    // `overflow-anchor:none`: schaltet das Browser-Scroll-Anchoring für den
+    // Tisch-Bereich ab. Sonst „hält" der Browser ein sichtbares Element fest
+    // und scrollt nach, wenn sich darüber etwas ändert → das beobachtete Hüpfen.
+    <section className="space-y-6 [overflow-anchor:none]">
       <header className="space-y-1">
         <div className="flex items-center gap-3">
           <h1 className="text-2xl font-bold">
@@ -127,9 +135,9 @@ export function TableDetail({ tableId }: Props) {
         </p>
       </header>
 
-      <CumulativeScoreBar table={data} />
-
-      <SeatRow seats={data.seats} nameSeed={data.id} />
+      {/* Sitze oben NUR in der Wartephase — im Spiel wandern sie in die
+          Chat-Seitenleiste (siehe GameSection), damit oben Tisch + Hand stehen. */}
+      {!inGame && <SeatRow seats={data.seats} nameSeed={data.id} />}
 
       {data.currentGameId &&
         (data.status === "IN_GAME" ||
@@ -165,6 +173,10 @@ export function TableDetail({ tableId }: Props) {
         <ChatPanel channelKey={`table:${data.id}`} title={t("lobby.tableDetail.tableChat")} />
       )}
 
+      {/* Partie-Stand bewusst weiter unten, direkt über den Aktionen — oben
+          bleibt Platz für Tisch + Hand (weniger Scrollen). */}
+      <CumulativeScoreBar table={data} />
+
       {isOwner ? (
         <OwnerPanel table={data} queryKey={queryKey} ownerSeated={amIAtTable} />
       ) : amIAtTable ? (
@@ -174,11 +186,20 @@ export function TableDetail({ tableId }: Props) {
   );
 }
 
-function SeatRow({ seats, nameSeed }: { seats: TableDetailView["seats"]; nameSeed: string }) {
+function SeatRow({
+  seats,
+  nameSeed,
+  stacked = false,
+}: {
+  seats: TableDetailView["seats"];
+  nameSeed: string;
+  /** Vertikale Liste (für die Chat-Seitenleiste) statt 2-spaltigem Raster. */
+  stacked?: boolean;
+}) {
   const { t } = useTranslation();
   return (
     <ul
-      className="grid grid-cols-1 sm:grid-cols-2 gap-3"
+      className={stacked ? "grid grid-cols-1 gap-2" : "grid grid-cols-1 sm:grid-cols-2 gap-3"}
       aria-label={t("lobby.tableDetail.seatsLabel")}
     >
       {seats.map((s) => (
@@ -832,7 +853,12 @@ function GameSection({
           nameSeed={nameSeed}
         />
       </div>
-      <ChatPanel channelKey={`table:${tableId}`} title={t("lobby.tableDetail.tableChat")} />
+      {/* Rechte Spalte: Chat + darunter die Sitze als Liste (füllt die vorher
+          halbleere Chat-Spalte; die Namen sind auf dem Felt ohnehin schon). */}
+      <div className="space-y-4">
+        <ChatPanel channelKey={`table:${tableId}`} title={t("lobby.tableDetail.tableChat")} />
+        <SeatRow seats={tableSeats} nameSeed={nameSeed} stacked />
+      </div>
     </section>
   );
 }
@@ -895,7 +921,11 @@ function BodenseeGameSection({
           <BodenseeRematchPanel gameId={gameId} />
         )}
       </div>
-      <ChatPanel channelKey={`table:${tableId}`} title={t("lobby.tableDetail.tableChat")} />
+      {/* Rechte Spalte: Chat + darunter die Sitze als Liste. */}
+      <div className="space-y-4">
+        <ChatPanel channelKey={`table:${tableId}`} title={t("lobby.tableDetail.tableChat")} />
+        <SeatRow seats={tableSeats} nameSeed={nameSeed} stacked />
+      </div>
     </section>
   );
 }
