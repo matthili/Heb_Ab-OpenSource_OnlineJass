@@ -1,0 +1,53 @@
+@startuml game-loop
+' Spiel-Loop einer Partie (Kreuz/Solo: 9 Stiche, Bodensee: 18). Helle "Karte" —
+' lesbar auf GitHub hell wie dunkel. Status in <b>…</b> = LobbyTableStatus.
+skinparam backgroundColor #F4ECD8
+skinparam shadowing false
+skinparam defaultFontName "DejaVu Sans"
+skinparam defaultFontColor #2E1C0E
+skinparam defaultFontSize 13
+skinparam ArrowColor #6B4A2B
+skinparam ArrowFontColor #2E1C0E
+skinparam activityBorderColor #6B4A2B
+skinparam activityBackgroundColor #EFE6CF
+skinparam activityDiamondBackgroundColor #F3E3B3
+skinparam activityDiamondBorderColor #6B4A2B
+skinparam activityStartColor #2E1C0E
+skinparam activityEndColor #2E1C0E
+skinparam partitionBorderColor #6B4A2B
+skinparam partitionBackgroundColor #F0E8D2
+
+start
+:Owner öffnet Tisch  <b>(WAITING)</b>;
+:Sitze füllen — Spieler joinen\noder KI-Auto-Fill nach Timer;
+:Tisch voll → Spiel startet  <b>(IN_GAME)</b>;
+
+repeat
+  partition "Eine Partie" {
+    :Karten mischen;
+    if (Abheben aktiv\n& kein WELI-Deal?) then (ja)
+      :Abheben (rechts vom Geber) — oder klopfen;
+    else (nein)
+    endif
+    :Karten geben;
+    :Ansager bestimmen (der WELI bzw. Rotation);
+    :Ansage — Trumpf / Gumpf / Oben / Unten / Slalom\n(optional an Partner schieben);
+    :Weisen (1. Runde);
+    repeat :nächster Stich;
+      :jeder Sitz spielt 1 Karte\n(server-autoritativ validiert);
+      :Stich-Gewinner ermitteln;
+    repeat while (noch Karten auf der Hand?) is (ja) not (nein)
+    :Wertung — Kartenpunkte + Weis + Stöck + Matsch\n(Sack-Regel: < 21 Pkt → Runde verfällt);
+    :kumulativen Partie-Stand fortschreiben;
+  }
+  if (Punkteziel erreicht?) then (ja)
+    :Partie gewonnen  <b>(MATCH_OVER)</b>;
+    stop
+  else (nein)
+  endif
+  :Re-Match-Abstimmung  <b>(POST_GAME)</b>;
+repeat while (alle YES?) is (ja → neue Partie) not (nein)
+
+:zurück in die Lobby  <b>(WAITING)</b>;
+stop
+@enduml

@@ -67,6 +67,20 @@ Geteilte Logik:
 Datenmodell, Auth-Flow und KI-Integration im Detail: siehe das Prisma-Schema
 (`apps/api/prisma/schema.prisma`), die ADRs unten und [`NN-CONTRACT.md`](./NN-CONTRACT.md).
 
+## Datenmodell
+
+Kuratierter Ausschnitt des Prisma-Schemas — der Gameplay- und Social-Kern. Auth-Plumbing (Session/Account/…) und Admin-Tabellen sind für die Übersicht ausgeblendet; vollständig steht alles in [`apps/api/prisma/schema.prisma`](../apps/api/prisma/schema.prisma).
+
+![Datenmodell von Heb ab!](../assets/diagrams/data-model.png)
+
+Kurz gelesen: ein **User** hat ein **Profile** (Sichtbarkeit pro Feld), eröffnet **LobbyTables** und sitzt über **LobbyTableSeat** an Tischen. Ein Tisch hat viele **Games** (+ genau ein aktuelles); jedes Game hat **GameSeats**, **Moves** (jede gespielte Karte), **RoundDecisions** (Ansage/Weisen/Slalom je Runde) und **RematchVotes**. Sozial: **Friendship** und **Report** sind Selbst-Relationen über `User`; **ChatMessage** trägt den Kanal (Lobby/Tisch/PN) und optional eine Game-Verknüpfung.
+
+## Spiel-Loop
+
+Wie eine Partie abläuft — von „Tisch offen" bis „gewonnen", mit dem Stich-Loop innen und dem Partie-/Re-Match-Loop außen. Die fett gesetzten Zustände sind Werte von `LobbyTableStatus`.
+
+![Spiel-Loop von Heb ab!](../assets/diagrams/game-loop.png)
+
 ## Tech-Stack (konkrete Versionen)
 
 | Schicht          | Wahl                                                                                        |

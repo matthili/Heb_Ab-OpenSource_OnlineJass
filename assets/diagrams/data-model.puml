@@ -1,0 +1,115 @@
+@startuml data-model
+' Kuratiertes Datenmodell (Gameplay- + Social-Kern). Helle "Karte" — lesbar auf
+' GitHub hell wie dunkel. Farbgruppen wie im Architektur-Diagramm.
+skinparam backgroundColor #F4ECD8
+skinparam shadowing false
+skinparam defaultFontName "DejaVu Sans"
+skinparam defaultFontColor #2E1C0E
+skinparam defaultFontSize 12
+skinparam ArrowColor #6B4A2B
+skinparam ArrowThickness 1.3
+skinparam ArrowFontColor #2E1C0E
+skinparam entity {
+  BorderColor #6B4A2B
+  BorderThickness 1.4
+  FontColor #2E1C0E
+}
+hide circle
+hide empty members
+
+entity "User" as user #DCEFD8 {
+  * id
+  --
+  name (unique) · email
+  role · status
+}
+entity "Profile" as profile #DCEFD8 {
+  * userId
+  --
+  visibility (JSON, pro Feld)
+  dmPolicy · publicLeaderboard
+}
+entity "Friendship" as friend #DCEFD8 {
+  * requesterId
+  * addresseeId
+  --
+  status
+}
+entity "Report" as report #DCEFD8 {
+  * id
+  --
+  context · reason · status
+}
+
+entity "LobbyTable" as ltable #F3E3B3 {
+  * id
+  --
+  variant · joinMode · status
+  targetScore · cumulativeScore[ ]
+}
+entity "LobbyTableSeat" as lseat #F3E3B3 {
+  * tableId · seat
+  --
+  userId? / aiSeatType?
+}
+
+entity "Game" as game #F2D0C5 {
+  * id
+  --
+  variant · finalScore (JSON)
+  publicReplay
+}
+entity "GameSeat" as gseat #F2D0C5 {
+  * gameId · seat
+  --
+  userId? / aiSeatType?
+}
+entity "Move" as move #F2D0C5 {
+  * id
+  --
+  seq · seat · cardIndex · trickIdx
+}
+entity "RoundDecision" as round #F2D0C5 {
+  * id
+  --
+  mode · trumpSuit · weisen
+  slalom · bodenseeDeal?
+}
+entity "RematchVote" as vote #F2D0C5 {
+  * gameId · userId
+  --
+  vote
+}
+entity "ChatMessage" as chat #DCD8EF {
+  * id
+  --
+  channel · channelKey
+  body (sanitisiert)
+}
+
+user ||--o| profile
+user ||--o{ friend : "requester /\naddressee"
+user ||--o{ report : "reporter /\nreported"
+user ||--o{ ltable : owner
+user ||--o{ lseat
+user ||--o{ gseat
+user ||--o{ move
+user ||--o{ vote
+user ||--o{ chat : sender
+
+ltable ||--o{ lseat
+ltable ||--o{ game : games
+ltable |o--o| game : currentGame
+
+game ||--o{ gseat
+game ||--o{ move
+game ||--o{ round
+game ||--o{ vote
+game ||--o{ chat : "optional\n(In-Game-DM)"
+
+note as N
+  Für die Übersicht ausgelassen: Session, Account, Verification,
+  PushSubscription, DmBlock, DmRead, GameJoinRequest, TableInvite,
+  BannedWord, ArchivedChatMessage, AuditLog, AdminSetting, Blocklist.
+end note
+@enduml
