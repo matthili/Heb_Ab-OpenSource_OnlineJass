@@ -1,6 +1,6 @@
 # Assets
 
-Statische Spielassets — werden in M7 vom Frontend importiert.
+Statische Spielassets — werden vom Frontend importiert.
 
 ## `cards/`
 

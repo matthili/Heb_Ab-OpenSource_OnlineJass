@@ -3,7 +3,7 @@
  *
  * Stabile Importe für API, Inference-Microservice und Frontend-Komponenten.
  * Goldstandard: jass_engine/ + training/encoder.py im Schwester-Repo
- * jass-neuronales-netz.
+ * JCN9000.
  */
 
 export * from "./types.js";

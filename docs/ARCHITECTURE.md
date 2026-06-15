@@ -6,18 +6,9 @@
 
 Drei Apps, vier Pakete, ein Reverse-Proxy:
 
-```
-┌──────────┐   ┌──────┐   ┌─────┐
-│ landing  │   │ web  │   │ api │ ←─── inference
-│ (Astro)  │   │(React│   │(Nest│
-└──────────┘   │ PWA) │   │ JS) │
-               └──────┘   └─────┘
-                  ▲          ▲
-                  │          │ sticky WS via Caddy
-                  └──────────┘
-                       │
-                  PostgreSQL + Redis
-```
+![Architektur von Heb ab!](../assets/diagrams/architecture.png)
+
+> Quelle des Diagramms: [`assets/diagrams/architecture.puml`](../assets/diagrams/architecture.puml) — gerendert mit PlantUML (helle „Karte", damit es auf GitHub hell wie dunkel lesbar bleibt).
 
 - **`apps/landing/`** — Astro-Site für Marketing, Regeln, Datenschutz, Impressum. Statisch gebaut, React-Islands für interaktive Demos.
 - **`apps/web/`** — React-SPA (das eigentliche Spiel + Lobby). PWA-installierbar.
@@ -26,7 +17,7 @@ Drei Apps, vier Pakete, ein Reverse-Proxy:
 
 Geteilte Logik:
 
-- **`packages/engine/`** — TS-Port der Jass-Regeln + State-Encoder, Quelle der Wahrheit für API _und_ Inference. Variantenspezifische Encoder: Kreuz/Solo `v3.0.0` (132-dim), Bodensee `bodensee_1.0.0` (291-dim). Abgeglichen gegen die Python-Engine im Schwester-Repo.
+- **`packages/engine/`** — TS-Port der Jass-Regeln + State-Encoder, Quelle der Wahrheit für API _und_ Inference. Variantenspezifische Encoder: Kreuz/Solo `v3.0.0` (421-dim), Bodensee `bodensee_1.0.0` (291-dim). Abgeglichen gegen die Python-Engine im Schwester-Repo.
 - **`packages/shared-types/`** — geteilte **Zod-Schemas** als Single Source of Truth für REST-DTOs (FE + BE leiten daraus ab) + Generator für ein OpenAPI-Doc (`pnpm gen:openapi`).
 - **`packages/ui/`** — Card, Hand, Trick, Scoreboard, ChatBubble.
 - **`packages/config/`** — geteilte tsconfig-/eslint-/prettier-Basis.
@@ -112,8 +103,7 @@ Siehe [`SECURITY.md`](./SECURITY.md) für die Checkliste, was ab welchem Meilens
 
 Siehe [`NN-CONTRACT.md`](./NN-CONTRACT.md) für die exakte Schnittstelle zum Schwester-Projekt: Welche Artefakte werden konsumiert, wie versioniert, wie verifiziert.
 
-## Meilenstein-Roadmap
+## Werdegang
 
-Kurzfassung im [README](../README.md#meilenstein-roadmap). Den erzählten
-Entwicklungs-Verlauf inkl. der bewussten Stack-Abweichungen findest du in
-[`JOURNEY.md`](./JOURNEY.md).
+Den erzählten Entwicklungs-Verlauf inkl. der bewussten Stack-Abweichungen vom
+Ursprungsplan findest du in [`JOURNEY.md`](./JOURNEY.md).

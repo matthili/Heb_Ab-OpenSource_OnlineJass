@@ -1,6 +1,6 @@
 /**
  * Regelbasierter Heuristik-Spieler — TS-Port von `players/heuristic_player.py`
- * aus dem NN-Schwester-Repo `jass-neuronales-netz`.
+ * aus dem NN-Schwester-Repo JCN9000.
  *
  * **Spielstärke**: deutlich über `RandomLegalMovePlayer`. Im NN-Repo wurde
  * dieser Spieler als Behavioral-Cloning-Lehrer eingesetzt. Für uns ist er:

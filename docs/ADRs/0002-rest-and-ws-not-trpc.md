@@ -32,3 +32,7 @@ Backend und Frontend sind beide TypeScript. tRPC wäre eine offensichtliche Opti
 - API-Modul publiziert OpenAPI 3.1 via NestJS-Swagger.
 - WS-Events sind in `packages/shared-types/src/ws-events.ts` definiert als TS discriminated unions; Runtime-Validierung via Zod im Gateway.
 - Wenn sich tRPC-Use-Case zeigt (z.B. einzelne hochgradig spezialisierte FE-Mutations), kann tRPC additiv eingeführt werden, ohne REST/WS zu ersetzen.
+
+## Nachtrag (Umsetzung)
+
+Die OpenAPI-Typen werden **aus den Zod-Schemas generiert** (`pnpm gen:openapi`) statt über eine separate `openapi-typescript`-Quelle: die DTO-Schemas leben einmal in `packages/shared-types`, FE und BE leiten daraus ab. WS-Events bleiben TS-Discriminated-Unions mit Zod-Runtime-Validierung im Gateway. Die Grundentscheidung (REST + WS statt tRPC) ist unverändert.

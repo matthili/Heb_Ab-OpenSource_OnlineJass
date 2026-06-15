@@ -2,7 +2,7 @@
  * Regelbasierter Heuristik-Spieler für Bodensee-Jass (2 Spieler).
  *
  * TS-Port von `players/bodensee_heuristic_player.py` (Schwester-Repo
- * jass-neuronales-netz). Nutzt dieselben Score-Tabellen wie der Kreuz/Solo-
+ * JCN9000). Nutzt dieselben Score-Tabellen wie der Kreuz/Solo-
  * `HeuristicPlayer`, aber mit Bodensee-Anpassungen:
  *   - **Ansage** über den *Pool* (Hand + sichtbarer Tisch ≈ 12 Karten), höhere
  *     Mengen-Schwelle (4 statt 3), KEIN Konzentrations-/Spread-Bonus, KEIN

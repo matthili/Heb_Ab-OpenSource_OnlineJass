@@ -25,7 +25,7 @@ Statistiken — und Sicherheit ab Tag 1, nicht „später".
 Das Besondere an der Architektur ist die strikte Trennung zur **Spiel-Logik**.
 Diese kommt nicht aus dieser Web-App, sondern aus einem unabhängigen
 Python-Projekt
-([`jass-neuronales-netz`](https://github.com/matthili/jass-neuronales-netz)),
+([JCN9000](https://github.com/matthili/jcn9000)),
 das drei versionierte Artefakte liefert:
 
 1. eine **Regel-Spezifikation** (`jass_rules.json`) — die einzige Wahrheit über
@@ -67,18 +67,18 @@ bewusst vom ursprünglich geplanten Stack abgewichen — immer in Richtung
 neuerer/schlankerer Lösungen. Das ist der vielleicht lehrreichste Teil der
 Geschichte:
 
-| Bereich            | Ursprünglich geplant                  | Tatsächlich umgesetzt                         | Warum                                                                              |
-| ------------------ | ------------------------------------- | --------------------------------------------- | ---------------------------------------------------------------------------------- |
-| **Auth**           | Lucia v3                              | **Better Auth 1.6**                           | Lucia wurde eingestellt; Better Auth ist aktiv gepflegt, bringt Verify/Reset mit   |
-| **ORM**            | Prisma 5                              | **Prisma 7** (mit `@prisma/adapter-pg`)       | Aktuelle Major-Version, modernes Treiber-Adapter-Modell                            |
-| **Validation**     | Zod 3 + `nestjs-zod`                  | **Zod 4** (nativ, ohne Zwischenschicht)       | Zod 4 bringt u. a. `z.toJSONSchema()` von Haus aus mit                             |
-| **UI-Primitives**  | Radix UI + Tailwind                   | **Tailwind 4** (ohne Radix)                   | Weniger Abhängigkeiten; Tailwind 4 deckt den Bedarf ab                             |
-| **Build/Frontend** | Vite 5                                | **Vite 8**, React 19                          | Jeweils aktuelle Majors                                                            |
-| **Landing**        | Astro 4                               | **Astro 6**                                   | dito                                                                               |
-| **KI-Inferenz**    | `@tensorflow/tfjs-node` + Worker-Pool | **`@tensorflow/tfjs`** (pure-JS, kein Pool)   | Kein nativer Build nötig → einfacheres Deployment; reicht für die Last             |
-| **State-Encoder**  | ein 132-dim Encoder                   | **variantenspezifisch** (Bodensee 291-dim)    | Jede Spielart hat ihren eigenen Encoder + ihr eigenes Modell                       |
-| **Contract-Tests** | Pact                                  | **verworfen**                                 | Playwright-E2E + Integration-Tests + die OpenAPI-aus-Zod-Generierung decken das ab |
-| **OpenAPI**        | `openapi-typescript`-Pipeline         | **Zod als Single Source** → OpenAPI-Generator | DTO-Schemas leben einmal in `packages/shared-types`, FE+BE leiten daraus ab        |
+| Bereich            | Ursprünglich geplant                  | Tatsächlich umgesetzt                                          | Warum                                                                              |
+| ------------------ | ------------------------------------- | -------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| **Auth**           | Lucia v3                              | **Better Auth 1.6**                                            | Lucia wurde eingestellt; Better Auth ist aktiv gepflegt, bringt Verify/Reset mit   |
+| **ORM**            | Prisma 5                              | **Prisma 7** (mit `@prisma/adapter-pg`)                        | Aktuelle Major-Version, modernes Treiber-Adapter-Modell                            |
+| **Validation**     | Zod 3 + `nestjs-zod`                  | **Zod 4** (nativ, ohne Zwischenschicht)                        | Zod 4 bringt u. a. `z.toJSONSchema()` von Haus aus mit                             |
+| **UI-Primitives**  | Radix UI + Tailwind                   | **Tailwind 4** (ohne Radix)                                    | Weniger Abhängigkeiten; Tailwind 4 deckt den Bedarf ab                             |
+| **Build/Frontend** | Vite 5                                | **Vite 8**, React 19                                           | Jeweils aktuelle Majors                                                            |
+| **Landing**        | Astro 4                               | **Astro 6**                                                    | dito                                                                               |
+| **KI-Inferenz**    | `@tensorflow/tfjs-node` + Worker-Pool | **`@tensorflow/tfjs`** (pure-JS, kein Pool)                    | Kein nativer Build nötig → einfacheres Deployment; reicht für die Last             |
+| **State-Encoder**  | ein 132-dim Encoder                   | **variantenspezifisch** (Kreuz/Solo 421-dim, Bodensee 291-dim) | Jede Spielart hat ihren eigenen Encoder + ihr eigenes Modell                       |
+| **Contract-Tests** | Pact                                  | **verworfen**                                                  | Playwright-E2E + Integration-Tests + die OpenAPI-aus-Zod-Generierung decken das ab |
+| **OpenAPI**        | `openapi-typescript`-Pipeline         | **Zod als Single Source** → OpenAPI-Generator                  | DTO-Schemas leben einmal in `packages/shared-types`, FE+BE leiten daraus ab        |
 
 Im Ursprungsplan war außerdem nur **eine** Spielvariante (Kreuz-Jass, 4 Spieler)
 fest vorgesehen, der Rest „optional, später". Tatsächlich sind heute **drei**
@@ -93,6 +93,10 @@ erwähnte:
 
 - **Solo-Jass & Bodensee-Jass** als vollwertige Varianten (eigene Engine-Logik,
   eigenes NN-Modell, eigenes Scoreboard).
+- **Drei KI-Stufen** statt „NN oder nichts": Zufall (zum Üben), eine regelbasierte
+  **Heuristik** als Standard-Gegner (TS-Port aus JCN9000, inkl. Trumpf-Disziplin
+  über Void-Inferenz) und das **neuronale Netz** als stärkste Stufe — mit einem
+  eigenen, separat trainierten Modell je Spielart.
 - **Disconnect-Handling** statt stillem Spielabbruch: bei Verbindungsverlust eine
   mehrstufige Abstimmung (Kreuz/Solo) bzw. eine Reconnect-Schonfrist mit
   KI-Übernahme (Bodensee).

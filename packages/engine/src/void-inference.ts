@@ -1,7 +1,7 @@
 /**
  * Void-Inferenz aus der Spielhistorie — welche Karten kann ein Sitz beweisbar
  * NICHT halten. TS-Port von `jass_engine/void_inference.py` (Schwester-Repo
- * jass-neuronales-netz).
+ * JCN9000).
  *
  * Grundlage ist die Bedien-Regel (`legalMoves`):
  *

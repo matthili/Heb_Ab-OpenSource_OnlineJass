@@ -2,7 +2,7 @@
  * Types und Konstanten des TS-Ports.
  *
  * Quelle der Wahrheit ist `external/jass-nn/jass_rules.json` (Schwester-Repo
- * jass-neuronales-netz, gepinnt via package.json#jassNn). Die hier hart kodierten
+ * JCN9000, gepinnt via package.json#jassNn). Die hier hart kodierten
  * Werte werden im Test `rules-spec.consistency.test.ts` gegen die JSON-Spec
  * gegengeprüft — driftet eines, brechen die Tests.
  *

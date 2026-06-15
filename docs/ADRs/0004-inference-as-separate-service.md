@@ -1,6 +1,6 @@
 # ADR 0004: KI-Inferenz als eigener Microservice
 
-- **Status:** akzeptiert
+- **Status:** akzeptiert (Grundentscheidung steht; Umsetzung weicht in Details ab — s. Nachtrag)
 - **Datum:** 2026-05-14
 
 ## Kontext
@@ -34,3 +34,10 @@ Es gibt zwei plausible Platzierungen:
 - Modell wird beim Start geladen; encoding_version aus MANIFEST.json gegen Konstante in `packages/engine` geprüft → Fail-Fast bei Mismatch.
 - `apps/inference` importiert `packages/engine/src/encoder.ts` (gleiche Quelle wie API) — so kann der Service auch direkt aus rohen GameStates encoden, falls das später nötig wird.
 - Fallback bei 5xx: Game-Service in API ruft `engine.legalMoves()`, wählt zufällig + Sentry-Event. Spiel läuft weiter mit „dummer" KI, keine Spielabbrüche.
+
+## Nachtrag (Umsetzung)
+
+Die Grundentscheidung — Inferenz als eigener Service — steht. Zwei Details der Umsetzung weichen bewusst ab (Begründung in [`JOURNEY.md`](../JOURNEY.md)):
+
+- **Runtime:** statt `@tensorflow/tfjs-node` + Piscina-Worker-Pool läuft der Service mit **`@tensorflow/tfjs` (pure-JS)** ohne Pool. Kein nativer Build → deutlich einfacheres Deployment; für die erwartete Last ausreichend.
+- **Encoder & Contract:** statt eines festen 132-dim-Vektors gibt es **variantenspezifische Encoder** (Kreuz/Solo 421-dim, Bodensee 291-dim) und **ein Modell je Spielart**. Der `/predict`-Contract trägt die Vektorlänge entsprechend der Spielart; `encoding_version` aus dem MANIFEST wird beim Boot gegen die Engine-Konstante geprüft (Fail-Fast).

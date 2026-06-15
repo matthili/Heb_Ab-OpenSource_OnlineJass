@@ -38,8 +38,8 @@ pnpm --filter @jass/web test:e2e:ui
 ### `a11y.spec.ts` (M11-C) — WCAG 2.1 AA-Audit via axe-core
 
 Läuft `@axe-core/playwright` gegen die Hauptrouten (anonym + eingeloggt) und
-verlangt **0 Critical-Violations**. Serious wird nicht hart gegated (Radix-
-Primitives lösen gelegentlich Heuristik-Fehlalarme aus).
+verlangt **0 Critical-Violations**. Serious wird nicht hart gegated (einzelne
+UI-Komponenten lösen gelegentlich Heuristik-Fehlalarme aus).
 
 ### `solo-vs-ai.spec.ts` — das Plan-Doc-§11-Szenario komprimiert auf einen Browser:
 

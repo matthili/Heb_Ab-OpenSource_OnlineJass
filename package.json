@@ -10,7 +10,7 @@
   },
   "packageManager": "pnpm@10.33.2",
   "jassNn": {
-    "repo": "matthili/jass-neuronales-netz",
+    "repo": "matthili/jcn9000",
     "models": {
       "kreuz": {
         "version": "v0.7.2",

@@ -1,6 +1,6 @@
 # Sicherheits-Checkliste
 
-Sicherheit wird **ab Tag 1** mitgedacht, nicht „später nachgerüstet". Diese Liste spiegelt §9 des Implementierungs-Plans und wird mit jedem Meilenstein abgehakt.
+Sicherheit wird **ab Tag 1** mitgedacht, nicht „später nachgerüstet". **Stand: alle hier gelisteten Kontrollen sind umgesetzt** — die Spalte „Meilenstein" nennt nur noch, wann die jeweilige Kontrolle eingeführt wurde.
 
 | #   | Kontrolle                                                       | Wo eingebaut                              | Meilenstein             |
 | --- | --------------------------------------------------------------- | ----------------------------------------- | ----------------------- |
@@ -22,6 +22,7 @@ Sicherheit wird **ab Tag 1** mitgedacht, nicht „später nachgerüstet". Diese 
 | 16  | E-Mail-Tokens single-use + 24h TTL + crypto-random              | `modules/auth`                            | M3                      |
 | 17  | Soft-Delete mit Anonymisierung statt Hard-Delete                | User-Model                                | M10                     |
 | 18  | Pino redact für PII (Passwort-Felder, Tokens)                   | Pino-Config                               | M3                      |
+| 19  | HIBP-Pwned-Passwords-Check (k-Anonymity) bei Register + Reset   | `modules/auth`                            | M3                      |
 
 ## Threat-Model (Kurzfassung)
 
@@ -34,4 +35,4 @@ Sicherheit wird **ab Tag 1** mitgedacht, nicht „später nachgerüstet". Diese 
 
 ## Reporting
 
-Sicherheitslücken bitte privat melden — Verfahren wird mit dem Produktiv-Deploy in M11 finalisiert.
+Sicherheitslücken bitte **privat** melden — vorzugsweise über das **GitHub-Vulnerability-Reporting** (Security Advisory) dieses Repositorys, nicht über öffentliche Issues. Bitte keine öffentliche Offenlegung vor einem Fix.

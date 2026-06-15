@@ -1,0 +1,34 @@
+@startuml nn-pipeline
+' Helle "Karte" — lesbar auf GitHub hell wie dunkel (s. architecture.puml).
+skinparam backgroundColor #F4ECD8
+skinparam shadowing false
+skinparam defaultFontName "DejaVu Sans"
+skinparam defaultFontColor #2E1C0E
+skinparam defaultFontSize 13
+skinparam ArrowColor #6B4A2B
+skinparam ArrowThickness 1.4
+skinparam ArrowFontColor #2E1C0E
+skinparam roundCorner 14
+skinparam rectangle {
+  BorderColor #6B4A2B
+  BorderThickness 1.6
+  FontColor #2E1C0E
+}
+left to right direction
+
+rectangle "<b>JCN9000</b>  (Python, Schwester-Repo)\nSelf-Play-Training → Release <i>vX.Y.Z</i> (ZIP)\njass_rules.json · state_encoding.md\nencoding_fixtures.json · tfjs/ · MANIFEST.json" as nn #E7D2B0
+
+rectangle "<b>pnpm sync:nn</b>\ngh release download + unzip\nVersionen aus package.json#jassNn\n(je Spielart 1 Release)" as sync #F3E3B3
+
+rectangle "<b>external/jass-nn/</b>\nlokal / CI  (gitignored)" as ext #EADFC4
+
+rectangle "<b>packages/engine</b>\nType-Gen aus jass_rules.json\n→ Compile-Fail bei Spec-Drift\nFixtures: Encoder byte-equivalent" as engine #DCEFD8
+rectangle "<b>apps/inference</b>\nlädt tfjs/model.json (1 je Spielart)\nencoding_version vs. EXPECTED\n→ Hard-Fail bei Mismatch" as inf #DCD8EF
+rectangle "<b>pnpm verify:nn</b>\nMANIFEST: SHA-256 + Versionen" as verify #F2D0C5
+
+nn --> sync : Release-Artefakte
+sync --> ext
+ext --> engine : jass_rules.json\n+ encoding_fixtures.json
+ext --> inf : tfjs/ + MANIFEST
+ext --> verify : MANIFEST + Hashes
+@enduml

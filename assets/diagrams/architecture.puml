@@ -1,0 +1,53 @@
+@startuml architecture
+' Helle "Karte" mit dunkler Schrift/Linien — bewusst so, damit das PNG auf
+' GitHub im HELL- und DUNKEL-Modus gleich gut lesbar ist (bringt seinen
+' eigenen hellen Hintergrund mit, statt sich auf die Seitenfarbe zu verlassen).
+skinparam backgroundColor #F4ECD8
+skinparam shadowing false
+skinparam defaultFontName "DejaVu Sans"
+skinparam defaultFontColor #2E1C0E
+skinparam defaultFontSize 13
+skinparam ArrowColor #6B4A2B
+skinparam ArrowThickness 1.4
+skinparam ArrowFontColor #2E1C0E
+skinparam roundCorner 14
+skinparam rectangle {
+  BorderColor #6B4A2B
+  BorderThickness 1.6
+  FontColor #2E1C0E
+}
+skinparam database {
+  BorderColor #6B4A2B
+  BorderThickness 1.6
+  FontColor #2E1C0E
+}
+
+rectangle "apps/web\n<b>React 19 · Vite 8 · PWA</b>\nSpiel · Lobby · Chat · Replays" as web #DCEFD8
+rectangle "apps/landing\n<b>Astro 6</b>\nMarketing · Jass-Schule · Recht" as landing #DCEFD8
+
+rectangle "<b>Caddy 2</b>  (Reverse Proxy)\nAuto-TLS · HSTS · CSP\n/ → landing  ·  /app → web\n/api → REST  ·  /ws → sticky WS" as caddy #F3E3B3
+
+rectangle "<b>apps/api</b>  —  NestJS 11 + Fastify 5\nREST (OpenAPI aus Zod) · Socket.IO-Gateway\nBetter Auth (Argon2id) · Prisma 7\nserver-autoritativer Game-Service" as api #F3E3B3
+
+database "<b>PostgreSQL 16</b>\nUser · Profile · Game · Move\nChat · Audit · Sessions" as pg #F2D0C5
+database "<b>Redis 7</b>\nSocket.IO-Adapter\nLive-State · Presence · Rate-Limit" as redis #F2D0C5
+
+rectangle "<b>apps/inference</b>\n@tensorflow/tfjs (pure-JS)\nPOST /predict {state, mask}\n3 Modelle — 1 je Spielart" as inf #DCD8EF
+
+rectangle "<b>packages/engine</b>\nJass-Regeln + State-Encoder\nSingle Source of Truth (TS-Port)" as engine #EADFC4
+
+rectangle "<b>JCN9000</b>  (Schwester-Repo, Python)\nRegel-Spec · Encoding · TF.js-Modelle\ngithub.com/matthili/jcn9000" as nn #E7D2B0
+
+web --> caddy : HTTPS / WSS
+landing --> caddy : HTTPS
+caddy --> api
+caddy ..> web : static
+caddy ..> landing : static
+api --> pg
+api --> redis
+api --> inf : HTTP /predict
+api ..> engine : importiert
+inf ..> engine : importiert
+nn ..> engine : Regel-Spec → Type-Gen\n(pnpm sync:nn)
+nn ..> inf : TF.js-Modelle
+@enduml
