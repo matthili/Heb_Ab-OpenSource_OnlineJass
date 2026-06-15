@@ -122,6 +122,13 @@ pnpm gen:openapi   # OpenAPI-Doc aus den Zod-Schemas erzeugen
 
 ## Schwester-Projekt: JCN9000
 
+<a href="https://github.com/matthili/jcn9000">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/logo/jcn9000-logo-dark.png" />
+    <img src="assets/logo/jcn9000-logo-light.png" alt="JCN9000 — Jass · Computer · Neuronennetz" width="340" />
+  </picture>
+</a>
+
 Spielregeln, Encoding-Spezifikation und die trainierten Modelle kommen aus dem unabhängigen Python-Projekt **JCN9000**:
 
 - **Repo:** [`matthili/jcn9000`](https://github.com/matthili/jcn9000)
