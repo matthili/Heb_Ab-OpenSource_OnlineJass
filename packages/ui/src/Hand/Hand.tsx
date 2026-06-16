@@ -97,7 +97,11 @@ export function Hand({
       // der einzelnen Hand-Karten NICHT mit Geschwister-Elementen
       // (z.B. der Spielfläche darüber) konkurrieren. Sonst können
       // Hand-Karten visuell über die Trick-Karten greifen.
-      className="flex justify-center items-end pt-4 pb-2 isolate"
+      // Feste Höhe (h-32-Karte 8rem + Headroom für den Hover-/Auswahl-Lift, der
+      // ein reines `translate` ist): so reserviert die Hand „von Haus aus" die
+      // volle Höhe inkl. angehobener Karten → nichts darunter (Partie-Stand)
+      // kann beim Hervorheben verrutschen. overflow bleibt sichtbar (kein Clip).
+      className="flex justify-center items-end pt-4 pb-2 isolate h-[10rem]"
       role="group"
       aria-label="Meine Karten"
     >
