@@ -1033,7 +1033,10 @@
         "blocklist": "Blocklist",
         "bannedWords": "Wortfilter",
         "audit": "Audit-Log",
-        "system": "System"
+        "system": "System",
+        "reports": "Meldungen",
+        "tables": "Tische",
+        "quitters": "Aussteiger"
       }
     },
     "index": {
@@ -1073,6 +1076,10 @@
       "system": {
         "title": "System-Status",
         "desc": "DB, Redis, Migrationen, KI-Engine, Modus und Laufzeit auf einen Blick."
+      },
+      "quitters": {
+        "title": "Aussteiger",
+        "desc": "Ranking nach abgebrochenen Partien — wer lässt echte Mitspieler im Stich?"
       }
     },
     "reports": {
@@ -1086,6 +1093,15 @@
       "reportedBy": "gemeldet von",
       "empty": "Keine Meldungen.",
       "loading": "Lade …"
+    },
+    "quitters": {
+      "intro": "Ranking nach abgebrochenen Partien. „Mit Menschen“ zählt schwerer — KI-Tische zu verlassen ist halb so wild.",
+      "loading": "Lade Aussteiger …",
+      "empty": "Noch keine Spielabbrüche erfasst.",
+      "player": "Spieler",
+      "withHumans": "Mit Menschen",
+      "total": "Gesamt",
+      "last": "Zuletzt"
     },
     "tables": {
       "intro": "Aktive Tische am Server. Verwaiste (Owner nicht gesetzt) sind markiert.",

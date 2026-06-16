@@ -1033,7 +1033,10 @@
         "blocklist": "Blocklist",
         "bannedWords": "Banned words",
         "audit": "Audit log",
-        "system": "System"
+        "system": "System",
+        "reports": "Reports",
+        "tables": "Tables",
+        "quitters": "Quitters"
       }
     },
     "index": {
@@ -1073,6 +1076,10 @@
       "system": {
         "title": "System status",
         "desc": "DB, Redis, migrations, AI engine, mode and uptime at a glance."
+      },
+      "quitters": {
+        "title": "Quitters",
+        "desc": "Ranking by abandoned games — who leaves real opponents hanging?"
       }
     },
     "reports": {
@@ -1086,6 +1093,15 @@
       "reportedBy": "reported by",
       "empty": "No reports.",
       "loading": "Loading …"
+    },
+    "quitters": {
+      "intro": "Ranking by abandoned games. \"With humans\" weighs more — bailing on AI tables is no big deal.",
+      "loading": "Loading quitters …",
+      "empty": "No game abandonments recorded yet.",
+      "player": "Player",
+      "withHumans": "With humans",
+      "total": "Total",
+      "last": "Last"
     },
     "tables": {
       "intro": "Active tables on the server. Orphaned ones (owner not seated) are flagged.",
