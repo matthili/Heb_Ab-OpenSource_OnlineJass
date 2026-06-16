@@ -4,6 +4,22 @@
 export type Role = "PLAYER" | "MODERATOR" | "ADMIN";
 export type UserStatus = "ACTIVE" | "BLOCKED" | "DELETED_SOFT";
 
+/** Aggregierter Betriebsstatus (Admin → System-Status). Spiegelt das Backend. */
+export interface SystemStatus {
+  db: { ok: boolean };
+  migrations: { applied: number; latest: string | null; latestAt: string | null };
+  redis: { ok: boolean };
+  inference: { available: boolean; lastCheckedAt: number | null; baseUrl: string };
+  mode: {
+    nodeEnv: string;
+    selfHost: boolean;
+    accountActivation: string;
+    captchaEnabled: boolean;
+  };
+  runtime: { nodeVersion: string; uptimeSeconds: number };
+  checkedAt: string;
+}
+
 export interface SmtpSettingsView {
   host?: string;
   port?: number;

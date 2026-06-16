@@ -992,6 +992,37 @@
       "down": "unreachable — NN seats play via the heuristic fallback.",
       "checking": "Checking AI inference status …"
     },
+    "system": {
+      "intro": "Operational status of this instance. Auto-refreshes every 15 seconds.",
+      "loading": "Loading system status …",
+      "error": "System status unavailable.",
+      "services": "Services",
+      "db": "Database (PostgreSQL)",
+      "redis": "Redis",
+      "inference": "AI inference engine",
+      "reachable": "reachable",
+      "unreachable": "unreachable",
+      "inferenceOk": "NN active",
+      "inferenceFallback": "Heuristic fallback",
+      "migrations": "Database migrations",
+      "migrationsApplied": "Applied",
+      "migrationsLatest": "Latest",
+      "mode": "Mode",
+      "selfHost": "Self-host (LAN trial)",
+      "accountActivation": "Account activation",
+      "captcha": "Captcha (Turnstile)",
+      "yes": "yes",
+      "no": "no",
+      "on": "on",
+      "off": "off",
+      "activationAdmin": "by admin (no SMTP)",
+      "activationEmail": "via e-mail link",
+      "captchaOffNote": "Captcha is off — only acceptable for private/LAN instances; do not expose publicly.",
+      "runtime": "Runtime",
+      "nodeVersion": "Node version",
+      "uptime": "Uptime",
+      "checkedAt": "Last checked: {{time}}"
+    },
     "layout": {
       "title": "Admin",
       "nav": {
@@ -1001,7 +1032,8 @@
         "users": "Users",
         "blocklist": "Blocklist",
         "bannedWords": "Banned words",
-        "audit": "Audit log"
+        "audit": "Audit log",
+        "system": "System"
       }
     },
     "index": {
@@ -1037,6 +1069,10 @@
       "tables": {
         "title": "Tables",
         "desc": "Review active tables and dissolve them (moderation / cleanup)."
+      },
+      "system": {
+        "title": "System status",
+        "desc": "DB, Redis, migrations, AI engine, mode and uptime at a glance."
       }
     },
     "reports": {

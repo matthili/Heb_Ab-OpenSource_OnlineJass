@@ -48,4 +48,17 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   duplicate(): RedisClient {
     return this.client.duplicate();
   }
+
+  /**
+   * Health-Ping für die Admin-System-Status-Anzeige. `true` = „PONG"
+   * erhalten. Fehler werden bewusst geschluckt → die Status-Seite zeigt dann
+   * „nicht erreichbar", statt einen 500 zu werfen.
+   */
+  async ping(): Promise<boolean> {
+    try {
+      return (await this.client.ping()) === "PONG";
+    } catch {
+      return false;
+    }
+  }
 }

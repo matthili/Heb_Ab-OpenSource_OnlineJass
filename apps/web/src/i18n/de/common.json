@@ -992,6 +992,37 @@
       "down": "nicht erreichbar — NN-Sitze spielen über den Heuristik-Fallback.",
       "checking": "Prüfe KI-Inferenz-Status …"
     },
+    "system": {
+      "intro": "Betriebsstatus dieser Instanz. Aktualisiert sich automatisch alle 15 Sekunden.",
+      "loading": "Lade System-Status …",
+      "error": "System-Status nicht abrufbar.",
+      "services": "Dienste",
+      "db": "Datenbank (PostgreSQL)",
+      "redis": "Redis",
+      "inference": "KI-Inferenz-Engine",
+      "reachable": "erreichbar",
+      "unreachable": "nicht erreichbar",
+      "inferenceOk": "NN aktiv",
+      "inferenceFallback": "Heuristik-Fallback",
+      "migrations": "Datenbank-Migrationen",
+      "migrationsApplied": "Angewandt",
+      "migrationsLatest": "Neueste",
+      "mode": "Modus",
+      "selfHost": "Self-Host (LAN-Trial)",
+      "accountActivation": "Konto-Freischaltung",
+      "captcha": "Captcha (Turnstile)",
+      "yes": "ja",
+      "no": "nein",
+      "on": "an",
+      "off": "aus",
+      "activationAdmin": "durch Admin (kein SMTP)",
+      "activationEmail": "per E-Mail-Link",
+      "captchaOffNote": "Captcha ist aus — nur für private/LAN-Instanzen vertretbar, nicht öffentlich exponieren.",
+      "runtime": "Laufzeit",
+      "nodeVersion": "Node-Version",
+      "uptime": "Uptime",
+      "checkedAt": "Zuletzt geprüft: {{time}}"
+    },
     "layout": {
       "title": "Admin",
       "nav": {
@@ -1001,7 +1032,8 @@
         "users": "Users",
         "blocklist": "Blocklist",
         "bannedWords": "Wortfilter",
-        "audit": "Audit-Log"
+        "audit": "Audit-Log",
+        "system": "System"
       }
     },
     "index": {
@@ -1037,6 +1069,10 @@
       "tables": {
         "title": "Tische",
         "desc": "Aktive Tische einsehen und auflösen (Moderation / Aufräumen)."
+      },
+      "system": {
+        "title": "System-Status",
+        "desc": "DB, Redis, Migrationen, KI-Engine, Modus und Laufzeit auf einen Blick."
       }
     },
     "reports": {

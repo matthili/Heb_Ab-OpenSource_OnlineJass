@@ -40,6 +40,13 @@ function AdminDashboard() {
       <InferenceStatusBanner />
       <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <Link
+          to="/admin/system"
+          className="block rounded border border-stone-200 px-4 py-3 hover:bg-stone-50"
+        >
+          <strong>{t("admin.index.system.title")}</strong>
+          <p className="text-sm text-stone-500">{t("admin.index.system.desc")}</p>
+        </Link>
+        <Link
           to="/admin/settings"
           className="block rounded border border-stone-200 px-4 py-3 hover:bg-stone-50"
         >

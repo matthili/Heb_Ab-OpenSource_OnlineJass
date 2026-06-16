@@ -10,6 +10,7 @@ import { ReportsModule } from "../reports/reports.module.js";
 import { AdminBootstrapService } from "./admin-bootstrap.service.js";
 import { AdminController } from "./admin.controller.js";
 import { AdminService } from "./admin.service.js";
+import { SystemStatusService } from "./system-status.service.js";
 
 @Module({
   // MailModule + AuditModule sind beide global registriert, müssen also
@@ -21,7 +22,7 @@ import { AdminService } from "./admin.service.js";
   controllers: [AdminController],
   // AdminBootstrapService hat keinen Controller — er hängt nur am
   // OnApplicationBootstrap-Lifecycle (Erst-Admin-Beförderung via ADMIN_EMAIL).
-  providers: [AdminService, AdminBootstrapService, SessionGuard, RolesGuard],
+  providers: [AdminService, AdminBootstrapService, SystemStatusService, SessionGuard, RolesGuard],
   exports: [AdminService],
 })
 export class AdminModule {}

@@ -87,6 +87,13 @@ function AdminLayout() {
           >
             {t("admin.layout.nav.audit")}
           </Link>
+          <Link
+            to="/admin/system"
+            activeProps={{ className: "font-semibold text-stone-900" }}
+            inactiveProps={{ className: "text-stone-600 hover:text-stone-900" }}
+          >
+            {t("admin.layout.nav.system")}
+          </Link>
         </nav>
       </header>
       <Outlet />

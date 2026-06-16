@@ -61,6 +61,7 @@ import {
   type AdminQuitterEntry,
   type AdminUserView,
 } from "./admin.service.js";
+import { SystemStatusService, type SystemStatus } from "./system-status.service.js";
 
 @Controller("api/admin")
 @UseGuards(SessionGuard, RolesGuard)
@@ -72,7 +73,8 @@ export class AdminController {
     private readonly lobbySettings: LobbySettingsService,
     private readonly reports: ReportsService,
     private readonly lobby: LobbyService,
-    private readonly inference: InferenceClient
+    private readonly inference: InferenceClient,
+    private readonly systemStatus: SystemStatusService
   ) {}
 
   // ─── Meldungen (Reports) ───────────────────────────────────────────
@@ -214,6 +216,19 @@ export class AdminController {
   }> {
     await this.inference.ping();
     return this.inference.getStatus();
+  }
+
+  // ─── System-Status (DB / Redis / Migrationen / Modus / Laufzeit) ─────
+
+  /**
+   * Aggregierter Betriebsstatus für die Admin-„System-Status"-Seite — gibt
+   * Self-Hostern auf einen Blick Auskunft, ob DB + Redis erreichbar sind,
+   * Migrationen aktuell, die KI-Engine läuft und in welchem Modus die Instanz
+   * fährt (Self-Host/Prod, Captcha, Konto-Freischaltung).
+   */
+  @Get("system-status")
+  async getSystemStatus(): Promise<SystemStatus> {
+    return this.systemStatus.getStatus();
   }
 
   // ─── User-Mgmt ─────────────────────────────────────────────────────
