@@ -3,6 +3,12 @@
  *
  * Variant-Tabs oben, Tabelle darunter. Daten von `GET /api/leaderboard`,
  * cache 60 s — die Liste ändert sich nicht im Sekundentakt.
+ *
+ * **Top-Level-Route (bewusst NICHT unter _public/_auth):** das Leaderboard ist
+ * für ALLE sichtbar — anonyme Besucher UND eingeloggte Spieler. `_public`
+ * würde Eingeloggte in die Lobby umleiten (dann wäre der Header-Link
+ * „Rangliste" für genau die, die ihn sehen, tot), `_auth` würde Anonyme
+ * aussperren. Deshalb ohne Layout-Guard direkt am Root.
  */
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
@@ -29,7 +35,7 @@ interface LeaderboardResponse {
 const VARIANTS = [{ id: "KREUZ_4P" }, { id: "SOLO_4P" }, { id: "BODENSEE_2P" }] as const;
 type VariantId = (typeof VARIANTS)[number]["id"];
 
-export const Route = createFileRoute("/_public/leaderboard")({
+export const Route = createFileRoute("/leaderboard")({
   component: LeaderboardPage,
 });
 
