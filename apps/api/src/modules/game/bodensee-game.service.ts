@@ -109,6 +109,9 @@ export interface TableStackView {
 /** Per-Sitz-Client-Sicht auf ein Bodensee-Game. */
 export interface BodenseePlayerView {
   gameId: string;
+  /** Inferenz-Service erreichbar? Steuert den Engine-Status-Tooltip am KI-Sitz;
+   * bei `false` spielen NN-Sitze über den Heuristik-Fallback. */
+  inferenceAvailable: boolean;
   variant: "bodensee";
   status: "announcing" | "playing" | "finished";
   mySeat: number;
@@ -320,10 +323,12 @@ export class BodenseeGameService {
   }
 
   async viewForSeat(gameId: string, seat: number): Promise<BodenseePlayerView> {
+    const inferenceAvailable = this.inference.isAvailable();
     const pending = await this.loadPending(gameId);
     if (pending) {
       return {
         gameId,
+        inferenceAvailable,
         variant: "bodensee",
         status: "announcing",
         mySeat: seat,
@@ -360,6 +365,7 @@ export class BodenseeGameService {
         );
     const result: BodenseePlayerView = {
       gameId,
+      inferenceAvailable,
       variant: "bodensee",
       status: finished ? "finished" : "playing",
       mySeat: seat,
@@ -577,10 +583,11 @@ export class BodenseeGameService {
       this.log.warn({ gameId, argmax: res.argmax }, "Bodensee-KI: argmax nicht im Pool — Fallback");
     } catch (err) {
       if (!(err instanceof InferenceUnavailableError)) throw err;
-      this.log.warn({ gameId }, "Bodensee-Inferenz nicht verfügbar — Fallback zufällig");
+      this.log.warn({ gameId }, "Bodensee-Inferenz nicht verfügbar — Fallback Heuristik");
     }
-    // Fallback: zufällig-legal.
-    return legalCards[Math.floor(Math.random() * legalCards.length)] as Card;
+    // Fallback bewusst auf die HEURISTIK (nicht random): dependency-frei +
+    // deutlich stärker als Zufall — bester Stand-in für ein fehlendes NN.
+    return BODENSEE_HEURISTIC.chooseCard(legalCards, state.current_trick_cards, state.variant);
   }
 
   // ───────────────────────────────────────────────────────────────────

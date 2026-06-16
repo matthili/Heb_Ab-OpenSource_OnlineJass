@@ -26,6 +26,7 @@ import { SessionGuard } from "../../common/guards/session.guard.js";
 import { ZodValidationPipe } from "../../common/pipes/zod.pipe.js";
 import { BannedWordsService, type BannedWordView } from "../chat/banned-words.service.js";
 import { LobbySettingsService, type LobbySettings } from "../lobby/lobby-settings.service.js";
+import { InferenceClient } from "../inference/inference-client.service.js";
 import { LobbyService, type AdminTableView } from "../lobby/lobby.service.js";
 import {
   ListReportsQuerySchema,
@@ -70,7 +71,8 @@ export class AdminController {
     private readonly bannedWords: BannedWordsService,
     private readonly lobbySettings: LobbySettingsService,
     private readonly reports: ReportsService,
-    private readonly lobby: LobbyService
+    private readonly lobby: LobbyService,
+    private readonly inference: InferenceClient
   ) {}
 
   // ─── Meldungen (Reports) ───────────────────────────────────────────
@@ -195,6 +197,23 @@ export class AdminController {
     @Param("id") tableId: string
   ): Promise<{ tableClosed: boolean }> {
     return this.lobby.closeTableAsAdmin(req.user!.id, tableId);
+  }
+
+  // ─── Inferenz-Status (KI-Engine) ───────────────────────────────────
+
+  /**
+   * Status des Inferenz-Microservice für die Admin-Anzeige. Macht einen
+   * frischen Health-Ping (aktualisiert den gecachten Status im Client) und
+   * gibt ihn zurück. `available=false` heißt: NN-Sitze spielen via Heuristik.
+   */
+  @Get("inference-status")
+  async inferenceStatus(): Promise<{
+    available: boolean;
+    lastCheckedAt: number | null;
+    baseUrl: string;
+  }> {
+    await this.inference.ping();
+    return this.inference.getStatus();
   }
 
   // ─── User-Mgmt ─────────────────────────────────────────────────────

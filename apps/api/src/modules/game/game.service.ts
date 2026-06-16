@@ -73,7 +73,10 @@ import {
 } from "@jass/engine";
 
 import { AuditService } from "../audit/audit.service.js";
-import { InferenceUnavailableError } from "../inference/inference-client.service.js";
+import {
+  InferenceClient,
+  InferenceUnavailableError,
+} from "../inference/inference-client.service.js";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { RedisService } from "../redis/redis.service.js";
 import { AIPlayerFactory } from "./players/ai-player.factory.js";
@@ -82,7 +85,6 @@ import {
   KREUZ_ANNOUNCE_PARAMS,
   SOLO_ANNOUNCE_PARAMS,
 } from "./players/heuristic-player.js";
-import { RandomLegalMovePlayer } from "./players/random-player.js";
 
 const REDIS_STATE_TTL_SECONDS = 6 * 60 * 60; // 6h ohne Move → State läuft ab
 
@@ -259,6 +261,9 @@ export interface CreateGameInput {
  */
 export interface PlayerView {
   gameId: string;
+  /** Inferenz-Service erreichbar? Steuert den Engine-Status-Tooltip am KI-Sitz;
+   * bei `false` spielen NN-Sitze über den Heuristik-Fallback. */
+  inferenceAvailable: boolean;
   status: "announcing" | "playing" | "finished";
   /** Eigener Sitz im Game (0..3). In allen Phasen verfügbar. */
   mySeat: number;
@@ -379,7 +384,8 @@ export class GameService {
     private readonly prisma: PrismaService,
     private readonly redis: RedisService,
     private readonly audit: AuditService,
-    private readonly aiFactory: AIPlayerFactory
+    private readonly aiFactory: AIPlayerFactory,
+    private readonly inference: InferenceClient
   ) {}
 
   // ───────────────────────────────────────────────────────────────────
@@ -590,6 +596,7 @@ export class GameService {
    * playing/finished.
    */
   async viewForSeat(gameId: string, seat: number): Promise<PlayerView> {
+    const inferenceAvailable = this.inference.isAvailable();
     // Abheben-Phase: Karten noch nicht ausgeteilt, gewartet wird auf den
     // Abheber. status bleibt „announcing", aber `cut` statt `announcement`.
     const cut = await this.loadCut(gameId);
@@ -608,6 +615,7 @@ export class GameService {
           iAmCutter: cut.cutterSeat === seat,
           deckSize: cut.deck.length,
         },
+        inferenceAvailable,
         stoeckEligible: false,
         stoeckAnnouncedTeam: null,
         weisen: {
@@ -641,6 +649,7 @@ export class GameService {
           announceLevel: pending.announceLevel ?? "ALLES",
           slalomDirectionOnly: pending.slalomDirectionOnly ?? false,
         },
+        inferenceAvailable,
         stoeckEligible: false,
         stoeckAnnouncedTeam: null,
         weisen: {
@@ -657,6 +666,7 @@ export class GameService {
     const finished = isRoundDone(state);
     const view: PlayerView = {
       gameId,
+      inferenceAvailable,
       status: finished ? "finished" : "playing",
       mySeat: seat,
       state: gs,
@@ -1583,20 +1593,21 @@ export class GameService {
     try {
       return await Promise.resolve(player.chooseCard(hand, view));
     } catch (err) {
-      // Fallback bei jedem Inferenz-Problem auf Random-Legal-Move. So bleibt
-      // das Spiel spielbar, selbst wenn der Inferenz-Microservice down oder
-      // überlastet ist. Wir loggen das aber prominent, damit Ops es sieht.
+      // Fallback bei jedem Inferenz-Problem auf die HEURISTIK (nicht random):
+      // dependency-frei, deutlich stärker als Zufall — der beste Stand-in für
+      // ein fehlendes NN. So bleibt das Spiel spielbar UND ordentlich, selbst
+      // wenn der Inferenz-Microservice down/überlastet ist. Prominent geloggt.
       if (err instanceof InferenceUnavailableError) {
         this.log.warn(
           { gameId, seat, aiSeatType, err: err.message },
-          "Inferenz nicht verfügbar — Fallback auf RandomLegalMovePlayer"
+          "Inferenz nicht verfügbar — Fallback auf HeuristicPlayer"
         );
         await this.audit.record({
           action: "game.ai.inference_fallback",
           target: gameId,
           meta: asJson({ seat, aiSeatType, reason: err.message }),
         });
-        return new RandomLegalMovePlayer().chooseCard(hand, view);
+        return new HeuristicPlayer().chooseCard(hand, view);
       }
       throw err;
     }

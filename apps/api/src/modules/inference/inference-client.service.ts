@@ -58,6 +58,14 @@ export class InferenceClient {
   private readonly log = new Logger(InferenceClient.name);
   private readonly baseUrl: string;
   private readonly timeoutMs: number;
+  /**
+   * Letzter bekannter Verfügbarkeits-Status — gespeist aus jedem `predict()`-
+   * Ausgang und jedem `ping()`. Dient der UI (Tooltip am KI-Sitz: „Engine OK"
+   * vs. „Heuristik-Fallback läuft") und der Admin-Statusanzeige. Optimistischer
+   * Default `true`; ein Boot-Ping bzw. der erste Move korrigiert ihn.
+   */
+  private available = true;
+  private lastCheckedAt: number | null = null;
 
   constructor() {
     this.baseUrl = process.env["INFERENCE_URL"] ?? DEFAULT_BASE_URL;
@@ -91,8 +99,10 @@ export class InferenceClient {
       if (typeof json.argmax !== "number" || !Array.isArray(json.policy)) {
         throw new InferenceUnavailableError("Antwort hat unerwartetes Schema");
       }
+      this.markAvailable(true);
       return json;
     } catch (err) {
+      this.markAvailable(false);
       if (err instanceof InferenceUnavailableError) throw err;
       // Netzwerk-Fehler, Timeout (AbortError), JSON-Parse — alles einheitlich
       // als "unavailable" behandeln.
@@ -117,11 +127,28 @@ export class InferenceClient {
     const t = setTimeout(() => controller.abort(), this.timeoutMs);
     try {
       const res = await fetch(`${this.baseUrl}/health`, { signal: controller.signal });
+      this.markAvailable(res.ok);
       return res.ok;
     } catch {
+      this.markAvailable(false);
       return false;
     } finally {
       clearTimeout(t);
     }
+  }
+
+  /** Zuletzt bekannter Verfügbarkeits-Status (gecached, ohne Netz-Call). */
+  isAvailable(): boolean {
+    return this.available;
+  }
+
+  /** Status-Snapshot für die Admin-Anzeige. */
+  getStatus(): { available: boolean; lastCheckedAt: number | null; baseUrl: string } {
+    return { available: this.available, lastCheckedAt: this.lastCheckedAt, baseUrl: this.baseUrl };
+  }
+
+  private markAvailable(ok: boolean): void {
+    this.available = ok;
+    this.lastCheckedAt = Date.now();
   }
 }
