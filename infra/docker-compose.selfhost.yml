@@ -1,0 +1,123 @@
+# ─────────────────────────────────────────────────────────────────────────
+# ZERO-CONFIG Self-Host-Stack für „Heb ab!" — privater LAN-Trial.
+#
+#   docker compose -f infra/docker-compose.selfhost.yml up -d --build
+#
+# Danach erreichbar unter  http://localhost  (auf dem Mini-PC selbst).
+# Für Zugriff aus dem LAN von anderen Geräten:  JASS_HOST davor setzen, z.B.
+#   JASS_HOST=http://192.168.0.42 docker compose -f infra/docker-compose.selfhost.yml up -d --build
+#
+# KEIN .env nötig:
+#   • Secrets (APP_SECRET/BETTER_AUTH_SECRET) werden beim ersten Start im
+#     api-Entrypoint generiert + auf einem Volume persistiert.
+#   • DB-Migrationen laufen automatisch (api-Entrypoint, prisma migrate deploy).
+#   • Mail ist AUS (ACCOUNT_ACTIVATION=admin) → neue Konten schaltet der Admin
+#     im Admin-Bereich frei (kein SMTP nötig).
+#   • Captcha + TLS sind AUS (SELF_HOST=1, HTTP). → NICHT öffentlich exponieren!
+#   • KI = Heuristik/Zufall (kein Inferenz-Container). NN ist optional nachrüstbar
+#     (pnpm sync:nn + Inferenz-Service) — NN-Sitze fallen sonst sauber auf die
+#     Heuristik zurück.
+#
+# Ersten Admin festlegen:  ADMIN_EMAIL=<deine-mail> davor setzen → der Account
+# wird beim Registrieren automatisch zum Admin.
+# ─────────────────────────────────────────────────────────────────────────
+
+# Eigener Projektname → kollidiert NICHT mit dem Dev-Stack (docker-compose.dev.yml
+# liegt im selben Ordner und nutzt sonst denselben Default-Projektnamen).
+name: jass-selfhost
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: jass
+      POSTGRES_USER: jass
+      POSTGRES_PASSWORD: jass-selfhost
+    volumes:
+      - jass-selfhost-pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U jass -d jass"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks: [jass]
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - jass-selfhost-redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks: [jass]
+
+  api:
+    build:
+      context: ..
+      dockerfile: apps/api/Dockerfile
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      SELF_HOST: "1"
+      API_PORT: "3000"
+      DATABASE_URL: postgresql://jass:jass-selfhost@postgres:5432/jass?schema=public
+      REDIS_URL: redis://redis:6379
+      ACCOUNT_ACTIVATION: admin
+      BETTER_AUTH_URL: ${JASS_HOST:-http://localhost}
+      WEB_PUBLIC_URL: ${JASS_HOST:-http://localhost}
+      LANDING_PUBLIC_URL: ${JASS_HOST:-http://localhost}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-}
+      # APP_SECRET / BETTER_AUTH_SECRET bewusst NICHT gesetzt → der Entrypoint
+      # generiert sie einmalig und persistiert sie nach /app/data.
+    volumes:
+      - jass-selfhost-data:/app/data
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    networks: [jass]
+
+  web:
+    build:
+      context: ..
+      dockerfile: apps/web/Dockerfile
+      args:
+        # Leer = Turnstile-Widget rendert nichts, Submit nutzt „dev-bypass";
+        # der Server überspringt die Prüfung (SELF_HOST, kein Secret).
+        VITE_TURNSTILE_SITE_KEY: ""
+    restart: unless-stopped
+    networks: [jass]
+
+  landing:
+    build:
+      context: ..
+      dockerfile: apps/landing/Dockerfile
+    restart: unless-stopped
+    networks: [jass]
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - ./caddy/Caddyfile.selfhost:/etc/caddy/Caddyfile:ro
+      - jass-selfhost-caddy:/data
+    depends_on:
+      api: { condition: service_healthy }
+      web: { condition: service_started }
+      landing: { condition: service_started }
+    networks: [jass]
+
+networks:
+  jass:
+
+volumes:
+  jass-selfhost-pg:
+  jass-selfhost-redis:
+  jass-selfhost-data:
+  jass-selfhost-caddy:

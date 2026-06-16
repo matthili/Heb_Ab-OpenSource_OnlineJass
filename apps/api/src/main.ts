@@ -51,10 +51,19 @@ function assertNoUnsafeFlagsInProduction(): void {
   // dann ebenfalls ab und wirft. Effektiv: ohne TURNSTILE_SECRET_KEY
   // startet die Production-App nicht.
   if (!process.env["TURNSTILE_SECRET_KEY"]) {
-    throw new Error(
-      "TURNSTILE_SECRET_KEY ist in production Pflicht. Ein Captcha-Bypass " +
-        "würde Register/Forget-Password als Bot-Vektor öffnen."
-    );
+    if (process.env["SELF_HOST"] === "1") {
+      // Self-Host-/LAN-Trial-Modus: bewusst ohne Captcha. NICHT für öffentlich
+      // erreichbare Instanzen — dort gehört ein echter Turnstile-Key gesetzt.
+      console.warn(
+        "[api] SELF_HOST=1 ohne TURNSTILE_SECRET_KEY → Captcha ist AUS. " +
+          "Nur für private/LAN-Trials; öffentlich erreichbare Instanzen brauchen einen Key."
+      );
+    } else {
+      throw new Error(
+        "TURNSTILE_SECRET_KEY ist in production Pflicht. Ein Captcha-Bypass " +
+          "würde Register/Forget-Password als Bot-Vektor öffnen. (Für private Trials: SELF_HOST=1 setzen.)"
+      );
+    }
   }
 }
 

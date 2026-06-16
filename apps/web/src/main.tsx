@@ -50,6 +50,11 @@ const queryClient = new QueryClient({
 
 const router = createRouter({
   routeTree,
+  // Hinter dem Reverse-Proxy läuft die SPA unter /app/ (im Container-Build ist
+  // `base="/app/"`, siehe vite.config). `import.meta.env.BASE_URL` spiegelt
+  // genau dieses `base` wider → Router-Pfade stimmen mit der Browser-URL
+  // überein. In Dev ist es „/" (no-op).
+  basepath: import.meta.env.BASE_URL,
   defaultPreload: "intent",
   context: { queryClient },
 });

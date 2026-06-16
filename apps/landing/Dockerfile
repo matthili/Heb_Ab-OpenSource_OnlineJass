@@ -34,6 +34,12 @@ COPY packages/config ./packages/config
 
 COPY apps/landing ./apps/landing
 
+# Karten-Assets + Sync-Skript fürs `prebuild` (sync-landing-cards.mjs kopiert
+# assets/cards → public/cards). Ohne sie scheitert der prebuild-Hook von
+# `astro build` mit „Cannot find module …/scripts/sync-landing-cards.mjs".
+COPY scripts/sync-landing-cards.mjs ./scripts/sync-landing-cards.mjs
+COPY assets/cards ./assets/cards
+
 RUN pnpm --filter @jass/landing build
 
 # ─────────────────────────────────────────────────────────────────────────

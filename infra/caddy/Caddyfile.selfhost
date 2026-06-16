@@ -1,0 +1,42 @@
+# Caddyfile für den ZERO-CONFIG Self-Host-Stack („Heb ab!").
+#
+# HTTP im LAN, KEINE Domain, KEIN TLS — bewusst, damit ein frischer Mini-PC
+# ohne jede Konfiguration läuft. Für öffentlich erreichbare Deploys stattdessen
+# infra/caddy/Caddyfile (Auto-TLS via Let's Encrypt) verwenden.
+#
+# Routing über die handle-Familie (erste passende handle gewinnt, terminierend):
+# REST/WS/Health → api (Pfad bleibt), /app/* → web-SPA (Präfix gestrippt),
+# Rest → Landing. CSP ist hier bewusst gelockert (LAN-Trial, kein externes Captcha).
+
+:80 {
+	encode zstd gzip
+
+	# REST-API — Pfad bleibt erhalten (Controller mounten unter /api/*).
+	handle /api/* {
+		reverse_proxy api:3000
+	}
+
+	# WebSocket (Socket.IO unter /ws).
+	handle /ws* {
+		reverse_proxy api:3000
+	}
+
+	# Health-Probe (ohne Origin-Check).
+	handle /healthz {
+		reverse_proxy api:3000
+	}
+
+	# Spiel-SPA unter /app/* — das Präfix wird gestrippt, der nginx im
+	# Web-Container serviert am Root. Die SPA ist mit base="/app/" gebaut, ihre
+	# Asset-/SW-/Manifest-Pfade zeigen also auf /app/… und landen nach dem Strip
+	# korrekt beim Web-nginx.
+	handle_path /app/* {
+		reverse_proxy web:80
+	}
+
+	# Alles andere → Landing (Astro statisch). Serviert u.a. /cards/* — die
+	# Spiel-SPA referenziert Kartenbilder wurzel-absolut und greift hier zu.
+	handle {
+		reverse_proxy landing:80
+	}
+}

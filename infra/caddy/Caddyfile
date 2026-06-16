@@ -57,31 +57,39 @@
 		-Server
 	}
 
-	# ── Routing ──────────────────────────────────────────────────────
-	# REST-API → api:3000, normal Round-Robin (jeder Request kann auf
-	# beliebige Replica).
-	@api path /api/*
-	reverse_proxy @api api:3000
+	# ── Routing (handle-Familie: erste passende handle gewinnt, terminierend) ──
+	# REST-API → api:3000, normal Round-Robin. Pfad bleibt erhalten (die
+	# Controller mounten selbst unter /api/*).
+	handle /api/* {
+		reverse_proxy api:3000
+	}
 
 	# WebSocket → api:3000, **sticky** über IP-Hash. Caddy erkennt das
 	# Upgrade-Header-Pattern automatisch und behält die Verbindung
 	# offen; die ip_hash-Policy garantiert, dass derselbe Client immer
 	# auf der gleichen Replica landet.
-	@ws path /ws*
-	reverse_proxy @ws api:3000 {
-		lb_policy ip_hash
+	handle /ws* {
+		reverse_proxy api:3000 {
+			lb_policy ip_hash
+		}
 	}
 
 	# Health-Check (für externe Uptime-Monitore, ohne CSRF-Origin-Check).
-	@health path /healthz
-	reverse_proxy @health api:3000
+	handle /healthz {
+		reverse_proxy api:3000
+	}
 
-	# Spiel-SPA unter /app/*. Vite-Build mit base="/app/" liefert
-	# Assets unter /app/assets/, SPA-Routing fängt der nginx-Container
-	# (try_files $uri /index.html) ab — wir reichen also einfach durch.
-	@web path /app/*
-	reverse_proxy @web web:80
+	# Spiel-SPA unter /app/* — das Präfix wird **gestrippt**. Der Vite-Build
+	# setzt base="/app/" (Asset-/SW-/Manifest-Pfade zeigen auf /app/…), der
+	# nginx im Web-Container serviert am Root → nach dem Strip passt beides
+	# zusammen. (Früher „einfach durchreichen" — das ließ /app/assets/* 404en.)
+	handle_path /app/* {
+		reverse_proxy web:80
+	}
 
-	# Alles andere → Landing (Astro statisch).
-	reverse_proxy landing:80
+	# Alles andere → Landing (Astro statisch). Serviert u.a. /cards/*, auf die
+	# die Spiel-SPA wurzel-absolut zugreift.
+	handle {
+		reverse_proxy landing:80
+	}
 }

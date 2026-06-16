@@ -45,6 +45,13 @@ FROM base AS build
 
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/apps/web/node_modules ./apps/web/node_modules
+# Per-Package node_modules (pnpm-Symlinks, u.a. zu @jass/config). Ohne die
+# scheitert der Engine-Build mit „@jass/config/tsconfig/node.json not found",
+# und Vite kann @jass/ui/@jass/shared-types nicht aus den Quellen bündeln.
+# (packages/config hat selbst keine node_modules — reine tsconfig-Sammlung.)
+COPY --from=deps /app/packages/engine/node_modules ./packages/engine/node_modules
+COPY --from=deps /app/packages/shared-types/node_modules ./packages/shared-types/node_modules
+COPY --from=deps /app/packages/ui/node_modules ./packages/ui/node_modules
 
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json .npmrc tsconfig.base.json ./
 COPY apps/web/package.json apps/web/package.json
@@ -58,8 +65,16 @@ COPY packages/engine/tsconfig.json packages/engine/tsconfig.build.json ./package
 
 COPY apps/web ./apps/web
 
-# Engine zuerst — Web importiert daraus.
+# Karten-Assets + Sync-Skript fürs `prebuild` (sync-web-cards.mjs kopiert
+# assets/cards → public/cards). Ohne sie scheitert der prebuild-Hook von
+# `vite build` mit „Cannot find module …/scripts/sync-web-cards.mjs".
+COPY scripts/sync-web-cards.mjs ./scripts/sync-web-cards.mjs
+COPY assets/cards ./assets/cards
+
+# Engine + shared-types zuerst — Web bündelt beide aus ihrem dist/ (@jass/ui
+# wird dagegen als Quelle gebündelt und braucht keinen Build).
 RUN pnpm --filter @jass/engine build
+RUN pnpm --filter @jass/shared-types build
 
 # Build-Zeit-Env durchreichen, falls vom `docker build --build-arg` gesetzt.
 ARG VITE_TURNSTILE_SITE_KEY=""
