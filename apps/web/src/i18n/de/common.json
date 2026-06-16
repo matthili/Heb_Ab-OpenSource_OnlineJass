@@ -102,6 +102,13 @@
     "edit": {
       "title": "Profil bearbeiten",
       "intro": "Diese Felder sind alle optional. Pro Feld kannst du rechts einstellen, wer es sehen darf.",
+      "displayName": {
+        "title": "Spielername",
+        "help": "Dein öffentlicher, eindeutiger Name am Tisch, im Chat und in der Rangliste.",
+        "save": "Namen ändern",
+        "saved": "Name geändert.",
+        "error": "Name konnte nicht geändert werden — vielleicht ist er schon vergeben."
+      },
       "namesHint": "{{firstName}}, {{lastName}} & Co. sind alle freiwillig — Spielername ({{name}}) und E-Mail ({{email}}) änderst du über die Konto-Verwaltung.",
       "realFirstName": "Vorname",
       "realLastName": "Nachname",
@@ -978,6 +985,7 @@
 
   "chat": {
     "empty": "Noch keine Nachrichten.",
+    "loadOlder": "Ältere Nachrichten laden",
     "composerPlaceholder": "Nachricht … (Enter zum Senden, Shift+Enter für Umbruch)",
     "composerAria": "Nachricht verfassen",
     "markdownHintBold": "**fett**",

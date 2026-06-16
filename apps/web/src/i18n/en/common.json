@@ -102,6 +102,13 @@
     "edit": {
       "title": "Edit profile",
       "intro": "All fields are optional. Use the dropdown next to each field to control who can see it.",
+      "displayName": {
+        "title": "Player name",
+        "help": "Your public, unique name at the table, in chat and on the leaderboard.",
+        "save": "Change name",
+        "saved": "Name changed.",
+        "error": "Could not change the name — it may already be taken."
+      },
       "namesHint": "{{firstName}}, {{lastName}} & co. are all optional — change your player name ({{name}}) and e-mail ({{email}}) via account management.",
       "realFirstName": "First name",
       "realLastName": "Last name",
@@ -978,6 +985,7 @@
 
   "chat": {
     "empty": "No messages yet.",
+    "loadOlder": "Load older messages",
     "composerPlaceholder": "Message … (Enter to send, Shift+Enter for a line break)",
     "composerAria": "Compose a message",
     "markdownHintBold": "**bold**",

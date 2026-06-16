@@ -12,7 +12,7 @@
  *     die Server-Response wird auch direkt angehängt.
  */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { api } from "~/lib/api";
 import { getLobbySocket } from "~/lib/ws";
@@ -29,6 +29,11 @@ export interface ChatHookValue {
   sendMessage: (body: string) => Promise<void>;
   isSending: boolean;
   sendError: Error | null;
+  /** Ältere Nachrichten nachladen (Pagination via ?before=, vorne anhängen). */
+  loadOlder: () => Promise<void>;
+  isLoadingOlder: boolean;
+  /** true, solange es vermutlich noch ältere Nachrichten zu laden gibt. */
+  canLoadOlder: boolean;
 }
 
 export function useChat(channelKey: string | null): ChatHookValue {
@@ -92,8 +97,41 @@ export function useChat(channelKey: string | null): ChatHookValue {
     },
   });
 
+  // Pagination: ältere Nachrichten via ?before=<ältester createdAt> nachladen
+  // und VORNE anhängen. `reachedStart` merkt sich, wenn der Server weniger als
+  // eine volle Seite lieferte → Button ausblenden.
+  const [loadingOlder, setLoadingOlder] = useState(false);
+  const [reachedStart, setReachedStart] = useState(false);
+
+  const loadOlder = useCallback(async () => {
+    if (!channelKey || loadingOlder || reachedStart) return;
+    const current = queryClient.getQueryData<HistoryResponse>(["chat", channelKey])?.messages ?? [];
+    const oldest = current[0];
+    if (!oldest) return;
+    setLoadingOlder(true);
+    try {
+      const res = await api<HistoryResponse>(
+        `/api/chat?channelKey=${encodeURIComponent(channelKey)}&limit=50&before=${encodeURIComponent(
+          oldest.createdAt
+        )}`
+      );
+      if (res.messages.length < 50) setReachedStart(true);
+      if (res.messages.length > 0) {
+        queryClient.setQueryData<HistoryResponse>(["chat", channelKey], (prev) => {
+          const list = prev?.messages ?? [];
+          const seen = new Set(list.map((m) => m.id));
+          const fresh = res.messages.filter((m) => !seen.has(m.id));
+          return { messages: [...fresh, ...list] };
+        });
+      }
+    } finally {
+      setLoadingOlder(false);
+    }
+  }, [channelKey, loadingOlder, reachedStart, queryClient]);
+
+  const messages = data?.messages ?? [];
   return {
-    messages: data?.messages ?? [],
+    messages,
     isLoading: isPending && channelKey !== null,
     error,
     sendMessage: async (body: string) => {
@@ -101,5 +139,10 @@ export function useChat(channelKey: string | null): ChatHookValue {
     },
     isSending: sendMut.isPending,
     sendError: sendMut.error,
+    loadOlder,
+    isLoadingOlder: loadingOlder,
+    // Button nur zeigen, wenn die erste Seite voll war (= es gibt vermutlich
+    // mehr) und wir noch nicht am Anfang angekommen sind.
+    canLoadOlder: !reachedStart && messages.length >= 50,
   };
 }

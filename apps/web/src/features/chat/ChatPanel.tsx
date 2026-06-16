@@ -45,10 +45,24 @@ export function ChatPanel({ channelKey, title, className = "", hideHeader = fals
   const { t } = useTranslation();
   const { data: session } = useSession();
   const myUserId = session?.user?.id;
-  const { messages, isLoading, error, sendMessage, isSending, sendError } = useChat(channelKey);
+  const {
+    messages,
+    isLoading,
+    error,
+    sendMessage,
+    isSending,
+    sendError,
+    loadOlder,
+    isLoadingOlder,
+    canLoadOlder,
+  } = useChat(channelKey);
   const [draft, setDraft] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  // Für die Scroll-Logik: ob die letzte Änderung ein Prepend (Ältere laden)
+  // war — dann NICHT ans Ende springen.
+  const prevFirstIdRef = useRef<string | null>(null);
+  const prevLenRef = useRef(0);
 
   // Emoji an der Cursor-Position einfügen (Fallback: ans Ende anhängen).
   function insertEmoji(emoji: string) {
@@ -80,11 +94,34 @@ export function ChatPanel({ channelKey, title, className = "", hideHeader = fals
   });
   const dmBlocked = recipientId !== null && canDmQuery.data?.allowed === false;
 
-  // Auto-Scroll an's Ende, wenn neue Messages reinkommen.
+  // Auto-Scroll ans Ende beim Erst-Laden und bei NEUEN (unten angehängten)
+  // Nachrichten — aber NICHT beim Laden älterer (oben eingefügter): dort würde
+  // es den Leser nach unten reißen. Prepend erkennen wir daran, dass die erste
+  // Nachricht eine andere wurde, obwohl die Liste wuchs.
   useEffect(() => {
     const el = scrollRef.current;
-    if (el) el.scrollTop = el.scrollHeight;
-  }, [messages.length]);
+    if (!el) return;
+    const firstId = messages[0]?.id ?? null;
+    const prepended =
+      messages.length > prevLenRef.current &&
+      prevLenRef.current > 0 &&
+      firstId !== prevFirstIdRef.current;
+    prevFirstIdRef.current = firstId;
+    prevLenRef.current = messages.length;
+    if (!prepended) el.scrollTop = el.scrollHeight;
+  }, [messages]);
+
+  // „Ältere laden": Inhalt wächst oben → Scroll-Position nachführen, damit die
+  // gerade gelesene Stelle stehen bleibt (statt nach oben wegzuspringen).
+  async function handleLoadOlder() {
+    const el = scrollRef.current;
+    const before = el?.scrollHeight ?? 0;
+    await loadOlder();
+    requestAnimationFrame(() => {
+      const el2 = scrollRef.current;
+      if (el2) el2.scrollTop += el2.scrollHeight - before;
+    });
+  }
 
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -124,6 +161,18 @@ export function ChatPanel({ channelKey, title, className = "", hideHeader = fals
         aria-live="polite"
         aria-atomic="false"
       >
+        {canLoadOlder && (
+          <div className="text-center">
+            <button
+              type="button"
+              onClick={() => void handleLoadOlder()}
+              disabled={isLoadingOlder}
+              className="text-xs text-stone-500 hover:text-stone-800 disabled:opacity-50"
+            >
+              {isLoadingOlder ? "…" : t("chat.loadOlder")}
+            </button>
+          </div>
+        )}
         {isLoading && <p className="text-sm text-stone-400">…</p>}
         {error && (
           <p role="alert" className="text-sm text-rose-700">
