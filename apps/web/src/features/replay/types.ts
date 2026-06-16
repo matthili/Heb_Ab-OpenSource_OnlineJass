@@ -5,7 +5,10 @@
  */
 import type { Suit } from "@jass/engine";
 
-export type GameVariant = "KREUZ_4P" | "KREUZ_6P" | "KREUZ_STEIGERN" | "BODENSEE_2P";
+// SOLO_4P fehlte hier, obwohl das Backend es zur Laufzeit liefert (Solo-Partien
+// in History/Replay) — dadurch konnte die History-Liste nie sauber nach Variante
+// verzweigen. Jetzt vollständig.
+export type GameVariant = "KREUZ_4P" | "KREUZ_6P" | "KREUZ_STEIGERN" | "SOLO_4P" | "BODENSEE_2P";
 
 export interface ReplaySeat {
   seat: number;

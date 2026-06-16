@@ -60,16 +60,29 @@ export function GameHistoryList({ limit = 50, offset = 0 }: Props) {
 
 function GameHistoryItem({ game }: { game: UserGameSummary }) {
   const { t } = useTranslation();
-  const myTeam = game.myTeam;
-  const otherTeam = 1 - myTeam;
-  const ownPts = game.finalScore?.team_card_points[myTeam] ?? 0;
-  const oppPts = game.finalScore?.team_card_points[otherTeam] ?? 0;
+  // Punkte + Ausgang varianten-abhängig — exakt wie das Backend
+  // (user-stats.service `extractUserResult`): Bodensee + Solo werten pro
+  // SITZ (jeder Sitz eine eigene Wertung), Kreuz pro TEAM (Sitz % 2).
+  // Vorher las die History für ALLE Varianten team_card_points[myTeam] →
+  // bei Solo (4 Sitze, aber nur Index 0/1) falsche Sieger/Punkte.
+  const scores = game.finalScore?.team_card_points;
+  const isPerSeat = game.variant === "BODENSEE_2P" || game.variant === "SOLO_4P";
+  const myIdx = isPerSeat ? game.mySeat : game.myTeam;
+  const ownPts = scores?.[myIdx] ?? 0;
+  const oppPts = scores
+    ? isPerSeat
+      ? Math.max(0, ...scores.filter((_, i) => i !== game.mySeat))
+      : (scores[1 - game.myTeam] ?? 0)
+    : 0;
+  // matsch_team trägt bei Kreuz den Team-Index, bei Bodensee/Solo den
+  // Sitz-Index — in beiden Fällen vergleichbar mit `myIdx`.
+  const matschTeam = game.finalScore?.matsch_team;
   const result =
     game.status !== "finished"
       ? "running"
-      : game.finalScore?.matsch_team === myTeam
+      : matschTeam === myIdx
         ? "matsch-won"
-        : game.finalScore?.matsch_team === otherTeam
+        : matschTeam != null && matschTeam !== myIdx
           ? "matsch-lost"
           : ownPts > oppPts
             ? "won"

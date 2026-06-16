@@ -181,13 +181,18 @@ export class GameGateway
         await this.handleDisconnectClose(gameId, reason);
       },
       replaceSeatWithAi: async (gameId, _seat, userId) => {
+        // NUR den Sitz auf KI umstellen — NICHT hier schon antreiben.
+        // `driveAIsToEnd` ist headless (broadcastet KEINE Zustände); würde es
+        // hier laufen, advanciert es das Spiel still, und der direkt danach
+        // aufgerufene `resumeGame`→`driveAIsLoop` (mit Broadcasts) fände nur
+        // noch „Mensch dran" vor → verbleibende Spieler sähen ein veraltetes
+        // Brett. Das Antreiben übernimmt also ausschließlich `resumeGame`.
         await this.games.markUserLeft(gameId, userId);
-        await this.games.driveAIsToEnd(gameId);
       },
       resumeGame: async (gameId) => {
-        // Bei reinem Reconnect läuft das Game eh weiter — aber falls
-        // gerade eine KI dran ist (z.B. Disconnect mitten im Trick),
-        // muss der AI-Loop angestoßen werden.
+        // Treibt die KI-Sitze MIT Broadcasts bis ein Mensch dran ist (oder das
+        // Spiel endet) — deckt sowohl reinen Reconnect (KI war zwischendurch
+        // dran) als auch das eben erfolgte Auffüllen disconnecteter Sitze ab.
         await this.driveAIsLoop(gameId);
       },
       postChatSystemMessage: (gameId, body) => {
