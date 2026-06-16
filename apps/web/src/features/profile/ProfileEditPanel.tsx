@@ -6,10 +6,12 @@
  * Sichtbarkeits-Dropdown — der Server speichert beides in einer
  * einzigen `PATCH /api/users/me`-Anfrage.
  *
+ * **Spielername** (`name`) ändern: ist jetzt HIER — eigener Abschnitt oben
+ * (`DisplayNameSection`) via Better Auth `/api/auth/update-user`, der die
+ * Unique-Constraint prüft.
+ *
  * **Was hier NICHT geht** (mit Absicht):
  *   - E-Mail-Wechsel: Better Auth `/api/auth/change-email` (mit Verify-Mail).
- *   - Spielername (`name`) ändern: Better Auth `/api/auth/update-user`
- *     (prüft Unique-Constraint).
  *   - Account löschen / Datenexport: separater „Meine Daten"-Tab.
  *
  * Visibility-Defaults stehen serverseitig in `DEFAULT_VISIBILITY` und
