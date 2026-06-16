@@ -58,6 +58,15 @@ export function LobbyList() {
     },
   });
 
+  // Eigene noch offene Beitritts-Anfrage zurückziehen (DELETE …/join-requests/me).
+  const cancelMutation = useMutation({
+    mutationFn: (tableId: string) =>
+      api(`/api/lobby/tables/${tableId}/join-requests/me`, { method: "DELETE" }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["lobby", "list"] });
+    },
+  });
+
   if (isPending) {
     return <p className="text-stone-500">{t("lobby.loading")}</p>;
   }
@@ -103,7 +112,9 @@ export function LobbyList() {
             table={tbl}
             isMine={tbl.ownerId === myUserId}
             isPending={joinMutation.isPending && joinMutation.variables === tbl.id}
+            isCancelling={cancelMutation.isPending && cancelMutation.variables === tbl.id}
             onJoin={() => joinMutation.mutate(tbl.id)}
+            onCancel={() => cancelMutation.mutate(tbl.id)}
             onOpen={() => navigate({ to: "/table/$id", params: { id: tbl.id } })}
             joinError={joinMutation.error}
           />
@@ -117,12 +128,14 @@ function JoinButton(props: {
   table: TableListEntry;
   isMine: boolean;
   isPending: boolean;
+  isCancelling: boolean;
   onJoin: () => void;
+  onCancel: () => void;
   onOpen: () => void;
   joinError: Error | null;
 }) {
   const { t } = useTranslation();
-  const { table, isMine, isPending, onJoin, onOpen, joinError } = props;
+  const { table, isMine, isPending, isCancelling, onJoin, onCancel, onOpen, joinError } = props;
   const failedHere = joinError instanceof ApiError ? joinError.message : null;
 
   // Eigener Tisch → direkt rein.
@@ -134,9 +147,21 @@ function JoinButton(props: {
     );
   }
 
-  // Schon pending-Anfrage → Hinweis statt Button.
+  // Schon pending-Anfrage → Hinweis + Zurückziehen-Button.
   if (table.hasPendingRequest) {
-    return <span className="text-sm text-stone-500">{t("lobby.join.pending")}</span>;
+    return (
+      <div className="flex flex-col items-end gap-1">
+        <span className="text-sm text-stone-500">{t("lobby.join.pending")}</span>
+        <button
+          type="button"
+          onClick={onCancel}
+          disabled={isCancelling}
+          className="text-xs text-jass-red hover:underline disabled:opacity-50"
+        >
+          {isCancelling ? "…" : t("lobby.join.cancelRequest")}
+        </button>
+      </div>
+    );
   }
 
   // Status entscheidet, ob überhaupt beitretbar.

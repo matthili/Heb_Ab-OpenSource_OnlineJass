@@ -74,6 +74,7 @@
     "signOutEverywhere": "Überall abmelden",
     "greeting": "Servus, {{name}}",
     "profile": "Profil",
+    "leaderboard": "Rangliste",
     "admin": "Admin",
     "toLink": "Zum Tisch",
     "toasts": {
@@ -425,6 +426,7 @@
       "inviteOnly": "Nur per Einladung",
       "myTable": "Mein Tisch",
       "pending": "Anfrage läuft",
+      "cancelRequest": "Anfrage zurückziehen",
       "inGame": "Spiel läuft",
       "closed": "Geschlossen"
     },
@@ -604,6 +606,10 @@
       "team0": "Team 1 (Sitz 1 + 3)",
       "team1": "Team 2 (Sitz 2 + 4)",
       "ownerActions": "Owner-Aktionen",
+      "editSettings": "Einstellungen ändern",
+      "saveSettings": "Speichern",
+      "savingSettings": "Speichere …",
+      "cancelSettings": "Abbrechen",
       "starting": "Starte…",
       "startGame": "Jetzt starten (mit KI auffüllen)",
       "startingMatch": "Starte …",

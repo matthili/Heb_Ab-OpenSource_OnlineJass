@@ -33,7 +33,7 @@ import { useSession } from "~/lib/auth-client";
 import { getLobbySocket } from "~/lib/ws";
 import { useTableStateEvents } from "~/lib/ws";
 import { LeaveTableConfirm } from "./LeaveTableConfirm";
-import type { TableDetailView } from "./types";
+import type { JoinMode, RestartMode, TableDetailView } from "./types";
 
 interface Props {
   tableId: string;
@@ -436,6 +436,10 @@ function OwnerPanel(props: {
   return (
     <div className="space-y-4 border-t border-stone-200 pt-4">
       <h2 className="font-semibold text-stone-700">{t("lobby.tableDetail.ownerActions")}</h2>
+
+      {/* Tisch-Einstellungen lassen sich vor dem Start noch ändern
+          (PATCH /api/lobby/tables/:id). */}
+      {table.status === "WAITING" && <TableSettingsEditor table={table} queryKey={queryKey} />}
 
       <div className="flex gap-2 flex-wrap">
         {table.status === "WAITING" && (
@@ -926,5 +930,170 @@ function BodenseeGameSection({
         <SeatRow seats={tableSeats} nameSeed={nameSeed} stacked />
       </div>
     </section>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Tisch-Einstellungen nachträglich ändern (Owner, nur solange WAITING).
+// Spiegelt die änderbaren Felder von PATCH /api/lobby/tables/:id; Labels
+// kommen aus denselben i18n-Keys wie der Eröffnungs-Dialog.
+// ─────────────────────────────────────────────────────────────────────
+
+type AiSeatTypeChoice = "random" | "heuristic" | "nn";
+const JOIN_MODE_CHOICES: readonly JoinMode[] = ["OPEN", "REQUEST", "INVITE"];
+const AI_TYPE_CHOICES: readonly AiSeatTypeChoice[] = ["heuristic", "nn", "random"];
+const RESTART_CHOICES: readonly RestartMode[] = ["SIEGER_GIBT", "WELI"];
+const AUTO_FILL_CHOICES: readonly (number | null)[] = [null, 15, 30, 60, 120];
+
+/** „nn-v0.9.2" etc. auf den Editor-Wert „nn" eindampfen. */
+function normalizeAiChoice(value: string): AiSeatTypeChoice {
+  if (value === "random") return "random";
+  if (value.startsWith("nn")) return "nn";
+  return "heuristic";
+}
+
+function TableSettingsEditor(props: { table: TableDetailView; queryKey: readonly unknown[] }) {
+  const { t } = useTranslation();
+  const { table, queryKey } = props;
+  const queryClient = useQueryClient();
+  const [open, setOpen] = useState(false);
+  const [joinMode, setJoinMode] = useState<JoinMode>(table.joinMode);
+  const [aiSeatType, setAiSeatType] = useState<AiSeatTypeChoice>(
+    normalizeAiChoice(table.aiSeatType)
+  );
+  const [autoFillSeconds, setAutoFillSeconds] = useState<number | null>(table.autoFillSeconds);
+  const [restartMode, setRestartMode] = useState<RestartMode>(table.restartMode);
+  const [targetScore, setTargetScore] = useState<number>(table.targetScore);
+
+  const saveMut = useMutation({
+    mutationFn: () =>
+      api(`/api/lobby/tables/${table.id}`, {
+        method: "PATCH",
+        body: { joinMode, aiSeatType, autoFillSeconds, restartMode, targetScore },
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey });
+      setOpen(false);
+    },
+  });
+  const saveError = saveMut.error instanceof ApiError ? saveMut.error.message : null;
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="text-sm text-stone-600 underline hover:text-stone-900"
+      >
+        {t("lobby.tableDetail.editSettings")}
+      </button>
+    );
+  }
+
+  return (
+    <div className="space-y-2 rounded border border-stone-200 bg-stone-50 p-3">
+      <h3 className="text-sm font-semibold text-stone-700">
+        {t("lobby.tableDetail.editSettings")}
+      </h3>
+      <SettingsSelect
+        label={t("lobby.openTable.sections.joinMode")}
+        value={joinMode}
+        onChange={(v) => setJoinMode(v as JoinMode)}
+        options={JOIN_MODE_CHOICES.map((m) => ({
+          value: m,
+          label: t(`lobby.openTable.joinMode.${m}.title`),
+        }))}
+      />
+      <SettingsSelect
+        label={t("lobby.openTable.sections.aiType")}
+        value={aiSeatType}
+        onChange={(v) => setAiSeatType(v as AiSeatTypeChoice)}
+        options={AI_TYPE_CHOICES.map((a) => ({
+          value: a,
+          label: t(`lobby.openTable.aiType.${a}.title`),
+        }))}
+      />
+      <SettingsSelect
+        label={t("lobby.openTable.sections.autoFill")}
+        value={autoFillSeconds === null ? "off" : String(autoFillSeconds)}
+        onChange={(v) => setAutoFillSeconds(v === "off" ? null : Number(v))}
+        options={AUTO_FILL_CHOICES.map((o) => ({
+          value: o === null ? "off" : String(o),
+          label: o === null ? t("lobby.openTable.autoFillPreset.off") : `${o} s`,
+        }))}
+      />
+      <SettingsSelect
+        label={t("lobby.openTable.sections.restart")}
+        value={restartMode}
+        onChange={(v) => setRestartMode(v as RestartMode)}
+        options={RESTART_CHOICES.map((r) => ({
+          value: r,
+          label: t(`lobby.openTable.restart.${r}.title`),
+        }))}
+      />
+      <label className="flex items-center justify-between gap-2 text-sm">
+        <span className="text-stone-600">{t("lobby.openTable.sections.targetScore")}</span>
+        <input
+          type="number"
+          min={500}
+          max={5000}
+          step={50}
+          value={targetScore}
+          onChange={(e) => {
+            const n = Number(e.target.value);
+            if (Number.isFinite(n)) setTargetScore(n);
+          }}
+          className="w-24 rounded border border-stone-300 px-2 py-1"
+        />
+      </label>
+      {saveError && (
+        <p role="alert" className="text-xs text-rose-700">
+          {saveError}
+        </p>
+      )}
+      <div className="flex gap-2 pt-1">
+        <button
+          type="button"
+          onClick={() => saveMut.mutate()}
+          disabled={saveMut.isPending}
+          className="rounded bg-stone-900 px-3 py-1 text-sm text-white hover:bg-stone-700 disabled:opacity-50"
+        >
+          {saveMut.isPending
+            ? t("lobby.tableDetail.savingSettings")
+            : t("lobby.tableDetail.saveSettings")}
+        </button>
+        <button
+          type="button"
+          onClick={() => setOpen(false)}
+          className="rounded border border-stone-300 px-3 py-1 text-sm hover:bg-stone-100"
+        >
+          {t("lobby.tableDetail.cancelSettings")}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function SettingsSelect(props: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  options: ReadonlyArray<{ value: string; label: string }>;
+}) {
+  return (
+    <label className="flex items-center justify-between gap-2 text-sm">
+      <span className="text-stone-600">{props.label}</span>
+      <select
+        value={props.value}
+        onChange={(e) => props.onChange(e.target.value)}
+        className="rounded border border-stone-300 bg-white px-2 py-1"
+      >
+        {props.options.map((o) => (
+          <option key={o.value} value={o.value}>
+            {o.label}
+          </option>
+        ))}
+      </select>
+    </label>
   );
 }

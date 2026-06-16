@@ -74,6 +74,7 @@
     "signOutEverywhere": "Sign out everywhere",
     "greeting": "Hi, {{name}}",
     "profile": "Profile",
+    "leaderboard": "Leaderboard",
     "admin": "Admin",
     "toLink": "Go to table",
     "toasts": {
@@ -425,6 +426,7 @@
       "inviteOnly": "Invite only",
       "myTable": "My table",
       "pending": "Request pending",
+      "cancelRequest": "Withdraw request",
       "inGame": "Playing",
       "closed": "Closed"
     },
@@ -604,6 +606,10 @@
       "team0": "Team 1 (seats 1 + 3)",
       "team1": "Team 2 (seats 2 + 4)",
       "ownerActions": "Owner actions",
+      "editSettings": "Edit settings",
+      "saveSettings": "Save",
+      "savingSettings": "Saving …",
+      "cancelSettings": "Cancel",
       "starting": "Starting…",
       "startGame": "Start now (fill with AI)",
       "startingMatch": "Starting …",

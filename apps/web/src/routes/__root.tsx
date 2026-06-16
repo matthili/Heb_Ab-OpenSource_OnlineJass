@@ -169,6 +169,12 @@ function Header() {
               >
                 {t("nav.profile")}
               </Link>
+              <Link
+                to="/leaderboard"
+                className="text-sm font-medium text-jass-inkSoft hover:text-jass-ink transition-colors"
+              >
+                {t("nav.leaderboard")}
+              </Link>
               <AfkButton />
               <ContrastToggle />
               <LanguageSwitcher />
