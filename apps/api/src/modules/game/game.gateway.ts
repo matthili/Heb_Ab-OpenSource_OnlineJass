@@ -202,6 +202,11 @@ export class GameGateway
         void this.postSystemToTableChat(gameId, body);
       },
     });
+
+    // Nach einem Neustart die persistierten Bodensee-Grace-Fenster wieder
+    // armen — sonst bliebe ein getrennter Sitz nach einem Restart für immer
+    // leer. Hintergrund, blockiert den Boot nicht (analog Disconnect-Vote).
+    void this.recoverBodenseeGraceTimers();
   }
 
   /** Wird vom Disconnect-Vote-Service aufgerufen, wenn der Tisch geschlossen
@@ -341,6 +346,19 @@ export class GameGateway
         });
       }, graceMs);
       this.pendingBodenseeReplacements.set(key, { timer, gameId, userId });
+      // Persistenz für Boot-Recovery: ohne das ginge die Schonfrist bei einem
+      // API-Neustart verloren → der getrennte Sitz würde nie gefüllt. TTL
+      // großzügig über die Grace hinaus, damit ein Neustart sie überlebt.
+      void this.redis.client
+        .set(
+          this.bodenseeGraceKey(gameId, userId),
+          String(Date.now() + graceMs),
+          "EX",
+          Math.ceil(graceMs / 1000) + 3600
+        )
+        .catch((err: unknown) =>
+          this.log.warn({ err, gameId, userId }, "Bodensee-Grace-Persistenz fehlgeschlagen")
+        );
     }
   }
 
@@ -351,6 +369,7 @@ export class GameGateway
    */
   private async executeBodenseeReplacement(gameId: string, userId: string): Promise<void> {
     this.pendingBodenseeReplacements.delete(`${gameId}:${userId}`);
+    void this.redis.client.del(this.bodenseeGraceKey(gameId, userId)).catch(() => {});
     try {
       await this.locks.withLock(gameId, async () => {
         const replaced = await this.bodenseeGames.replaceSeatWithAi(gameId, userId);
@@ -414,6 +433,7 @@ export class GameGateway
       if (entry.userId !== userId) continue;
       clearTimeout(entry.timer);
       this.pendingBodenseeReplacements.delete(key);
+      void this.redis.client.del(this.bodenseeGraceKey(entry.gameId, userId)).catch(() => {});
       this.chatGateway.broadcastSystemMessage(
         roomKey(entry.gameId),
         "Der Spieler ist zurück — das Spiel läuft normal weiter."
@@ -432,6 +452,69 @@ export class GameGateway
     const scale = Number(process.env["DISCONNECT_PHASE_MS_SCALE"] ?? "1");
     const factor = Number.isFinite(scale) && scale > 0 ? scale : 1;
     return Math.max(100, Math.floor(base * factor));
+  }
+
+  /** Redis-Key für ein persistiertes Bodensee-Grace-Fenster. */
+  private bodenseeGraceKey(gameId: string, userId: string): string {
+    return `bodensee:grace:${gameId}:${userId}`;
+  }
+
+  /** SCAN statt KEYS — blockiert Redis nicht (relevant für große Keyspaces). */
+  private async scanKeys(pattern: string): Promise<string[]> {
+    const found: string[] = [];
+    let cursor = "0";
+    do {
+      const [next, batch] = await this.redis.client.scan(cursor, "MATCH", pattern, "COUNT", 100);
+      cursor = next;
+      found.push(...batch);
+    } while (cursor !== "0");
+    return found;
+  }
+
+  /**
+   * Nach einem API-Neustart die persistierten Bodensee-Grace-Fenster
+   * wiederherstellen: Timer für die Restzeit neu armen — oder sofort ausführen,
+   * falls die Schonfrist während der Downtime schon abgelaufen ist. Ohne das
+   * bliebe der Sitz eines getrennten Spielers nach einem Restart für immer leer
+   * (die in-memory-Map ist beim Neustart weg). Idempotent: replaceSeatWithAi
+   * ist no-op, wenn der Sitz schon ersetzt/zurück ist; bei Multi-Replica armen
+   * zwar alle, aber der Lock + die Idempotenz fangen das ab.
+   */
+  private async recoverBodenseeGraceTimers(): Promise<void> {
+    try {
+      const keys = await this.scanKeys("bodensee:grace:*");
+      const now = Date.now();
+      let recovered = 0;
+      for (const redisKey of keys) {
+        // Key-Format: bodensee:grace:<gameId>:<userId> (beide cuid, ohne ":").
+        const rest = redisKey.slice("bodensee:grace:".length);
+        const sep = rest.lastIndexOf(":");
+        if (sep <= 0) continue;
+        const gameId = rest.slice(0, sep);
+        const userId = rest.slice(sep + 1);
+        const mapKey = `${gameId}:${userId}`;
+        if (this.pendingBodenseeReplacements.has(mapKey)) continue;
+        const raw = await this.redis.client.get(redisKey);
+        const parsed = raw !== null ? Number(raw) : NaN;
+        const expiresAt = Number.isFinite(parsed) ? parsed : now;
+        const delay = Math.max(0, expiresAt - now);
+        const timer = setTimeout(() => {
+          void this.executeBodenseeReplacement(gameId, userId).catch((err: unknown) => {
+            this.log.warn(
+              { err, gameId, userId },
+              "Bodensee-Grace-Replacement (Recovery) fehlgeschlagen"
+            );
+          });
+        }, delay);
+        this.pendingBodenseeReplacements.set(mapKey, { timer, gameId, userId });
+        recovered += 1;
+      }
+      if (recovered > 0) {
+        this.log.log({ recovered }, "Bodensee-Grace-Timer nach Neustart wiederhergestellt");
+      }
+    } catch (err) {
+      this.log.warn({ err }, "Bodensee-Grace-Recovery fehlgeschlagen");
+    }
   }
 
   /**
