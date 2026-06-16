@@ -50,31 +50,15 @@ spec:
                 secretKeyRef:
                   name: {{ $pgSecret }}
                   key: url
-            - name: REDIS_HOST
+            # Die API liest ausschließlich REDIS_URL (siehe redis.service.ts).
+            # Die einzelnen REDIS_HOST/PORT/… wurden NIE gelesen → Redis fiel in
+            # k8s still auf localhost zurück. Jetzt eine fertige URL aus dem
+            # Secret (analog DATABASE_URL).
+            - name: REDIS_URL
               valueFrom:
                 secretKeyRef:
                   name: {{ $redisSecret }}
-                  key: host
-            - name: REDIS_PORT
-              valueFrom:
-                secretKeyRef:
-                  name: {{ $redisSecret }}
-                  key: port
-            - name: REDIS_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: {{ $redisSecret }}
-                  key: password
-            - name: REDIS_DB
-              valueFrom:
-                secretKeyRef:
-                  name: {{ $redisSecret }}
-                  key: db
-            - name: REDIS_TLS
-              valueFrom:
-                secretKeyRef:
-                  name: {{ $redisSecret }}
-                  key: tls
+                  key: url
             - name: BETTER_AUTH_SECRET
               valueFrom:
                 secretKeyRef:
@@ -87,6 +71,13 @@ spec:
                   key: app-secret
             - name: BETTER_AUTH_URL
               value: "https://{{ .Values.ingress.host }}"
+            # Pflicht in production — getTrustedOrigins() wirft sonst beim Boot.
+            # Web-SPA + Landing laufen hinter demselben Ingress-Host wie die API,
+            # ihr Browser-Origin ist also der Ingress-Host.
+            - name: WEB_PUBLIC_URL
+              value: "https://{{ .Values.ingress.host }}"
+            - name: LANDING_PUBLIC_URL
+              value: "https://{{ .Values.ingress.host }}"
             - name: INFERENCE_URL
               value: "http://{{ include "jass-app.fullname" . }}-inference:{{ .Values.inference.port }}"
             {{- if .Values.api.env.extraOrigins }}
@@ -95,13 +86,17 @@ spec:
             {{- end }}
           readinessProbe:
             httpGet:
-              path: /api/health
+              # /healthz pingt zusätzlich Postgres (Readiness = bereit zu
+              # bedienen). Liegt am Root, NICHT unter /api — der HealthController
+              # nutzt @Controller(), nur die fachlichen Controller tragen das
+              # „api/"-Präfix. Vorher /api/health → 404 → Pod wurde nie ready.
+              path: /healthz
               port: http
             initialDelaySeconds: 5
             periodSeconds: 5
           livenessProbe:
             httpGet:
-              path: /api/health
+              path: /health
               port: http
             initialDelaySeconds: 30
             periodSeconds: 15
