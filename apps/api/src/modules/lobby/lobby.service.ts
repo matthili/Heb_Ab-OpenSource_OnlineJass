@@ -34,6 +34,7 @@ import { dealCards, type Card, type RandomFn } from "@jass/engine";
 
 import { AuditService } from "../audit/audit.service.js";
 import { BodenseeGameService } from "../game/bodensee-game.service.js";
+import { GameGateway } from "../game/game.gateway.js";
 import { GameService, type SeatAssignment } from "../game/game.service.js";
 import { PrismaService } from "../prisma/prisma.service.js";
 import type {
@@ -128,6 +129,9 @@ export class LobbyService {
     private readonly audit: AuditService,
     private readonly games: GameService,
     private readonly bodenseeGames: BodenseeGameService,
+    // Bodensee-KI nach freiwilligem Verlassen antreiben (Broadcast + AI-Loop
+    // liegen im Game-Gateway). game-Modul hängt NICHT von lobby ab → kein Zyklus.
+    private readonly gameGateway: GameGateway,
     private readonly gateway: LobbyGateway,
     private readonly settings: LobbySettingsService,
     private readonly push: PushService
@@ -909,7 +913,13 @@ export class LobbyService {
     // mit echten Mitspielern aufgegeben".
     const tablePre = await this.prisma.lobbyTable.findUnique({
       where: { id: tableId },
-      select: { status: true, ownerId: true, currentGameId: true, aiSeatType: true },
+      select: {
+        status: true,
+        ownerId: true,
+        currentGameId: true,
+        aiSeatType: true,
+        variant: true,
+      },
     });
     if (!tablePre) throw new NotFoundException(`Tisch ${tableId} nicht gefunden`);
     if (tablePre.status === LobbyTableStatus.CLOSED) {
@@ -921,9 +931,17 @@ export class LobbyService {
       tablePre.currentGameId !== null
     ) {
       const aiType = tablePre.aiSeatType ?? "heuristic";
+      const isBodensee = tablePre.variant === "BODENSEE_2P";
 
-      // GameSeat als ausgestiegen markieren + Audit „game.abandoned".
-      await this.games.markUserLeft(tablePre.currentGameId, userId, aiType);
+      // Sitz auf KI umstellen. Kreuz/Solo: markUserLeft (loggt intern den
+      // „game.abandoned"-Audit + treibt unten bei 0 Menschen zu Ende).
+      // Bodensee läuft über den eigenen Service: replaceSeatWithAi (Sitz +
+      // Audit), der KI-Antrieb passiert weiter unten über das Game-Gateway.
+      if (isBodensee) {
+        await this.bodenseeGames.replaceSeatWithAi(tablePre.currentGameId, userId);
+      } else {
+        await this.games.markUserLeft(tablePre.currentGameId, userId, aiType);
+      }
 
       // Lobby-Sitz auf KI umschalten.
       const seatRow = await this.prisma.lobbyTableSeat.findFirst({
@@ -972,9 +990,34 @@ export class LobbyService {
       const remainingHumanCount = await this.prisma.lobbyTableSeat.count({
         where: { tableId, userId: { not: null } },
       });
+
+      // Bodensee: „game.abandoned" separat loggen (bei Kreuz/Solo macht das
+      // markUserLeft intern) → Bodensee-Aussteiger erscheinen in der
+      // Quitter-Statistik. hadHumanOpponents = es war noch ein Mensch am Tisch.
+      // Verbleibt ein Mensch, lässt das Game-Gateway die KI MIT Broadcasts
+      // weiterspielen (fire-and-forget: KI-Loop hat UI-Delays, darf die
+      // Leave-Antwort nicht blockieren — Fehler werden im Gateway geloggt).
+      if (isBodensee) {
+        await this.audit.record({
+          action: "game.abandoned",
+          actorId: userId,
+          target: tablePre.currentGameId,
+          meta: {
+            seat: seatRow?.seat ?? null,
+            hadHumanOpponents: remainingHumanCount > 0,
+            variant: "BODENSEE_2P",
+          },
+        });
+        if (remainingHumanCount > 0) {
+          void this.gameGateway.driveBodenseeAfterLeave(tablePre.currentGameId);
+        }
+      }
+
       let tableClosed = false;
       if (remainingHumanCount === 0) {
-        if (tablePre.status === LobbyTableStatus.IN_GAME) {
+        // Kreuz/Solo headless zu Ende treiben. Bei Bodensee NICHT — eigener
+        // Service, und bei 0 Menschen wird der Tisch sowieso gleich geschlossen.
+        if (tablePre.status === LobbyTableStatus.IN_GAME && !isBodensee) {
           // Robust: ein Fehler beim KI-Fertigspielen darf das Schließen NICHT
           // verhindern — sonst bleibt der Tisch als Waise (Owner nicht gesetzt,
           // nur KI) zurück, den niemand mehr schließen kann.
@@ -2014,12 +2057,7 @@ function buildSackedPoints(t: {
   sackedPointsTeam2: number;
   sackedPointsTeam3: number;
 }): number[] {
-  const all = [
-    t.sackedPointsTeam0,
-    t.sackedPointsTeam1,
-    t.sackedPointsTeam2,
-    t.sackedPointsTeam3,
-  ];
+  const all = [t.sackedPointsTeam0, t.sackedPointsTeam1, t.sackedPointsTeam2, t.sackedPointsTeam3];
   return t.variant === "SOLO_4P" ? all : all.slice(0, 2);
 }
 

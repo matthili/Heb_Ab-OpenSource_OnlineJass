@@ -36,6 +36,9 @@ import { AIPlayerFactory } from "./players/ai-player.factory.js";
     DisconnectVoteService,
     PerUserSocketRegistry,
     AfkService,
+    // Vom LobbyService genutzt: Bodensee-KI nach freiwilligem Verlassen
+    // antreiben (Broadcast + AI-Loop liegen im Gateway).
+    GameGateway,
   ],
 })
 export class GameModule {}

@@ -1149,6 +1149,19 @@ export class GameService {
   }
 
   /**
+   * Tisch-ID zu einem Game (für die Chat-Kanal-Auflösung: System-Nachrichten
+   * sollen in `table:<id>`, was der In-Game-Chat abonniert). `null` = kein
+   * (mehr) verknüpfter Tisch.
+   */
+  async getTableIdForGame(gameId: string): Promise<string | null> {
+    const game = await this.prisma.game.findUnique({
+      where: { id: gameId },
+      select: { tableId: true },
+    });
+    return game?.tableId ?? null;
+  }
+
+  /**
    * Markiert einen menschlichen Sitz als ausgestiegen — der Sitz bleibt
    * mit seiner `userId` in der DB (für Spiel-Historie und Quitter-Tracking),
    * aber `leftAt` wird gesetzt und der Sitz spielt ab dem nächsten Zug als

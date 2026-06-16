@@ -196,7 +196,10 @@ export class GameGateway
         await this.driveAIsLoop(gameId);
       },
       postChatSystemMessage: (gameId, body) => {
-        this.chatGateway.broadcastSystemMessage(`game:${gameId}`, body);
+        // In den TISCH-Chat (table:<id>) posten, den der In-Game-Chat
+        // abonniert — NICHT game:<id> (dort lauscht niemand). tableId wird
+        // async aufgelöst (der Hook ist synchron) → fire-and-forget.
+        void this.postSystemToTableChat(gameId, body);
       },
     });
   }
@@ -352,8 +355,8 @@ export class GameGateway
       await this.locks.withLock(gameId, async () => {
         const replaced = await this.bodenseeGames.replaceSeatWithAi(gameId, userId);
         if (!replaced) return;
-        this.chatGateway.broadcastSystemMessage(
-          roomKey(gameId),
+        await this.postSystemToTableChat(
+          gameId,
           "Der Spieler ist nicht zurückgekehrt — die KI übernimmt seinen Platz."
         );
         await this.broadcastBodenseeState(gameId);
@@ -362,6 +365,43 @@ export class GameGateway
     } catch (err) {
       this.log.warn({ err, gameId, userId }, "Bodensee-Disconnect-Handling fehlgeschlagen");
     }
+  }
+
+  /**
+   * Voluntärer „Tisch verlassen"-Klick bei einem laufenden Bodensee-Spiel.
+   * Der Sitz ist im LobbyService bereits per `replaceSeatWithAi` auf KI
+   * gestellt — hier treiben wir die Partie MIT Broadcasts weiter, bis ein
+   * Mensch dran ist oder sie endet (verbleibender Spieler sieht die KI ziehen).
+   * Spiegelt die Disconnect-Logik (executeBodenseeReplacement), nur ohne Grace
+   * und ohne erneutes Ersetzen.
+   *
+   * Wird vom LobbyService fire-and-forget aufgerufen (die KI-Loop hat
+   * UI-Delays) → Fehler werden hier geloggt + geschluckt, damit sie die
+   * HTTP-Leave-Antwort nicht mitreißen.
+   */
+  async driveBodenseeAfterLeave(gameId: string): Promise<void> {
+    try {
+      await this.locks.withLock(gameId, async () => {
+        await this.postSystemToTableChat(
+          gameId,
+          "Ein Spieler hat den Tisch verlassen — die KI übernimmt seinen Platz."
+        );
+        await this.broadcastBodenseeState(gameId);
+        await this.driveBodenseeAIsLoop(gameId);
+      });
+    } catch (err) {
+      this.log.warn({ err, gameId }, "Bodensee-Antrieb nach Leave fehlgeschlagen");
+    }
+  }
+
+  /**
+   * System-Chat-Nachricht in den TISCH-Chat (`table:<id>`) des Games posten —
+   * dort lauscht der In-Game-Chat. Fällt auf `game:<id>` zurück, falls dem Game
+   * (noch) kein Tisch zugeordnet ist.
+   */
+  private async postSystemToTableChat(gameId: string, body: string): Promise<void> {
+    const tableId = await this.games.getTableIdForGame(gameId);
+    this.chatGateway.broadcastSystemMessage(tableId ? `table:${tableId}` : `game:${gameId}`, body);
   }
 
   /**
