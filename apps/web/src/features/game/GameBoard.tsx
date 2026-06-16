@@ -21,7 +21,7 @@ import { useEffect, useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
 
 import type { SeatView } from "~/features/lobby/types";
-import { seatDisplayName } from "./aiNames";
+import { aiSeatTooltip, seatDisplayName } from "./aiNames";
 import { AnnouncementDialog } from "./AnnouncementDialog";
 import { AnnounceOverlay, ModeWatermark } from "./AnnounceVisuals";
 import { DealCinematic } from "./DealCinematic";
@@ -516,6 +516,13 @@ function PlayingArea({
         if (s.seat === mySeat) return null;
         const slot = relativeSlot(s.seat, mySeat);
         const label = seatNames.get(s.seat) ?? "—";
+        // Engine-Status-Tooltip am KI-Chip (Name bleibt stabil): „Engine OK"
+        // bzw. „Heuristik-Fallback", wenn NN gewählt ist, der Inferenz-Dienst
+        // aber nicht läuft.
+        const aiTitle =
+          !s.user?.id && s.aiSeatType
+            ? aiSeatTooltip(t, s.aiSeatType, view.inferenceAvailable)
+            : "";
         const active = view.whoseTurnSeat === s.seat && view.status === "playing";
         const isLastWinner = s.seat === winnerSeat;
         const wrapperCls = [
@@ -534,7 +541,11 @@ function PlayingArea({
         // Menschliche Sitze → klickbarer <UserName> (Menü: PN/Profil/Freund).
         // KI-Sitze bleiben statische Labels (keine Interaktion).
         return (
-          <div key={s.seat} className={`${wrapperCls} pointer-events-auto`}>
+          <div
+            key={s.seat}
+            className={`${wrapperCls} pointer-events-auto`}
+            {...(aiTitle ? { title: aiTitle } : {})}
+          >
             {s.user?.id ? <UserName userId={s.user.id} name={label} /> : label}
             {isLastWinner && (
               <span className="ml-1 text-jass-yellowDark" aria-hidden="true">

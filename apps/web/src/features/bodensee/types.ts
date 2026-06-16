@@ -17,6 +17,8 @@ export interface BodenseeTableStackView {
 /** Per-Sitz-Sicht auf ein Bodensee-Game. */
 export interface BodenseeView {
   gameId: string;
+  /** Inferenz-Service erreichbar? Steuert den Engine-Status-Tooltip am KI-Sitz. */
+  inferenceAvailable: boolean;
   variant: "bodensee";
   status: "announcing" | "playing" | "finished";
   mySeat: number;

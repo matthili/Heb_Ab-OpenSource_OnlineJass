@@ -629,6 +629,12 @@
 
   "game": {
     "yourTurn": "Du bist dran.",
+    "aiEngine": {
+      "nn": "Engine OK — neuronales Netz",
+      "nnFallback": "Engine nicht erreichbar — Heuristik-Fallback läuft.",
+      "heuristic": "Engine OK — Heuristik",
+      "random": "Engine OK — Zufall"
+    },
     "errorFallback": "Spielfehler",
     "announceOverlay": {
       "trumpf": "{{suit}} ist Trumpf",
@@ -980,6 +986,12 @@
   },
 
   "admin": {
+    "inference": {
+      "title": "KI-Inferenz",
+      "ok": "erreichbar — NN-Sitze nutzen das neuronale Netz.",
+      "down": "nicht erreichbar — NN-Sitze spielen über den Heuristik-Fallback.",
+      "checking": "Prüfe KI-Inferenz-Status …"
+    },
     "layout": {
       "title": "Admin",
       "nav": {

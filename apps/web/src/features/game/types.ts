@@ -59,6 +59,8 @@ export interface WeisenView {
  */
 export interface PlayerView {
   gameId: string;
+  /** Inferenz-Service erreichbar? Steuert den Engine-Status-Tooltip am KI-Sitz. */
+  inferenceAvailable: boolean;
   status: "announcing" | "playing" | "finished";
   /** Eigener Sitz im Game (0..3). In allen Phasen verfügbar. */
   mySeat: number;

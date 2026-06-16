@@ -238,3 +238,22 @@ export function seatDisplayName(seat: SeatLike, seed: string, emptyFallback = "�
   if (seat.aiSeatType) return aiName(`${seed}:${seat.seat}`, seat.aiSeatType);
   return emptyFallback;
 }
+
+/**
+ * Tooltip-Text fürs 🤖-Icon eines KI-Sitzes: zeigt, welche Engine GERADE spielt.
+ * Bei NN-Sitz + nicht erreichbarem Inferenz-Service → Hinweis auf den
+ * Heuristik-Fallback (der Spielername bleibt davon unberührt). `t` wird
+ * übergeben, damit dieses Util i18n-frei bleibt. Leerstring für Nicht-KI.
+ */
+export function aiSeatTooltip(
+  t: (key: string) => string,
+  aiSeatType: string | null | undefined,
+  inferenceAvailable: boolean
+): string {
+  if (!aiSeatType) return "";
+  if (aiSeatType.startsWith("nn")) {
+    return inferenceAvailable ? t("game.aiEngine.nn") : t("game.aiEngine.nnFallback");
+  }
+  if (aiSeatType === "random") return t("game.aiEngine.random");
+  return t("game.aiEngine.heuristic");
+}

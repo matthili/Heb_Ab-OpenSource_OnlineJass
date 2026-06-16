@@ -25,7 +25,7 @@ import type { TFunction } from "i18next";
 import { useEffect, useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
 
-import { seatDisplayName } from "~/features/game/aiNames";
+import { aiSeatTooltip, seatDisplayName } from "~/features/game/aiNames";
 import { UserName } from "~/features/social/UserName";
 import { AnnounceOverlay, ModeWatermark } from "~/features/game/AnnounceVisuals";
 import type { SeatView } from "~/features/lobby/types";
@@ -175,11 +175,23 @@ export function BodenseeBoard({
       {/* Gegner-Bereich */}
       <section className="rounded-lg border border-jass-paperEdge bg-jass-paper p-3 space-y-2 panel-jass">
         <div className="flex items-center justify-between text-sm">
-          <UserName
-            userId={seats.find((x) => x.seat === oppSeat)?.user?.id}
-            name={seatName(oppSeat)}
-            className="font-semibold text-jass-ink"
-          />
+          {(() => {
+            // Engine-Status-Tooltip am KI-Gegner (Name bleibt stabil).
+            const oppS = seats.find((x) => x.seat === oppSeat);
+            const tip =
+              oppS && !oppS.user?.id && oppS.aiSeatType
+                ? aiSeatTooltip(t, oppS.aiSeatType, view.inferenceAvailable)
+                : "";
+            return (
+              <span {...(tip ? { title: tip } : {})}>
+                <UserName
+                  userId={oppS?.user?.id}
+                  name={seatName(oppSeat)}
+                  className="font-semibold text-jass-ink"
+                />
+              </span>
+            );
+          })()}
           <span className="text-jass-inkSoft">
             {t("bodensee.opponent.handAndHidden", {
               hand: view.opponentHandCount,

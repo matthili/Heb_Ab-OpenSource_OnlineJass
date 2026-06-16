@@ -629,6 +629,12 @@
 
   "game": {
     "yourTurn": "Your turn.",
+    "aiEngine": {
+      "nn": "Engine OK — neural net",
+      "nnFallback": "Engine unavailable — heuristic fallback running.",
+      "heuristic": "Engine OK — heuristic",
+      "random": "Engine OK — random"
+    },
     "errorFallback": "Game error",
     "announceOverlay": {
       "trumpf": "{{suit}} is trump",
@@ -980,6 +986,12 @@
   },
 
   "admin": {
+    "inference": {
+      "title": "AI inference",
+      "ok": "reachable — NN seats use the neural net.",
+      "down": "unreachable — NN seats play via the heuristic fallback.",
+      "checking": "Checking AI inference status …"
+    },
     "layout": {
       "title": "Admin",
       "nav": {
