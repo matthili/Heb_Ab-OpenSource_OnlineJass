@@ -173,6 +173,7 @@
     "push": {
       "legend": "Push notifications",
       "unsupported": "This browser does not support push notifications.",
+      "blockedByBrowser": "Notifications are blocked in your browser — allow them in the site settings and reload.",
       "loading": "Loading push configuration …",
       "notConfigured": "The server has not configured VAPID keys yet — push is currently disabled.",
       "intro": "Get a browser push when someone wants to join your table (even when your tab is closed). Per browser/device — the setting is not account-wide.",

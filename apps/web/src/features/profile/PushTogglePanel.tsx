@@ -34,6 +34,10 @@ export function PushTogglePanel() {
     staleTime: 60_000,
   });
   const [subscribed, setSubscribed] = useState<boolean | null>(null);
+  // Browser hat die Benachrichtigungs-Erlaubnis dauerhaft verweigert
+  // (Notification.permission === "denied") → „Aktivieren" würde nie greifen,
+  // also zeigen wir stattdessen einen erklärenden Hinweis.
+  const [blocked, setBlocked] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Beim ersten Render: prüfen, ob der Browser schon eine Subscription hat.
@@ -42,6 +46,7 @@ export function PushTogglePanel() {
       setSubscribed(false);
       return;
     }
+    if (typeof Notification !== "undefined") setBlocked(Notification.permission === "denied");
     let cancelled = false;
     void (async () => {
       try {
@@ -90,6 +95,8 @@ export function PushTogglePanel() {
     },
     onError: (err: unknown) => {
       setError(err instanceof ApiError ? err.message : (err as Error).message);
+      // Erlaubnis evtl. gerade verweigert → Blocked-Hinweis aktualisieren.
+      if (typeof Notification !== "undefined") setBlocked(Notification.permission === "denied");
     },
   });
 
@@ -144,6 +151,8 @@ export function PushTogglePanel() {
             {t("profile.push.disable")}
           </button>
         </div>
+      ) : blocked ? (
+        <p className="text-xs text-amber-700">{t("profile.push.blockedByBrowser")}</p>
       ) : (
         <button
           type="button"

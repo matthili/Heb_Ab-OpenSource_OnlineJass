@@ -173,6 +173,7 @@
     "push": {
       "legend": "Push-Benachrichtigungen",
       "unsupported": "Dieser Browser unterstützt keine Push-Benachrichtigungen.",
+      "blockedByBrowser": "Benachrichtigungen sind im Browser blockiert — bitte in den Website-Einstellungen erlauben und neu laden.",
       "loading": "Lade Push-Konfiguration …",
       "notConfigured": "Der Server hat noch keine VAPID-Schlüssel konfiguriert — Push ist aktuell deaktiviert.",
       "intro": "Erhalte Browser-Push, wenn jemand an deinem Tisch beitreten möchte (auch wenn dein Tab gerade geschlossen ist). Pro Browser/Gerät separat — die Einstellung gilt nicht Account-weit.",

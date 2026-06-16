@@ -79,6 +79,15 @@ export interface DataExport {
     createdAt: string;
     gameId: string | null;
   }>;
+  archivedChatMessages: Array<{
+    id: string;
+    channel: string;
+    channelKey: string;
+    body: string;
+    createdAt: string;
+    archivedAt: string;
+    gameId: string | null;
+  }>;
   auditEntries: Array<{
     id: string;
     action: string;
@@ -145,6 +154,13 @@ export class GdprService {
     });
 
     const chat = await this.prisma.chatMessage.findMany({
+      where: { senderId: userId },
+      orderBy: { createdAt: "asc" },
+    });
+
+    // Archivierte Chat-Nachrichten (aus der Lobby-Aufräumung) gehören ebenfalls
+    // in den DSGVO-Export — sie bleiben in der Profil-History sichtbar.
+    const archivedChat = await this.prisma.archivedChatMessage.findMany({
       where: { senderId: userId },
       orderBy: { createdAt: "asc" },
     });
@@ -227,6 +243,15 @@ export class GdprService {
         channelKey: c.channelKey,
         body: c.body,
         createdAt: c.createdAt.toISOString(),
+        gameId: c.gameId,
+      })),
+      archivedChatMessages: archivedChat.map((c) => ({
+        id: c.id.toString(),
+        channel: c.channel,
+        channelKey: c.channelKey,
+        body: c.body,
+        createdAt: c.createdAt.toISOString(),
+        archivedAt: c.archivedAt.toISOString(),
         gameId: c.gameId,
       })),
       auditEntries: audit.map((a) => ({
@@ -356,6 +381,12 @@ export class GdprService {
       // bleiben, weil sie Spielfortschritt halten und für andere Spieler
       // sichtbar sein müssen. Aber der Text-Inhalt ist PII.
       await tx.chatMessage.updateMany({
+        where: { senderId: userId },
+        data: { body: "[gelöscht]" },
+      });
+      // Auch ARCHIVIERTE Nachrichten redacten — sonst bleibt der PII-Text in
+      // der Profil-History anderer Nutzer sichtbar (Recht auf Vergessenwerden).
+      await tx.archivedChatMessage.updateMany({
         where: { senderId: userId },
         data: { body: "[gelöscht]" },
       });

@@ -164,6 +164,22 @@ export class AdminService {
     }));
   }
 
+  /**
+   * Wirft, wenn `targetId` der einzige verbliebene aktive Admin ist — Schutz
+   * davor, den Admin-Bereich für ALLE auszusperren (Degradieren/Sperren/Löschen
+   * des Letzten). Zählt andere ADMINs mit Status ACTIVE.
+   */
+  private async assertNotLastActiveAdmin(targetId: string): Promise<void> {
+    const otherActiveAdmins = await this.prisma.user.count({
+      where: { role: "ADMIN", status: "ACTIVE", id: { not: targetId } },
+    });
+    if (otherActiveAdmins === 0) {
+      throw new BadRequestException(
+        "Der letzte aktive Admin kann nicht degradiert, gesperrt oder gelöscht werden."
+      );
+    }
+  }
+
   async setUserRole(actorId: string, targetId: string, dto: SetUserRoleDto): Promise<void> {
     if (actorId === targetId && dto.role !== "ADMIN") {
       // Schutz vor versehentlichem Self-Demote — sonst wäre der letzte
@@ -175,6 +191,9 @@ export class AdminService {
       select: { role: true },
     });
     if (!target) throw new NotFoundException(`User ${targetId} nicht gefunden`);
+    if (target.role === "ADMIN" && dto.role !== "ADMIN") {
+      await this.assertNotLastActiveAdmin(targetId);
+    }
     await this.prisma.user.update({
       where: { id: targetId },
       data: { role: dto.role },
@@ -193,9 +212,12 @@ export class AdminService {
     }
     const target = await this.prisma.user.findUnique({
       where: { id: targetId },
-      select: { status: true },
+      select: { status: true, role: true },
     });
     if (!target) throw new NotFoundException(`User ${targetId} nicht gefunden`);
+    if (target.role === "ADMIN" && dto.status !== "ACTIVE") {
+      await this.assertNotLastActiveAdmin(targetId);
+    }
     await this.prisma.user.update({
       where: { id: targetId },
       data: { status: dto.status },
