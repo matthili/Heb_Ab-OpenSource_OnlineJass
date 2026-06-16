@@ -120,7 +120,11 @@ export function extractUserResult(
   const fs = finalScore as Record<string, unknown>;
 
   if (variant === "BODENSEE_2P") {
-    const arr = toNumberArray(fs["player_total_points"]);
+    // Bodensee persistiert die Spieler-Punkte unter `team_card_points`
+    // (siehe bodensee-game.service handleGameEnd) — NICHT `player_total_points`.
+    // Vorher las dieser Zweig einen nie geschriebenen Key → Stats + Leaderboard
+    // für Bodensee waren immer leer. (Audit-Fund, behoben.)
+    const arr = toNumberArray(fs["team_card_points"]);
     if (!arr || seat < 0 || seat >= arr.length) return { points: null, won: null };
     const me = arr[seat]!;
     const max = Math.max(...arr);
