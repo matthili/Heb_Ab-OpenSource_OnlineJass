@@ -923,6 +923,10 @@
   },
 
   "replay": {
+    "announcer": {
+      "by": "{{name}} announced:",
+      "slalomFrom": "from {{mode}}"
+    },
     "title": "Replay",
     "titleShared": "Replay (shared)",
     "loading": "Loading replay…",

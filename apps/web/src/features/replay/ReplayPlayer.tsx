@@ -19,12 +19,12 @@ import type { TFunction } from "i18next";
 import { useTranslation } from "react-i18next";
 import { Trick, Scoreboard } from "@jass/ui";
 import type { Card } from "@jass/engine";
-import { trickWinner } from "@jass/engine";
 
 import { aiName } from "~/features/game/aiNames";
 import { relativeSlot, SEAT_LABEL_POS } from "~/features/game/seat-layout";
 import { ReplayControls } from "./ReplayControls";
 import type { ReplayBundle } from "./types";
+import { SUIT_BY_ID } from "./types";
 import type { ReplayFrame } from "./useReplay";
 
 interface Props {
@@ -78,14 +78,21 @@ export function ReplayPlayer({ bundle, frames, mySeat }: Props) {
   };
 
   const variant = frame.state.variant;
-  const trickCards = frame.state.current_trick_cards;
-  const trickStarter = frame.state.current_trick_starter;
+  const ann = frame.state.announcement;
+  const round0 = bundle.rounds[0];
 
-  let winnerSeat: number | undefined;
-  if (trickCards.length === 4) {
-    const winnerIdx = trickWinner(trickCards, variant);
-    winnerSeat = (trickStarter + winnerIdx) % 4;
-  }
+  // Anzuzeigender Stich. Die Engine leert `current_trick_cards` bereits beim
+  // 4. Karten-Move (der Stich wandert nach `completed_tricks`). Zeigten wir
+  // stumpf `current_trick_cards`, verschwände die 4. Karte sofort wieder. Ist
+  // der laufende Stich leer, es gibt aber einen abgeschlossenen, zeigen wir
+  // DESSEN Karten + Gewinner — so bleibt der volle Stich für die Frame-Dauer
+  // (~1 s) stehen, genau wie im Live-Spiel.
+  const completed = frame.state.completed_tricks;
+  const showCompleted = frame.state.current_trick_cards.length === 0 && completed.length > 0;
+  const lastCompleted = showCompleted ? completed[completed.length - 1]! : null;
+  const trickCards = lastCompleted ? lastCompleted.cards : frame.state.current_trick_cards;
+  const trickStarter = lastCompleted ? lastCompleted.starter : frame.state.current_trick_starter;
+  const winnerSeat = lastCompleted ? frame.state.trick_winners[completed.length - 1] : undefined;
 
   // Punkte aus Team-Sicht: team_card_points ist auf dem (server-)RoundState
   // direkt nach Team-ID indexiert. Mein Team = mySeat % 2 (Kreuz: 0+2 vs 1+3).
@@ -108,12 +115,14 @@ export function ReplayPlayer({ bundle, frames, mySeat }: Props) {
 
   return (
     <div className="space-y-4">
+      {round0 && <AnnouncerBar bundle={bundle} round={round0} t={t} />}
       <Scoreboard
         ownTeamScore={ownPts}
         oppTeamScore={oppPts}
         trickIdx={frame.state.trick_idx}
-        mode={variant.mode}
+        mode={ann.slalom ? ann.variant.mode : variant.mode}
         {...(variant.trump_suit !== undefined ? { trumpSuit: variant.trump_suit } : {})}
+        {...(ann.slalom ? { slalom: true } : {})}
       />
 
       <PlayingArea
@@ -212,6 +221,49 @@ function PlayingArea({
       </div>
     </div>
   );
+}
+
+/**
+ * Ansage-Info-Leiste: wer hat angesagt — und was. Der Ansager ist der
+ * Anspieler des ersten Stichs (`round.starter`, Vorarlberger Tradition).
+ * Schließt die Lücke, dass das Replay bisher nur Modus/Trumpf, aber nicht
+ * den Ansager zeigte.
+ */
+function AnnouncerBar({
+  bundle,
+  round,
+  t,
+}: {
+  bundle: ReplayBundle;
+  round: ReplayBundle["rounds"][number];
+  t: TFunction;
+}) {
+  const seat = bundle.seats.find((s) => s.seat === round.starter);
+  const name =
+    seat?.displayName ??
+    (seat?.aiSeatType
+      ? aiName(`${bundle.gameId}:${round.starter}`, seat.aiSeatType)
+      : t("replay.player.seatFallback", { n: round.starter + 1 }));
+  return (
+    <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+      {t("replay.announcer.by", { name })} <strong>{announcementLabel(round, t)}</strong>
+    </div>
+  );
+}
+
+/** Baut die Ansage-Beschriftung („Trumpf Eichel" / „Oben" / „Slalom (ab Unten)"). */
+function announcementLabel(round: ReplayBundle["rounds"][number], t: TFunction): string {
+  if (round.slalom) {
+    return `${t("game.announce.mode.SLALOM")} (${t("replay.announcer.slalomFrom", {
+      mode: t(`game.announce.mode.${round.mode}`),
+    })})`;
+  }
+  const modeLabel = t(`game.announce.mode.${round.mode}`);
+  if (round.mode === "TRUMPF" || round.mode === "GUMPF") {
+    const suit = round.trumpSuit !== null ? SUIT_BY_ID[round.trumpSuit] : undefined;
+    return suit ? `${modeLabel} ${t(`game.announce.suit.${suit}`)}` : modeLabel;
+  }
+  return modeLabel;
 }
 
 function MoveList({

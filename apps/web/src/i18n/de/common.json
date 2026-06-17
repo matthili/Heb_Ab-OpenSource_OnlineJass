@@ -923,6 +923,10 @@
   },
 
   "replay": {
+    "announcer": {
+      "by": "{{name}} hat angesagt:",
+      "slalomFrom": "ab {{mode}}"
+    },
     "title": "Replay",
     "titleShared": "Replay (geteilt)",
     "loading": "Replay wird geladen…",

@@ -89,6 +89,8 @@ export function BodenseeReplayPlayer({ bundle, frames, mySeat }: Props) {
   const mode = state.variant.mode;
   const trumpSuit = state.variant.trump_suit;
   const slalom = state.announcement.slalom;
+  const startMode = state.announcement.variant.mode; // Slalom-Startrichtung (Oben/Unten)
+  const announcerSeat = bundle.rounds[0]?.starter ?? 0;
 
   const statusText =
     frame.moveSeq === null
@@ -110,9 +112,18 @@ export function BodenseeReplayPlayer({ bundle, frames, mySeat }: Props) {
         <span className="text-stone-600">
           {t("replay.bodensee.trick", { n: Math.min(state.trick_idx + 1, 18) })}
         </span>
-        <span className="rounded bg-amber-100 px-2.5 py-1 text-sm font-bold text-amber-900 ring-1 ring-amber-300">
-          {slalom ? t("game.announce.mode.SLALOM") : modeLabel(t, mode)}
-          {!slalom && trumpSuit ? ` ${suitLabel(t, trumpSuit)}` : ""}
+        <span className="flex items-center gap-2">
+          <span className="text-stone-600">
+            {t("replay.announcer.by", { name: seatName(announcerSeat) })}
+          </span>
+          <span className="rounded bg-amber-100 px-2.5 py-1 text-sm font-bold text-amber-900 ring-1 ring-amber-300">
+            {slalom
+              ? `${t("game.announce.mode.SLALOM")} (${t("replay.announcer.slalomFrom", {
+                  mode: modeLabel(t, startMode),
+                })})`
+              : modeLabel(t, mode)}
+            {!slalom && trumpSuit ? ` ${suitLabel(t, trumpSuit)}` : ""}
+          </span>
         </span>
         <span className="flex items-center gap-1.5 text-stone-700">
           <span>{seatName(mySeat)}</span>
