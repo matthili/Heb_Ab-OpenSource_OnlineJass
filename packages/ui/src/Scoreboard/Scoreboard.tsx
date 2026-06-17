@@ -28,6 +28,8 @@ export interface SoloScoreEntryData {
   points: number;
   /** true → der eigene Sitz (visuell hervorgehoben). */
   isMe: boolean;
+  /** true → dieses Konto hat „Stöck" angesagt (+20 am Rundenende). */
+  stoeck?: boolean;
 }
 
 export interface ScoreboardProps {
@@ -48,6 +50,13 @@ export interface ScoreboardProps {
    * statt der Team-Anzeige (own/opp werden dann ignoriert).
    */
   soloPlayers?: readonly SoloScoreEntryData[];
+  /**
+   * **Stöck-Ansage (Kreuz-Jass)**: auf welcher Seite wurde „Stöck"
+   * gerufen? `"own"` → eigenes Team, `"opp"` → Gegner. Zeigt ein
+   * „+20 Stöck"-Abzeichen neben dem jeweiligen Team-Score, damit ALLE
+   * Spieler die Ansage sehen (die +20 fallen erst am Rundenende an).
+   */
+  stoeckSide?: "own" | "opp" | null;
 }
 
 const SUIT_LABEL: Record<Suit, string> = {
@@ -91,16 +100,34 @@ export function useScorePop(value: number): { delta: number; seq: number } | nul
 }
 
 /**
+ * „+20 Stöck"-Abzeichen. Erscheint neben dem Score des Teams/Spielers,
+ * sobald „Stöck" offiziell angesagt wurde — sichtbar für ALLE am Tisch.
+ * Der Bonus wird erst am Rundenende verrechnet, das Abzeichen ist also
+ * reine Live-Information („hier kommen am Ende +20 dazu").
+ */
+function StoeckBadge() {
+  return (
+    <span
+      className="ml-1.5 inline-block rounded bg-jass-green px-1.5 py-0.5 text-xs font-bold text-jass-cream align-middle ring-1 ring-jass-greenDark"
+      title="Stöck angesagt — +20 Punkte am Rundenende"
+    >
+      +20 Stöck
+    </span>
+  );
+}
+
+/**
  * Ein einzelnes Solo-Konto mit Hochzähl-Animation + „+X"-Pop.
  * Eigene Komponente, damit die Hooks pro Spieler sauber instanziiert
  * werden (Hooks dürfen nicht in Schleifen stehen).
  */
-function SoloScoreEntry({ label, points, isMe }: SoloScoreEntryData) {
+function SoloScoreEntry({ label, points, isMe, stoeck }: SoloScoreEntryData) {
   const animated = useAnimatedNumber(points);
   const pop = useScorePop(points);
   return (
     <span className={`relative ${isMe ? "text-jass-ink font-semibold" : "text-jass-inkSoft"}`}>
       {label}: <strong className="text-jass-ink tabular-nums">{animated}</strong>
+      {stoeck && <StoeckBadge />}
       {pop && (
         <span
           key={pop.seq}
@@ -121,6 +148,7 @@ export function Scoreboard({
   trumpSuit,
   slalom,
   soloPlayers,
+  stoeckSide,
 }: ScoreboardProps) {
   const modeText = slalom
     ? `Slalom${mode ? ` · ab ${MODE_LABEL[mode]}` : ""}`
@@ -138,7 +166,13 @@ export function Scoreboard({
     return (
       <div className="flex gap-4 text-sm rounded-lg border border-jass-paperEdge bg-jass-cream px-3 py-2 items-center flex-wrap panel-jass">
         {soloPlayers.map((p, i) => (
-          <SoloScoreEntry key={i} label={p.label} points={p.points} isMe={p.isMe} />
+          <SoloScoreEntry
+            key={i}
+            label={p.label}
+            points={p.points}
+            isMe={p.isMe}
+            stoeck={p.stoeck ?? false}
+          />
         ))}
         {modeText && (
           <span className="jass-mode-glow rounded bg-jass-yellow px-2.5 py-1 text-sm text-jass-ink font-bold ring-1 ring-jass-yellowDark">
@@ -156,6 +190,7 @@ export function Scoreboard({
       oppTeamScore={oppTeamScore}
       trickIdx={trickIdx}
       modeText={modeText}
+      stoeckSide={stoeckSide ?? null}
     />
   );
 }
@@ -166,11 +201,13 @@ function TeamScoreboard({
   oppTeamScore,
   trickIdx,
   modeText,
+  stoeckSide,
 }: {
   ownTeamScore: number;
   oppTeamScore: number;
   trickIdx: number;
   modeText: string | null;
+  stoeckSide?: "own" | "opp" | null;
 }) {
   const ownAnimated = useAnimatedNumber(ownTeamScore);
   const oppAnimated = useAnimatedNumber(oppTeamScore);
@@ -181,6 +218,7 @@ function TeamScoreboard({
     <div className="flex gap-4 text-sm rounded-lg border border-jass-paperEdge bg-jass-cream px-3 py-2 items-center panel-jass">
       <span className="text-jass-inkSoft relative">
         Eigenes Team: <strong className="text-jass-ink tabular-nums">{ownAnimated}</strong>
+        {stoeckSide === "own" && <StoeckBadge />}
         {ownPop && (
           <span
             key={ownPop.seq}
@@ -192,6 +230,7 @@ function TeamScoreboard({
       </span>
       <span className="text-jass-inkSoft relative">
         Gegner: <strong className="text-jass-ink tabular-nums">{oppAnimated}</strong>
+        {stoeckSide === "opp" && <StoeckBadge />}
         {oppPop && (
           <span
             key={oppPop.seq}

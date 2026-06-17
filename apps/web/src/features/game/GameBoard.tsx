@@ -206,6 +206,11 @@ export function GameBoard({
   const state = view.state!; // status !== announcing → state ist garantiert da
   const variant = state.variant;
 
+  // Stöck-Ansage: Team-ID, das offiziell „Stöck" gerufen hat (oder null).
+  // Public-Info — steht in JEDER Sicht (alle Spieler sollen die +20 sehen,
+  // die erst am Rundenende verrechnet werden). Bodensee kennt keinen Stöck.
+  const stoeckTeam = view.stoeckAnnouncedTeam ?? null;
+
   // Solo-Jass erkennen: jeder Sitz hat ein eigenes Team (4 unterschiedliche
   // Team-IDs). Dann zeigt das Scoreboard 4 Einzelkonten statt own/opp.
   const isSolo = new Set(state.teams).size === state.teams.length;
@@ -218,8 +223,13 @@ export function GameBoard({
               : (seatNames.get(seat) ?? t("game.seatFallback", { n: seat + 1 })),
           points: state.team_card_points![teamId] ?? 0,
           isMe: seat === mySeat,
+          stoeck: stoeckTeam !== null && teamId === stoeckTeam,
         }))
       : undefined;
+
+  // Kreuz-Jass: auf welcher Seite (eigenes Team / Gegner) wurde Stöck gerufen?
+  const stoeckSide: "own" | "opp" | null =
+    stoeckTeam === null ? null : stoeckTeam === state.teams[mySeat] ? "own" : "opp";
 
   return (
     <div className="relative" style={dealActive ? { minHeight: "32rem" } : undefined}>
@@ -236,6 +246,7 @@ export function GameBoard({
           {...(variant.trump_suit !== undefined ? { trumpSuit: variant.trump_suit } : {})}
           {...(state.announcement.slalom ? { slalom: true } : {})}
           {...(soloPlayers ? { soloPlayers } : {})}
+          stoeckSide={stoeckSide}
         />
         <StatusBanner view={view} seats={seats} nameSeed={nameSeed} />
         {error && (
