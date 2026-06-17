@@ -893,8 +893,10 @@
       "playAgain": "Play again?"
     },
     "opponentLeft": {
-      "title": "Opponent left the table",
-      "body": "<n>{{name}}</n> has left the table. Would you like to leave as well, or finish the game against the computer so it counts in full toward your statistics?",
+      "titleLeft": "Opponent left the table",
+      "titleTimeout": "Opponent did not return",
+      "bodyLeft": "<n>{{name}}</n> has left the table. Would you like to leave as well, or finish the game against the computer so it counts in full toward your statistics?",
+      "bodyTimeout": "<n>{{name}}</n> lost the connection and did not return — the computer has taken over the seat. Would you like to leave as well, or finish the game against the computer so it counts in full toward your statistics?",
       "leave": "Leave table",
       "playOn": "Finish against the computer",
       "someone": "Your opponent"

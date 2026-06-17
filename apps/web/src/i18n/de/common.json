@@ -893,8 +893,10 @@
       "playAgain": "Nochmal spielen?"
     },
     "opponentLeft": {
-      "title": "Mitspieler hat den Tisch verlassen",
-      "body": "<n>{{name}}</n> hat den Tisch verlassen. Möchtest du den Tisch ebenfalls verlassen oder gegen den Computer fertig spielen, damit das Spiel vollständig in deiner Statistik aufscheint?",
+      "titleLeft": "Mitspieler hat den Tisch verlassen",
+      "titleTimeout": "Mitspieler ist nicht zurückgekehrt",
+      "bodyLeft": "<n>{{name}}</n> hat den Tisch verlassen. Möchtest du den Tisch ebenfalls verlassen oder gegen den Computer fertig spielen, damit das Spiel vollständig in deiner Statistik aufscheint?",
+      "bodyTimeout": "<n>{{name}}</n> hat die Verbindung verloren und ist nicht zurückgekehrt — die KI hat den Platz übernommen. Möchtest du den Tisch ebenfalls verlassen oder gegen den Computer fertig spielen, damit das Spiel vollständig in deiner Statistik aufscheint?",
       "leave": "Tisch verlassen",
       "playOn": "Gegen den Computer fertig spielen",
       "someone": "Dein Gegner"

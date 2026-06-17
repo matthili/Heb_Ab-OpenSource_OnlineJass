@@ -20,6 +20,7 @@ import { api } from "~/lib/api";
 export function OpponentLeftDialog({
   open,
   name,
+  reason,
   tableId,
   onPlayOn,
 }: {
@@ -27,6 +28,8 @@ export function OpponentLeftDialog({
   /** Anzeigename des Aussteigers (FE setzt einen generischen Fallback, falls
    *  der Server keinen liefern konnte). */
   name: string;
+  /** Warum der Gegner weg ist — steuert den Wortlaut (verlassen vs. Timeout). */
+  reason: "left" | "timeout";
   tableId: string;
   /** „Gegen den Computer fertig spielen" — Dialog schließen, weiterspielen. */
   onPlayOn: () => void;
@@ -48,6 +51,11 @@ export function OpponentLeftDialog({
     onSettled: () => void navigate({ to: "/lobby" }),
   });
 
+  const titleKey =
+    reason === "timeout" ? "bodensee.opponentLeft.titleTimeout" : "bodensee.opponentLeft.titleLeft";
+  const bodyKey =
+    reason === "timeout" ? "bodensee.opponentLeft.bodyTimeout" : "bodensee.opponentLeft.bodyLeft";
+
   return (
     <dialog
       ref={ref}
@@ -55,10 +63,10 @@ export function OpponentLeftDialog({
       className="w-full max-w-md rounded-lg bg-jass-paper p-0 text-jass-ink backdrop:bg-black/40"
     >
       <div className="space-y-4 p-6">
-        <h2 className="text-xl font-bold text-jass-ink">{t("bodensee.opponentLeft.title")}</h2>
+        <h2 className="text-xl font-bold text-jass-ink">{t(titleKey)}</h2>
         <p className="text-sm text-jass-inkSoft">
           <Trans
-            i18nKey="bodensee.opponentLeft.body"
+            i18nKey={bodyKey}
             values={{ name: shortName(name) }}
             components={{ n: <span className="font-semibold text-jass-ink" /> }}
           />

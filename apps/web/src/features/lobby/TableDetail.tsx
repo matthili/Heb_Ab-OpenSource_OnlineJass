@@ -942,7 +942,7 @@ function BodenseeGameSection({
     announcePending,
     playCard,
     announce,
-    opponentLeftName,
+    opponentLeft,
     dismissOpponentLeft,
   } = useBodenseeView(isAtTable ? gameId : null);
 
@@ -961,8 +961,9 @@ function BodenseeGameSection({
   return (
     <section className="grid grid-cols-1 lg:grid-cols-[1fr_20rem] gap-4">
       <OpponentLeftDialog
-        open={opponentLeftName !== null}
-        name={opponentLeftName ?? ""}
+        open={opponentLeft !== null}
+        name={opponentLeft?.name ?? ""}
+        reason={opponentLeft?.reason ?? "left"}
         tableId={tableId}
         onPlayOn={dismissOpponentLeft}
       />

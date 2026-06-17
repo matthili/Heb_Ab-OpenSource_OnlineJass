@@ -30,11 +30,11 @@ export interface BodenseeViewState {
   announce: (announcement: BodenseeAnnouncement) => void;
   clearError: () => void;
   /**
-   * Name des Gegners, der den Tisch mitten im 2-Spieler-Spiel verlassen hat
-   * (die KI hat übernommen) — `null`, solange niemand gegangen ist. Steuert
-   * den Verlassen-Dialog beim verbleibenden Spieler.
+   * Info zum Gegner, der das 2-Spieler-Spiel verlassen hat bzw. nach einem
+   * Verbindungsabbruch nicht zurückkam (die KI hat übernommen) — `null`,
+   * solange niemand weg ist. `reason` steuert den Wortlaut des Dialogs.
    */
-  opponentLeftName: string | null;
+  opponentLeft: { name: string; reason: "left" | "timeout" } | null;
   /** Den Verlassen-Dialog schließen („gegen den Computer fertig spielen"). */
   dismissOpponentLeft: () => void;
 }
@@ -44,7 +44,10 @@ export function useBodenseeView(gameId: string | null): BodenseeViewState {
   const [error, setError] = useState<string | null>(null);
   const [movePending, setMovePending] = useState(false);
   const [announcePending, setAnnouncePending] = useState(false);
-  const [opponentLeftName, setOpponentLeftName] = useState<string | null>(null);
+  const [opponentLeft, setOpponentLeft] = useState<{
+    name: string;
+    reason: "left" | "timeout";
+  } | null>(null);
   const gameIdRef = useRef<string | null>(gameId);
   gameIdRef.current = gameId;
 
@@ -59,7 +62,7 @@ export function useBodenseeView(gameId: string | null): BodenseeViewState {
       setError(null);
       // Ist die Partie vorbei, den Verlassen-Dialog nicht länger über den
       // Endbildschirm legen (bei „fertig spielen" ist er ohnehin schon weg).
-      if (v.status === "finished") setOpponentLeftName(null);
+      if (v.status === "finished") setOpponentLeft(null);
     }
     function onError(e: { message?: string }) {
       setError(e?.message ?? i18n.t("game.errorFallback"));
@@ -69,8 +72,11 @@ export function useBodenseeView(gameId: string | null): BodenseeViewState {
     // 2-Spieler: Der Gegner hat den Tisch verlassen → die KI übernimmt seinen
     // Sitz. Dem Verbliebenen den Wahl-Dialog zeigen (Name fürs Wording, sonst
     // generisch, falls der Server keinen liefern konnte).
-    function onOpponentLeft(e: { name?: string | null }) {
-      setOpponentLeftName(e?.name ?? i18n.t("bodensee.opponentLeft.someone"));
+    function onOpponentLeft(e: { name?: string | null; reason?: "left" | "timeout" }) {
+      setOpponentLeft({
+        name: e?.name ?? i18n.t("bodensee.opponentLeft.someone"),
+        reason: e?.reason === "timeout" ? "timeout" : "left",
+      });
     }
 
     socket.on("bodensee:state", onState);
@@ -107,7 +113,7 @@ export function useBodenseeView(gameId: string | null): BodenseeViewState {
   }
 
   function dismissOpponentLeft() {
-    setOpponentLeftName(null);
+    setOpponentLeft(null);
   }
 
   return {
@@ -118,7 +124,7 @@ export function useBodenseeView(gameId: string | null): BodenseeViewState {
     playCard,
     announce,
     clearError,
-    opponentLeftName,
+    opponentLeft,
     dismissOpponentLeft,
   };
 }

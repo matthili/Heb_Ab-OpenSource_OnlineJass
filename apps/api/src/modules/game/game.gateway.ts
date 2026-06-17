@@ -263,7 +263,7 @@ export class GameGateway
     // Reconnect-Schonfrist für Bodensee: falls für diesen User ein Replacement-
     // Timer läuft (Disconnect lag weniger als BODENSEE_RECONNECT_GRACE_MS
     // zurück), abbrechen — der Spieler ist zurück.
-    this.cancelBodenseeReplacementsForUser(userId);
+    await this.cancelBodenseeReplacementsForUser(userId);
     if (evictSocketIds.length > 0) {
       await this.evictOldSockets(userId, evictSocketIds);
     }
@@ -324,6 +324,8 @@ export class GameGateway
   private async triggerBodenseeDisconnectForUser(userId: string): Promise<void> {
     const gameIds = await this.bodenseeGames.getActiveGameIdsForUser(userId);
     const graceMs = this.bodenseeReconnectGraceMs();
+    const sec = Math.round(graceMs / 1000);
+    const name = (await this.userDisplayName(userId)) ?? "Ein Spieler";
     for (const gameId of gameIds) {
       const key = `${gameId}:${userId}`;
       // Doppel-Disconnect (sehr selten): das alte Grace-Fenster gilt weiter,
@@ -331,10 +333,12 @@ export class GameGateway
       // verlängern können.
       if (this.pendingBodenseeReplacements.has(key)) continue;
 
-      this.chatGateway.broadcastSystemMessage(
-        roomKey(gameId),
-        `Ein Spieler hat die Verbindung verloren. ` +
-          `Kommt er nicht binnen ${Math.round(graceMs / 1000)} s zurück, übernimmt die KI.`
+      // In den TISCH-Chat posten (dort lauscht der In-Game-Chat) statt in den
+      // game:-Room — sonst sähe der verbleibende Spieler die Meldung gar nicht.
+      await this.postSystemToTableChat(
+        gameId,
+        `${name} ist nicht mehr verbunden (Fenster geschlossen oder Verbindung ` +
+          `verloren). Ohne Rückkehr binnen ${sec} s übernimmt die KI.`
       );
 
       const timer = setTimeout(() => {
@@ -374,10 +378,16 @@ export class GameGateway
       await this.locks.withLock(gameId, async () => {
         const replaced = await this.bodenseeGames.replaceSeatWithAi(gameId, userId);
         if (!replaced) return;
+        const leaverName = await this.userDisplayName(userId);
         await this.postSystemToTableChat(
           gameId,
-          "Der Spieler ist nicht zurückgekehrt — die KI übernimmt seinen Platz."
+          `${leaverName ?? "Der Spieler"} ist nicht zurückgekehrt — die KI übernimmt den Platz.`
         );
+        // Verbleibendem Spieler den Verlassen-Dialog zeigen — reason "timeout"
+        // ergibt einen eigenen Wortlaut („nach Verbindungsabbruch nicht zurück").
+        this.server
+          .to(roomKey(gameId))
+          .emit("bodensee:opponent-left", { name: leaverName, reason: "timeout" });
         await this.broadcastBodenseeState(gameId);
         await this.driveBodenseeAIsLoop(gameId);
       });
@@ -409,7 +419,9 @@ export class GameGateway
         // ebenfalls gehen oder gegen die KI fertig spielen, damit die Partie
         // vollständig in seiner Statistik landet). Der Aussteiger ist bereits
         // aus dem Room raus → das Event erreicht nur noch den Verbliebenen.
-        this.server.to(roomKey(gameId)).emit("bodensee:opponent-left", { name: leaverName });
+        this.server
+          .to(roomKey(gameId))
+          .emit("bodensee:opponent-left", { name: leaverName, reason: "left" });
         await this.broadcastBodenseeState(gameId);
         await this.driveBodenseeAIsLoop(gameId);
       });
@@ -429,19 +441,38 @@ export class GameGateway
   }
 
   /**
+   * Anzeigename eines Users (für System-Chat + Verlassen-Dialog). `null`, wenn
+   * unbekannt — die Aufrufer setzen dann einen generischen Fallback ein.
+   */
+  private async userDisplayName(userId: string): Promise<string | null> {
+    const u = await this.prisma.user
+      .findUnique({ where: { id: userId }, select: { name: true } })
+      .catch(() => null);
+    return u?.name ?? null;
+  }
+
+  /**
    * Bricht alle ausstehenden Bodensee-Sitz-Ersetzungen für diesen User ab —
    * pro Spiel, in dem er offline gegangen war. Wird beim Reconnect aufgerufen
    * (jeder neue Socket des Users). Idempotent: ohne pending Einträge ein No-op.
    */
-  private cancelBodenseeReplacementsForUser(userId: string): void {
+  private async cancelBodenseeReplacementsForUser(userId: string): Promise<void> {
+    let name: string | null = null;
+    let nameFetched = false;
     for (const [key, entry] of this.pendingBodenseeReplacements) {
       if (entry.userId !== userId) continue;
       clearTimeout(entry.timer);
       this.pendingBodenseeReplacements.delete(key);
       void this.redis.client.del(this.bodenseeGraceKey(entry.gameId, userId)).catch(() => {});
-      this.chatGateway.broadcastSystemMessage(
-        roomKey(entry.gameId),
-        "Der Spieler ist zurück — das Spiel läuft normal weiter."
+      // Namen nur einmal — und nur bei tatsächlichem Treffer — auflösen.
+      if (!nameFetched) {
+        name = (await this.userDisplayName(userId)) ?? "Der Spieler";
+        nameFetched = true;
+      }
+      // In den TISCH-Chat (sichtbar), passend zur Disconnect-Meldung.
+      await this.postSystemToTableChat(
+        entry.gameId,
+        `${name} ist zurück — das Spiel läuft normal weiter.`
       );
     }
   }
