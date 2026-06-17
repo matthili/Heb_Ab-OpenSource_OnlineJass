@@ -81,7 +81,7 @@ export function BodenseeReplayPlayer({ bundle, frames, mySeat }: Props) {
     return (
       s?.displayName ??
       (s?.aiSeatType
-        ? aiName(`${bundle.gameId}:${seat}`, s.aiSeatType)
+        ? aiName(`${bundle.tableId ?? bundle.gameId}:${seat}`, s.aiSeatType)
         : t("replay.player.seatFallback", { n: seat + 1 }))
     );
   };

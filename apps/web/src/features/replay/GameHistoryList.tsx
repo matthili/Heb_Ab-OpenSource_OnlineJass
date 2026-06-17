@@ -161,7 +161,9 @@ function GameHistoryItem({ game }: { game: UserGameSummary }) {
   const result = gameResultKind(game, ownPts, oppPts);
   const badgeClass = badgeForResult(result);
   const badgeLabel = labelForResult(result, t);
-  const partners = collectPartners(game.seats, game.mySeat, game.gameId);
+  // KI-Namen pro Tisch seeden (nicht pro Spiel) → derselbe KI-Gegner heißt
+  // über alle Spiele einer Partie gleich, konsistent mit dem Live-Tisch.
+  const partners = collectPartners(game.seats, game.mySeat, game.tableId ?? game.gameId);
   const shortId = game.gameId.slice(-6);
 
   return (
@@ -211,14 +213,14 @@ function GameHistoryItem({ game }: { game: UserGameSummary }) {
 function collectPartners(
   seats: readonly ReplaySeat[],
   mySeat: number,
-  gameId: string
+  nameSeed: string
 ): { userId: string | null; name: string }[] {
   return seats
     .filter((s) => s.seat !== mySeat)
     .sort((a, b) => a.seat - b.seat)
     .map((s) => ({
       userId: s.userId,
-      name: s.displayName ?? (s.aiSeatType ? aiName(`${gameId}:${s.seat}`, s.aiSeatType) : "?"),
+      name: s.displayName ?? (s.aiSeatType ? aiName(`${nameSeed}:${s.seat}`, s.aiSeatType) : "?"),
     }));
 }
 

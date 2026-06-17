@@ -110,7 +110,7 @@ function ReplayPage() {
 
           {data.bundle.finalScore && (
             <FinalScoreCard
-              gameId={gameId}
+              nameSeed={data.bundle.tableId ?? gameId}
               finalScore={data.bundle.finalScore}
               seats={data.bundle.seats}
               mySeat={mySeat}
@@ -196,13 +196,13 @@ function ShareControls({
 }
 
 function FinalScoreCard({
-  gameId,
+  nameSeed,
   finalScore,
   seats,
   mySeat,
   t,
 }: {
-  gameId: string;
+  nameSeed: string;
   finalScore: ReplayFinalScore;
   seats: { seat: number; displayName: string | null; aiSeatType: string | null }[];
   mySeat: number;
@@ -218,7 +218,7 @@ function FinalScoreCard({
     return (
       s?.displayName ??
       (s?.aiSeatType
-        ? aiName(`${gameId}:${seat}`, s.aiSeatType)
+        ? aiName(`${nameSeed}:${seat}`, s.aiSeatType)
         : t("replay.player.seatFallback", { n: seat }))
     );
   };

@@ -50,6 +50,8 @@ export interface ReplayFinalScore {
 
 export interface ReplayBundle {
   gameId: string;
+  /** Tisch der Partie — Seed für stabile KI-Namen über alle Spiele eines Tischs. */
+  tableId: string | null;
   variant: GameVariant;
   ruleVersion: string;
   modelVersion: string | null;

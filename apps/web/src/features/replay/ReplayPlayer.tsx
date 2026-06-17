@@ -147,7 +147,7 @@ export function ReplayPlayer({ bundle, frames, mySeat }: Props) {
       />
 
       <MoveList
-        gameId={bundle.gameId}
+        nameSeed={bundle.tableId ?? bundle.gameId}
         moves={bundle.moves}
         seats={bundle.seats}
         currentSeq={frame.moveSeq}
@@ -189,7 +189,7 @@ function PlayingArea({
         const label =
           s.displayName ??
           (s.aiSeatType
-            ? aiName(`${bundle.gameId}:${s.seat}`, s.aiSeatType)
+            ? aiName(`${bundle.tableId ?? bundle.gameId}:${s.seat}`, s.aiSeatType)
             : t("replay.player.seatFallback", { n: s.seat + 1 }));
         return (
           <div
@@ -242,7 +242,7 @@ function AnnouncerBar({
   const name =
     seat?.displayName ??
     (seat?.aiSeatType
-      ? aiName(`${bundle.gameId}:${round.starter}`, seat.aiSeatType)
+      ? aiName(`${bundle.tableId ?? bundle.gameId}:${round.starter}`, seat.aiSeatType)
       : t("replay.player.seatFallback", { n: round.starter + 1 }));
   return (
     <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
@@ -267,14 +267,14 @@ function announcementLabel(round: ReplayBundle["rounds"][number], t: TFunction):
 }
 
 function MoveList({
-  gameId,
+  nameSeed,
   moves,
   seats,
   currentSeq,
   onJump,
   t,
 }: {
-  gameId: string;
+  nameSeed: string;
   moves: ReplayBundle["moves"];
   seats: ReplayBundle["seats"];
   currentSeq: number | null;
@@ -286,7 +286,7 @@ function MoveList({
     return (
       s?.displayName ??
       (s?.aiSeatType
-        ? aiName(`${gameId}:${seat}`, s.aiSeatType)
+        ? aiName(`${nameSeed}:${seat}`, s.aiSeatType)
         : t("replay.player.seatFallback", { n: seat + 1 }))
     );
   };

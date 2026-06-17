@@ -68,6 +68,8 @@ export interface ReplayFinalScore {
 
 export interface ReplayBundle {
   gameId: string;
+  /** Tisch der Partie — Seed für stabile KI-Namen über alle Spiele eines Tischs. */
+  tableId: string | null;
   variant: GameVariant;
   ruleVersion: string;
   modelVersion: string | null;
@@ -177,6 +179,7 @@ export class ReplayService {
   /** Gemeinsamer Bundle-Builder für `getReplay` und `getPublicReplay`. */
   private buildBundle(game: {
     id: string;
+    tableId: string | null;
     variant: GameVariant;
     ruleVersion: string;
     modelVersion: string | null;
@@ -210,6 +213,7 @@ export class ReplayService {
   }): ReplayBundle {
     return {
       gameId: game.id,
+      tableId: game.tableId,
       variant: game.variant,
       ruleVersion: game.ruleVersion,
       modelVersion: game.modelVersion,
