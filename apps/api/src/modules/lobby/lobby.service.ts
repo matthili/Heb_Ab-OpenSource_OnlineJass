@@ -1495,6 +1495,15 @@ export class LobbyService {
       include: { rounds: { orderBy: { roundIdx: "asc" } } },
     });
     const lastStarter = lastGame?.rounds[lastGame.rounds.length - 1]?.starter ?? 0;
+    // Schluss-Stich-Starter für die exakte „Sieger gibt"-Regel: der Zug mit dem
+    // höchsten trickIdx und der niedrigsten seq = erste Karte des letzten Stichs;
+    // daraus ergibt sich dessen Wurf-Reihenfolge. Fehlt er (keine Moves), nimmt
+    // matchStartAnnouncerSiegerGibt den Rotations-Fallback.
+    const lastTrickLead = await this.prisma.move.findFirst({
+      where: { gameId: t.currentGameId },
+      orderBy: [{ trickIdx: "desc" }, { seq: "asc" }],
+      select: { seat: true },
+    });
     return matchStartAnnouncerSiegerGibt(
       t.variant,
       [
@@ -1503,7 +1512,8 @@ export class LobbyService {
         t.cumulativeScoreTeam2,
         t.cumulativeScoreTeam3,
       ],
-      lastStarter
+      lastStarter,
+      lastTrickLead?.seat
     );
   }
 
