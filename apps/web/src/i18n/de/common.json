@@ -660,7 +660,8 @@
     },
     "otherTurn": "<strong>{{name}}</strong> ist dran.",
     "roleHints": {
-      "announcer": "{{name}} darf ansagen (WELI)",
+      "announcer": "{{name}} darf ansagen",
+      "announcerWeli": "{{name}} darf ansagen (WELI)",
       "dealer": "{{name}} gab die Karten aus",
       "cutter": "{{name}} durfte abheben"
     },

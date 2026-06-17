@@ -75,6 +75,13 @@ export function TrickMini({
   return (
     <aside
       className="rounded-lg bg-stone-100/90 backdrop-blur p-2 shadow-md border border-stone-200 max-w-[16rem]"
+      // ~50% größer (User-Wunsch) — die Skalierung erfasst alles inkl. Karten.
+      // Anker an der jeweiligen Tisch-Ecke, damit es zur Mitte hin wächst statt
+      // aus dem Bild zu laufen (links: „first", rechts: „last").
+      style={{
+        transform: "scale(1.5)",
+        transformOrigin: which === "first" ? "left bottom" : "right bottom",
+      }}
       aria-label={t("game.trickMini.wonByAria", { label, name: winnerName })}
     >
       <div className="text-[10px] uppercase tracking-wide text-stone-500 mb-1 flex items-center justify-between gap-2">

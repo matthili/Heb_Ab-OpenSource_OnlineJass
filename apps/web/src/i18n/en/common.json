@@ -660,7 +660,8 @@
     },
     "otherTurn": "<strong>{{name}}</strong> is up.",
     "roleHints": {
-      "announcer": "{{name}} announces (WELI)",
+      "announcer": "{{name}} announces",
+      "announcerWeli": "{{name}} announces (WELI)",
       "dealer": "{{name}} dealt the cards",
       "cutter": "{{name}} cut the deck"
     },

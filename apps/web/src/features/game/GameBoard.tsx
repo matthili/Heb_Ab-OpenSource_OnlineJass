@@ -256,6 +256,7 @@ export function GameBoard({
           {...(displayed.winnerSeat !== undefined ? { winnerSeat: displayed.winnerSeat } : {})}
           seatNames={seatNames}
           lingering={displayed.lingering}
+          weliRound={dealCinematicMode === "full"}
         />
         <Hand
           cards={view.hand}
@@ -494,6 +495,7 @@ function PlayingArea({
   winnerSeat,
   seatNames,
   lingering,
+  weliRound,
 }: {
   view: PlayerView;
   state: NonNullable<PlayerView["state"]>;
@@ -504,6 +506,9 @@ function PlayingArea({
   winnerSeat?: number;
   seatNames: ReadonlyMap<number, string>;
   lingering: boolean;
+  /** Erste Hand der Partie? Dann hat der WELI den Ansager bestimmt → der
+   *  Rollen-Hinweis zeigt „(WELI)". Sonst rotiert der Ansager (man ist dran). */
+  weliRound: boolean;
 }) {
   const { t } = useTranslation();
   return (
@@ -608,7 +613,7 @@ function PlayingArea({
             Nachschauen — gleicher Platz, zeitlich getrennt (Stich 0 ist erst
             nach 4 Karten „fertig" und damit anschaubar). */}
         {state.trick_idx === 0 ? (
-          <RoleHints state={state} seatNames={seatNames} />
+          <RoleHints state={state} seatNames={seatNames} weliRound={weliRound} />
         ) : (
           <TrickMini state={state} mySeat={mySeat} seatNames={seatNames} which="first" />
         )}
@@ -640,9 +645,13 @@ function PlayingArea({
 function RoleHints({
   state,
   seatNames,
+  weliRound,
 }: {
   state: NonNullable<PlayerView["state"]>;
   seatNames: ReadonlyMap<number, string>;
+  /** Erste Hand → der WELI hat den Ansager bestimmt; sonst Rotation (man ist
+   *  einfach dran) → ohne „(WELI)". */
+  weliRound: boolean;
 }) {
   const { t } = useTranslation();
   const n = state.num_players;
@@ -651,8 +660,16 @@ function RoleHints({
   const cutter = (announcer + n - 2) % n;
   const nameOf = (seat: number) => shortName(seatNames.get(seat) ?? `#${seat + 1}`);
   return (
-    <div className="max-w-[12rem] space-y-0.5 rounded bg-jass-paper/90 px-2 py-1 text-xs leading-tight text-jass-ink shadow-sm ring-1 ring-jass-paperEdge">
-      <div>{t("game.roleHints.announcer", { name: nameOf(announcer) })}</div>
+    <div
+      // ~50% größer (User-Wunsch), Anker unten links wie die Trick-Minis.
+      style={{ transform: "scale(1.5)", transformOrigin: "left bottom" }}
+      className="max-w-[12rem] space-y-0.5 rounded bg-jass-paper/90 px-2 py-1 text-xs leading-tight text-jass-ink shadow-sm ring-1 ring-jass-paperEdge"
+    >
+      <div>
+        {t(weliRound ? "game.roleHints.announcerWeli" : "game.roleHints.announcer", {
+          name: nameOf(announcer),
+        })}
+      </div>
       <div>{t("game.roleHints.dealer", { name: nameOf(dealer) })}</div>
       <div>{t("game.roleHints.cutter", { name: nameOf(cutter) })}</div>
     </div>
