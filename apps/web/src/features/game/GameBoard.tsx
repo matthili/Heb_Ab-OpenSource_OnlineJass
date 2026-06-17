@@ -17,7 +17,7 @@
 import { Hand, Scoreboard, Trick } from "@jass/ui";
 import { effectiveVariant } from "@jass/engine";
 import type { Card } from "@jass/engine";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
 
 import type { SeatView } from "~/features/lobby/types";
@@ -92,12 +92,43 @@ export function GameBoard({
   const [currentGroup, setCurrentGroup] = useState<readonly Card[]>([]);
   const [finalizedGroups, setFinalizedGroups] = useState<ReadonlyArray<ReadonlyArray<Card>>>([]);
 
-  // Deal-Cinematic-State: solange `dealActive`, ist der AnnouncementDialog
-  // versteckt — er erscheint erst nach `onComplete`. Pro gameId einmal.
-  // Default `true` für announcing-Phase; die DealCinematic-Komponente
-  // selbst entscheidet via localStorage, ob sie wirklich rendert oder
-  // gleich onComplete callt (z.B. bei Reload).
-  const [dealActive, setDealActive] = useState(true);
+  // Deal-Cinematic: läuft als durchgehendes Overlay (siehe die Returns unten) —
+  // einmal pro Hand und IMMER bis zum Ende, auch wenn der Server (schnelle
+  // KI-Ansage) schon auf `playing` springt. Würde die Cinematic im Ansage-Zweig
+  // hängen, schnitte der Phasenwechsel sie ab; als Overlay über beiden Zweigen
+  // bleibt sie gemountet. `deal` hält gameId + Ansager-Sitz fest, sobald die
+  // Ansage-Phase beginnt; `onComplete` räumt es weg. (Die DealCinematic selbst
+  // überspringt via localStorage bereits gesehene gameIds + reduced-motion und
+  // callt dann sofort onComplete.)
+  const [deal, setDeal] = useState<{ gameId: string; announcerSeat: number } | null>(null);
+  // Pro gameId nur EINMAL starten — auch nachdem `deal` schon wieder null ist
+  // (sonst triggerte der Effect die Cinematic in der Ansage-Phase neu).
+  const dealStartedFor = useRef<string | null>(null);
+  useEffect(() => {
+    if (
+      view.status === "announcing" &&
+      view.announcement &&
+      dealStartedFor.current !== view.gameId
+    ) {
+      dealStartedFor.current = view.gameId;
+      setDeal({ gameId: view.gameId, announcerSeat: view.announcement.announcerSeat });
+    }
+  }, [view.status, view.gameId, view.announcement?.announcerSeat]);
+  // `dealActive` synchron (ohne 1-Frame-Flacker): bereits true, sobald die
+  // Ansage-Phase für eine neue gameId da ist — im selben Render, bevor der
+  // Effect `deal` setzt. Solange aktiv, ist der Ansage-Dialog versteckt.
+  const dealActive =
+    deal !== null ||
+    (view.status === "announcing" && !!view.announcement && dealStartedFor.current !== view.gameId);
+  const dealOverlay = deal ? (
+    <DealCinematic
+      gameId={deal.gameId}
+      mySeat={mySeat}
+      announcerSeat={deal.announcerSeat}
+      mode={dealCinematicMode}
+      onComplete={() => setDeal(null)}
+    />
+  ) : null;
 
   // Ansage-Phase: nur die Hand + Dialog rendern, kein Scoreboard/Spielfeld.
   // Die Variante steht ja noch gar nicht fest, das Scoreboard hätte nichts
@@ -128,55 +159,45 @@ export function GameBoard({
     // Ermittlung), NICHT an die reale Hand: durch das echte Abheben wird die
     // Spielhand neu verteilt und enthält den WELI evtl. gar nicht mehr.
     const iHaveWeli = dealCinematicMode === "full" && view.announcement?.iAmAnnouncer === true;
-    const announcerSeat = view.announcement?.announcerSeat ?? 0;
     return (
-      <div
-        className="space-y-4 relative"
-        // Mindesthöhe, damit die absolute Cinematic im announcing-Modus
-        // Platz hat (sonst wäre der Container nur so hoch wie die Hand
-        // unten + Dialog oben — die fliegenden Karten würden geclippt).
-        style={{ minHeight: dealActive ? "32rem" : undefined }}
-      >
-        {/* Deal-Cinematic: spielt einmalig pro gameId und ersetzt das
-            alte CutDeckIntro. Solange aktiv, ist der Dialog versteckt. */}
-        {dealActive && (
-          <DealCinematic
-            gameId={view.gameId}
-            mySeat={mySeat}
-            announcerSeat={announcerSeat}
-            mode={dealCinematicMode}
-            onComplete={() => setDealActive(false)}
-          />
-        )}
-        {error && (
-          <div
-            role="alert"
-            className="rounded border border-rose-300 bg-rose-50 px-3 py-2 text-sm text-rose-800"
-          >
-            {error}
-          </div>
-        )}
-        {!dealActive && iHaveWeli && (
-          <div
-            role="status"
-            aria-live="polite"
-            className="jass-weli-banner rounded-lg border-2 border-jass-yellowDark bg-gradient-to-r from-jass-yellow/30 via-jass-yellow/50 to-jass-yellow/30 px-4 py-3 text-center text-jass-ink font-bold shadow-md"
-          >
-            {t("game.weli.youHaveWeli")}
-          </div>
-        )}
-        {!dealActive && (
-          <>
-            <AnnouncementDialog
-              view={view}
-              seatNames={seatNames}
-              pending={announcePending}
-              onAnnounce={onAnnounce}
-            />
-            {/* Hand zeigen, damit der Ansager beim Auswählen seine Karten sieht. */}
-            <Hand cards={view.hand} highlightWeli={iHaveWeli} />
-          </>
-        )}
+      // `relative` + Mindesthöhe, damit das absolute Deal-Overlay im
+      // announcing-Modus Platz hat (sonst nur so hoch wie Hand + Dialog → die
+      // fliegenden Karten würden geclippt). Das Overlay (dealOverlay) steht hier
+      // UND im Playing-Return an gleicher Stelle → React behält es über den
+      // Phasenwechsel hinweg gemountet (Animation läuft bis zum Ende).
+      <div className="relative" style={dealActive ? { minHeight: "32rem" } : undefined}>
+        {dealOverlay}
+        <div className="space-y-4">
+          {error && (
+            <div
+              role="alert"
+              className="rounded border border-rose-300 bg-rose-50 px-3 py-2 text-sm text-rose-800"
+            >
+              {error}
+            </div>
+          )}
+          {!dealActive && iHaveWeli && (
+            <div
+              role="status"
+              aria-live="polite"
+              className="jass-weli-banner rounded-lg border-2 border-jass-yellowDark bg-gradient-to-r from-jass-yellow/30 via-jass-yellow/50 to-jass-yellow/30 px-4 py-3 text-center text-jass-ink font-bold shadow-md"
+            >
+              {t("game.weli.youHaveWeli")}
+            </div>
+          )}
+          {!dealActive && (
+            <>
+              <AnnouncementDialog
+                view={view}
+                seatNames={seatNames}
+                pending={announcePending}
+                onAnnounce={onAnnounce}
+              />
+              {/* Hand zeigen, damit der Ansager beim Auswählen seine Karten sieht. */}
+              <Hand cards={view.hand} highlightWeli={iHaveWeli} />
+            </>
+          )}
+        </div>
       </div>
     );
   }
@@ -201,96 +222,99 @@ export function GameBoard({
       : undefined;
 
   return (
-    <div className="space-y-4">
-      <Scoreboard
-        ownTeamScore={state.own_team_score}
-        oppTeamScore={state.opp_team_score}
-        trickIdx={state.trick_idx}
-        // Bei Slalom den STABILEN Startmodus + slalom-Flag zeigen, nicht die
-        // pro-Stich wechselnde effektive Variante (sonst stünde mal „Oben",
-        // mal „Unten" da statt „Slalom").
-        mode={state.announcement.slalom ? state.announcement.variant.mode : variant.mode}
-        {...(variant.trump_suit !== undefined ? { trumpSuit: variant.trump_suit } : {})}
-        {...(state.announcement.slalom ? { slalom: true } : {})}
-        {...(soloPlayers ? { soloPlayers } : {})}
-      />
-      <StatusBanner view={view} seats={seats} nameSeed={nameSeed} />
-      {error && (
-        <div
-          role="alert"
-          className="rounded border border-rose-300 bg-rose-50 px-3 py-2 text-sm text-rose-800"
-        >
-          {error}
-        </div>
-      )}
-      <PlayingArea
-        view={view}
-        state={state}
-        seats={seats}
-        mySeat={mySeat}
-        displayedCards={displayed.cards}
-        displayedStarter={displayed.starter}
-        {...(displayed.winnerSeat !== undefined ? { winnerSeat: displayed.winnerSeat } : {})}
-        seatNames={seatNames}
-        lingering={displayed.lingering}
-      />
-      <Hand
-        cards={view.hand}
-        legalMask={view.legalActionMask}
-        canPlay={view.myTurn && !movePending && !selectionMode}
-        onPlay={onPlayCard}
-        selectionMode={selectionMode}
-        selected={currentGroup}
-        onSelect={(card) => setCurrentGroup(toggleCardInGroup(currentGroup, card))}
-      />
-      {/* Stöck-Button UNTER der Hand — im selben Bereich wie das Weisen
+    <div className="relative" style={dealActive ? { minHeight: "32rem" } : undefined}>
+      {dealOverlay}
+      <div className="space-y-4">
+        <Scoreboard
+          ownTeamScore={state.own_team_score}
+          oppTeamScore={state.opp_team_score}
+          trickIdx={state.trick_idx}
+          // Bei Slalom den STABILEN Startmodus + slalom-Flag zeigen, nicht die
+          // pro-Stich wechselnde effektive Variante (sonst stünde mal „Oben",
+          // mal „Unten" da statt „Slalom").
+          mode={state.announcement.slalom ? state.announcement.variant.mode : variant.mode}
+          {...(variant.trump_suit !== undefined ? { trumpSuit: variant.trump_suit } : {})}
+          {...(state.announcement.slalom ? { slalom: true } : {})}
+          {...(soloPlayers ? { soloPlayers } : {})}
+        />
+        <StatusBanner view={view} seats={seats} nameSeed={nameSeed} />
+        {error && (
+          <div
+            role="alert"
+            className="rounded border border-rose-300 bg-rose-50 px-3 py-2 text-sm text-rose-800"
+          >
+            {error}
+          </div>
+        )}
+        <PlayingArea
+          view={view}
+          state={state}
+          seats={seats}
+          mySeat={mySeat}
+          displayedCards={displayed.cards}
+          displayedStarter={displayed.starter}
+          {...(displayed.winnerSeat !== undefined ? { winnerSeat: displayed.winnerSeat } : {})}
+          seatNames={seatNames}
+          lingering={displayed.lingering}
+        />
+        <Hand
+          cards={view.hand}
+          legalMask={view.legalActionMask}
+          canPlay={view.myTurn && !movePending && !selectionMode}
+          onPlay={onPlayCard}
+          selectionMode={selectionMode}
+          selected={currentGroup}
+          onSelect={(card) => setCurrentGroup(toggleCardInGroup(currentGroup, card))}
+        />
+        {/* Stöck-Button UNTER der Hand — im selben Bereich wie das Weisen
           (User-Feedback: vorher war er oberhalb des Spielfelds, der Weisen-
           Button aber unten — verwirrend). Auf der letzten Karte (Hand leer)
           läuft eine sichtbare Frist — danach wird der Stöck automatisch
           angesagt (Server-Gnadenfrist), damit nichts hängt. */}
-      {view.stoeckEligible && (
-        <StoeckButton lastCard={view.hand.length === 0} onCall={onAnnounceStoeck} />
-      )}
-      {/* Weise-Panel UNTER der Hand: User-Feedback aus erster Demo. Der
+        {view.stoeckEligible && (
+          <StoeckButton lastCard={view.hand.length === 0} onCall={onAnnounceStoeck} />
+        )}
+        {/* Weise-Panel UNTER der Hand: User-Feedback aus erster Demo. Der
           Button war oberhalb der Spielfläche zu weit weg von den Karten,
           die er auswählen soll — jetzt direkt anschließend, damit Hand
           und Auswahl räumlich zusammenliegen. */}
-      <WeisenPanel
-        weisen={view.weisen}
-        hand={view.hand}
-        weisenPending={weisenPending}
-        onClickWeisen={onClickWeisen}
-        onSubmitWeisen={onSubmitWeisen}
-        selectionMode={selectionMode}
-        onEnterSelection={() => setSelectionMode(true)}
-        onExitSelection={() => setSelectionMode(false)}
-        currentGroup={currentGroup}
-        setCurrentGroup={setCurrentGroup}
-        finalizedGroups={finalizedGroups}
-        setFinalizedGroups={setFinalizedGroups}
-      />
-      <WeisenResultOverlay
-        gameId={view.gameId}
-        weisen={view.weisen}
-        seats={seats}
-        mySeat={mySeat}
-        nameSeed={nameSeed}
-        teams={state.teams}
-      />
-      <MatschOverlay
-        gameId={view.gameId}
-        finalScore={view.finalScore}
-        mySeat={mySeat}
-        teams={state.teams}
-        seats={seats}
-        nameSeed={nameSeed}
-      />
-      <VoidOverlay
-        gameId={view.gameId}
-        finalScore={view.finalScore}
-        mySeat={mySeat}
-        teams={state.teams}
-      />
+        <WeisenPanel
+          weisen={view.weisen}
+          hand={view.hand}
+          weisenPending={weisenPending}
+          onClickWeisen={onClickWeisen}
+          onSubmitWeisen={onSubmitWeisen}
+          selectionMode={selectionMode}
+          onEnterSelection={() => setSelectionMode(true)}
+          onExitSelection={() => setSelectionMode(false)}
+          currentGroup={currentGroup}
+          setCurrentGroup={setCurrentGroup}
+          finalizedGroups={finalizedGroups}
+          setFinalizedGroups={setFinalizedGroups}
+        />
+        <WeisenResultOverlay
+          gameId={view.gameId}
+          weisen={view.weisen}
+          seats={seats}
+          mySeat={mySeat}
+          nameSeed={nameSeed}
+          teams={state.teams}
+        />
+        <MatschOverlay
+          gameId={view.gameId}
+          finalScore={view.finalScore}
+          mySeat={mySeat}
+          teams={state.teams}
+          seats={seats}
+          nameSeed={nameSeed}
+        />
+        <VoidOverlay
+          gameId={view.gameId}
+          finalScore={view.finalScore}
+          mySeat={mySeat}
+          teams={state.teams}
+        />
+      </div>
     </div>
   );
 }
