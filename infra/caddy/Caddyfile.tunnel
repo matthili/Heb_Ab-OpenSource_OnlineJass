@@ -1,0 +1,59 @@
+# Caddyfile für den ÖFFENTLICHEN Betrieb HINTER einem Cloudflare Tunnel.
+#
+# Unterschied zur prod-Caddyfile: KEIN Auto-TLS, KEINE Domain-Bindung — Caddy
+# lauscht nur auf :80 (HTTP). Das TLS macht Cloudflare am Edge, der Tunnel
+# (cloudflared) bringt die Anfragen verschlüsselt bis hierher; der :80-Hop ist
+# rein lokal (Loopback/Container-Netz). Sicherheits-Header + die STRENGE CSP
+# (inkl. Turnstile-Freigabe) sind identisch zur prod-Caddyfile — anders als die
+# bewusst gelockerte Self-Host-Caddyfile, die NICHT für öffentlich gedacht ist.
+#
+# Env:
+#   JASS_DOMAIN  — der öffentliche Hostname, z.B. "jass.example.org"
+#                  (nur für die CSP-`connect-src wss://…`-Direktive nötig).
+
+{
+	servers {
+		max_header_size 16KB
+	}
+}
+
+:80 {
+	encode zstd gzip
+
+	# ── Sicherheits-Header (identisch zu prod; HSTS wird vom Browser über die
+	#    HTTPS-Edge-Verbindung von Cloudflare honoriert) ──────────────────────
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+		X-Frame-Options "DENY"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=()"
+		Content-Security-Policy "default-src 'self'; script-src 'self' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' wss://{$JASS_DOMAIN}; frame-src https://challenges.cloudflare.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+		Cross-Origin-Opener-Policy "same-origin"
+		Cross-Origin-Resource-Policy "same-site"
+		-Server
+	}
+
+	# ── Routing (handle-Familie: erste passende handle gewinnt, terminierend) ──
+	handle /api/* {
+		reverse_proxy api:3000
+	}
+
+	handle /ws* {
+		reverse_proxy api:3000 {
+			lb_policy ip_hash
+		}
+	}
+
+	handle /healthz {
+		reverse_proxy api:3000
+	}
+
+	handle_path /app/* {
+		reverse_proxy web:80
+	}
+
+	handle {
+		reverse_proxy landing:80
+	}
+}

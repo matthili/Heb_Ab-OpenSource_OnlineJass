@@ -1,0 +1,206 @@
+# ─────────────────────────────────────────────────────────────────────────
+# ÖFFENTLICHER Stack hinter einem Cloudflare Tunnel — für einen Mini-PC ohne
+# öffentliche IP / ohne Portfreigabe.
+#
+#   docker compose -f infra/docker-compose.tunnel.yml --env-file .env up -d --build
+#
+# Unterschied zu prod (docker-compose.prod.yml):
+#   • Caddy lauscht nur auf :80 (HTTP) mit Caddyfile.tunnel — KEIN Let's-Encrypt.
+#     Das TLS macht Cloudflare; cloudflared bringt die Anfragen verschlüsselt an
+#     localhost:80 (siehe docs/SELFHOST.md → „Öffentlich via Cloudflare Tunnel").
+#   • Secrets (APP_SECRET/BETTER_AUTH_SECRET) generiert der api-Entrypoint selbst
+#     und persistiert sie auf einem Volume — kein manuelles Erzeugen nötig.
+#
+# Unterschied zu Self-Host (docker-compose.selfhost.yml):
+#   • KEIN SELF_HOST=1 → Turnstile-Captcha ist AKTIV (Pflicht-Keys, s.u.).
+#   • ACCOUNT_ACTIVATION=email → Spieler verifizieren sich selbst per Mail,
+#     ohne Admin-Freischaltung. Dafür ist echter SMTP-Versand nötig.
+#
+# Pflicht-Env (in .env neben diesem File):
+#   JASS_DOMAIN            öffentlicher Hostname, z.B. jass.example.org
+#   POSTGRES_PASSWORD      ≥ 16 zufällige Zeichen (DB ist nur intern erreichbar)
+#   TURNSTILE_SECRET_KEY   aus Cloudflare → Turnstile (server-seitig, geheim)
+#   VITE_TURNSTILE_SITE_KEY  derselbe Turnstile-SITE-Key (Frontend, sichtbar ok)
+#
+# Empfohlen:
+#   ADMIN_EMAIL            wird beim Registrieren automatisch Admin
+#   WATCHDOG_ALERT_EMAIL   Mail-Adresse für Ausfall-Alarme
+#
+# SMTP (für die Verifikations-Mails) am besten NACH dem ersten Start im
+# Admin-Panel → SMTP eintragen (Passwort wird dort verschlüsselt abgelegt).
+# Alternativ über SMTP_*-Env unten. Ohne SMTP kommen keine Verifikations-Mails
+# an → Spieler können sich nicht selbst aktivieren.
+# ─────────────────────────────────────────────────────────────────────────
+
+name: jass-tunnel
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: jass
+      POSTGRES_USER: jass
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?required}
+    volumes:
+      - jass-tunnel-pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U jass -d jass"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks: [jass]
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - jass-tunnel-redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks: [jass]
+
+  api:
+    build:
+      context: ..
+      dockerfile: apps/api/Dockerfile
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      API_PORT: "3000"
+      DATABASE_URL: postgresql://jass:${POSTGRES_PASSWORD}@postgres:5432/jass?schema=public
+      REDIS_URL: redis://redis:6379
+      # Self-Service-Registrierung: Spieler verifizieren sich per Mail selbst.
+      ACCOUNT_ACTIVATION: email
+      BETTER_AUTH_URL: https://${JASS_DOMAIN:?required}
+      WEB_PUBLIC_URL: https://${JASS_DOMAIN}/app
+      LANDING_PUBLIC_URL: https://${JASS_DOMAIN}
+      # Captcha-Pflicht (kein SELF_HOST-Bypass).
+      TURNSTILE_SECRET_KEY: ${TURNSTILE_SECRET_KEY:?required}
+      INFERENCE_URL: http://inference:4000
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-}
+      # SMTP optional hier — bevorzugt im Admin-Panel → SMTP setzen (verschlüsselt).
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM: ${SMTP_FROM:-}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      # APP_SECRET / BETTER_AUTH_SECRET bewusst NICHT gesetzt → der Entrypoint
+      # generiert sie einmalig und persistiert sie nach /app/data.
+    volumes:
+      - jass-tunnel-data:/app/data
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      inference: { condition: service_started }
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3000/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks: [jass]
+
+  # Uptime-Wächter: pingt /health und mailt den Admin bei Ausfall + Erholung.
+  watchdog:
+    build:
+      context: ./watchdog
+    restart: unless-stopped
+    environment:
+      WATCHDOG_TARGET_URL: http://api:3000/health
+      WATCHDOG_INTERVAL_SECONDS: ${WATCHDOG_INTERVAL_SECONDS:-30}
+      WATCHDOG_FAILURES_BEFORE_ALERT: ${WATCHDOG_FAILURES_BEFORE_ALERT:-3}
+      WATCHDOG_ALERT_EMAIL: ${WATCHDOG_ALERT_EMAIL:-}
+      WATCHDOG_LABEL: ${WATCHDOG_LABEL:-Heb ab!}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM: ${SMTP_FROM:-}
+    depends_on:
+      - api
+    networks: [jass]
+
+  inference:
+    build:
+      context: ..
+      dockerfile: apps/inference/Dockerfile
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      INFERENCE_PORT: "4000"
+      MODEL_DIR: /app/external/jass-nn
+      INFERENCE_GAME_TYPES: "kreuz,solo,bodensee"
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    volumes:
+      # Modell-Files aus dem Host-Checkout. Vorher auf dem Host `pnpm sync:nn`
+      # laufen lassen, sonst ist external/jass-nn leer (NN-Sitze fallen dann auf
+      # die Heuristik zurück — funktioniert, aber ohne neuronales Netz).
+      - ../external/jass-nn:/app/external/jass-nn:ro
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:4000/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    networks: [jass]
+
+  web:
+    build:
+      context: ..
+      dockerfile: apps/web/Dockerfile
+      args:
+        VITE_TURNSTILE_SITE_KEY: ${VITE_TURNSTILE_SITE_KEY:?required}
+    restart: unless-stopped
+    networks: [jass]
+
+  landing:
+    build:
+      context: ..
+      dockerfile: apps/landing/Dockerfile
+    restart: unless-stopped
+    networks: [jass]
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    # Nur :80 — cloudflared verbindet sich hierher; TLS macht Cloudflare.
+    ports:
+      - "80:80"
+    environment:
+      # Nur für die CSP-`connect-src wss://…`-Direktive in Caddyfile.tunnel.
+      JASS_DOMAIN: ${JASS_DOMAIN:?required}
+    volumes:
+      - ./caddy/Caddyfile.tunnel:/etc/caddy/Caddyfile:ro
+      - jass-tunnel-caddy:/data
+    depends_on:
+      api: { condition: service_healthy }
+      web: { condition: service_started }
+      landing: { condition: service_started }
+    networks: [jass]
+
+networks:
+  jass:
+
+volumes:
+  jass-tunnel-pg:
+  jass-tunnel-redis:
+  jass-tunnel-data:
+  jass-tunnel-caddy:
