@@ -129,8 +129,10 @@ Tunnel → `localhost:80` auf dem Mini-PC. Der letzte Hop ist rein lokal.
 - `JASS_DOMAIN` — die Subdomain, unter der's laufen soll (muss zu einer deiner
   Cloudflare-Domains gehören; dieselbe trägst du gleich im Tunnel ein). Z. B.
   `JASS_DOMAIN=jass.example.org`.
-- `POSTGRES_PASSWORD` — irgendein neues DB-Passwort (nur intern). Einen erzeugen:
-  `openssl rand -base64 24`.
+- `POSTGRES_PASSWORD` — irgendein neues DB-Passwort (nur intern). Erzeugen mit
+  `openssl rand -hex 24` — **hex, weil URL-sicher**: das Passwort landet in der
+  DB-URL (`postgresql://jass:…@postgres:5432/…`), und Zeichen wie `/` `+` `=`
+  (aus `base64`) zerschießen sie („invalid port number").
 - `ADMIN_EMAIL` — deine E-Mail; der damit registrierte Account wird Admin.
 - `WATCHDOG_ALERT_EMAIL` — wohin Ausfall-Warnungen gehen (darf dieselbe sein).
 
