@@ -32,6 +32,10 @@ cd <repo-verzeichnis>
 
 - **Privates Repo?** Mit Personal-Access-Token in der URL oder per SSH-Key klonen.
 - **Updates später:** `git pull` (im Repo-Verzeichnis), dann `docker compose … up -d --build` erneut.
+- **Ordner verschieben?** Kein Problem — git liegt im Ordner selbst (`.git/`).
+  Schieb den ganzen Ordner wohin du willst und arbeite im neuen Pfad weiter,
+  nichts neu einrichten. „Ordner nicht gefunden" heißt nur: du bist im alten
+  Pfad → `cd` in den neuen.
 - `node_modules` werden NICHT geklont/kopiert — die entstehen im Docker-Build.
 - Der erste Build kann auf einer kleinen Kiste ein paar Minuten dauern und etwas
   RAM/Disk brauchen.
@@ -118,20 +122,27 @@ Captcha + E-Mail-Verifikation**, lässt das TLS aber von **Cloudflare** machen
 **Ziel des Ganzen:** `https://<deine-domain>` → Cloudflare (TLS) → verschlüsselter
 Tunnel → `localhost:80` auf dem Mini-PC. Der letzte Hop ist rein lokal.
 
-**1. Diese Werte besorgen/festlegen** — mehr brauchst du nicht, die Krypto-Secrets
-erzeugt der Container selbst:
+**1. Werte vorbereiten** — gruppiert danach, _was du damit tust_:
 
-| Wert                                               | Was es ist / woher du es kriegst                                                                                                                                                                                                                |
-| -------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `JASS_DOMAIN`                                      | Die (Sub-)Domain, unter der das Spiel laufen soll — dieselbe, die du gleich im Tunnel als Public Hostname einträgst. **Du legst sie fest**, z. B. `jass.example.org`.                                                                           |
-| `POSTGRES_PASSWORD`                                | **Du definierst hier ein neues DB-Passwort** (frei wählbar, nur intern genutzt). Einen erzeugen: `openssl rand -base64 24`.                                                                                                                     |
-| `TURNSTILE_SECRET_KEY` + `VITE_TURNSTILE_SITE_KEY` | **Turnstile = Cloudflares Captcha** (das „kein-Roboter"-Widget). Cloudflare-Dashboard → **Turnstile → Add**, deine Domain eintragen → du bekommst zwei Keys: **Site Key** → `VITE_TURNSTILE_SITE_KEY`, **Secret Key** → `TURNSTILE_SECRET_KEY`. |
-| `ADMIN_EMAIL`                                      | Deine E-Mail — der damit registrierte Account wird automatisch Admin.                                                                                                                                                                           |
-| `WATCHDOG_ALERT_EMAIL`                             | Wohin Ausfall-Warnungen gehen (darf dieselbe sein).                                                                                                                                                                                             |
+**A) Legst DU selbst fest** (frei wählen, nichts nachschlagen):
 
-**Brauchst du NICHT:** `APP_SECRET` / `BETTER_AUTH_SECRET` — die erzeugt der
-Container beim ersten Start selbst und merkt sie sich. Die vielen Felder in
-`.env.example` gelten der **Dev**-Umgebung; für diesen Stack reichen die obigen.
+- `JASS_DOMAIN` — die Subdomain, unter der's laufen soll (muss zu einer deiner
+  Cloudflare-Domains gehören; dieselbe trägst du gleich im Tunnel ein). Z. B.
+  `JASS_DOMAIN=jass.example.org`.
+- `POSTGRES_PASSWORD` — irgendein neues DB-Passwort (nur intern). Einen erzeugen:
+  `openssl rand -base64 24`.
+- `ADMIN_EMAIL` — deine E-Mail; der damit registrierte Account wird Admin.
+- `WATCHDOG_ALERT_EMAIL` — wohin Ausfall-Warnungen gehen (darf dieselbe sein).
+
+**B) Holst du dir bei Cloudflare** (Turnstile = das Captcha, kein Geräteturnen):
+
+- Dashboard → **Turnstile → Add**, deine Domain eintragen → du bekommst zwei Keys:
+  - **Site Key** → `VITE_TURNSTILE_SITE_KEY`
+  - **Secret Key** → `TURNSTILE_SECRET_KEY`
+
+**C) Musst du NICHT anfassen** (erzeugt der Container beim ersten Start selbst):
+`APP_SECRET`, `BETTER_AUTH_SECRET`. Die vielen anderen Felder in `.env.example`
+gelten der **Dev**-Umgebung — für diesen Stack reichen die aus A + B.
 
 **2. `.env` anlegen — ohne Editor.** Werte oben einsetzen, dann den **ganzen
 Block** auf einmal in die Konsole einfügen (schreibt die Datei in einem Rutsch,
