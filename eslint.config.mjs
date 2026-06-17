@@ -12,6 +12,9 @@ export default tseslint.config(
       "**/.turbo/**",
       "**/.astro/**",
       "**/coverage/**",
+      // Statische, unverarbeitete Browser-Assets (z.B. landing/public/*.js) —
+      // werden 1:1 ausgeliefert, nicht als TS-Quelle gelintet.
+      "**/public/**",
       "external/**",
       "assets/**",
       "**/*.config.js",
