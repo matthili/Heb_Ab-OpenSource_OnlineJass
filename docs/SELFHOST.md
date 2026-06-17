@@ -134,11 +134,20 @@ Tunnel → `localhost:80` auf dem Mini-PC. Der letzte Hop ist rein lokal.
 - `ADMIN_EMAIL` — deine E-Mail; der damit registrierte Account wird Admin.
 - `WATCHDOG_ALERT_EMAIL` — wohin Ausfall-Warnungen gehen (darf dieselbe sein).
 
-**B) Holst du dir bei Cloudflare** (Turnstile = das Captcha, kein Geräteturnen):
+**B) Holst du dir bei Cloudflare — Turnstile (das Captcha):**
 
-- Dashboard → **Turnstile → Add**, deine Domain eintragen → du bekommst zwei Keys:
-  - **Site Key** → `VITE_TURNSTILE_SITE_KEY`
-  - **Secret Key** → `TURNSTILE_SECRET_KEY`
+Ziel: in Turnstile **ein Widget für deine Domain anlegen**. Erst danach zeigt
+Cloudflare dir **zwei Werte** — einen **öffentlichen** (meist „Site Key") und
+einen **geheimen** (meist „Secret Key"). Siehst du keine Keys, existiert noch
+kein Widget → erst eines anlegen (Knopf à la „Add"/„Create"; Name + deine Domain).
+
+> `VITE_TURNSTILE_SITE_KEY` und `TURNSTILE_SECRET_KEY` sind die Feldnamen in
+> **dieser `.env`** — die suchst du NICHT bei Cloudflare. Du kopierst nur:
+
+| Cloudflare zeigt dir …              | … das trägst du in die `.env` ein als |
+| ----------------------------------- | ------------------------------------- |
+| den **öffentlichen** Key (Site Key) | `VITE_TURNSTILE_SITE_KEY`             |
+| den **geheimen** Key (Secret Key)   | `TURNSTILE_SECRET_KEY`                |
 
 **C) Musst du NICHT anfassen** (erzeugt der Container beim ersten Start selbst):
 `APP_SECRET`, `BETTER_AUTH_SECRET`. Die vielen anderen Felder in `.env.example`
