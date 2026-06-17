@@ -9,10 +9,10 @@
  *   - NN-basiert (`nn`, `nn-vX.Y.Z`) → SciFi (Star Trek, Matrix, Star Wars).
  *
  * **Deterministisch statt zufällig:** Der Name wird aus einem Seed
- * (`<gameId>:<seat>`) per Hash gewählt — dadurch ist er für eine Partie stabil
- * (kein Springen bei Re-Renders), an allen UI-Stellen identisch und sogar im
- * Replay derselbe (gleiche gameId → gleicher Name). Keine DB-/Schema-Änderung
- * nötig, da nichts persistiert werden muss.
+ * (`<tableId>:<seat>`) per Hash gewählt — dadurch ist er stabil (kein Springen
+ * bei Re-Renders), an allen UI-Stellen identisch und über ALLE Spiele eines
+ * Tisches gleich (gleicher Tisch + Sitz → gleicher Name, live wie in History/
+ * Replay). Keine DB-/Schema-Änderung nötig, da nichts persistiert werden muss.
  *
  * Ein kleines 🤖-Präfix bleibt erhalten, damit Mensch vs. KI klar bleibt.
  */
@@ -230,8 +230,8 @@ interface SeatLike {
 
 /**
  * Anzeigename für einen Sitz: Mensch → Spitzname; KI → thematischer Name
- * (🤖-Präfix); leerer Sitz → `emptyFallback`. `seed` ist i.d.R. die `gameId`
- * (für Replay-Konsistenz) — die Sitz-Nummer wird intern angehängt.
+ * (🤖-Präfix); leerer Sitz → `emptyFallback`. `seed` ist i.d.R. die `tableId`
+ * (stabil über alle Spiele eines Tisches) — die Sitz-Nummer wird intern angehängt.
  */
 export function seatDisplayName(seat: SeatLike, seed: string, emptyFallback = "—"): string {
   if (seat.user?.name) return seat.user.name;
