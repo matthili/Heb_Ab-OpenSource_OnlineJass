@@ -11,6 +11,7 @@
  *   - Mitspieler-Namen (KI-Sitze als „KI" markiert)
  *   - Link zum Replay
  */
+import { Fragment } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
@@ -111,15 +112,22 @@ function MatchGroup({ games }: { games: UserGameSummary[] }) {
     cumOpp += oppPts;
   }
   const anyRunning = games.some((g) => g.status !== "finished");
+  // Partie-Grenzen: an einem Tisch kann nach Erreichen des Punkteziels eine
+  // NEUE Partie starten (Kumulativ-Reset). Wir erkennen das, indem wir die
+  // Karten-Punkte je Konto aufsummieren — erreicht eines das Ziel, endet die
+  // Partie und es folgt eine Trennlinie (spiegelt die Server-MATCH_OVER-Logik).
+  const dividers = detectMatchBoundaries(games, first.targetScore);
+  const matchCount = dividers.size + 1;
+  // Ausgang-Badge nur bei genau EINER Partie (sonst mehrdeutig) und nicht-Solo.
   const result: ResultKind | null = anyRunning
     ? "running"
-    : isSolo
-      ? null
-      : cumOwn > cumOpp
+    : matchCount === 1 && !isSolo
+      ? cumOwn > cumOpp
         ? "won"
         : cumOwn < cumOpp
           ? "lost"
-          : "draw";
+          : "draw"
+      : null;
   return (
     <li className="rounded border border-stone-300 bg-stone-50">
       <details>
@@ -131,6 +139,11 @@ function MatchGroup({ games }: { games: UserGameSummary[] }) {
           <span className="rounded bg-stone-100 px-2 py-0.5 text-xs font-medium text-stone-700">
             {t(`profile.stats.variant.${first.variant}`)}
           </span>
+          {matchCount > 1 && (
+            <span className="text-xs text-stone-600">
+              {t("profile.history.match.matches", { count: matchCount })}
+            </span>
+          )}
           <span className="text-xs text-stone-600">
             {t("profile.history.match.games", { count: games.length })}
           </span>
@@ -146,13 +159,49 @@ function MatchGroup({ games }: { games: UserGameSummary[] }) {
           </span>
         </summary>
         <ul className="space-y-2 px-3 pb-3">
-          {games.map((g) => (
-            <GameHistoryItem key={g.gameId} game={g} />
+          {games.map((g, idx) => (
+            <Fragment key={g.gameId}>
+              <GameHistoryItem game={g} />
+              {dividers.has(idx) && (
+                <li
+                  className="flex items-center gap-2 py-1 text-xs uppercase tracking-wide text-stone-400"
+                  aria-hidden
+                >
+                  <span className="h-px flex-1 bg-stone-300" />
+                  {t("profile.history.match.newMatch")}
+                  <span className="h-px flex-1 bg-stone-300" />
+                </li>
+              )}
+            </Fragment>
           ))}
         </ul>
       </details>
     </li>
   );
+}
+
+/**
+ * Erkennt Partie-Grenzen innerhalb eines Tisches: summiert die Karten-Punkte
+ * je Konto über die (chronologischen) Spiele; erreicht ein Konto `targetScore`,
+ * ist die Partie zu Ende → nach diesem Spiel folgt eine Trennlinie und die
+ * Summe startet neu. Liefert die Indizes, NACH denen getrennt wird (nur wenn
+ * noch ein Spiel folgt). Ohne `targetScore` (tischlos) keine Grenzen.
+ */
+function detectMatchBoundaries(games: UserGameSummary[], targetScore: number | null): Set<number> {
+  const dividers = new Set<number>();
+  if (!targetScore) return dividers;
+  let cum: number[] = [];
+  games.forEach((g, idx) => {
+    const pts = g.finalScore?.team_card_points ?? [];
+    pts.forEach((p, i) => {
+      cum[i] = (cum[i] ?? 0) + (p ?? 0);
+    });
+    if (cum.some((c) => c >= targetScore)) {
+      if (idx < games.length - 1) dividers.add(idx);
+      cum = [];
+    }
+  });
+  return dividers;
 }
 
 function GameHistoryItem({ game }: { game: UserGameSummary }) {

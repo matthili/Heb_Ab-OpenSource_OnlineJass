@@ -173,8 +173,10 @@
       "match": {
         "label": "Match",
         "games": "{{count}} games",
+        "matches": "{{count}} matches",
         "total": "Total {{own}} : {{opp}}",
-        "totalSolo": "Total {{own}}"
+        "totalSolo": "Total {{own}}",
+        "newMatch": "new match"
       }
     },
     "push": {

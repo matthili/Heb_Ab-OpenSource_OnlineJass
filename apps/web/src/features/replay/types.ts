@@ -70,6 +70,8 @@ export interface UserGameSummary {
   gameId: string;
   /** Tisch der Partie — gruppiert Einzelspiele eines „Jass" in der History. */
   tableId: string | null;
+  /** Punkteziel der Partie (für Partie-Grenzen in der History). Null ohne Tisch. */
+  targetScore: number | null;
   variant: GameVariant;
   mySeat: number;
   myTeam: number;

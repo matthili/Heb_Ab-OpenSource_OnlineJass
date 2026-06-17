@@ -267,6 +267,9 @@ export class ReplayService {
               include: { user: { select: { id: true, name: true } } },
               orderBy: { seat: "asc" },
             },
+            // Punkteziel der Partie — die History erkennt damit Partie-Grenzen
+            // (kumulativ erreicht → neue Partie am selben Tisch).
+            table: { select: { targetScore: true } },
           },
         },
       },
@@ -280,6 +283,7 @@ export class ReplayService {
       // Tisch-ID gruppiert die Einzelspiele EINER Partie (bis zum Punkteziel)
       // in der History. Null bei direkt/Test-erzeugten Spielen ohne Tisch.
       tableId: s.game.tableId,
+      targetScore: s.game.table?.targetScore ?? null,
       variant: s.game.variant,
       mySeat: s.seat,
       myTeam: s.seat % 2, // Kreuz-Jass: 0+2 vs 1+3
@@ -301,6 +305,8 @@ export interface UserGameSummary {
   gameId: string;
   /** Tisch der Partie — gruppiert Einzelspiele eines „Jass" in der History. */
   tableId: string | null;
+  /** Punkteziel der Partie (für Partie-Grenzen in der History). Null ohne Tisch. */
+  targetScore: number | null;
   variant: GameVariant;
   mySeat: number;
   myTeam: number;

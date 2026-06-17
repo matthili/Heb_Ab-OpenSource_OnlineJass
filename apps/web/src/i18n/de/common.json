@@ -173,8 +173,10 @@
       "match": {
         "label": "Partie",
         "games": "{{count}} Spiele",
+        "matches": "{{count}} Partien",
         "total": "Gesamt {{own}} : {{opp}}",
-        "totalSolo": "Gesamt {{own}}"
+        "totalSolo": "Gesamt {{own}}",
+        "newMatch": "neue Partie"
       }
     },
     "push": {
