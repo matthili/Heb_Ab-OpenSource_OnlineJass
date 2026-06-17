@@ -100,20 +100,31 @@ export function useScorePop(value: number): { delta: number; seq: number } | nul
 }
 
 /**
- * „+20 Stöck"-Abzeichen. Erscheint neben dem Score des Teams/Spielers,
- * sobald „Stöck" offiziell angesagt wurde — sichtbar für ALLE am Tisch.
- * Der Bonus wird erst am Rundenende verrechnet, das Abzeichen ist also
- * reine Live-Information („hier kommen am Ende +20 dazu").
+ * Feuert einen einmaligen „Pop"-Trigger, sobald `active` von false auf
+ * true wechselt (steigende Flanke) — gleiche 1,4-s-Lebensdauer wie der
+ * Score-Pop. Damit fühlt sich eine Stöck-Ansage genauso an wie ein
+ * gewonnener Stich („+20 Stöck" schwebt kurz auf) statt als lautes
+ * Dauer-Abzeichen stehen zu bleiben. Bewusst proportional zum Weis:
+ * der bekommt auch kein Dauer-Label, nur den kurzen Punkte-Pop.
  */
-function StoeckBadge() {
-  return (
-    <span
-      className="ml-1.5 inline-block rounded bg-jass-green px-1.5 py-0.5 text-xs font-bold text-jass-cream align-middle ring-1 ring-jass-greenDark"
-      title="Stöck angesagt — +20 Punkte am Rundenende"
-    >
-      +20 Stöck
-    </span>
-  );
+function useRisingEdgePop(active: boolean): { seq: number } | null {
+  const prevRef = useRef(active);
+  const [pop, setPop] = useState<{ seq: number } | null>(null);
+  const seqRef = useRef(0);
+
+  useEffect(() => {
+    const prev = prevRef.current;
+    prevRef.current = active;
+    if (active && !prev) {
+      seqRef.current += 1;
+      setPop({ seq: seqRef.current });
+      const id = setTimeout(() => setPop(null), 1400);
+      return () => clearTimeout(id);
+    }
+    return undefined;
+  }, [active]);
+
+  return pop;
 }
 
 /**
@@ -124,16 +135,24 @@ function StoeckBadge() {
 function SoloScoreEntry({ label, points, isMe, stoeck }: SoloScoreEntryData) {
   const animated = useAnimatedNumber(points);
   const pop = useScorePop(points);
+  const stoeckPop = useRisingEdgePop(!!stoeck);
   return (
     <span className={`relative ${isMe ? "text-jass-ink font-semibold" : "text-jass-inkSoft"}`}>
       {label}: <strong className="text-jass-ink tabular-nums">{animated}</strong>
-      {stoeck && <StoeckBadge />}
       {pop && (
         <span
           key={pop.seq}
           className="jass-score-pop absolute -top-1 left-1/2 -translate-x-1/2 text-jass-green font-semibold text-base"
         >
           +{pop.delta}
+        </span>
+      )}
+      {stoeckPop && (
+        <span
+          key={`stoeck-${stoeckPop.seq}`}
+          className="jass-score-pop absolute -top-1 left-1/2 -translate-x-1/2 whitespace-nowrap text-jass-green font-semibold text-base"
+        >
+          +20 Stöck
         </span>
       )}
     </span>
@@ -213,12 +232,13 @@ function TeamScoreboard({
   const oppAnimated = useAnimatedNumber(oppTeamScore);
   const ownPop = useScorePop(ownTeamScore);
   const oppPop = useScorePop(oppTeamScore);
+  const ownStoeckPop = useRisingEdgePop(stoeckSide === "own");
+  const oppStoeckPop = useRisingEdgePop(stoeckSide === "opp");
 
   return (
     <div className="flex gap-4 text-sm rounded-lg border border-jass-paperEdge bg-jass-cream px-3 py-2 items-center panel-jass">
       <span className="text-jass-inkSoft relative">
         Eigenes Team: <strong className="text-jass-ink tabular-nums">{ownAnimated}</strong>
-        {stoeckSide === "own" && <StoeckBadge />}
         {ownPop && (
           <span
             key={ownPop.seq}
@@ -227,16 +247,31 @@ function TeamScoreboard({
             +{ownPop.delta}
           </span>
         )}
+        {ownStoeckPop && (
+          <span
+            key={`stoeck-${ownStoeckPop.seq}`}
+            className="jass-score-pop absolute -top-1 left-1/2 -translate-x-1/2 whitespace-nowrap text-jass-green font-semibold text-base"
+          >
+            +20 Stöck
+          </span>
+        )}
       </span>
       <span className="text-jass-inkSoft relative">
         Gegner: <strong className="text-jass-ink tabular-nums">{oppAnimated}</strong>
-        {stoeckSide === "opp" && <StoeckBadge />}
         {oppPop && (
           <span
             key={oppPop.seq}
             className="jass-score-pop absolute -top-1 left-1/2 -translate-x-1/2 text-jass-red font-semibold text-base"
           >
             +{oppPop.delta}
+          </span>
+        )}
+        {oppStoeckPop && (
+          <span
+            key={`stoeck-${oppStoeckPop.seq}`}
+            className="jass-score-pop absolute -top-1 left-1/2 -translate-x-1/2 whitespace-nowrap text-jass-red font-semibold text-base"
+          >
+            +20 Stöck
           </span>
         )}
       </span>
