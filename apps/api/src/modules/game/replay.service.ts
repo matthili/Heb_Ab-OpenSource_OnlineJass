@@ -31,6 +31,8 @@ export interface ReplaySeat {
   userId: string | null;
   displayName: string | null;
   aiSeatType: string | null;
+  /** Eingefrorener KI-Name (beim Spielstart gespeichert) — null bei Mensch/Alt-Spiel. */
+  aiDisplayName: string | null;
 }
 
 export interface ReplayRound {
@@ -191,6 +193,7 @@ export class ReplayService {
       seat: number;
       userId: string | null;
       aiSeatType: string | null;
+      aiDisplayName: string | null;
       user: { id: string; name: string } | null;
     }>;
     rounds: Array<{
@@ -227,6 +230,7 @@ export class ReplayService {
         userId: s.userId,
         displayName: s.user?.name ?? null,
         aiSeatType: s.aiSeatType,
+        aiDisplayName: s.aiDisplayName,
       })),
       rounds: game.rounds.map((r) => ({
         roundIdx: r.roundIdx,
@@ -296,6 +300,7 @@ export class ReplayService {
         userId: seat.userId,
         displayName: seat.user?.name ?? null,
         aiSeatType: seat.aiSeatType,
+        aiDisplayName: seat.aiDisplayName,
       })),
     }));
   }

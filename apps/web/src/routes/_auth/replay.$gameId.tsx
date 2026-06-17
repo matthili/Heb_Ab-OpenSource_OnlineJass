@@ -204,7 +204,12 @@ function FinalScoreCard({
 }: {
   nameSeed: string;
   finalScore: ReplayFinalScore;
-  seats: { seat: number; displayName: string | null; aiSeatType: string | null }[];
+  seats: {
+    seat: number;
+    displayName: string | null;
+    aiSeatType: string | null;
+    aiDisplayName: string | null;
+  }[];
   mySeat: number;
   t: TFunction;
 }) {
@@ -217,6 +222,7 @@ function FinalScoreCard({
     const s = seats.find((x) => x.seat === seat);
     return (
       s?.displayName ??
+      s?.aiDisplayName ??
       (s?.aiSeatType
         ? aiName(`${nameSeed}:${seat}`, s.aiSeatType)
         : t("replay.player.seatFallback", { n: seat }))

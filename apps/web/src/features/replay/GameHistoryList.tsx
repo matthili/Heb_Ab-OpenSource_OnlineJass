@@ -269,7 +269,10 @@ function collectPartners(
     .sort((a, b) => a.seat - b.seat)
     .map((s) => ({
       userId: s.userId,
-      name: s.displayName ?? (s.aiSeatType ? aiName(`${nameSeed}:${s.seat}`, s.aiSeatType) : "?"),
+      name:
+        s.displayName ??
+        s.aiDisplayName ??
+        (s.aiSeatType ? aiName(`${nameSeed}:${s.seat}`, s.aiSeatType) : "?"),
     }));
 }
 

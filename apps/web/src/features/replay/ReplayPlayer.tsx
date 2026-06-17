@@ -188,6 +188,7 @@ function PlayingArea({
         const slot = relativeSlot(s.seat, mySeat);
         const label =
           s.displayName ??
+          s.aiDisplayName ??
           (s.aiSeatType
             ? aiName(`${bundle.tableId ?? bundle.gameId}:${s.seat}`, s.aiSeatType)
             : t("replay.player.seatFallback", { n: s.seat + 1 }));
@@ -241,6 +242,7 @@ function AnnouncerBar({
   const seat = bundle.seats.find((s) => s.seat === round.starter);
   const name =
     seat?.displayName ??
+    seat?.aiDisplayName ??
     (seat?.aiSeatType
       ? aiName(`${bundle.tableId ?? bundle.gameId}:${round.starter}`, seat.aiSeatType)
       : t("replay.player.seatFallback", { n: round.starter + 1 }));
@@ -285,6 +287,7 @@ function MoveList({
     const s = seats.find((x) => x.seat === seat);
     return (
       s?.displayName ??
+      s?.aiDisplayName ??
       (s?.aiSeatType
         ? aiName(`${nameSeed}:${seat}`, s.aiSeatType)
         : t("replay.player.seatFallback", { n: seat + 1 }))

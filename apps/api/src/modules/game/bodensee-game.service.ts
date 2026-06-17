@@ -43,6 +43,7 @@ import {
   type Suit,
   type TableStack,
 } from "@jass/engine";
+import { aiName } from "@jass/shared-types";
 
 import { AuditService } from "../audit/audit.service.js";
 import {
@@ -221,6 +222,11 @@ export class BodenseeGameService {
             seat: s.seat,
             userId: s.userId,
             aiSeatType: s.aiSeatType,
+            // KI-Namen beim Spielstart einfrieren (Seed = tableId, wie live) →
+            // unveränderlich im Archiv. Menschen-Sitze bleiben null.
+            aiDisplayName: s.aiSeatType
+              ? aiName(`${input.tableId ?? created.id}:${s.seat}`, s.aiSeatType)
+              : null,
           },
         });
       }

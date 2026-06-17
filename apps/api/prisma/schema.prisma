@@ -318,6 +318,11 @@ model GameSeat {
   seat       Int // 0..3 bei Kreuz-4P
   userId     String? // null = KI-Sitz von Anfang an
   aiSeatType String? // "heuristic" | "random" | "nn-v0.1.0" | …
+  // Beim Spielstart eingefrorener KI-Anzeigename (kosmetisch, deterministisch
+  // aus tableId+seat erzeugt). Macht den Namen unveränderlich fürs Archiv —
+  // unabhängig von späteren Änderungen der Namenslisten im Code. Null für
+  // Menschen-Sitze und Spiele von vor diesem Feature.
+  aiDisplayName String?
 
   // **Aussteig-Tracking** (Sprint Q):
   // Wenn ein Mensch aus dem laufenden Spiel aussteigt, lassen wir `userId`

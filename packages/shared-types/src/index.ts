@@ -16,3 +16,4 @@
  * diesen Schemas generiert (`scripts/generate-openapi.ts`).
  */
 export * from "./contracts/lobby.js";
+export * from "./ai-names.js";

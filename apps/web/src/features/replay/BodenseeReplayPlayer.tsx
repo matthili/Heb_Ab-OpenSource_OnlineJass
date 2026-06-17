@@ -80,6 +80,7 @@ export function BodenseeReplayPlayer({ bundle, frames, mySeat }: Props) {
     const s = bundle.seats.find((x) => x.seat === seat);
     return (
       s?.displayName ??
+      s?.aiDisplayName ??
       (s?.aiSeatType
         ? aiName(`${bundle.tableId ?? bundle.gameId}:${seat}`, s.aiSeatType)
         : t("replay.player.seatFallback", { n: seat + 1 }))

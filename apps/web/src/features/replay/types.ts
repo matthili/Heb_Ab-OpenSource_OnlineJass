@@ -15,6 +15,8 @@ export interface ReplaySeat {
   userId: string | null;
   displayName: string | null;
   aiSeatType: string | null;
+  /** Eingefrorener KI-Name (beim Spielstart gespeichert) — null bei Mensch/Alt-Spiel. */
+  aiDisplayName: string | null;
 }
 
 export interface ReplayRound {
