@@ -118,18 +118,34 @@ Captcha + E-Mail-Verifikation**, lässt das TLS aber von **Cloudflare** machen
 **Ziel des Ganzen:** `https://<deine-domain>` → Cloudflare (TLS) → verschlüsselter
 Tunnel → `localhost:80` auf dem Mini-PC. Der letzte Hop ist rein lokal.
 
-**1. Turnstile-Site anlegen** (Cloudflare-Dashboard → Turnstile → Add) → du
-bekommst einen **Site-Key** (sichtbar) und einen **Secret-Key** (geheim).
+**1. Diese Werte besorgen/festlegen** — mehr brauchst du nicht, die Krypto-Secrets
+erzeugt der Container selbst:
 
-**2. `.env`** neben dem Compose-File anlegen:
+| Wert                                               | Was es ist / woher du es kriegst                                                                                                                                                                                                                |
+| -------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `JASS_DOMAIN`                                      | Die (Sub-)Domain, unter der das Spiel laufen soll — dieselbe, die du gleich im Tunnel als Public Hostname einträgst. **Du legst sie fest**, z. B. `jass.example.org`.                                                                           |
+| `POSTGRES_PASSWORD`                                | **Du definierst hier ein neues DB-Passwort** (frei wählbar, nur intern genutzt). Einen erzeugen: `openssl rand -base64 24`.                                                                                                                     |
+| `TURNSTILE_SECRET_KEY` + `VITE_TURNSTILE_SITE_KEY` | **Turnstile = Cloudflares Captcha** (das „kein-Roboter"-Widget). Cloudflare-Dashboard → **Turnstile → Add**, deine Domain eintragen → du bekommst zwei Keys: **Site Key** → `VITE_TURNSTILE_SITE_KEY`, **Secret Key** → `TURNSTILE_SECRET_KEY`. |
+| `ADMIN_EMAIL`                                      | Deine E-Mail — der damit registrierte Account wird automatisch Admin.                                                                                                                                                                           |
+| `WATCHDOG_ALERT_EMAIL`                             | Wohin Ausfall-Warnungen gehen (darf dieselbe sein).                                                                                                                                                                                             |
+
+**Brauchst du NICHT:** `APP_SECRET` / `BETTER_AUTH_SECRET` — die erzeugt der
+Container beim ersten Start selbst und merkt sie sich. Die vielen Felder in
+`.env.example` gelten der **Dev**-Umgebung; für diesen Stack reichen die obigen.
+
+**2. `.env` anlegen — ohne Editor.** Werte oben einsetzen, dann den **ganzen
+Block** auf einmal in die Konsole einfügen (schreibt die Datei in einem Rutsch,
+kein nano nötig):
 
 ```bash
+cat > .env <<'EOF'
 JASS_DOMAIN=jass.example.org
-POSTGRES_PASSWORD=mindestens-16-zufaellige-zeichen
-TURNSTILE_SECRET_KEY=<Turnstile Secret-Key>
-VITE_TURNSTILE_SITE_KEY=<Turnstile Site-Key>
-ADMIN_EMAIL=<deine-admin@adresse>
-WATCHDOG_ALERT_EMAIL=<wohin Ausfall-Mails gehen sollen>
+POSTGRES_PASSWORD=dein-erzeugtes-passwort
+TURNSTILE_SECRET_KEY=dein-turnstile-secret-key
+VITE_TURNSTILE_SITE_KEY=dein-turnstile-site-key
+ADMIN_EMAIL=du@example.com
+WATCHDOG_ALERT_EMAIL=du@example.com
+EOF
 ```
 
 **3. NN-Modelle holen** (für die starke KI; ohne fallen „nn"-Sitze sauber auf die
