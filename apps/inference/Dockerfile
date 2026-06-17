@@ -101,6 +101,15 @@ RUN --mount=type=cache,id=pnpm-store,target=/root/.local/share/pnpm/store \
 FROM node:${NODE_VERSION} AS runtime
 WORKDIR /app
 
+# NN-Modelle holt sich der Container beim Start selbst (docker-entrypoint.sh →
+# fetch-nn.mjs), wenn keine vorhanden sind: `unzip` zum Entpacken,
+# `ca-certificates` für HTTPS zu GitHub. MODEL_DIR + scripts/ als node-eigene
+# Verzeichnisse anlegen, damit ein (anfangs leeres) Volume an
+# /app/external/jass-nn vom node-User beschreibbar ist.
+RUN apk add --no-cache unzip ca-certificates \
+    && mkdir -p /app/external/jass-nn /app/scripts \
+    && chown -R node:node /app/external /app/scripts
+
 # Kein Root: schon vom Base-Image `node`-User vorbereitet (UID 1000).
 USER node
 
@@ -122,6 +131,12 @@ COPY --from=build --chown=node:node /app/apps/inference/dist ./apps/inference/di
 COPY --from=build --chown=node:node /app/apps/inference/package.json ./apps/inference/package.json
 COPY --from=build --chown=node:node /app/apps/inference/node_modules ./apps/inference/node_modules
 
+# Auto-Download der NN-Modelle: fetch-nn.mjs liest die Versions-Pins aus der
+# Root-package.json#jassNn; der Entrypoint ruft es vor dem Server-Start auf.
+COPY --from=build --chown=node:node /app/package.json ./package.json
+COPY --chown=node:node scripts/fetch-nn.mjs ./scripts/fetch-nn.mjs
+COPY --chown=node:node apps/inference/docker-entrypoint.sh ./docker-entrypoint.sh
+
 EXPOSE 4000
 
 # `MODEL_DIR` wird von server.ts als Default mit `../../external/jass-nn`
@@ -134,4 +149,5 @@ WORKDIR /app/apps/inference
 HEALTHCHECK --interval=10s --timeout=5s --start-period=30s --retries=3 \
     CMD node -e "fetch('http://127.0.0.1:4000/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"
 
+ENTRYPOINT ["sh", "/app/docker-entrypoint.sh"]
 CMD ["node", "dist/server.js"]

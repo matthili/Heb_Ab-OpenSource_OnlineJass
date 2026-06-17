@@ -144,10 +144,11 @@ services:
       INFERENCE_GAME_TYPES: "kreuz,solo,bodensee"
       LOG_LEVEL: ${LOG_LEVEL:-info}
     volumes:
-      # Modell-Files aus dem Host-Checkout. Vorher auf dem Host `pnpm sync:nn`
-      # laufen lassen, sonst ist external/jass-nn leer (NN-Sitze fallen dann auf
-      # die Heuristik zurück — funktioniert, aber ohne neuronales Netz).
-      - ../external/jass-nn:/app/external/jass-nn:ro
+      # Modelle holt sich der Container beim ersten Start SELBST aus den
+      # öffentlichen JCN9000-Releases (docker-entrypoint.sh → fetch-nn.mjs) und
+      # legt sie in diesem Volume ab. Kein Host-`pnpm sync:nn`/scp mehr nötig;
+      # bei Neustart bleiben sie liegen (idempotenter MANIFEST-Check).
+      - jass-tunnel-nn:/app/external/jass-nn
     healthcheck:
       test:
         [
@@ -204,3 +205,4 @@ volumes:
   jass-tunnel-redis:
   jass-tunnel-data:
   jass-tunnel-caddy:
+  jass-tunnel-nn:

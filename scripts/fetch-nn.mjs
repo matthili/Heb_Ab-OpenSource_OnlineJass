@@ -26,7 +26,27 @@ import { mkdir, readdir, rename, rm, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { tmpdir } from "node:os";
-import extract from "extract-zip";
+import { spawn } from "node:child_process";
+
+/**
+ * Entpackt ein ZIP nach `dir`. Bevorzugt `extract-zip` (auf Host/CI vorhanden);
+ * fällt zurück auf System-`unzip` (im schlanken Inferenz-Container per apk
+ * installiert, dort gibt es kein extract-zip).
+ */
+async function unzipInto(zipPath, dir) {
+  try {
+    const { default: extract } = await import("extract-zip");
+    await extract(zipPath, { dir });
+    return;
+  } catch {
+    /* extract-zip nicht verfügbar/fehlgeschlagen → System-unzip versuchen */
+  }
+  await new Promise((res, rej) => {
+    const p = spawn("unzip", ["-q", "-o", zipPath, "-d", dir], { stdio: "inherit" });
+    p.on("error", rej);
+    p.on("exit", (code) => (code === 0 ? res() : rej(new Error(`unzip → exit ${code}`))));
+  });
+}
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 // MODEL_DIR kann per Env überschrieben werden (Container: /app/external/jass-nn).
@@ -92,7 +112,7 @@ async function extractFlatten(zipPath, target) {
   const staging = join(target, ".staging");
   await rm(staging, { recursive: true, force: true });
   await mkdir(staging, { recursive: true });
-  await extract(zipPath, { dir: staging });
+  await unzipInto(zipPath, staging);
   const entries = await readdir(staging);
   const topDirs = entries.filter((e) => /^jass-nn-/i.test(e));
   if (topDirs.length !== 1) {
