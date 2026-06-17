@@ -21,7 +21,7 @@ import { useEffect, useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
 
 import type { SeatView } from "~/features/lobby/types";
-import { aiSeatTooltip, seatDisplayName } from "./aiNames";
+import { aiSeatTooltip, seatDisplayName, shortName } from "./aiNames";
 import { AnnouncementDialog } from "./AnnouncementDialog";
 import { AnnounceOverlay, ModeWatermark } from "./AnnounceVisuals";
 import { DealCinematic } from "./DealCinematic";
@@ -579,7 +579,15 @@ function PlayingArea({
           während der ganzen Runde (Vorarlberger Tradition: man darf
           den ersten Stich nochmal anschauen). */}
       <div className="row-start-3 col-start-1 self-end justify-self-start z-20 pointer-events-auto">
-        <TrickMini state={state} mySeat={mySeat} seatNames={seatNames} which="first" />
+        {/* Im 1. Stich (bis er voll ist) zeigen wir die Rollen: Ansager (WELI),
+            Geber, Abheber. Danach steht hier wieder der erste Stich zum
+            Nachschauen — gleicher Platz, zeitlich getrennt (Stich 0 ist erst
+            nach 4 Karten „fertig" und damit anschaubar). */}
+        {state.trick_idx === 0 ? (
+          <RoleHints state={state} seatNames={seatNames} />
+        ) : (
+          <TrickMini state={state} mySeat={mySeat} seatNames={seatNames} which="first" />
+        )}
       </div>
 
       {/* Letzter abgeschlossener Stich — unten rechts. Während Linger
@@ -593,6 +601,36 @@ function PlayingArea({
           hideBecauseLingering={lingering}
         />
       </div>
+    </div>
+  );
+}
+
+/**
+ * Rollen-Hinweis im 1. Stich (links unten): wer ansagen darf (WELI-Halter),
+ * wer gab und wer abhob. Anker ist der Ansager = `current_trick_starter` — im
+ * 1. Stich ist das der Runden-Starter (nach Vorarlberger Tradition auch nach
+ * einem Push der Original-Ansager, siehe game.service). Geber = Ansager − 1,
+ * Abheber = Ansager − 2 (mod Spielerzahl) → bei Kreuz/Solo drei verschiedene
+ * Sitze; Geber ist NIE der Ansager.
+ */
+function RoleHints({
+  state,
+  seatNames,
+}: {
+  state: NonNullable<PlayerView["state"]>;
+  seatNames: ReadonlyMap<number, string>;
+}) {
+  const { t } = useTranslation();
+  const n = state.num_players;
+  const announcer = state.current_trick_starter;
+  const dealer = (announcer + n - 1) % n;
+  const cutter = (announcer + n - 2) % n;
+  const nameOf = (seat: number) => shortName(seatNames.get(seat) ?? `#${seat + 1}`);
+  return (
+    <div className="max-w-[12rem] space-y-0.5 rounded bg-jass-paper/90 px-2 py-1 text-xs leading-tight text-jass-ink shadow-sm ring-1 ring-jass-paperEdge">
+      <div>{t("game.roleHints.announcer", { name: nameOf(announcer) })}</div>
+      <div>{t("game.roleHints.dealer", { name: nameOf(dealer) })}</div>
+      <div>{t("game.roleHints.cutter", { name: nameOf(cutter) })}</div>
     </div>
   );
 }

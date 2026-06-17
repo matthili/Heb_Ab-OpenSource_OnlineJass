@@ -658,6 +658,11 @@
       "slalomSub": "(Modus wechselt pro Stich · Start: {{start}})"
     },
     "otherTurn": "<strong>{{name}}</strong> ist dran.",
+    "roleHints": {
+      "announcer": "{{name}} darf ansagen (WELI)",
+      "dealer": "{{name}} gab die Karten aus",
+      "cutter": "{{name}} durfte abheben"
+    },
     "finished": "Durchgang beendet — der Partie-Stand steht oben.",
     "trick": "Stich {{n}} / 9",
     "scoreOwn": "Eigenes Team: <strong>{{score}}</strong>",

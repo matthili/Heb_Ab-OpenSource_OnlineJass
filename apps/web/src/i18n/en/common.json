@@ -658,6 +658,11 @@
       "slalomSub": "(mode alternates each trick · start: {{start}})"
     },
     "otherTurn": "<strong>{{name}}</strong> is up.",
+    "roleHints": {
+      "announcer": "{{name}} announces (WELI)",
+      "dealer": "{{name}} dealt the cards",
+      "cutter": "{{name}} cut the deck"
+    },
     "finished": "Round over — match standing is shown above.",
     "trick": "Trick {{n}} / 9",
     "scoreOwn": "Your team: <strong>{{score}}</strong>",
