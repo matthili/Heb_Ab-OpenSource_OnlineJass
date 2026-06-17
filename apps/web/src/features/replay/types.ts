@@ -66,6 +66,8 @@ export interface ReplayBundle {
 
 export interface UserGameSummary {
   gameId: string;
+  /** Tisch der Partie — gruppiert Einzelspiele eines „Jass" in der History. */
+  tableId: string | null;
   variant: GameVariant;
   mySeat: number;
   myTeam: number;

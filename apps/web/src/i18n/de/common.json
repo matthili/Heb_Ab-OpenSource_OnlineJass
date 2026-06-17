@@ -169,7 +169,13 @@
       "partnersPrefix": "Während Partie #{{shortId}} · Mitspieler:",
       "viewReplay": "Replay ansehen",
       "running": "läuft noch",
-      "finalScore": "{{own}} : {{opp}}"
+      "finalScore": "{{own}} : {{opp}}",
+      "match": {
+        "label": "Partie",
+        "games": "{{count}} Spiele",
+        "total": "Gesamt {{own}} : {{opp}}",
+        "totalSolo": "Gesamt {{own}}"
+      }
     },
     "push": {
       "legend": "Push-Benachrichtigungen",

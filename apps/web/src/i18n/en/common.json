@@ -169,7 +169,13 @@
       "partnersPrefix": "During game #{{shortId}} · partners:",
       "viewReplay": "View replay",
       "running": "in progress",
-      "finalScore": "{{own}} : {{opp}}"
+      "finalScore": "{{own}} : {{opp}}",
+      "match": {
+        "label": "Match",
+        "games": "{{count}} games",
+        "total": "Total {{own}} : {{opp}}",
+        "totalSolo": "Total {{own}}"
+      }
     },
     "push": {
       "legend": "Push notifications",

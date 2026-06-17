@@ -273,6 +273,9 @@ export class ReplayService {
 
     return seats.map((s) => ({
       gameId: s.game.id,
+      // Tisch-ID gruppiert die Einzelspiele EINER Partie (bis zum Punkteziel)
+      // in der History. Null bei direkt/Test-erzeugten Spielen ohne Tisch.
+      tableId: s.game.tableId,
       variant: s.game.variant,
       mySeat: s.seat,
       myTeam: s.seat % 2, // Kreuz-Jass: 0+2 vs 1+3
@@ -292,6 +295,8 @@ export class ReplayService {
 
 export interface UserGameSummary {
   gameId: string;
+  /** Tisch der Partie — gruppiert Einzelspiele eines „Jass" in der History. */
+  tableId: string | null;
   variant: GameVariant;
   mySeat: number;
   myTeam: number;

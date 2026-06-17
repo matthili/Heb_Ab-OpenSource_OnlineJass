@@ -51,44 +51,114 @@ export function GameHistoryList({ limit = 50, offset = 0 }: Props) {
 
   return (
     <ul className="space-y-2">
-      {data.games.map((g) => (
-        <GameHistoryItem key={g.gameId} game={g} />
+      {groupByMatch(data.games).map((grp) => (
+        <MatchGroup key={grp.key} games={grp.games} />
       ))}
     </ul>
   );
 }
 
+/**
+ * Gruppiert die (neueste-zuerst) Spiele nach Tisch — alle Einzelspiele EINER
+ * Partie („Jass" bis zum Punkteziel) gehören zusammen. Spiele ohne Tisch
+ * (direkt/Test) bleiben Einzelgruppen. Gruppen-Reihenfolge = nach jüngstem
+ * Spiel (Liste ist bereits absteigend); innerhalb der Partie chronologisch
+ * (Spiel 1 → n).
+ */
+function groupByMatch(
+  games: readonly UserGameSummary[]
+): { key: string; games: UserGameSummary[] }[] {
+  const map = new Map<string, UserGameSummary[]>();
+  const order: string[] = [];
+  for (const g of games) {
+    const key = g.tableId ?? g.gameId;
+    let arr = map.get(key);
+    if (!arr) {
+      arr = [];
+      map.set(key, arr);
+      order.push(key);
+    }
+    arr.push(g);
+  }
+  return order.map((key) => ({
+    key,
+    games: map
+      .get(key)!
+      .slice()
+      .sort((a, b) => a.startedAt.localeCompare(b.startedAt)),
+  }));
+}
+
+/**
+ * Eine Partie als aufklappbare Gruppe. Einzelspiele (oder tischlose Spiele)
+ * werden ohne Hülle direkt gezeigt — sonst Kopfzeile mit Datum, Variante,
+ * Spielanzahl, kumulativem Stand + Ausgang, aufklappbar zu den Einzelspielen.
+ */
+function MatchGroup({ games }: { games: UserGameSummary[] }) {
+  const { t } = useTranslation();
+  if (games.length <= 1) {
+    return <GameHistoryItem game={games[0]!} />;
+  }
+  const first = games[0]!;
+  // Solo wertet 4 Einzelkonten — ein sauberer Gegner-Gesamtwert lässt sich
+  // daraus nicht bilden, daher dort nur die eigene Summe + kein Ausgang-Badge.
+  const isSolo = first.variant === "SOLO_4P";
+  let cumOwn = 0;
+  let cumOpp = 0;
+  for (const g of games) {
+    const { ownPts, oppPts } = gamePoints(g);
+    cumOwn += ownPts;
+    cumOpp += oppPts;
+  }
+  const anyRunning = games.some((g) => g.status !== "finished");
+  const result: ResultKind | null = anyRunning
+    ? "running"
+    : isSolo
+      ? null
+      : cumOwn > cumOpp
+        ? "won"
+        : cumOwn < cumOpp
+          ? "lost"
+          : "draw";
+  return (
+    <li className="rounded border border-stone-300 bg-stone-50">
+      <details>
+        <summary className="flex cursor-pointer flex-wrap items-baseline gap-2 px-3 py-2">
+          <span className="font-medium text-stone-800">{t("profile.history.match.label")}</span>
+          <time className="text-xs text-stone-500" dateTime={first.startedAt}>
+            {new Date(first.startedAt).toLocaleDateString("de-AT")}
+          </time>
+          <span className="rounded bg-stone-100 px-2 py-0.5 text-xs font-medium text-stone-700">
+            {t(`profile.stats.variant.${first.variant}`)}
+          </span>
+          <span className="text-xs text-stone-600">
+            {t("profile.history.match.games", { count: games.length })}
+          </span>
+          {result && (
+            <span className={`rounded px-2 py-0.5 text-xs ${badgeForResult(result)}`}>
+              {labelForResult(result, t)}
+            </span>
+          )}
+          <span className="ml-auto text-sm tabular-nums text-stone-700">
+            {isSolo
+              ? t("profile.history.match.totalSolo", { own: cumOwn })
+              : t("profile.history.match.total", { own: cumOwn, opp: cumOpp })}
+          </span>
+        </summary>
+        <ul className="space-y-2 px-3 pb-3">
+          {games.map((g) => (
+            <GameHistoryItem key={g.gameId} game={g} />
+          ))}
+        </ul>
+      </details>
+    </li>
+  );
+}
+
 function GameHistoryItem({ game }: { game: UserGameSummary }) {
   const { t } = useTranslation();
-  // Punkte + Ausgang varianten-abhängig — exakt wie das Backend
-  // (user-stats.service `extractUserResult`): Bodensee + Solo werten pro
-  // SITZ (jeder Sitz eine eigene Wertung), Kreuz pro TEAM (Sitz % 2).
-  // Vorher las die History für ALLE Varianten team_card_points[myTeam] →
-  // bei Solo (4 Sitze, aber nur Index 0/1) falsche Sieger/Punkte.
-  const scores = game.finalScore?.team_card_points;
-  const isPerSeat = game.variant === "BODENSEE_2P" || game.variant === "SOLO_4P";
-  const myIdx = isPerSeat ? game.mySeat : game.myTeam;
-  const ownPts = scores?.[myIdx] ?? 0;
-  const oppPts = scores
-    ? isPerSeat
-      ? Math.max(0, ...scores.filter((_, i) => i !== game.mySeat))
-      : (scores[1 - game.myTeam] ?? 0)
-    : 0;
-  // matsch_team trägt bei Kreuz den Team-Index, bei Bodensee/Solo den
-  // Sitz-Index — in beiden Fällen vergleichbar mit `myIdx`.
-  const matschTeam = game.finalScore?.matsch_team;
-  const result =
-    game.status !== "finished"
-      ? "running"
-      : matschTeam === myIdx
-        ? "matsch-won"
-        : matschTeam != null && matschTeam !== myIdx
-          ? "matsch-lost"
-          : ownPts > oppPts
-            ? "won"
-            : ownPts < oppPts
-              ? "lost"
-              : "draw";
+  const { ownPts, oppPts } = gamePoints(game);
+  const result = gameResultKind(game, ownPts, oppPts);
   const badgeClass = badgeForResult(result);
   const badgeLabel = labelForResult(result, t);
   const partners = collectPartners(game.seats, game.mySeat, game.gameId);
@@ -150,6 +220,37 @@ function collectPartners(
       userId: s.userId,
       name: s.displayName ?? (s.aiSeatType ? aiName(`${gameId}:${s.seat}`, s.aiSeatType) : "?"),
     }));
+}
+
+/**
+ * Eigene + Gegner-Punkte eines Spiels — varianten-abhängig (exakt wie das
+ * Backend `user-stats.service`): Bodensee + Solo werten pro SITZ, Kreuz pro
+ * TEAM (Sitz % 2). Bei Solo (4 Konten) ist „opp" der beste Einzel-Gegner.
+ */
+function gamePoints(game: UserGameSummary): { ownPts: number; oppPts: number } {
+  const scores = game.finalScore?.team_card_points;
+  const isPerSeat = game.variant === "BODENSEE_2P" || game.variant === "SOLO_4P";
+  const myIdx = isPerSeat ? game.mySeat : game.myTeam;
+  const ownPts = scores?.[myIdx] ?? 0;
+  const oppPts = scores
+    ? isPerSeat
+      ? Math.max(0, ...scores.filter((_, i) => i !== game.mySeat))
+      : (scores[1 - game.myTeam] ?? 0)
+    : 0;
+  return { ownPts, oppPts };
+}
+
+/** Ausgang eines Spiels (läuft/Sieg/Niederlage/Matsch). */
+function gameResultKind(game: UserGameSummary, ownPts: number, oppPts: number): ResultKind {
+  if (game.status !== "finished") return "running";
+  // matsch_team trägt bei Kreuz den Team-Index, bei Bodensee/Solo den
+  // Sitz-Index — in beiden Fällen vergleichbar mit `myIdx`.
+  const isPerSeat = game.variant === "BODENSEE_2P" || game.variant === "SOLO_4P";
+  const myIdx = isPerSeat ? game.mySeat : game.myTeam;
+  const matschTeam = game.finalScore?.matsch_team;
+  if (matschTeam === myIdx) return "matsch-won";
+  if (matschTeam != null && matschTeam !== myIdx) return "matsch-lost";
+  return ownPts > oppPts ? "won" : ownPts < oppPts ? "lost" : "draw";
 }
 
 type ResultKind = "running" | "won" | "lost" | "draw" | "matsch-won" | "matsch-lost";
