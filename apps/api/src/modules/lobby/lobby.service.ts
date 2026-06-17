@@ -1009,7 +1009,17 @@ export class LobbyService {
           },
         });
         if (remainingHumanCount > 0) {
-          void this.gameGateway.driveBodenseeAfterLeave(tablePre.currentGameId);
+          // Name des Aussteigers fürs Dialog-Wording beim Verbliebenen
+          // („Der Spieler X hat den Tisch verlassen …"). Der GameSeat ist
+          // schon auf KI umgestellt, der User-Datensatz aber unberührt.
+          const leaver = await this.prisma.user.findUnique({
+            where: { id: userId },
+            select: { name: true },
+          });
+          void this.gameGateway.driveBodenseeAfterLeave(
+            tablePre.currentGameId,
+            leaver?.name ?? null
+          );
         }
       }
 

@@ -25,7 +25,7 @@ import type { TFunction } from "i18next";
 import { useEffect, useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
 
-import { aiSeatTooltip, seatDisplayName } from "~/features/game/aiNames";
+import { aiSeatTooltip, seatDisplayName, shortName } from "~/features/game/aiNames";
 import { UserName } from "~/features/social/UserName";
 import { AnnounceOverlay, ModeWatermark } from "~/features/game/AnnounceVisuals";
 import type { SeatView } from "~/features/lobby/types";
@@ -431,9 +431,17 @@ function CompletedTrickView({
   return (
     <div>
       <p className="text-sm uppercase tracking-wide text-white/80 mb-2 font-semibold">
-        {trick.winner === mySeat
-          ? t("bodensee.trick.lastWonByYou")
-          : t("bodensee.trick.lastWonByOther", { name: seatName(trick.winner) })}
+        {trick.winner === mySeat ? (
+          t("bodensee.trick.lastWonByYou")
+        ) : (
+          // Name im Original-Casing (normal-case hebt das uppercase des <p> auf)
+          // + ab 20 Zeichen gekürzt.
+          <Trans
+            i18nKey="bodensee.trick.lastWonByOther"
+            values={{ name: shortName(seatName(trick.winner)) }}
+            components={{ n: <span className="normal-case" /> }}
+          />
+        )}
       </p>
       <div className={`flex items-end justify-center gap-4 ${emphasised ? "" : "opacity-80"}`}>
         {trick.cards.map((c, i) => {

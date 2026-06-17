@@ -240,6 +240,15 @@ export function seatDisplayName(seat: SeatLike, seed: string, emptyFallback = "�
 }
 
 /**
+ * Lange Spielernamen für knappe Anzeigen kürzen (z.B. „… hat gestochen"):
+ * ab `max` Zeichen abschneiden und „…" anhängen. Lässt das echte Casing
+ * unangetastet.
+ */
+export function shortName(name: string, max = 20): string {
+  return name.length > max ? `${name.slice(0, max).trimEnd()}…` : name;
+}
+
+/**
  * Tooltip-Text fürs 🤖-Icon eines KI-Sitzes: zeigt, welche Engine GERADE spielt.
  * Bei NN-Sitz + nicht erreichbarem Inferenz-Service → Hinweis auf den
  * Heuristik-Fallback (der Spielername bleibt davon unberührt). `t` wird

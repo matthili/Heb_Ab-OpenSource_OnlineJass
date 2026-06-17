@@ -872,7 +872,7 @@
     "trick": {
       "running": "Current trick",
       "lastWonByYou": "Last trick — you took it",
-      "lastWonByOther": "Last trick — {{name}} took it",
+      "lastWonByOther": "Last trick — <n>{{name}}</n> took it",
       "starting": "The trick is starting …"
     },
     "announce": {
@@ -891,6 +891,13 @@
     },
     "rematch": {
       "playAgain": "Play again?"
+    },
+    "opponentLeft": {
+      "title": "Opponent left the table",
+      "body": "<n>{{name}}</n> has left the table. Would you like to leave as well, or finish the game against the computer so it counts in full toward your statistics?",
+      "leave": "Leave table",
+      "playOn": "Finish against the computer",
+      "someone": "Your opponent"
     }
   },
 

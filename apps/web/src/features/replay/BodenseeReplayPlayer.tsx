@@ -24,9 +24,9 @@ import {
 import { Card, useAnimatedNumber, useScorePop } from "@jass/ui";
 import type { TFunction } from "i18next";
 import { useEffect, useState } from "react";
-import { useTranslation } from "react-i18next";
+import { Trans, useTranslation } from "react-i18next";
 
-import { aiName } from "~/features/game/aiNames";
+import { aiName, shortName } from "~/features/game/aiNames";
 import { ReplayControls } from "./ReplayControls";
 import type { ReplayBundle } from "./types";
 import type { BodenseeReplayFrame } from "./useReplay";
@@ -299,9 +299,15 @@ function TrickArea({
     return (
       <div>
         <p className="mb-2 text-sm font-semibold uppercase tracking-wide text-white/80">
-          {winner === mySeat
-            ? t("bodensee.trick.lastWonByYou")
-            : t("bodensee.trick.lastWonByOther", { name: seatName(winner) })}
+          {winner === mySeat ? (
+            t("bodensee.trick.lastWonByYou")
+          ) : (
+            <Trans
+              i18nKey="bodensee.trick.lastWonByOther"
+              values={{ name: shortName(seatName(winner)) }}
+              components={{ n: <span className="normal-case" /> }}
+            />
+          )}
         </p>
         <TrickCards
           cards={tr.cards}

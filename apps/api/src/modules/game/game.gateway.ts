@@ -398,13 +398,18 @@ export class GameGateway
    * UI-Delays) → Fehler werden hier geloggt + geschluckt, damit sie die
    * HTTP-Leave-Antwort nicht mitreißen.
    */
-  async driveBodenseeAfterLeave(gameId: string): Promise<void> {
+  async driveBodenseeAfterLeave(gameId: string, leaverName: string | null): Promise<void> {
     try {
       await this.locks.withLock(gameId, async () => {
         await this.postSystemToTableChat(
           gameId,
           "Ein Spieler hat den Tisch verlassen — die KI übernimmt seinen Platz."
         );
+        // Dem verbleibenden Spieler zusätzlich einen Dialog zeigen (Wahl:
+        // ebenfalls gehen oder gegen die KI fertig spielen, damit die Partie
+        // vollständig in seiner Statistik landet). Der Aussteiger ist bereits
+        // aus dem Room raus → das Event erreicht nur noch den Verbliebenen.
+        this.server.to(roomKey(gameId)).emit("bodensee:opponent-left", { name: leaverName });
         await this.broadcastBodenseeState(gameId);
         await this.driveBodenseeAIsLoop(gameId);
       });

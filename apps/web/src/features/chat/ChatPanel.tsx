@@ -39,9 +39,22 @@ interface Props {
   className?: string;
   /** Kopfzeile ausblenden (z.B. wenn ein DM-Fenster seinen eigenen Titel hat). */
   hideHeader?: boolean;
+  /**
+   * Höhe füllen statt fixe 24rem: der Nachrichten-Bereich wächst mit der
+   * Spalte (im Spiel neben dem Brett, das — v.a. bei Bodensee — höher als
+   * 24rem werden kann). Braucht eine Eltern-Spalte mit Höhe + `className`
+   * mit `flex-1`.
+   */
+  fillHeight?: boolean;
 }
 
-export function ChatPanel({ channelKey, title, className = "", hideHeader = false }: Props) {
+export function ChatPanel({
+  channelKey,
+  title,
+  className = "",
+  hideHeader = false,
+  fillHeight = false,
+}: Props) {
   const { t } = useTranslation();
   const { data: session } = useSession();
   const myUserId = session?.user?.id;
@@ -157,7 +170,9 @@ export function ChatPanel({ channelKey, title, className = "", hideHeader = fals
 
       <div
         ref={scrollRef}
-        className="flex-1 overflow-y-auto px-3 py-2 space-y-2 h-[24rem] max-h-[24rem]"
+        className={`flex-1 overflow-y-auto px-3 py-2 space-y-2 ${
+          fillHeight ? "min-h-[20rem]" : "h-[24rem] max-h-[24rem]"
+        }`}
         aria-live="polite"
         aria-atomic="false"
       >

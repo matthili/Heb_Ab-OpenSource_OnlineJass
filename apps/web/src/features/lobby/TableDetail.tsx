@@ -18,11 +18,12 @@ import { type FormEvent, useCallback, useEffect, useMemo, useState } from "react
 import { Trans, useTranslation } from "react-i18next";
 
 import { BodenseeBoard } from "~/features/bodensee/BodenseeBoard";
+import { OpponentLeftDialog } from "~/features/bodensee/OpponentLeftDialog";
 import { BodenseeRematchPanel } from "~/features/bodensee/BodenseeRematchPanel";
 import { useBodenseeView } from "~/features/bodensee/useBodenseeView";
 import { ChatPanel } from "~/features/chat/ChatPanel";
 import { UserName } from "~/features/social/UserName";
-import { aiName } from "~/features/game/aiNames";
+import { aiName, aiSeatTooltip } from "~/features/game/aiNames";
 import { DisconnectOverlay } from "~/features/game/DisconnectOverlay";
 import { GameBoard } from "~/features/game/GameBoard";
 import { MatchOverOverlay } from "~/features/game/MatchOverOverlay";
@@ -189,11 +190,17 @@ function SeatRow({
   seats,
   nameSeed,
   stacked = false,
+  inferenceAvailable = true,
 }: {
   seats: TableDetailView["seats"];
   nameSeed: string;
   /** Vertikale Liste (für die Chat-Seitenleiste) statt 2-spaltigem Raster. */
   stacked?: boolean;
+  /**
+   * Inferenz-Service erreichbar? Steuert den KI-Engine-Tooltip (nn vs.
+   * Heuristik-Fallback). Außerhalb des laufenden Spiels nicht bekannt → `true`.
+   */
+  inferenceAvailable?: boolean;
 }) {
   const { t } = useTranslation();
   return (
@@ -216,7 +223,12 @@ function SeatRow({
           ) : s.user ? (
             <UserName userId={s.user.id} name={s.user.name} className="font-medium" />
           ) : s.aiSeatType ? (
-            <span className="text-stone-600">{aiName(`${nameSeed}:${s.seat}`, s.aiSeatType)}</span>
+            <span
+              className="cursor-help text-stone-600"
+              title={aiSeatTooltip(t, s.aiSeatType, inferenceAvailable)}
+            >
+              {aiName(`${nameSeed}:${s.seat}`, s.aiSeatType)}
+            </span>
           ) : null}
         </li>
       ))}
@@ -266,6 +278,16 @@ function CumulativeScoreBar({ table }: { table: TableDetailView }) {
     return teamIdx === 0 ? t("lobby.tableDetail.team0") : t("lobby.tableDetail.team1");
   };
 
+  // Engine-Tooltip am Roboter-Symbol des Partie-Stands — nur Einzelspieler-Zeilen
+  // (Solo/Bodensee) mit individuellem KI-Namen; Kreuz-Team-Labels haben kein
+  // einzelnes Symbol. Der Inferenz-Status liegt auf Tisch-Ebene nicht vor → „nn"
+  // optimistisch; das Brett zeigt im Spiel den maßgeblichen Live-Zustand.
+  const titleFor = (teamIdx: number): string | undefined => {
+    if (!isPerPlayer) return undefined;
+    const seat = table.seats.find((s) => s.seat === teamIdx);
+    return seat?.aiSeatType ? aiSeatTooltip(t, seat.aiSeatType, true) : undefined;
+  };
+
   return (
     <section
       className="rounded-lg border border-jass-paperEdge bg-jass-paper p-3 space-y-2 panel-jass"
@@ -293,6 +315,7 @@ function CumulativeScoreBar({ table }: { table: TableDetailView }) {
         <ScoreRow
           key={i}
           label={labelFor(i)}
+          labelTitle={titleFor(i)}
           score={score}
           pct={Math.min(100, Math.round((score / target) * 100))}
           highlight={winner === i}
@@ -305,12 +328,15 @@ function CumulativeScoreBar({ table }: { table: TableDetailView }) {
 
 function ScoreRow({
   label,
+  labelTitle,
   score,
   pct,
   highlight,
   sacked,
 }: {
   label: string;
+  /** Optionaler Tooltip am Label (KI-Engine-Hinweis am Roboter-Symbol). */
+  labelTitle?: string | undefined;
   score: number;
   pct: number;
   highlight: boolean;
@@ -321,7 +347,12 @@ function ScoreRow({
   return (
     <div>
       <div className="flex justify-between text-sm">
-        <span className="text-jass-ink">{label}</span>
+        <span
+          className={labelTitle ? "cursor-help text-jass-ink" : "text-jass-ink"}
+          title={labelTitle}
+        >
+          {label}
+        </span>
         <span className={highlight ? "font-bold text-jass-yellowDark" : "text-jass-ink"}>
           {score}
           {sacked > 0 && (
@@ -858,9 +889,22 @@ function GameSection({
       </div>
       {/* Rechte Spalte: Chat + darunter die Sitze als Liste (füllt die vorher
           halbleere Chat-Spalte; die Namen sind auf dem Felt ohnehin schon). */}
-      <div className="space-y-4">
-        <ChatPanel channelKey={`table:${tableId}`} title={t("lobby.tableDetail.tableChat")} />
-        <SeatRow seats={tableSeats} nameSeed={nameSeed} stacked />
+      <div className="flex h-full flex-col gap-4">
+        {/* fillHeight + flex-1: der Chat füllt die Spalte bis zur Brett-Höhe
+            (statt fix 24rem) — relevant bei Bodensee, wo das Brett mit dem
+            Spielverlauf höher als 24rem werden kann. */}
+        <ChatPanel
+          channelKey={`table:${tableId}`}
+          title={t("lobby.tableDetail.tableChat")}
+          className="flex-1"
+          fillHeight
+        />
+        <SeatRow
+          seats={tableSeats}
+          nameSeed={nameSeed}
+          stacked
+          inferenceAvailable={view.inferenceAvailable}
+        />
       </div>
     </section>
   );
@@ -891,9 +935,16 @@ function BodenseeGameSection({
   nameSeed: string;
 }) {
   const { t } = useTranslation();
-  const { view, error, movePending, announcePending, playCard, announce } = useBodenseeView(
-    isAtTable ? gameId : null
-  );
+  const {
+    view,
+    error,
+    movePending,
+    announcePending,
+    playCard,
+    announce,
+    opponentLeftName,
+    dismissOpponentLeft,
+  } = useBodenseeView(isAtTable ? gameId : null);
 
   if (!isAtTable) {
     return (
@@ -909,6 +960,12 @@ function BodenseeGameSection({
 
   return (
     <section className="grid grid-cols-1 lg:grid-cols-[1fr_20rem] gap-4">
+      <OpponentLeftDialog
+        open={opponentLeftName !== null}
+        name={opponentLeftName ?? ""}
+        tableId={tableId}
+        onPlayOn={dismissOpponentLeft}
+      />
       <div className="space-y-4">
         <BodenseeBoard
           view={view}
@@ -925,9 +982,22 @@ function BodenseeGameSection({
         )}
       </div>
       {/* Rechte Spalte: Chat + darunter die Sitze als Liste. */}
-      <div className="space-y-4">
-        <ChatPanel channelKey={`table:${tableId}`} title={t("lobby.tableDetail.tableChat")} />
-        <SeatRow seats={tableSeats} nameSeed={nameSeed} stacked />
+      <div className="flex h-full flex-col gap-4">
+        {/* fillHeight + flex-1: der Chat füllt die Spalte bis zur Brett-Höhe
+            (statt fix 24rem) — relevant bei Bodensee, wo das Brett mit dem
+            Spielverlauf höher als 24rem werden kann. */}
+        <ChatPanel
+          channelKey={`table:${tableId}`}
+          title={t("lobby.tableDetail.tableChat")}
+          className="flex-1"
+          fillHeight
+        />
+        <SeatRow
+          seats={tableSeats}
+          nameSeed={nameSeed}
+          stacked
+          inferenceAvailable={view.inferenceAvailable}
+        />
       </div>
     </section>
   );

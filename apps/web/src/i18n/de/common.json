@@ -872,7 +872,7 @@
     "trick": {
       "running": "Laufender Stich",
       "lastWonByYou": "Letzter Stich — du hast gestochen",
-      "lastWonByOther": "Letzter Stich — {{name}} hat gestochen",
+      "lastWonByOther": "Letzter Stich — <n>{{name}}</n> hat gestochen",
       "starting": "Der Stich beginnt …"
     },
     "announce": {
@@ -891,6 +891,13 @@
     },
     "rematch": {
       "playAgain": "Nochmal spielen?"
+    },
+    "opponentLeft": {
+      "title": "Mitspieler hat den Tisch verlassen",
+      "body": "<n>{{name}}</n> hat den Tisch verlassen. Möchtest du den Tisch ebenfalls verlassen oder gegen den Computer fertig spielen, damit das Spiel vollständig in deiner Statistik aufscheint?",
+      "leave": "Tisch verlassen",
+      "playOn": "Gegen den Computer fertig spielen",
+      "someone": "Dein Gegner"
     }
   },
 

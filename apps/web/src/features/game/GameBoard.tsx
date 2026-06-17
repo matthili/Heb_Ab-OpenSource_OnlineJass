@@ -433,9 +433,18 @@ function StatusBanner({
   const name = playerSeat
     ? seatDisplayName(playerSeat, nameSeed, t("game.seatFallback", { n: view.whoseTurnSeat + 1 }))
     : t("game.seatFallback", { n: view.whoseTurnSeat + 1 });
+  // Ist gerade eine KI am Zug, den Engine-Tooltip auch hier zeigen — das ist
+  // buchstäblich „welche Engine werkelt GERADE".
+  const aiTitle =
+    playerSeat && !playerSeat.user?.id && playerSeat.aiSeatType
+      ? aiSeatTooltip(t, playerSeat.aiSeatType, view.inferenceAvailable)
+      : "";
   return (
     <div className="rounded bg-jass-paper border border-jass-paperEdge px-3 py-2 text-jass-inkSoft flex items-center min-h-[2.75rem]">
-      <span>
+      <span
+        className={aiTitle ? "cursor-help" : undefined}
+        {...(aiTitle ? { title: aiTitle } : {})}
+      >
         <Trans
           i18nKey="game.otherTurn"
           values={{ name }}

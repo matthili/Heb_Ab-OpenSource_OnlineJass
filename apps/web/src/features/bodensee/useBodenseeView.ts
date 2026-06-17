@@ -29,6 +29,14 @@ export interface BodenseeViewState {
   playCard: (card: Card) => void;
   announce: (announcement: BodenseeAnnouncement) => void;
   clearError: () => void;
+  /**
+   * Name des Gegners, der den Tisch mitten im 2-Spieler-Spiel verlassen hat
+   * (die KI hat übernommen) — `null`, solange niemand gegangen ist. Steuert
+   * den Verlassen-Dialog beim verbleibenden Spieler.
+   */
+  opponentLeftName: string | null;
+  /** Den Verlassen-Dialog schließen („gegen den Computer fertig spielen"). */
+  dismissOpponentLeft: () => void;
 }
 
 export function useBodenseeView(gameId: string | null): BodenseeViewState {
@@ -36,6 +44,7 @@ export function useBodenseeView(gameId: string | null): BodenseeViewState {
   const [error, setError] = useState<string | null>(null);
   const [movePending, setMovePending] = useState(false);
   const [announcePending, setAnnouncePending] = useState(false);
+  const [opponentLeftName, setOpponentLeftName] = useState<string | null>(null);
   const gameIdRef = useRef<string | null>(gameId);
   gameIdRef.current = gameId;
 
@@ -48,20 +57,31 @@ export function useBodenseeView(gameId: string | null): BodenseeViewState {
       setMovePending(false);
       setAnnouncePending(false);
       setError(null);
+      // Ist die Partie vorbei, den Verlassen-Dialog nicht länger über den
+      // Endbildschirm legen (bei „fertig spielen" ist er ohnehin schon weg).
+      if (v.status === "finished") setOpponentLeftName(null);
     }
     function onError(e: { message?: string }) {
       setError(e?.message ?? i18n.t("game.errorFallback"));
       setMovePending(false);
       setAnnouncePending(false);
     }
+    // 2-Spieler: Der Gegner hat den Tisch verlassen → die KI übernimmt seinen
+    // Sitz. Dem Verbliebenen den Wahl-Dialog zeigen (Name fürs Wording, sonst
+    // generisch, falls der Server keinen liefern konnte).
+    function onOpponentLeft(e: { name?: string | null }) {
+      setOpponentLeftName(e?.name ?? i18n.t("bodensee.opponentLeft.someone"));
+    }
 
     socket.on("bodensee:state", onState);
     socket.on("bodensee:error", onError);
+    socket.on("bodensee:opponent-left", onOpponentLeft);
     socket.emit("bodensee:join", { gameId });
 
     return () => {
       socket.off("bodensee:state", onState);
       socket.off("bodensee:error", onError);
+      socket.off("bodensee:opponent-left", onOpponentLeft);
     };
   }, [gameId]);
 
@@ -86,5 +106,19 @@ export function useBodenseeView(gameId: string | null): BodenseeViewState {
     setError(null);
   }
 
-  return { view, error, movePending, announcePending, playCard, announce, clearError };
+  function dismissOpponentLeft() {
+    setOpponentLeftName(null);
+  }
+
+  return {
+    view,
+    error,
+    movePending,
+    announcePending,
+    playCard,
+    announce,
+    clearError,
+    opponentLeftName,
+    dismissOpponentLeft,
+  };
 }
