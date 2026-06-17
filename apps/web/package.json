@@ -8,7 +8,7 @@
     "predev": "node ../../scripts/sync-web-cards.mjs",
     "dev": "vite",
     "prebuild": "node ../../scripts/sync-web-cards.mjs",
-    "build": "tsc -b --noEmit && vite build",
+    "build": "vite build && tsc -b --noEmit",
     "preview": "vite preview",
     "typecheck": "tsc -b --noEmit",
     "lint": "eslint src",
