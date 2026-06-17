@@ -89,6 +89,10 @@ model User {
   // Last-Read-Marker meiner DM-Konversationen (Ungelesen-Zähler)
   dmReads DmRead[] @relation("DmReadUser")
 
+  // Tisch-Banns gegen diesen User (Owner hat ihn rausgeworfen + für den Tisch
+  // gesperrt). Tisch-scoped, kein globaler Bann.
+  tableBans TableBan[] @relation("TableBanned")
+
   @@index([status])
   @@index([deletedAt])
 }
@@ -467,6 +471,7 @@ model LobbyTable {
   games        Game[]            @relation("TableGames")
   joinRequests GameJoinRequest[]
   invites      TableInvite[]
+  bans         TableBan[]
 
   @@index([status])
   @@index([createdAt])
@@ -508,6 +513,24 @@ model GameJoinRequest {
 
   @@index([tableId, status])
   @@index([userId])
+}
+
+model TableBan {
+  // Tisch-bezogene Sperre: ein vom Owner rausgeworfener Spieler kann GENAU
+  // diesem Tisch (`tableId`) nicht wieder beitreten — gilt, solange der Tisch
+  // lebt (kein globaler Bann; dafür gäbe es Blocklist/DmBlock). `byUserId` =
+  // Owner, der rausgeworfen hat (reine Audit-Spur, daher keine FK-Relation).
+  id        String   @id @default(cuid())
+  tableId   String
+  userId    String
+  byUserId  String
+  createdAt DateTime @default(now())
+
+  table LobbyTable @relation(fields: [tableId], references: [id], onDelete: Cascade)
+  user  User       @relation("TableBanned", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([tableId, userId])
+  @@index([tableId])
 }
 
 model TableInvite {
