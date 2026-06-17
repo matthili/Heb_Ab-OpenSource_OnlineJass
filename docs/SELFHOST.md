@@ -11,7 +11,32 @@ selbst ein.
 
 ## Voraussetzungen
 
-- **Docker** (mit Compose v2) auf dem Mini-PC. Sonst nichts.
+- **Docker** (mit Compose v2) auf dem Mini-PC.
+- **git** zum Holen des Repos (`sudo apt install -y git`) — oder eine andere Art,
+  die Repo-Dateien auf die Kiste zu bringen (siehe nächster Abschnitt).
+
+> Der eigentliche Build läuft **in Docker** — Node/pnpm musst du dafür NICHT auf
+> dem Host installieren. Auf den Host gehören nur: Docker, das **Repo selbst**,
+> (für die NN-Variante) die Modelldateien und cloudflared für den Tunnel.
+
+## Repo auf den Mini-PC holen
+
+`docker compose … --build` baut die Images **aus dem Quellcode** — die Dateien
+müssen also lokal auf dem Mini-PC liegen. Am einfachsten per git:
+
+```bash
+sudo apt install -y git
+git clone <DEINE-REPO-URL>      # z.B. https://github.com/<user>/<repo>.git
+cd <repo-verzeichnis>
+```
+
+- **Privates Repo?** Mit Personal-Access-Token in der URL oder per SSH-Key klonen.
+- **Updates später:** `git pull` (im Repo-Verzeichnis), dann `docker compose … up -d --build` erneut.
+- `node_modules` werden NICHT geklont/kopiert — die entstehen im Docker-Build.
+- Der erste Build kann auf einer kleinen Kiste ein paar Minuten dauern und etwas
+  RAM/Disk brauchen.
+
+Alle folgenden `docker compose …`-Befehle führst du **aus diesem Repo-Verzeichnis** aus.
 
 ## Start (ein Befehl)
 
@@ -108,11 +133,15 @@ WATCHDOG_ALERT_EMAIL=<wohin Ausfall-Mails gehen sollen>
 ```
 
 **3. NN-Modelle holen** (für die starke KI; ohne fallen „nn"-Sitze sauber auf die
-Heuristik zurück):
+Heuristik zurück). `pnpm sync:nn` braucht **Node + pnpm + gh CLI** — die hast du
+auf einem nackten Mini-PC i.d.R. NICHT. Zwei Wege:
 
-```bash
-pnpm sync:nn          # braucht gh CLI
-```
+- **Auf deinem Dev-Rechner** `pnpm sync:nn` laufen lassen und den entstandenen
+  Ordner `external/jass-nn/` per `scp`/`rsync` auf den Mini-PC ins Repo kopieren, **oder**
+- gh CLI + Node/pnpm auf dem Mini-PC installieren und dort `pnpm sync:nn` ausführen.
+
+Beim allerersten Trial kannst du das auch **weglassen** — dann spielt die KI mit
+der (recht starken) Heuristik; das NN rüstest du später nach.
 
 **4. Stack starten:**
 
