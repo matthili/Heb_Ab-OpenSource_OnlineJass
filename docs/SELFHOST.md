@@ -151,7 +151,15 @@ kein Widget → erst eines anlegen (Knopf à la „Add"/„Create"; Name + deine
 
 **C) Musst du NICHT anfassen** (erzeugt der Container beim ersten Start selbst):
 `APP_SECRET`, `BETTER_AUTH_SECRET`. Die vielen anderen Felder in `.env.example`
-gelten der **Dev**-Umgebung — für diesen Stack reichen die aus A + B.
+gelten der **Dev**-Umgebung — für diesen Stack reichen A + B + D.
+
+**D) Von deinem Mail-Anbieter — SMTP (Pflicht!):** Host, Port, Benutzer, Passwort,
+Absender. Weil sich hier alle per E-Mail selbst verifizieren — **inklusive dir als
+Admin** —, muss SMTP **schon beim ersten Start** laufen, sonst kann sich niemand
+(auch du nicht) einloggen. Die Daten kommen vom Anbieter, bei dem deine Mail liegt
+(z. B. dein bestehendes Postfach). Das Passwort steht dann im Klartext in der
+`.env` auf **deinem** Rechner — das ist normal; später kannst du SMTP ins
+Admin-Panel umziehen (dort verschlüsselt).
 
 **2. `.env` anlegen — ohne Editor.** Werte oben einsetzen, dann den **ganzen
 Block** auf einmal in die Konsole einfügen (schreibt die Datei in einem Rutsch,
@@ -165,6 +173,11 @@ TURNSTILE_SECRET_KEY=dein-turnstile-secret-key
 VITE_TURNSTILE_SITE_KEY=dein-turnstile-site-key
 ADMIN_EMAIL=du@example.com
 WATCHDOG_ALERT_EMAIL=du@example.com
+SMTP_HOST=mail.dein-anbieter.tld
+SMTP_PORT=587
+SMTP_USER=dein-postfach-login
+SMTP_PASSWORD=dein-postfach-passwort
+SMTP_FROM=noreply@jass.example.org
 EOF
 ```
 
@@ -197,10 +210,13 @@ Connector**, dann zeigt der Tunnel direkt auf `localhost`):
   **`http://localhost:80`**, öffentlicher Name = `JASS_DOMAIN` (Subdomain +
   Domain aus dem Dropdown). Den DNS-Eintrag legt Cloudflare selbst an.
 
-**6. SMTP eintragen** (für die Verifikations-Mails) — am besten **nach** dem
-ersten Start im **Admin-Bereich → SMTP** (Passwort wird dort verschlüsselt
-abgelegt; muss nirgends im Klartext liegen). Ohne SMTP kommt keine Verifikations-
-Mail an → niemand kann sich selbst aktivieren.
+**6. Verifizieren + loslegen.** SMTP steckt schon in der `.env` (Schritt 1D/2),
+also verschickt das System sofort Verifikations-Mails. Registriere dich mit deiner
+`ADMIN_EMAIL`, klick den Link in der Mail → du bist freigeschaltet **und** Admin
+(die `ADMIN_EMAIL`-Beförderung vergibt nur die Admin-Rolle, die Verifikation
+machst du wie alle per Mail). Danach kannst du SMTP bei Bedarf im **Admin-Bereich →
+SMTP** ändern (dort verschlüsselt). Ohne funktionierendes SMTP kommt keine
+Verifikations-Mail an → niemand (auch du nicht) kann sich einloggen.
 
 > **Captcha:** aktiv (Turnstile). **TLS:** Cloudflare-Edge + verschlüsselter
 > Tunnel — der `localhost:80`-Hop verlässt den Rechner nie. Für noch strengeren
