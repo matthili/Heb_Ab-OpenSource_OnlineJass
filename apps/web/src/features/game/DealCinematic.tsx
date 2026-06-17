@@ -13,8 +13,10 @@
  *   6. `weli`     (1.2 s) — WELI-Reveal am Ansager-Sitz (groß + golden)
  *   7. `done`     — onComplete, Komponente unmounted
  *
- * **Geber-Berechnung**: GEBER = (ANSAGER - 1 + numPlayers) % numPlayers.
- * Der Ansager (= WELI-Inhaber bei Spiel 1) ist gleichzeitig der Abheber.
+ * **Geber-Berechnung**: GEBER = (ANSAGER - 1 + numPlayers) % numPlayers. Die
+ * Karten werden VOM GEBER aus verteilt; der WELI-Reveal erscheint beim ANSAGER
+ * (WELI-Inhaber). Das eigentliche Abheben ist eine separate Phase davor
+ * (CutPhase im GameBoard) und wird hier nicht mehr animiert.
  *
  * **Lifecycle pro gameId**: localStorage merkt, welche gameIds bereits
  * die Cinematic gesehen haben — bei Reload wird nicht alles neu gespielt.
@@ -150,12 +152,12 @@ export function DealCinematic({
     let timeouts: ReturnType<typeof setTimeout>[] = [];
     const next = (p: Phase, after: number) => timeouts.push(setTimeout(() => setPhase(p), after));
 
-    if (phase === "mix") next("slide", T_MIX);
-    // Das ECHTE Abheben passiert jetzt in einer eigenen Phase VOR dieser
-    // Cinematic (CutPhase im GameBoard). Die alte kosmetische Cut-Geste
-    // (wait-cut/cut) wäre danach redundant → wir gehen direkt slide → deal.
-    // (wait-cut/cut bleiben als Phasen definiert, werden aber nicht mehr
-    // angesteuert.)
+    // Das ECHTE Abheben ist eine eigene Phase VOR dieser Cinematic (CutPhase
+    // im GameBoard). Danach zeigt die Cinematic nur noch, wie der GEBER
+    // austeilt → direkt mix → deal, kein „Rutschen" zu einem anderen Sitz mehr
+    // (slide/wait-cut/cut bleiben als Phasen definiert, werden aber nicht mehr
+    // angesteuert).
+    if (phase === "mix") next("deal", T_MIX);
     else if (phase === "slide") next("deal", T_SLIDE);
     else if (phase === "wait-cut") {
       // Auto-Cut nach 10 s, falls niemand klickt. (Nicht mehr erreicht.)
@@ -201,9 +203,9 @@ export function DealCinematic({
         />
       )}
 
-      {/* Verteilen — fliegende Karten zu allen 4 Sitzen */}
+      {/* Verteilen — fliegende Karten VOM GEBER zu allen Sitzen */}
       {phase === "deal" && (
-        <DealSwarm mySeat={mySeat} cutterOff={cutterOff} numPlayers={numPlayers} />
+        <DealSwarm mySeat={mySeat} fromOff={dealerOff} numPlayers={numPlayers} />
       )}
 
       {/* WELI-Reveal am Ansager-Sitz */}
@@ -355,11 +357,12 @@ function CutAnimation() {
 
 function DealSwarm({
   mySeat,
-  cutterOff,
+  fromOff,
   numPlayers,
 }: {
   mySeat: number;
-  cutterOff: { x: number; y: number };
+  /** Ursprung des Karten-Schwarms = der Geber-Sitz. */
+  fromOff: { x: number; y: number };
   numPlayers: number;
 }) {
   // 9 Karten pro Sitz × num_players Sitze = 36 Stellvertreter-Karten.
@@ -378,7 +381,7 @@ function DealSwarm({
       for (let i = 0; i < 9; i++) {
         out.push({
           key: `${s}-${i}`,
-          from: cutterOff,
+          from: fromOff,
           to: {
             x: off.x + ((i % 3) - 1) * 4,
             y: off.y + (Math.floor(i / 3) - 1) * 4,
@@ -391,7 +394,7 @@ function DealSwarm({
       }
     }
     return out;
-  }, [mySeat, cutterOff, numPlayers]);
+  }, [mySeat, fromOff, numPlayers]);
 
   return (
     <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
