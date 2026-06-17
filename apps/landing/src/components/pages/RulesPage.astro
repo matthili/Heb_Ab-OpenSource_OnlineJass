@@ -1055,41 +1055,8 @@ const c = CONTENT[lang];
   </article>
 </Base>
 
-<script is:inline>
-  // Demo-Animationen: starten beim Hereinscrollen, ↻ spielt erneut ab.
-  (function () {
-    var els = document.querySelectorAll(".anim");
-    if (!("IntersectionObserver" in window)) {
-      els.forEach(function (e) {
-        e.classList.add("play");
-      });
-    } else {
-      var io = new IntersectionObserver(
-        function (entries) {
-          entries.forEach(function (en) {
-            if (en.isIntersecting) {
-              en.target.classList.add("play");
-              io.unobserve(en.target);
-            }
-          });
-        },
-        { threshold: 0.35 }
-      );
-      els.forEach(function (e) {
-        io.observe(e);
-      });
-    }
-    document.addEventListener("click", function (ev) {
-      var btn = ev.target && ev.target.closest ? ev.target.closest(".replay") : null;
-      if (!btn) return;
-      var anim = btn.closest(".anim");
-      if (!anim) return;
-      anim.classList.remove("play");
-      void anim.offsetWidth; // Reflow erzwingen → Animationen starten neu
-      anim.classList.add("play");
-    });
-  })();
-</script>
+<!-- Schul-Animationen: extern statt inline wegen der strengen CSP (script-src 'self'). -->
+<script is:inline src="/rules-animations.js" defer></script>
 
 <style>
   .intro .lead {
