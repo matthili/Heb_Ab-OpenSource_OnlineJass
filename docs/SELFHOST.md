@@ -100,7 +100,7 @@ bekommst einen **Site-Key** (sichtbar) und einen **Secret-Key** (geheim).
 
 ```bash
 JASS_DOMAIN=jass.example.org
-POSTGRES_PASSWORD=<>= 16 zufaellige Zeichen>
+POSTGRES_PASSWORD=mindestens-16-zufaellige-zeichen
 TURNSTILE_SECRET_KEY=<Turnstile Secret-Key>
 VITE_TURNSTILE_SITE_KEY=<Turnstile Site-Key>
 ADMIN_EMAIL=<deine-admin@adresse>
