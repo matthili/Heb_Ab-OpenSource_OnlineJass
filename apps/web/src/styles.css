@@ -63,6 +63,15 @@
   --jass-fg: var(--color-jass-ink);
 }
 
+/* Tailwind 4 Preflight setzt `margin: 0` auf `*` (und `::backdrop`) und killt
+ * damit das `margin: auto`, mit dem der Browser ein modales <dialog> mittig im
+ * Viewport positioniert — sonst klebt JEDER Dialog (Gegner-verlassen,
+ * Entfreunden-Confirm, Tisch-verlassen, …) oben links statt zentriert. Die
+ * Typ-Regel schlägt den `*`-Reset (höhere Spezifität) und stellt es wieder her. */
+dialog {
+  margin: auto;
+}
+
 /* Body bekommt eine subtile Papier-Atmosphäre via overlay-Gradient
  * (kein PNG — skaliert frei). Der Gradient ist sehr dezent, soll nur
  * den Eindruck von „nicht plattem Hintergrund" geben. */
