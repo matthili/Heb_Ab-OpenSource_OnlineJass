@@ -19,7 +19,8 @@
       "requestPending": "Request pending",
       "acceptFriend": "Accept request",
       "areFriends": "Friends",
-      "report": "Report"
+      "report": "Report",
+      "kickFromTable": "Remove from table & block"
     },
     "dm": {
       "minimize": "Minimize",

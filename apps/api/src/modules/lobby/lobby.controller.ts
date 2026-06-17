@@ -48,6 +48,9 @@ import { PresenceService, type PresenceState, type PresenceUser } from "./presen
 const AfkDtoSchema = z.object({ afk: z.boolean() }).strict();
 type AfkDto = z.infer<typeof AfkDtoSchema>;
 
+const KickDtoSchema = z.object({ userId: z.string().min(1) }).strict();
+type KickDto = z.infer<typeof KickDtoSchema>;
+
 @Controller("api/lobby")
 @UseGuards(SessionGuard)
 export class LobbyController {
@@ -223,6 +226,21 @@ export class LobbyController {
     @Param("id") tableId: string
   ): Promise<{ tableId: string }> {
     return this.lobby.startNewMatch(tableId, req.user!.id);
+  }
+
+  /**
+   * Owner wirft einen menschlichen Mitspieler vom Tisch und sperrt ihn für
+   * diese Tisch-ID (Aufruf aus dem Namens-Kontextmenü). Nur außerhalb einer
+   * laufenden Partie; Bodensee ausgenommen (2 Spieler).
+   */
+  @Post("tables/:id/kick")
+  async kick(
+    @Req() req: FastifyRequest,
+    @Param("id") tableId: string,
+    @Body(new ZodValidationPipe(KickDtoSchema)) dto: KickDto
+  ): Promise<{ ok: true }> {
+    await this.lobby.kickAndBan(tableId, req.user!.id, dto.userId);
+    return { ok: true };
   }
 
   // ─── Beitritts-Anfragen (REQUEST-Modus) ───────────────────────────

@@ -19,7 +19,8 @@
       "requestPending": "Anfrage ausstehend",
       "acceptFriend": "Anfrage annehmen",
       "areFriends": "Freunde",
-      "report": "Melden"
+      "report": "Melden",
+      "kickFromTable": "Vom Tisch entfernen & sperren"
     },
     "dm": {
       "minimize": "Minimieren",

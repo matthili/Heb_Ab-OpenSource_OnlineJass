@@ -480,6 +480,7 @@ export class LobbyService {
   > {
     const table = await this.requireOpenTable(tableId);
     await this.requireNotAlreadySeated(tableId, userId);
+    await this.requireNotBanned(tableId, userId);
 
     // INVITE-Modus: Nur wenn der Caller eine PENDING-Invite hat → Invite
     // wird auto-akzeptiert und ein Sitz vergeben.
@@ -611,6 +612,7 @@ export class LobbyService {
         if (request.status !== JoinRequestStatus.PENDING) {
           throw new ConflictException(`Anfrage hat bereits Status ${request.status}.`);
         }
+        await this.requireNotBanned(tableId, request.userId);
         // Sitz für den Anfragenden vergeben.
         const seat = await this.assignNextSeat(tx, tableId, request.userId);
         await tx.gameJoinRequest.update({
@@ -745,6 +747,7 @@ export class LobbyService {
     }
     const table = await this.requireOpenTable(invite.tableId);
     await this.requireNotAlreadySeated(invite.tableId, userId);
+    await this.requireNotBanned(invite.tableId, userId);
 
     const seat = await this.prisma.$transaction((tx) =>
       this.assignSeatAndCloseInvite(tx, table.id, userId, invite.id)
@@ -1184,6 +1187,68 @@ export class LobbyService {
       await this.pushTableState(tableId);
     }
     return result;
+  }
+
+  /**
+   * Owner wirft einen menschlichen Mitspieler vom Tisch und sperrt ihn für
+   * GENAU diesen Tisch (solange er lebt). Nur außerhalb einer laufenden Partie
+   * (WAITING / MATCH_OVER) — während IN_GAME/POST_GAME erst nach Partie-Ende.
+   * Bodensee (2 Spieler) hat keinen Mitspieler zum Entfernen. Die Sitz-Räumung
+   * läuft über `leaveTable` (im erlaubten WAITING/MATCH_OVER-Fall: Sitz wird
+   * frei, keine Quitter-Wertung); der Rausgeworfene ist nie der Owner → kein
+   * Owner-Wechsel.
+   */
+  async kickAndBan(tableId: string, ownerId: string, targetUserId: string): Promise<void> {
+    const table = await this.prisma.lobbyTable.findUnique({
+      where: { id: tableId },
+      select: {
+        ownerId: true,
+        variant: true,
+        status: true,
+        seats: { where: { userId: targetUserId }, select: { seat: true } },
+      },
+    });
+    if (!table) throw new NotFoundException(`Tisch ${tableId} nicht gefunden`);
+    if (table.ownerId !== ownerId) {
+      throw new ForbiddenException("Nur der Tisch-Ersteller darf Spieler entfernen.");
+    }
+    if (targetUserId === ownerId) {
+      throw new BadRequestException(
+        "Du kannst dich nicht selbst entfernen — nutze „Tisch verlassen“."
+      );
+    }
+    if (table.variant === "BODENSEE_2P") {
+      throw new BadRequestException(
+        "Beim 2-Spieler-Bodensee gibt es keinen Mitspieler zum Entfernen."
+      );
+    }
+    if (table.status === LobbyTableStatus.IN_GAME || table.status === LobbyTableStatus.POST_GAME) {
+      throw new ConflictException(
+        "Während einer laufenden Partie kann niemand entfernt werden — vor dem Start oder nach Partie-Ende."
+      );
+    }
+    if (table.seats.length === 0) {
+      throw new NotFoundException("Dieser Spieler sitzt nicht (mehr) an deinem Tisch.");
+    }
+
+    // Tisch-Bann (idempotent) — gilt, solange der Tisch lebt.
+    await this.prisma.tableBan.upsert({
+      where: { tableId_userId: { tableId, userId: targetUserId } },
+      create: { tableId, userId: targetUserId, byUserId: ownerId },
+      update: {},
+    });
+    await this.audit.record({
+      action: "lobby.table.player_kicked",
+      actorId: ownerId,
+      target: tableId,
+      meta: { kicked: targetUserId },
+    });
+
+    // Sitz räumen über die bewährte Verlassen-Mechanik (Broadcasts inklusive).
+    await this.leaveTable(tableId, targetUserId);
+
+    // Rausgeworfenem signalisieren → sein Client geht zurück in die Lobby.
+    this.gateway.pushToUser(targetUserId, "lobby:kicked", { tableId });
   }
 
   /**
@@ -1758,6 +1823,22 @@ export class LobbyService {
     });
     if (existing) {
       throw new ConflictException(`Du sitzt schon auf Sitz ${existing.seat}.`);
+    }
+  }
+
+  /**
+   * Wirft, wenn der User für DIESEN Tisch gesperrt ist (vom Owner rausgeworfen).
+   * Tisch-scoped (`TableBan`), gilt solange der Tisch lebt.
+   */
+  private async requireNotBanned(tableId: string, userId: string): Promise<void> {
+    const ban = await this.prisma.tableBan.findUnique({
+      where: { tableId_userId: { tableId, userId } },
+      select: { tableId: true },
+    });
+    if (ban) {
+      throw new ForbiddenException(
+        "Du wurdest von diesem Tisch entfernt und kannst ihm nicht wieder beitreten."
+      );
     }
   }
 

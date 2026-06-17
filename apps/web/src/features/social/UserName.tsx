@@ -29,9 +29,15 @@ interface Props {
    * rendert (z.B. die Lobby-Online-Liste) — sonst gäbe es zwei Punkte.
    */
   showPresence?: boolean;
+  /**
+   * Owner-Kick-Kontext: wird ans Kontextmenü durchgereicht und blendet dort
+   * „Vom Tisch entfernen & sperren" ein. Nur setzen, wenn der Betrachter der
+   * Tisch-Owner ist und dieser Name ein entfernbarer Mitspieler ist.
+   */
+  kick?: { tableId: string };
 }
 
-export function UserName({ userId, name, className = "", showPresence = true }: Props) {
+export function UserName({ userId, name, className = "", showPresence = true, kick }: Props) {
   const { data: session } = useSession();
   const myId = session?.user?.id;
   const { open: openDm } = useDmWindows();
@@ -94,6 +100,7 @@ export function UserName({ userId, name, className = "", showPresence = true }: 
           anchor={menuAt}
           onClose={() => setMenuAt(null)}
           onReport={() => setReportOpen(true)}
+          {...(kick ? { kick } : {})}
         />
       )}
       <ReportDialog

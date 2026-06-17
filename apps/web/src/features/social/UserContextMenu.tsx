@@ -25,9 +25,15 @@ interface Props {
   onClose: () => void;
   /** Öffnet den Melde-Dialog (in `UserName` gerendert). */
   onReport: () => void;
+  /**
+   * Owner-Aktion an SEINEM Tisch: diesen Spieler entfernen und für die
+   * Tisch-ID sperren. Nur gesetzt, wenn der Betrachter der Tisch-Owner ist und
+   * der Spieler entfernbar ist (anderer Mensch, Kreuz/Solo, vor/zwischen Partien).
+   */
+  kick?: { tableId: string };
 }
 
-export function UserContextMenu({ userId, name, anchor, onClose, onReport }: Props) {
+export function UserContextMenu({ userId, name, anchor, onClose, onReport, kick }: Props) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -67,6 +73,14 @@ export function UserContextMenu({ userId, name, anchor, onClose, onReport }: Pro
   const accept = useMutation({
     mutationFn: () => api(`/api/users/${userId}/friend-accept`, { method: "POST" }),
     onSuccess: invalidate,
+  });
+  const kickMut = useMutation({
+    mutationFn: () =>
+      api(`/api/lobby/tables/${kick!.tableId}/kick`, { method: "POST", body: { userId } }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["lobby", "table", kick!.tableId] });
+      onClose();
+    },
   });
 
   const itemClass =
@@ -145,6 +159,18 @@ export function UserContextMenu({ userId, name, anchor, onClose, onReport }: Pro
       >
         {t("social.menu.report")}
       </button>
+
+      {kick && (
+        <button
+          type="button"
+          role="menuitem"
+          className={`${itemClass} border-t border-stone-100 font-medium text-rose-700`}
+          disabled={kickMut.isPending}
+          onClick={() => kickMut.mutate()}
+        >
+          {t("social.menu.kickFromTable")}
+        </button>
+      )}
     </div>
   );
 }

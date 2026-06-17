@@ -32,7 +32,7 @@ import { useGameView } from "~/features/game/useGameView";
 import { api, ApiError } from "~/lib/api";
 import { useSession } from "~/lib/auth-client";
 import { getLobbySocket } from "~/lib/ws";
-import { useTableStateEvents } from "~/lib/ws";
+import { useTableStateEvents, useUserEvents } from "~/lib/ws";
 import { LeaveTableConfirm } from "./LeaveTableConfirm";
 import type { JoinMode, RestartMode, TableDetailView } from "./types";
 
@@ -92,6 +92,18 @@ export function TableDetail({ tableId }: Props) {
     };
   }, [queryClient, queryKey]);
 
+  // Rausgeworfen? Der Server pusht `lobby:kicked` auf den eigenen User-Kanal.
+  // Betrifft es diesen Tisch, geht es zurück in die Lobby.
+  const onKicked = useCallback(
+    (payload: unknown) => {
+      if ((payload as { tableId?: string })?.tableId === tableId) {
+        void navigate({ to: "/lobby" });
+      }
+    },
+    [tableId, navigate]
+  );
+  useUserEvents("lobby:kicked", onKicked);
+
   if (isPending) return <p className="text-stone-500">{t("lobby.tableDetail.loading")}</p>;
   if (error) {
     return (
@@ -137,7 +149,13 @@ export function TableDetail({ tableId }: Props) {
 
       {/* Sitze oben NUR in der Wartephase — im Spiel wandern sie in die
           Chat-Seitenleiste (siehe GameSection), damit oben Tisch + Hand stehen. */}
-      {!inGame && <SeatRow seats={data.seats} nameSeed={data.id} />}
+      {!inGame && (
+        <SeatRow
+          seats={data.seats}
+          nameSeed={data.id}
+          {...(isOwner && data.variant !== "BODENSEE_2P" ? { kickTableId: data.id } : {})}
+        />
+      )}
 
       {data.currentGameId &&
         (data.status === "IN_GAME" ||
@@ -191,6 +209,7 @@ function SeatRow({
   nameSeed,
   stacked = false,
   inferenceAvailable = true,
+  kickTableId,
 }: {
   seats: TableDetailView["seats"];
   nameSeed: string;
@@ -201,8 +220,16 @@ function SeatRow({
    * Heuristik-Fallback). Außerhalb des laufenden Spiels nicht bekannt → `true`.
    */
   inferenceAvailable?: boolean;
+  /**
+   * Tisch-ID, wenn der Betrachter Owner ist und Spieler entfernen darf
+   * (Kreuz/Solo, Warte-Phase). Blendet im Namens-Menü „entfernen & sperren"
+   * ein — außer beim eigenen Sitz.
+   */
+  kickTableId?: string;
 }) {
   const { t } = useTranslation();
+  const { data: session } = useSession();
+  const myId = session?.user?.id;
   return (
     <ul
       className={stacked ? "grid grid-cols-1 gap-2" : "grid grid-cols-1 sm:grid-cols-2 gap-3"}
@@ -221,7 +248,12 @@ function SeatRow({
               {t("lobby.tableDetail.seatEmpty")}
             </span>
           ) : s.user ? (
-            <UserName userId={s.user.id} name={s.user.name} className="font-medium" />
+            <UserName
+              userId={s.user.id}
+              name={s.user.name}
+              className="font-medium"
+              {...(kickTableId && s.user.id !== myId ? { kick: { tableId: kickTableId } } : {})}
+            />
           ) : s.aiSeatType ? (
             <span
               className="cursor-help text-stone-600"
