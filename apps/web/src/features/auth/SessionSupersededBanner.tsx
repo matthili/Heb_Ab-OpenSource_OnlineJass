@@ -18,6 +18,8 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import { appHref } from "~/lib/app-path";
+
 import { getLobbySocket } from "~/lib/ws";
 
 export function SessionSupersededBanner() {
@@ -60,7 +62,7 @@ export function SessionSupersededBanner() {
           <button
             type="button"
             onClick={() => {
-              window.location.href = "/login";
+              window.location.href = appHref("/login");
             }}
             className="btn-jass-primary"
           >

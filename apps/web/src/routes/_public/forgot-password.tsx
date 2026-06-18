@@ -13,6 +13,7 @@ import { useTranslation } from "react-i18next";
 
 import { TurnstileWidget } from "~/features/auth/TurnstileWidget";
 import { api } from "~/lib/api";
+import { appHref } from "~/lib/app-path";
 
 export const Route = createFileRoute("/_public/forgot-password")({
   component: ForgotPasswordPage,
@@ -46,8 +47,10 @@ function ForgotPasswordPage() {
         body: {
           email,
           // Reset-Link führt zur `/reset-password`-Route mit dem token im
-          // Query-Param.
-          redirectTo: `${window.location.origin}/reset-password`,
+          // Query-Param. appHref stellt den SPA-Basepath (/app in Prod) voran,
+          // sonst zeigt der Mail-Link auf die Origin-Wurzel (= Landing, ohne
+          // Reset-Formular).
+          redirectTo: `${window.location.origin}${appHref("/reset-password")}`,
         },
       }).catch(() => {
         /* Server-Fehler still durchgehen lassen — siehe oben */

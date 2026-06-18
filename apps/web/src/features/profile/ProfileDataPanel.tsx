@@ -14,6 +14,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { Trans, useTranslation } from "react-i18next";
 
 import { api, ApiError } from "~/lib/api";
+import { appHref } from "~/lib/app-path";
 
 export function ProfileDataPanel() {
   return (
@@ -89,7 +90,7 @@ function DeleteSection() {
       // Hard-Reload statt Router-Navigate, damit React-Query + Session-
       // Cache komplett zurückgesetzt sind und nicht die alte Identity
       // weiterhält.
-      window.location.href = "/login";
+      window.location.href = appHref("/login");
     } catch (err) {
       if (err instanceof ApiError) {
         setError(err.message);

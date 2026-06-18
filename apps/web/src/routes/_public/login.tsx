@@ -11,6 +11,7 @@ import { useTranslation } from "react-i18next";
 import { z } from "zod";
 
 import { BrandLogo } from "~/features/brand/BrandLogo";
+import { appHref } from "~/lib/app-path";
 import { signIn } from "~/lib/auth-client";
 
 const LoginSearchSchema = z.object({
@@ -22,10 +23,30 @@ export const Route = createFileRoute("/_public/login")({
   component: LoginPage,
 });
 
+/**
+ * Sprungziel nach erfolgreichem Login, robust gegen den SPA-Basepath.
+ *
+ * `window.location.href` ist origin-absolut und ignoriert den Router-Basepath
+ * (`/app/` im Prod-Build, `/` im Dev). Ein router-interner Pfad wie `/lobby`
+ * muss den Basepath also vorangestellt bekommen — sonst springt der Browser auf
+ * die Origin-Wurzel `/lobby`, und die liefert Caddy als Landing-Page aus (genau
+ * der „erratische" Effekt: man landet nach dem Anmelden wieder auf der Landing).
+ *
+ * - Voll-URL (kann der `_auth`-Guard via `location.href` liefern) → unverändert.
+ * - Pfad, der den Basepath schon trägt → unverändert (kein doppeltes `/app`).
+ * - Sonst Basepath + Pfad (Default `/lobby`).
+ */
+function resolveLoginTarget(redirect: string | undefined): string {
+  // Voll-URL (kann der Guard via location.href liefern) → unverändert übernehmen.
+  if (redirect && /^https?:\/\//i.test(redirect)) return redirect;
+  // Router-interner Pfad → Basepath voranstellen (siehe appHref).
+  return appHref(redirect && redirect.startsWith("/") ? redirect : "/lobby");
+}
+
 function LoginPage() {
-  // navigate aus useNavigate ist hier nicht nötig — wir benutzen direkt
-  // window.location.href, weil der `redirect`-Wert auch eine vollständige
-  // URL sein kann (kommt vom `_auth`-Guard via location.href).
+  // Bewusst window.location.href (kein useNavigate): ein voller Reload liest die
+  // frisch gesetzte Session-Cookie sicher neu ein. Den Basepath stellt
+  // resolveLoginTarget() voran, weil location.href den Router-Basepath ignoriert.
   const { t } = useTranslation();
   const search = Route.useSearch();
   const [email, setEmail] = useState("");
@@ -43,8 +64,7 @@ function LoginPage() {
         setError(res.error.message ?? t("auth.login.failed"));
         return;
       }
-      const target = search.redirect ?? "/lobby";
-      window.location.href = target;
+      window.location.href = resolveLoginTarget(search.redirect);
     } catch (err) {
       setError(err instanceof Error ? err.message : t("auth.login.failed"));
     } finally {
