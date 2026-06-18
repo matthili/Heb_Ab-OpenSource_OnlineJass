@@ -1467,6 +1467,7 @@ export class GameService {
    */
   async driveAIsToEnd(gameId: string): Promise<void> {
     let announceSteps = 0;
+    let cutSteps = 0;
     for (let i = 0; i < 50; i++) {
       let action: Awaited<ReturnType<typeof this.nextAIAction>>;
       try {
@@ -1489,6 +1490,19 @@ export class GameService {
         throw err;
       }
       if (!action) return; // Mensch dran oder Spiel beendet
+      if (action.kind === "cut") {
+        if (++cutSteps > 2) {
+          this.log.error({ gameId }, "driveAIsToEnd: Cut-Loop > 2 Schritte — fail-safe");
+          return;
+        }
+        // KI-Abheber hebt an zufälliger Stelle ab (1..35) — wie der Gateway-
+        // KI-Loop. OHNE diesen Zweig blieb ein reines KI-Spiel in der
+        // Abheben-Phase hängen (nextAIAction liefert „cut", fiel sonst in den
+        // Zug-Pfad → das Spiel wurde nie beendet, `endedAt` blieb null).
+        const cutIndex = 1 + Math.floor(Math.random() * 35);
+        await this.applyCutAsSeat(gameId, action.seat, cutIndex);
+        continue;
+      }
       if (action.kind === "announce") {
         if (++announceSteps > 2) {
           this.log.error({ gameId }, "driveAIsToEnd: Ansage-Loop > 2 Schritte — fail-safe");
