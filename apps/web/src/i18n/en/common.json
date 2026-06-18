@@ -684,7 +684,8 @@
     "playingArea": "Playing area",
     "stoeck": {
       "call": "★ Call Peers (Stöcke) (+20)",
-      "callTimed": "★ Call Stöck (+20) — {{n}}s left"
+      "callTimed": "★ Call Stöck (+20) — {{n}}s left",
+      "called": "✓ Stöck called (+20)"
     },
     "announce": {
       "running": "Trump announcement in progress",

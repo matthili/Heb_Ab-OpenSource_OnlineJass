@@ -684,7 +684,8 @@
     "playingArea": "Spielfläche",
     "stoeck": {
       "call": "★ Stöck rufen (+20)",
-      "callTimed": "★ Stöck rufen (+20) — noch {{n}}s"
+      "callTimed": "★ Stöck rufen (+20) — noch {{n}}s",
+      "called": "✓ Stöck gerufen (+20)"
     },
     "announce": {
       "running": "Trumpf-Ansage läuft",

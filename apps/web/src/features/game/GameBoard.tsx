@@ -424,19 +424,39 @@ function CutPhase({
 function StoeckButton({ lastCard, onCall }: { lastCard: boolean; onCall: () => void }) {
   const { t } = useTranslation();
   const [remaining, setRemaining] = useState(7);
+  // Sobald geklickt: Button sperren + sichtbar quittieren, damit niemand
+  // doppelt drückt (zweiter Klick → „Stöck bereits gewertet"-Fehler). Der
+  // Button verschwindet kurz darauf von selbst, sobald die neue View
+  // `stoeckEligible=false` liefert.
+  const [called, setCalled] = useState(false);
   useEffect(() => {
-    if (!lastCard) return;
+    if (!lastCard || called) return;
     setRemaining(7);
     const id = setInterval(() => setRemaining((r) => Math.max(0, r - 1)), 1000);
     return () => clearInterval(id);
-  }, [lastCard]);
+  }, [lastCard, called]);
+  const handleClick = () => {
+    if (called) return;
+    setCalled(true);
+    onCall();
+  };
   return (
     <button
       type="button"
-      onClick={onCall}
-      className="jass-your-turn-glow w-full rounded-lg border-2 border-jass-yellowDark bg-jass-yellow px-4 py-3 text-lg font-bold text-jass-ink shadow-md hover:bg-jass-yellow/90"
+      onClick={handleClick}
+      disabled={called}
+      aria-busy={called}
+      className={
+        called
+          ? "w-full rounded-lg border-2 border-emerald-600 bg-emerald-500 px-4 py-3 text-lg font-bold text-white shadow-md cursor-default"
+          : "jass-your-turn-glow w-full rounded-lg border-2 border-jass-yellowDark bg-jass-yellow px-4 py-3 text-lg font-bold text-jass-ink shadow-md hover:bg-jass-yellow/90"
+      }
     >
-      {lastCard ? t("game.stoeck.callTimed", { n: remaining }) : t("game.stoeck.call")}
+      {called
+        ? t("game.stoeck.called")
+        : lastCard
+          ? t("game.stoeck.callTimed", { n: remaining })
+          : t("game.stoeck.call")}
     </button>
   );
 }
