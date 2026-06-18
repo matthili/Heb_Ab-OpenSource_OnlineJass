@@ -10,6 +10,7 @@ import { LobbyService } from "./lobby.service.js";
 import { LobbySettingsService } from "./lobby-settings.service.js";
 import { PresenceService } from "./presence.service.js";
 import { RematchController } from "./rematch.controller.js";
+import { SeatSwapService } from "./seat-swap.service.js";
 
 @Module({
   // GameModule exportiert GameService, den LobbyService für den Auto-
@@ -28,6 +29,9 @@ import { RematchController } from "./rematch.controller.js";
     LobbyGateway,
     LobbySettingsService,
     PresenceService,
+    // SeatSwapService nach LobbyService (forwardRef löst die zyklische
+    // Abhängigkeit) — hält den ephemeren Tausch-/Start-Countdown-Zustand.
+    SeatSwapService,
     SessionGuard,
   ],
   // LobbySettingsService wird auch vom AdminController genutzt → exportieren.

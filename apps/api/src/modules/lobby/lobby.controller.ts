@@ -51,6 +51,17 @@ type AfkDto = z.infer<typeof AfkDtoSchema>;
 const KickDtoSchema = z.object({ userId: z.string().min(1) }).strict();
 type KickDto = z.infer<typeof KickDtoSchema>;
 
+const TakeSeatDtoSchema = z.object({ seat: z.number().int().min(0).max(3) }).strict();
+type TakeSeatDto = z.infer<typeof TakeSeatDtoSchema>;
+
+const SeatSwapPickDtoSchema = z.object({ seat: z.number().int().min(0).max(3) }).strict();
+type SeatSwapPickDto = z.infer<typeof SeatSwapPickDtoSchema>;
+
+const SeatSwapRespondDtoSchema = z
+  .object({ answer: z.enum(["accept", "decline", "decline-forever"]) })
+  .strict();
+type SeatSwapRespondDto = z.infer<typeof SeatSwapRespondDtoSchema>;
+
 @Controller("api/lobby")
 @UseGuards(SessionGuard)
 export class LobbyController {
@@ -240,6 +251,60 @@ export class LobbyController {
     @Body(new ZodValidationPipe(KickDtoSchema)) dto: KickDto
   ): Promise<{ ok: true }> {
     await this.lobby.kickAndBan(tableId, req.user!.id, dto.userId);
+    return { ok: true };
+  }
+
+  // ─── Sitzplatz-Wahl & -Tausch (Wartebereich, 4er/Solo) ────────────
+
+  /** Auf einen FREIEN oder KI-Sitz wechseln (kein Einverständnis nötig). */
+  @Post("tables/:id/seat")
+  async takeSeat(
+    @Req() req: FastifyRequest,
+    @Param("id") tableId: string,
+    @Body(new ZodValidationPipe(TakeSeatDtoSchema)) dto: TakeSeatDto
+  ): Promise<{ seat: number }> {
+    return this.lobby.takeSeat(tableId, req.user!.id, dto.seat);
+  }
+
+  /** Stufe 1: „Sitzplatz tauschen" drücken (öffnet das 30-s-Auswahlfenster). */
+  @Post("tables/:id/seat-swap/request")
+  async requestSeatSwap(
+    @Req() req: FastifyRequest,
+    @Param("id") tableId: string
+  ): Promise<{ ok: true }> {
+    await this.lobby.requestSeatSwap(tableId, req.user!.id);
+    return { ok: true };
+  }
+
+  /** Stufe 1→2: Den Sitz wählen, mit dem getauscht werden soll. */
+  @Post("tables/:id/seat-swap/pick")
+  async pickSeatSwapTarget(
+    @Req() req: FastifyRequest,
+    @Param("id") tableId: string,
+    @Body(new ZodValidationPipe(SeatSwapPickDtoSchema)) dto: SeatSwapPickDto
+  ): Promise<{ ok: true }> {
+    await this.lobby.pickSeatSwapTarget(tableId, req.user!.id, dto.seat);
+    return { ok: true };
+  }
+
+  /** Stufe 2: Auf die Tausch-Rückfrage antworten (Ziel). */
+  @Post("tables/:id/seat-swap/respond")
+  async respondSeatSwap(
+    @Req() req: FastifyRequest,
+    @Param("id") tableId: string,
+    @Body(new ZodValidationPipe(SeatSwapRespondDtoSchema)) dto: SeatSwapRespondDto
+  ): Promise<{ ok: true }> {
+    await this.lobby.respondSeatSwap(tableId, req.user!.id, dto.answer);
+    return { ok: true };
+  }
+
+  /** Anfragenden Tausch in der Auswahl-Phase abbrechen. */
+  @Post("tables/:id/seat-swap/cancel")
+  async cancelSeatSwap(
+    @Req() req: FastifyRequest,
+    @Param("id") tableId: string
+  ): Promise<{ ok: true }> {
+    await this.lobby.cancelSeatSwap(tableId, req.user!.id);
     return { ok: true };
   }
 

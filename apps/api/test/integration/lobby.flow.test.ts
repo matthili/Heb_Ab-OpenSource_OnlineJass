@@ -67,19 +67,24 @@ describe("M6-B lobby flow", () => {
       expect(join.body.kind).toBe("seated");
     }
 
-    // Ab M6-C startet das Spiel automatisch beim 4. Sitz → Tisch ist
-    // jetzt IN_GAME, nicht mehr in der WAITING-Liste.
-    const waitingList = await owner!.http.request<{
-      tables: { id: string }[];
-    }>("/api/lobby/tables?status=WAITING", { method: "GET" });
-    expect(waitingList.body.tables.find((t) => t.id === tableId)).toBeUndefined();
+    // Neu: Ein voller Tisch mit VIER MENSCHEN startet nicht sofort, sondern
+    // hält kurz im Wartebereich (Start-Countdown) — das Zeitfenster für den
+    // Sitzplatz-Tausch. Der Tisch ist also noch WAITING, mit `startCountdown`.
+    const detail = await owner!.http.request<{
+      status: string;
+      currentGameId: string | null;
+      startCountdown: { startAt: number } | null;
+    }>(`/api/lobby/tables/${tableId}`, { method: "GET" });
+    expect(detail.body.status).toBe("WAITING");
+    expect(detail.body.currentGameId).toBeNull();
+    expect(detail.body.startCountdown).not.toBeNull();
 
-    // In IN_GAME-Liste taucht er auf, mit currentGameId gesetzt.
-    const inGameList = await owner!.http.request<{
-      tables: { id: string; seatsTaken: number }[];
-    }>("/api/lobby/tables?status=IN_GAME", { method: "GET" });
-    const me = inGameList.body.tables.find((t) => t.id === tableId);
-    expect(me?.seatsTaken).toBe(4);
+    // Der Owner überspringt den Countdown per „Spiel starten" → IN_GAME.
+    const start = await owner!.http.request<{ gameId: string }>(
+      `/api/lobby/tables/${tableId}/start`,
+      { method: "POST" }
+    );
+    expect(start.status).toBe(201);
 
     const dbTable = await app.prisma.lobbyTable.findUnique({
       where: { id: tableId },

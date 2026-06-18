@@ -16,9 +16,11 @@ import {
   BadRequestException,
   ConflictException,
   ForbiddenException,
+  Inject,
   Injectable,
   Logger,
   NotFoundException,
+  forwardRef,
 } from "@nestjs/common";
 import {
   InviteStatus,
@@ -47,6 +49,7 @@ import type {
 import { LobbyGateway } from "./lobby.gateway.js";
 import { LobbySettingsService } from "./lobby-settings.service.js";
 import { matchStartAnnouncerSiegerGibt } from "./match-start.js";
+import { SeatSwapService, type SeatSwapSnapshot, type SwapAnswer } from "./seat-swap.service.js";
 import { PushService } from "../push/push.service.js";
 
 /** Sitz-Zusammenfassung für die View. */
@@ -93,6 +96,10 @@ export interface TableDetailView extends TableListEntry {
   currentGameId: string | null;
   joinRequests?: { id: string; userId: string; userName: string; createdAt: Date }[];
   invites?: { id: string; inviteeUserId: string; inviteeName: string; createdAt: Date }[];
+  /** Laufender Sitzplatz-Tausch (ephemerer Vorspiel-Zustand), sonst null. */
+  seatSwap?: SeatSwapSnapshot | null;
+  /** Start-Countdown bei vollem Tisch (Spiel beginnt bei `startAt`), sonst null. */
+  startCountdown?: { startAt: number } | null;
 }
 
 /** Ein aktiver Tisch in der Admin-Übersicht (Moderation / Aufräumen). */
@@ -134,7 +141,11 @@ export class LobbyService {
     private readonly gameGateway: GameGateway,
     private readonly gateway: LobbyGateway,
     private readonly settings: LobbySettingsService,
-    private readonly push: PushService
+    private readonly push: PushService,
+    // forwardRef: SeatSwapService ruft uns zurück (DB-Mutationen), wir rufen
+    // ihn (Tausch-Protokoll + Start-Countdown). Siehe seat-swap.service.ts.
+    @Inject(forwardRef(() => SeatSwapService))
+    private readonly seatSwap: SeatSwapService
   ) {}
 
   /**
@@ -149,7 +160,7 @@ export class LobbyService {
    * ohne Owner-Felder; Owner refetchen explizit per REST, wenn sie diese
    * Detail-Daten brauchen.)
    */
-  private async pushTableState(tableId: string): Promise<void> {
+  async pushTableState(tableId: string): Promise<void> {
     try {
       // `__system__` als callerId → kein Match auf ownerId, also Owner-
       // Felder nicht im Payload. Das ist der sichere Default für Broadcasts.
@@ -459,6 +470,9 @@ export class LobbyService {
         createdAt: i.createdAt,
       }));
     }
+    // Ephemerer Vorspiel-Zustand (in-memory): laufender Tausch + Start-Countdown.
+    view.seatSwap = this.seatSwap.snapshot(tableId);
+    view.startCountdown = this.seatSwap.startCountdownSnapshot(tableId);
     return view;
   }
 
@@ -1937,9 +1951,265 @@ export class LobbyService {
     });
     if (!table) return null;
     if (table.status !== LobbyTableStatus.WAITING) return null;
-    if (table.seats.length < seatCountForVariant(table.variant)) return null;
+    // Noch nicht voll → kein Start; evtl. laufenden Countdown abräumen.
+    if (table.seats.length < seatCountForVariant(table.variant)) {
+      this.seatSwap.cancelStartCountdown(tableId);
+      return null;
+    }
+    // Rematch / expliziter Ansager: Aufstellung steht schon → sofort starten.
+    if (announcerOverride !== undefined) {
+      return this.startGameFromTable(table.id, announcerOverride);
+    }
+    // Bodensee (2 Spieler): keine Teams/Aufstellung → sofort starten.
+    if (table.variant === "BODENSEE_2P") {
+      return this.startGameFromTable(table.id);
+    }
+    // Läuft gerade ein Sitzplatz-Tausch, blockt der den Start komplett.
+    if (this.seatSwap.isBusy(tableId)) {
+      this.seatSwap.cancelStartCountdown(tableId);
+      return null;
+    }
+    // 4er/Solo voll: Nur wenn ALLE vier Sitze von Menschen besetzt sind, gibt es
+    // einen kurzen Start-Countdown als Tausch-Fenster — das ist der Fall, in dem
+    // sich Menschen die Aufstellung überlegen. Der eigentliche Start passiert
+    // dann in `fireStartCountdown`. Sind KI-Sitze dabei (Owner + KIs, Auto-Fill),
+    // war das eine bewusste Aufstellung bzw. die Menschen hatten schon das
+    // Auto-Fill-Fenster → sofort starten (auch für die bestehende Test-Erwartung).
+    const allHuman = table.seats.every((s) => s.userId !== null);
+    if (allHuman) {
+      this.seatSwap.armStartCountdown(tableId);
+      return null;
+    }
+    return this.startGameFromTable(table.id);
+  }
 
-    return this.startGameFromTable(table.id, announcerOverride);
+  // ───────────────────────────────────────────────────────────────────
+  // Sitzplatz-Wahl & -Tausch (Vorspiel-Aufstellung, 4er/Solo)
+  // ───────────────────────────────────────────────────────────────────
+
+  /**
+   * Vom Start-Countdown-Timer aufgerufen, wenn die Frist abgelaufen ist.
+   * Prüft selbst nochmal (noch voll? WAITING? kein laufender Tausch?) und
+   * startet dann. Idempotent/robust gegen zwischenzeitliche Änderungen.
+   */
+  async fireStartCountdown(tableId: string): Promise<void> {
+    const table = await this.prisma.lobbyTable.findUnique({
+      where: { id: tableId },
+      include: { seats: { select: { seat: true } } },
+    });
+    if (!table || table.status !== LobbyTableStatus.WAITING) return;
+    if (table.seats.length < seatCountForVariant(table.variant)) return;
+    if (this.seatSwap.isBusy(tableId)) return;
+    const gameId = await this.startGameFromTable(tableId);
+    if (gameId) {
+      await this.audit.record({
+        action: "lobby.table.start.countdown",
+        actorId: table.ownerId,
+        target: tableId,
+        meta: { gameId },
+      });
+      this.gateway.broadcastLobbyListUpdate("game-started", tableId);
+      await this.pushTableState(tableId);
+    }
+  }
+
+  /**
+   * Nach Auflösung eines Tauschs (Annahme/Ablehnung/Timeout/Abbruch): Auto-Start
+   * neu bewerten (Countdown ggf. neu armieren) und den State broadcasten. Eine
+   * Methode, damit Arm-und-Push in fester Reihenfolge laufen (kein Race).
+   */
+  async afterSwapResolved(tableId: string): Promise<void> {
+    await this.tryAutoStartGame(tableId);
+    await this.pushTableState(tableId);
+  }
+
+  /**
+   * Sitzplatz direkt wechseln — nur auf einen FREIEN oder KI-Sitz (kein
+   * Einverständnis nötig). Auf einen menschlichen Sitz geht es nur über das
+   * Tausch-Protokoll (`requestSeatSwap`). Nur in WAITING, nicht bei Bodensee.
+   */
+  async takeSeat(tableId: string, userId: string, targetSeat: number): Promise<{ seat: number }> {
+    const table = await this.prisma.lobbyTable.findUnique({
+      where: { id: tableId },
+      include: { seats: true },
+    });
+    if (!table) throw new NotFoundException(`Tisch ${tableId} nicht gefunden`);
+    if (table.variant === "BODENSEE_2P") {
+      throw new BadRequestException("Beim Bodensee gibt es keine Sitzplatz-Wahl.");
+    }
+    if (table.status !== LobbyTableStatus.WAITING) {
+      throw new ConflictException("Sitzplatz wählen ist nur in der Wartephase möglich.");
+    }
+    const seatCount = seatCountForVariant(table.variant);
+    if (targetSeat < 0 || targetSeat >= seatCount) {
+      throw new BadRequestException("Ungültiger Sitzplatz.");
+    }
+    const mine = table.seats.find((s) => s.userId === userId);
+    if (!mine) throw new NotFoundException("Du sitzt nicht an diesem Tisch.");
+    if (mine.seat === targetSeat) return { seat: targetSeat };
+    if (this.seatSwap.isBusy(tableId)) {
+      throw new ConflictException("Während eines laufenden Sitzplatz-Tauschs nicht möglich.");
+    }
+    const targetRow = table.seats.find((s) => s.seat === targetSeat);
+    if (targetRow?.userId) {
+      throw new ConflictException(
+        "Dieser Sitz ist von einem Mitspieler belegt — nutze „Sitzplatz tauschen“."
+      );
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      if (!targetRow) {
+        // Freier Sitz: meine Row dorthin verschieben (delete+create, weil
+        // `seat` Teil des PK ist — ein Update des PK-Felds vermeiden wir).
+        await tx.lobbyTableSeat.delete({
+          where: { tableId_seat: { tableId, seat: mine.seat } },
+        });
+        await tx.lobbyTableSeat.create({
+          data: {
+            tableId,
+            seat: targetSeat,
+            userId,
+            joinOrder: mine.joinOrder,
+            joinedAt: mine.joinedAt,
+          },
+        });
+      } else {
+        // KI-Sitz: Belegung tauschen (ich ↔ KI). `seat`-Felder bleiben fix,
+        // nur die Inhaber-Felder wandern — joinOrder reist mit der Person.
+        await tx.lobbyTableSeat.update({
+          where: { tableId_seat: { tableId, seat: mine.seat } },
+          data: {
+            userId: null,
+            aiSeatType: targetRow.aiSeatType,
+            joinOrder: targetRow.joinOrder,
+            joinedAt: targetRow.joinedAt,
+          },
+        });
+        await tx.lobbyTableSeat.update({
+          where: { tableId_seat: { tableId, seat: targetSeat } },
+          data: { userId, aiSeatType: null, joinOrder: mine.joinOrder, joinedAt: mine.joinedAt },
+        });
+      }
+      await tx.lobbyTable.update({
+        where: { id: tableId },
+        data: { lastSeatChangeAt: new Date() },
+      });
+    });
+
+    await this.audit.record({
+      action: "lobby.table.seat.take",
+      actorId: userId,
+      target: tableId,
+      meta: { from: mine.seat, to: targetSeat },
+    });
+    // Sitz-Bewegung resettet den Start-Countdown (frisches Tausch-Fenster).
+    await this.tryAutoStartGame(tableId);
+    this.gateway.broadcastLobbyListUpdate("seat-changed", tableId);
+    await this.pushTableState(tableId);
+    return { seat: targetSeat };
+  }
+
+  /** Stufe 1: Anfragender drückt „Sitzplatz tauschen". */
+  async requestSeatSwap(tableId: string, userId: string): Promise<void> {
+    const table = await this.prisma.lobbyTable.findUnique({
+      where: { id: tableId },
+      include: { seats: true },
+    });
+    if (!table) throw new NotFoundException(`Tisch ${tableId} nicht gefunden`);
+    if (table.variant === "BODENSEE_2P") {
+      throw new BadRequestException("Beim Bodensee gibt es keinen Sitzplatz-Tausch.");
+    }
+    if (table.status !== LobbyTableStatus.WAITING) {
+      throw new ConflictException("Sitzplatz-Tausch ist nur in der Wartephase möglich.");
+    }
+    const mine = table.seats.find((s) => s.userId === userId);
+    if (!mine) throw new NotFoundException("Du sitzt nicht an diesem Tisch.");
+    const otherHumans = table.seats.filter((s) => s.userId && s.userId !== userId);
+    if (otherHumans.length === 0) {
+      throw new ConflictException("Es ist kein menschlicher Mitspieler zum Tauschen da.");
+    }
+    this.seatSwap.requestSwap(tableId, userId, mine.seat);
+  }
+
+  /** Stufe 1→2: Anfragender wählt den Sitz, mit dem getauscht werden soll. */
+  async pickSeatSwapTarget(tableId: string, userId: string, targetSeat: number): Promise<void> {
+    const targetRow = await this.prisma.lobbyTableSeat.findUnique({
+      where: { tableId_seat: { tableId, seat: targetSeat } },
+    });
+    if (!targetRow || !targetRow.userId) {
+      throw new BadRequestException("Auf diesem Sitz sitzt kein menschlicher Mitspieler.");
+    }
+    this.seatSwap.pickTarget(tableId, userId, targetSeat, targetRow.userId);
+  }
+
+  /** Stufe 2: Ziel antwortet auf die Tausch-Rückfrage. */
+  async respondSeatSwap(tableId: string, userId: string, answer: SwapAnswer): Promise<void> {
+    this.seatSwap.respondSwap(tableId, userId, answer);
+  }
+
+  /** Anfragender bricht in der Auswahl-Phase ab. */
+  async cancelSeatSwap(tableId: string, userId: string): Promise<void> {
+    this.seatSwap.cancelSwap(tableId, userId);
+  }
+
+  /**
+   * Vom SeatSwapService bei Annahme aufgerufen: tauscht die beiden Sitz-Rows
+   * in der DB, loggt, bewertet den Auto-Start neu und broadcastet.
+   */
+  async applyAcceptedSwap(
+    tableId: string,
+    seatA: number,
+    seatB: number,
+    requesterId: string,
+    targetId: string
+  ): Promise<void> {
+    await this.swapSeatRows(tableId, seatA, seatB);
+    await this.audit.record({
+      action: "lobby.table.seat.swap",
+      actorId: requesterId,
+      target: tableId,
+      meta: { seatA, seatB, withUserId: targetId },
+    });
+    this.gateway.broadcastLobbyListUpdate("seat-changed", tableId);
+    await this.afterSwapResolved(tableId);
+  }
+
+  /**
+   * Tauscht die Belegung zweier Sitz-Rows (userId/aiSeatType/joinOrder/joinedAt).
+   * `seat` bleibt fix (Teil des PK) — es wandern nur die Inhaber-Felder, sodass
+   * joinOrder bei der jeweiligen Person bleibt (wichtig für die Owner-Nachfolge).
+   */
+  private async swapSeatRows(tableId: string, seatA: number, seatB: number): Promise<void> {
+    await this.prisma.$transaction(async (tx) => {
+      const rows = await tx.lobbyTableSeat.findMany({
+        where: { tableId, seat: { in: [seatA, seatB] } },
+      });
+      const a = rows.find((r) => r.seat === seatA);
+      const b = rows.find((r) => r.seat === seatB);
+      if (!a || !b) throw new ConflictException("Sitz nicht mehr vorhanden.");
+      await tx.lobbyTableSeat.update({
+        where: { tableId_seat: { tableId, seat: seatA } },
+        data: {
+          userId: b.userId,
+          aiSeatType: b.aiSeatType,
+          joinOrder: b.joinOrder,
+          joinedAt: b.joinedAt,
+        },
+      });
+      await tx.lobbyTableSeat.update({
+        where: { tableId_seat: { tableId, seat: seatB } },
+        data: {
+          userId: a.userId,
+          aiSeatType: a.aiSeatType,
+          joinOrder: a.joinOrder,
+          joinedAt: a.joinedAt,
+        },
+      });
+      await tx.lobbyTable.update({
+        where: { id: tableId },
+        data: { lastSeatChangeAt: new Date() },
+      });
+    });
   }
 
   /**
@@ -1994,6 +2264,10 @@ export class LobbyService {
       include: { seats: { orderBy: { seat: "asc" } } },
     });
     if (!table || table.seats.length < seatCountForVariant(table.variant)) return null;
+
+    // Spiel startet jetzt wirklich → allen ephemeren Tausch-/Countdown-Zustand
+    // für diesen Tisch verwerfen (Timer stoppen).
+    this.seatSwap.clearTable(tableId);
 
     const seats: SeatAssignment[] = table.seats.map((s) => ({
       seat: s.seat,
