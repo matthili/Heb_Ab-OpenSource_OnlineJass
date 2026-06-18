@@ -49,11 +49,11 @@ describe("extractUserResult", () => {
 
   describe("BODENSEE_2P (2 Einzelspieler)", () => {
     it("Sitz 0 mit 80 Pkt schlägt Sitz 1 mit 77 Pkt", () => {
-      const r = extractUserResult("BODENSEE_2P", 0, { player_total_points: [80, 77] });
+      const r = extractUserResult("BODENSEE_2P", 0, { team_card_points: [80, 77] });
       expect(r).toEqual({ points: 80, won: true });
     });
     it("Sitz 1 mit 77 verliert", () => {
-      const r = extractUserResult("BODENSEE_2P", 1, { player_total_points: [80, 77] });
+      const r = extractUserResult("BODENSEE_2P", 1, { team_card_points: [80, 77] });
       expect(r).toEqual({ points: 77, won: false });
     });
   });
@@ -65,7 +65,7 @@ describe("extractUserResult", () => {
     });
 
     it("falsches Array-Format → null", () => {
-      expect(extractUserResult("BODENSEE_2P", 0, { player_total_points: "not-an-array" })).toEqual({
+      expect(extractUserResult("BODENSEE_2P", 0, { team_card_points: "not-an-array" })).toEqual({
         points: null,
         won: null,
       });
