@@ -26,9 +26,19 @@ export async function settleAnnouncement(
     trumpSuit: "EICHEL",
   }
 ): Promise<void> {
-  for (let safety = 0; safety < 4; safety++) {
+  for (let safety = 0; safety < 6; safety++) {
     const view = await app.games.viewForSeat(gameId, 0);
     if (view.status !== "announcing") return;
+
+    // Abheben-Phase (status bleibt „announcing", aber `cut` statt
+    // `announcement`): zuerst den Schnitt abwickeln — KI ODER Mensch, egal,
+    // wir schneiden deterministisch in der Mitte. Ohne das hängt das Spiel im
+    // Cut und der Zugriff auf `view.announcement` unten crasht (undefined).
+    if (view.cut) {
+      const cutIndex = Math.max(1, Math.floor(view.cut.deckSize / 2));
+      await app.games.applyCutAsSeat(gameId, view.cut.cutterSeat, cutIndex);
+      continue;
+    }
 
     const announcerSeat = view.announcement!.announcerSeat;
     const seatRow = await app.prisma.gameSeat.findUnique({
@@ -50,5 +60,5 @@ export async function settleAnnouncement(
       });
     }
   }
-  throw new Error(`settleAnnouncement: nach 4 Schritten immer noch Ansage-Modus für ${gameId}`);
+  throw new Error(`settleAnnouncement: nach 6 Schritten immer noch Ansage-Modus für ${gameId}`);
 }

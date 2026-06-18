@@ -65,7 +65,11 @@ describe("UserStats `/api/users/me/stats`", () => {
         ruleVersion: "1.2.0",
         startedAt: new Date("2026-05-20T12:00:00Z"),
         endedAt: new Date("2026-05-20T12:20:00Z"),
-        finalScore: { player_total_points: [80, 77] },
+        // Bodensee persistiert die Spieler-Punkte in der DB unter
+        // `team_card_points` (siehe bodensee-game.service handleGameEnd) — NICHT
+        // `player_total_points` (das ist nur der Live-View-Key). Der Stats-Service
+        // liest entsprechend `team_card_points`; der Test muss das spiegeln.
+        finalScore: { team_card_points: [80, 77] },
       },
     });
     await app.prisma.gameSeat.create({

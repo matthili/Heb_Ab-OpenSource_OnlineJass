@@ -54,6 +54,11 @@ interface StateUpdate {
     canPush: boolean;
     pushedFromSeat: number | null;
   };
+  cut?: {
+    cutterSeat: number;
+    iAmCutter: boolean;
+    deckSize: number;
+  };
   finalScore?: {
     team_card_points: number[];
     matsch_team: number | null;
@@ -135,6 +140,17 @@ describe("M4 game-ws — 1 User (via WS) + 3 Random-KIs spielen Runde durch", ()
         finished = true;
         return;
       }
+      // Abheben-Phase: bin ich (zufällig) der Abheber, schneide ich
+      // deterministisch in der Mitte. Ohne das hängt das Spiel, wenn der Mensch
+      // der Abheber ist (Cutter = (announcerSeat + 2) % 4) — der Test sendete
+      // sonst nie game:cut und lief in den Timeout.
+      if (s.status === "announcing" && s.cut?.iAmCutter) {
+        socket.emit("game:cut", {
+          gameId,
+          cutIndex: Math.max(1, Math.floor(s.cut.deckSize / 2)),
+        });
+        return;
+      }
       // Sprint C: Wenn ich der Ansager bin, sage pragmatisch TRUMPF/EICHEL
       // an (der Test verifiziert das Move-Verhalten, nicht die Strategie).
       if (s.status === "announcing" && s.announcement?.iAmAnnouncer) {
@@ -167,7 +183,9 @@ describe("M4 game-ws — 1 User (via WS) + 3 Random-KIs spielen Runde durch", ()
     socket.emit("game:join", { gameId });
 
     // ─── 3. Warten auf Ende ─────────────────────────────────────────────
-    const deadline = Date.now() + 20_000;
+    // 45 s statt 20 s: unter Voll-Suite-Last (35 Files in EINEM Worker) braucht
+    // der WS-Spiel-Loop (Cut + Ansage + 36 Züge × Round-Trip) länger.
+    const deadline = Date.now() + 45_000;
     while (!finished) {
       if (Date.now() > deadline) throw new Error("Game-Loop > 20 s — timeout");
       await sleep(40);
