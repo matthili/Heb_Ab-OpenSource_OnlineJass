@@ -226,9 +226,29 @@ export const SeatViewSchema = z.object({
 });
 export type SeatView = z.infer<typeof SeatViewSchema>;
 
+/**
+ * Ephemerer Stand eines laufenden Sitzplatz-Tauschs (Wartebereich, 4er/Solo).
+ * `stage`: „selecting" = Anfragender wählt noch ein Ziel; „awaiting-response" =
+ * Ziel muss auf die Rückfrage antworten. `deadline` ist Epoch-ms (Client rendert
+ * daraus den Countdown).
+ */
+export const SeatSwapSnapshotSchema = z.object({
+  stage: z.enum(["selecting", "awaiting-response"]),
+  requesterId: z.string(),
+  requesterSeat: z.number().int(),
+  targetId: z.string().nullable(),
+  targetSeat: z.number().int().nullable(),
+  deadline: z.number(),
+});
+export type SeatSwapSnapshot = z.infer<typeof SeatSwapSnapshotSchema>;
+
 export const TableDetailViewSchema = TableListEntrySchema.extend({
   seats: z.array(SeatViewSchema),
   currentGameId: z.string().nullable(),
+  // Laufender Sitzplatz-Tausch + Start-Countdown bei vollem Tisch (in-memory,
+  // nur in der Warte-Phase relevant). Null/fehlend = nichts aktiv.
+  seatSwap: SeatSwapSnapshotSchema.nullable().optional(),
+  startCountdown: z.object({ startAt: z.number() }).nullable().optional(),
   joinRequests: z
     .array(
       z.object({

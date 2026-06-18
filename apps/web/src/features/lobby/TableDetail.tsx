@@ -34,6 +34,8 @@ import { useSession } from "~/lib/auth-client";
 import { getLobbySocket } from "~/lib/ws";
 import { useTableStateEvents, useUserEvents } from "~/lib/ws";
 import { LeaveTableConfirm } from "./LeaveTableConfirm";
+import { SeatArrangementPanel } from "./SeatArrangementPanel";
+import { SeatSwapPrompt } from "./SeatSwapPrompt";
 import type { JoinMode, RestartMode, TableDetailView } from "./types";
 
 interface Props {
@@ -120,6 +122,9 @@ export function TableDetail({ tableId }: Props) {
   const inGame =
     !!data.currentGameId &&
     (data.status === "IN_GAME" || data.status === "POST_GAME" || data.status === "MATCH_OVER");
+  // Sitz-Aufstellung (wählen/tauschen) nur im Wartebereich eines 4er/Solo-Tischs,
+  // an dem man selbst sitzt.
+  const canArrangeSeats = data.status === "WAITING" && data.variant !== "BODENSEE_2P" && amIAtTable;
 
   return (
     // Scroll-Anchoring ist global am body abgeschaltet (siehe styles.css) —
@@ -149,13 +154,25 @@ export function TableDetail({ tableId }: Props) {
 
       {/* Sitze oben NUR in der Wartephase — im Spiel wandern sie in die
           Chat-Seitenleiste (siehe GameSection), damit oben Tisch + Hand stehen. */}
-      {!inGame && (
-        <SeatRow
-          seats={data.seats}
-          nameSeed={data.id}
-          {...(isOwner && data.variant !== "BODENSEE_2P" ? { kickTableId: data.id } : {})}
-        />
-      )}
+      {!inGame &&
+        (canArrangeSeats ? (
+          <SeatArrangementPanel
+            tableId={data.id}
+            seats={data.seats}
+            myUserId={myUserId}
+            nameSeed={data.id}
+            isOwner={isOwner}
+            seatSwap={data.seatSwap}
+            startCountdown={data.startCountdown}
+          />
+        ) : (
+          <SeatRow
+            seats={data.seats}
+            nameSeed={data.id}
+            {...(isOwner && data.variant !== "BODENSEE_2P" ? { kickTableId: data.id } : {})}
+          />
+        ))}
+      {canArrangeSeats && <SeatSwapPrompt tableId={data.id} seats={data.seats} />}
 
       {data.currentGameId &&
         (data.status === "IN_GAME" ||
