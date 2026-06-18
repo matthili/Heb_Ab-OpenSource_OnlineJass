@@ -93,15 +93,23 @@ describe("WS-Rate-Limit", () => {
 
     const reason = await Promise.race([
       disconnectPromise,
+      // 8 s statt 3 s: unter Voll-Suite-Last (35 Files, 1 Worker) braucht der
+      // Burst + die serverseitige Disconnect-Verarbeitung länger.
       new Promise<string>((_, reject) =>
-        setTimeout(() => reject(new Error("kein disconnect erhalten")), 3000)
+        setTimeout(() => reject(new Error("kein disconnect erhalten")), 8000)
       ),
     ]);
     expect(reason).toBeTruthy();
 
-    const audit = await app.prisma.auditLog.findFirst({
-      where: { action: "security.ws.disconnect.rate_limit" },
-    });
+    // Audit wird serverseitig nach dem Disconnect geschrieben — kurz pollen,
+    // damit ein Commit-Timing-Race unter Last den Test nicht flaky macht.
+    let audit = null;
+    for (let i = 0; i < 20 && !audit; i++) {
+      audit = await app.prisma.auditLog.findFirst({
+        where: { action: "security.ws.disconnect.rate_limit" },
+      });
+      if (!audit) await new Promise((r) => setTimeout(r, 100));
+    }
     expect(audit).not.toBeNull();
   });
 });
