@@ -16,11 +16,9 @@ import {
   BadRequestException,
   ConflictException,
   ForbiddenException,
-  Inject,
   Injectable,
   Logger,
   NotFoundException,
-  forwardRef,
 } from "@nestjs/common";
 import {
   InviteStatus,
@@ -142,11 +140,13 @@ export class LobbyService {
     private readonly gateway: LobbyGateway,
     private readonly settings: LobbySettingsService,
     private readonly push: PushService,
-    // forwardRef: SeatSwapService ruft uns zurück (DB-Mutationen), wir rufen
-    // ihn (Tausch-Protokoll + Start-Countdown). Siehe seat-swap.service.ts.
-    @Inject(forwardRef(() => SeatSwapService))
     private readonly seatSwap: SeatSwapService
-  ) {}
+  ) {
+    // Einbahn-Abhängigkeit (kein forwardRef/Import-Zyklus, der sonst im
+    // Prod-ESM-Build crasht): wir injizieren den SeatSwapService und
+    // registrieren uns als seinen Host für die DB-Callbacks.
+    this.seatSwap.bindHost(this);
+  }
 
   /**
    * Pusht den aktuellen Tisch-State über das Gateway. Wird nach jeder

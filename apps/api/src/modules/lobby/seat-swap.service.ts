@@ -25,10 +25,31 @@
  * `takeSeat`), ohne Einverständnis. Dieses Protokoll ist nur für den Tausch mit
  * einem MENSCHEN.
  */
-import { ForbiddenException, Inject, Injectable, forwardRef } from "@nestjs/common";
+import { ForbiddenException, Injectable } from "@nestjs/common";
 
 import { LobbyGateway } from "./lobby.gateway.js";
-import { LobbyService } from "./lobby.service.js";
+
+/**
+ * Callbacks, die der SeatSwapService von seinem Host (LobbyService) braucht.
+ * Bewusst HIER als Interface definiert (KEIN Import von lobby.service) — sonst
+ * entsteht ein zyklischer Modul-Import. `forwardRef` löst die DI-Zyklik, aber
+ * NICHT den ESM-Ladezyklus: `emitDecoratorMetadata` referenziert LobbyService
+ * eager beim Modul-Laden → „Cannot access 'LobbyService' before initialization"
+ * im Prod-ESM-Build. Einbahn-Abhängigkeit (LobbyService → SeatSwapService) +
+ * Host-Registrierung beim Boot umgeht das vollständig.
+ */
+export interface SeatSwapHost {
+  pushTableState(tableId: string): Promise<void>;
+  afterSwapResolved(tableId: string): Promise<void>;
+  fireStartCountdown(tableId: string): Promise<void>;
+  applyAcceptedSwap(
+    tableId: string,
+    seatA: number,
+    seatB: number,
+    requesterId: string,
+    targetId: string
+  ): Promise<void>;
+}
 
 /** Kurzer Start-Countdown bei vollem Tisch, bevor das Spiel automatisch beginnt. */
 const START_COUNTDOWN_MS = 8_000;
@@ -75,14 +96,19 @@ export class SeatSwapService {
   /** „Nicht mehr fragen" pro Tisch: Set von `${requesterId}>${targetId}`. */
   private readonly declinedPairs = new Map<string, Set<string>>();
 
-  constructor(
-    // forwardRef wegen zirkulärer Abhängigkeit LobbyService ↔ SeatSwapService:
-    // der LobbyService validiert + ruft uns (request/pick/respond), wir rufen
-    // den LobbyService für die DB-Mutationen (Sitze tauschen, Spiel starten).
-    @Inject(forwardRef(() => LobbyService))
-    private readonly lobby: LobbyService,
-    private readonly gateway: LobbyGateway
-  ) {}
+  /**
+   * Host-Callbacks (DB-Mutationen + State-Push). Vom LobbyService beim Boot via
+   * {@link bindHost} gesetzt. Einbahn-Abhängigkeit: LobbyService injiziert
+   * SeatSwapService, NICHT umgekehrt — darum kein Import-Zyklus.
+   */
+  private host!: SeatSwapHost;
+
+  constructor(private readonly gateway: LobbyGateway) {}
+
+  /** Registriert die Host-Callbacks. Wird vom LobbyService-Konstruktor gerufen. */
+  bindHost(host: SeatSwapHost): void {
+    this.host = host;
+  }
 
   // ─── Abfragen (für tryAutoStartGame + View) ────────────────────────
 
@@ -132,7 +158,7 @@ export class SeatSwapService {
       this.startCountdowns.delete(tableId);
       // Der LobbyService prüft selbst nochmal (noch voll? noch WAITING? kein
       // Tausch?) und startet dann. Fehler werden dort geloggt.
-      void this.lobby.fireStartCountdown(tableId);
+      void this.host.fireStartCountdown(tableId);
     }, START_COUNTDOWN_MS);
     timer.unref?.();
     this.startCountdowns.set(tableId, { startAt, timer });
@@ -176,7 +202,7 @@ export class SeatSwapService {
       deadline,
       timer,
     });
-    void this.lobby.pushTableState(tableId);
+    void this.host.pushTableState(tableId);
   }
 
   /**
@@ -209,7 +235,7 @@ export class SeatSwapService {
       targetSeat,
       deadline: p.deadline,
     });
-    void this.lobby.pushTableState(tableId);
+    void this.host.pushTableState(tableId);
   }
 
   /** Stufe 2: Ziel antwortet. */
@@ -233,7 +259,7 @@ export class SeatSwapService {
     if (answer === "accept") {
       // DB-Tausch im LobbyService; der re-armiert danach den Start-Countdown
       // und pusht den neuen State.
-      void this.lobby.applyAcceptedSwap(tableId, requesterSeat, targetSeat, requesterId, targetId);
+      void this.host.applyAcceptedSwap(tableId, requesterSeat, targetSeat, requesterId, targetId);
       this.gateway.pushToUser(requesterId, "lobby:seat-swap-result", {
         tableId,
         accepted: true,
@@ -249,7 +275,7 @@ export class SeatSwapService {
       accepted: false,
       declinedForever: answer === "decline-forever",
     });
-    void this.lobby.afterSwapResolved(tableId);
+    void this.host.afterSwapResolved(tableId);
   }
 
   /** Anfragender bricht in der Auswahl-Phase ab (Stufe 1). */
@@ -261,7 +287,7 @@ export class SeatSwapService {
     clearTimeout(p.timer);
     this.pending.delete(tableId);
     // Kein Cooldown beim Selbst-Abbruch in der Auswahl-Phase.
-    void this.lobby.afterSwapResolved(tableId);
+    void this.host.afterSwapResolved(tableId);
   }
 
   /**
@@ -288,7 +314,7 @@ export class SeatSwapService {
       accepted: false,
       timedOut: true,
     });
-    void this.lobby.afterSwapResolved(tableId);
+    void this.host.afterSwapResolved(tableId);
   }
 
   private onResponseTimeout(tableId: string): void {
@@ -304,7 +330,7 @@ export class SeatSwapService {
     });
     // Ziel-Tabs: Dialog schließen (Frist abgelaufen).
     this.gateway.pushToUser(p.targetId, "lobby:seat-swap-cancelled", { tableId });
-    void this.lobby.afterSwapResolved(tableId);
+    void this.host.afterSwapResolved(tableId);
   }
 
   // ─── Helfer ────────────────────────────────────────────────────────

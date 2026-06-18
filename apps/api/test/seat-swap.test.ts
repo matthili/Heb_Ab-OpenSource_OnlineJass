@@ -9,8 +9,7 @@ import { ForbiddenException } from "@nestjs/common";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { LobbyGateway } from "../src/modules/lobby/lobby.gateway.js";
-import type { LobbyService } from "../src/modules/lobby/lobby.service.js";
-import { SeatSwapService } from "../src/modules/lobby/seat-swap.service.js";
+import { SeatSwapService, type SeatSwapHost } from "../src/modules/lobby/seat-swap.service.js";
 
 const T = "table1";
 
@@ -22,10 +21,8 @@ function makeService() {
     applyAcceptedSwap: vi.fn().mockResolvedValue(undefined),
     fireStartCountdown: vi.fn().mockResolvedValue(undefined),
   };
-  const svc = new SeatSwapService(
-    lobby as unknown as LobbyService,
-    gateway as unknown as LobbyGateway
-  );
+  const svc = new SeatSwapService(gateway as unknown as LobbyGateway);
+  svc.bindHost(lobby as unknown as SeatSwapHost);
   return { svc, gateway, lobby };
 }
 
