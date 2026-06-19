@@ -50,13 +50,18 @@ interface Props {
 export function TurnstileWidget({ onToken, action }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const widgetIdRef = useRef<string | null>(null);
+  // „Latest ref": onToken stabil halten, damit der Effekt NICHT bei jedem
+  // Parent-Render (= jede Tasteneingabe im Formular) neu läuft und das Widget
+  // ab- und neu-rendert. Die Turnstile-Callback liest immer die aktuelle Fn.
+  const onTokenRef = useRef(onToken);
+  onTokenRef.current = onToken;
 
   const siteKey = import.meta.env["VITE_TURNSTILE_SITE_KEY"] as string | undefined;
 
   useEffect(() => {
     // Dev-Bypass: ohne Site-Key kein Widget, ein Dummy-Token an Caller.
     if (!siteKey) {
-      onToken("dev-bypass");
+      onTokenRef.current("dev-bypass");
       return;
     }
 
@@ -89,7 +94,7 @@ export function TurnstileWidget({ onToken, action }: Props) {
         if (cancelled || !containerRef.current || !window.turnstile) return;
         widgetIdRef.current = window.turnstile.render(containerRef.current, {
           sitekey: siteKey,
-          callback: (token: string) => onToken(token),
+          callback: (token: string) => onTokenRef.current(token),
           // Error/Expired: leere Callbacks, damit Cloudflare nicht den
           // Default-DOM-Reset triggert. Caller ist für Re-Render via key
           // selbst verantwortlich.
@@ -120,7 +125,9 @@ export function TurnstileWidget({ onToken, action }: Props) {
       }
       widgetIdRef.current = null;
     };
-  }, [siteKey, action, onToken]);
+    // onToken bewusst NICHT in den Deps (latest-ref oben) — sonst remountet das
+    // Widget bei jeder Tasteneingabe. siteKey/action sind stabil.
+  }, [siteKey, action]);
 
   if (!siteKey) return null;
   return <div ref={containerRef} className="my-2" />;
