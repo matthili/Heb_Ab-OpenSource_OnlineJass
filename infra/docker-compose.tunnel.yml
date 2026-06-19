@@ -64,6 +64,24 @@ services:
       retries: 5
     networks: [jass]
 
+  # Automatische Backups: pg_dump + App-Daten-Tarball, mit Rotation.
+  # Restore + Off-site-Hinweis: infra/backup/README.md.
+  backup:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD:?required}
+      BACKUP_INTERVAL_SECONDS: ${BACKUP_INTERVAL_SECONDS:-86400}
+      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-14}
+    entrypoint: ["/bin/sh", "/backup-loop.sh"]
+    volumes:
+      - ./backup/backup-loop.sh:/backup-loop.sh:ro
+      - jass-tunnel-backups:/backups
+      - jass-tunnel-data:/appdata:ro
+    depends_on:
+      postgres: { condition: service_healthy }
+    networks: [jass]
+
   api:
     build:
       context: ..
@@ -206,5 +224,6 @@ volumes:
   jass-tunnel-pg:
   jass-tunnel-redis:
   jass-tunnel-data:
+  jass-tunnel-backups:
   jass-tunnel-caddy:
   jass-tunnel-nn:
