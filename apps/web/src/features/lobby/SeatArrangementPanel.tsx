@@ -108,7 +108,7 @@ export function SeatArrangementPanel({
             ? t("lobby.seatSwap.resultDeclinedForever")
             : t("lobby.seatSwap.resultDeclined")
       );
-      window.setTimeout(() => setNotice(null), 5000);
+      window.setTimeout(() => setNotice(null), 12000);
     },
     [tableId, t]
   );
@@ -172,7 +172,7 @@ export function SeatArrangementPanel({
                   type="button"
                   onClick={() => pickMut.mutate(s.seat)}
                   disabled={pickMut.isPending}
-                  className="rounded bg-jass-brownDark px-2 py-1 text-xs text-white hover:opacity-90 shrink-0"
+                  className="rounded bg-emerald-600 px-2 py-1 text-xs font-medium text-white hover:bg-emerald-500 shrink-0"
                 >
                   {t("lobby.seatSwap.swapWith")}
                 </button>
@@ -182,7 +182,7 @@ export function SeatArrangementPanel({
                   type="button"
                   onClick={() => takeMut.mutate(s.seat)}
                   disabled={takeMut.isPending}
-                  className="rounded border border-stone-300 px-2 py-1 text-xs hover:bg-stone-100 shrink-0"
+                  className="rounded border border-jass-paperEdge px-2 py-1 text-xs text-jass-ink hover:bg-jass-cream shrink-0"
                 >
                   {s.aiSeatType
                     ? t("lobby.seatSwap.takeAiSeat")
@@ -207,7 +207,7 @@ export function SeatArrangementPanel({
                   type="button"
                   onClick={() => cancelMut.mutate()}
                   disabled={cancelMut.isPending}
-                  className="rounded border border-stone-300 px-3 py-1 text-xs hover:bg-stone-100"
+                  className="rounded border border-jass-paperEdge px-3 py-1 text-xs text-jass-ink hover:bg-jass-cream"
                 >
                   {t("lobby.seatSwap.cancel")}
                 </button>
@@ -233,13 +233,17 @@ export function SeatArrangementPanel({
             type="button"
             onClick={() => requestMut.mutate()}
             disabled={requestMut.isPending}
-            className="rounded border border-jass-brownDark px-3 py-1 text-xs text-jass-brownDark hover:bg-jass-brownDark/10"
+            className="btn-jass-secondary text-xs"
           >
             {t("lobby.seatSwap.requestSwap")}
           </button>
         )}
       </div>
-      {notice && <p className="text-xs text-jass-inkSoft">{notice}</p>}
+      {notice && (
+        <p className="rounded-md border border-jass-paperEdge bg-jass-cream px-3 py-2 text-sm text-jass-ink">
+          {notice}
+        </p>
+      )}
       {error && (
         <p role="alert" className="text-xs text-rose-700">
           {error}
