@@ -1,22 +1,40 @@
 import { Controller, Get, HttpException, HttpStatus } from "@nestjs/common";
 
 import { PrismaService } from "../prisma/prisma.service.js";
+import { EventLoopMonitorService } from "./event-loop-monitor.service.js";
 
 /**
  * Health- und Readiness-Probes.
  *
- * `/health`  — Liveness: Prozess antwortet, sonst nichts. Pino-AutoLogging
- *              ignoriert diesen Pfad, damit er Logs nicht flutet.
- * `/healthz` — Readiness für k8s: pingt zusätzlich Postgres. Redis kommt in M4
- *              dazu, sobald der Adapter da ist.
+ * `/health`  — Liveness: Prozess antwortet — UND die Event-Schleife hängt nicht
+ *              fest. Bei anhaltend hoher Verzögerung (> HEALTH_MAX_EVENT_LOOP_LAG_MS,
+ *              Default 1000 ms) liefert sie 503 → Docker-Healthcheck + Autoheal
+ *              starten den überlasteten Container neu. Pino-AutoLogging ignoriert
+ *              diesen Pfad, damit er Logs nicht flutet.
+ * `/healthz` — Readiness für k8s: pingt zusätzlich Postgres.
  */
+const MAX_LAG_MS = (() => {
+  const n = Number(process.env["HEALTH_MAX_EVENT_LOOP_LAG_MS"]);
+  return Number.isFinite(n) && n > 0 ? n : 1000;
+})();
+
 @Controller()
 export class HealthController {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly eventLoop: EventLoopMonitorService
+  ) {}
 
   @Get("health")
-  liveness(): { status: "ok"; ts: string } {
-    return { status: "ok", ts: new Date().toISOString() };
+  liveness(): { status: "ok"; ts: string; eventLoopLagMs: number } {
+    const lagMs = Math.round(this.eventLoop.currentLagMsValue());
+    if (lagMs > MAX_LAG_MS) {
+      throw new HttpException(
+        { status: "degraded", reason: "event-loop", lagMs },
+        HttpStatus.SERVICE_UNAVAILABLE
+      );
+    }
+    return { status: "ok", ts: new Date().toISOString(), eventLoopLagMs: lagMs };
   }
 
   @Get("healthz")
