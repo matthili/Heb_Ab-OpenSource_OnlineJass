@@ -80,6 +80,20 @@ services:
       postgres: { condition: service_healthy }
     networks: [jass-internal]
 
+  # Selbstheilung: startet Container neu, sobald ihr Healthcheck "unhealthy"
+  # meldet — restart:unless-stopped greift nur bei Absturz, nicht bei
+  # läuft-aber-hängt. Braucht Zugriff auf den Docker-Socket.
+  autoheal:
+    image: willfarrell/autoheal:1.2.0
+    container_name: jass-autoheal
+    restart: unless-stopped
+    environment:
+      AUTOHEAL_CONTAINER_LABEL: all
+      AUTOHEAL_INTERVAL: 15
+      AUTOHEAL_START_PERIOD: 60
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+
   api:
     image: jass-api:${JASS_IMAGE_TAG:-latest}
     build:
