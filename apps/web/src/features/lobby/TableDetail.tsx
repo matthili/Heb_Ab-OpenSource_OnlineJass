@@ -324,7 +324,20 @@ function CumulativeScoreBar({ table }: { table: TableDetailView }) {
       }
       return t("lobby.tableDetail.teamLabel", { n: teamIdx + 1 });
     }
-    return teamIdx === 0 ? t("lobby.tableDetail.team0") : t("lobby.tableDetail.team1");
+    // Kreuz: Team 0 = Sitze 0+2, Team 1 = Sitze 1+3 — mit echten Namen + Sitz,
+    // damit man nicht woanders nachschauen muss, wer auf welchem Sitz sitzt.
+    const teamSeats = teamIdx === 0 ? [0, 2] : [1, 3];
+    const members = teamSeats
+      .map((seatIdx) => {
+        const s = table.seats.find((seat) => seat.seat === seatIdx);
+        const name =
+          s?.user?.name ?? (s?.aiSeatType ? aiName(`${table.id}:${seatIdx}`, s.aiSeatType) : null);
+        return name
+          ? t("lobby.tableDetail.memberOnSeat", { name, seat: seatIdx + 1 })
+          : t("lobby.tableDetail.teamLabel", { n: seatIdx + 1 });
+      })
+      .join(" + ");
+    return t("lobby.tableDetail.teamMembers", { n: teamIdx + 1, members });
   };
 
   // Engine-Tooltip am Roboter-Symbol des Partie-Stands — nur Einzelspieler-Zeilen
