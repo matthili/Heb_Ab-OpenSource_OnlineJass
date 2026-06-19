@@ -485,7 +485,6 @@ function OwnerPanel(props: {
         void navigate({ to: "/lobby" });
         return;
       }
-      // eslint-disable-next-line no-console
       console.error("Leave-Table-Fehler:", err);
     },
   });
@@ -509,7 +508,6 @@ function OwnerPanel(props: {
         void navigate({ to: "/lobby" });
         return;
       }
-      // eslint-disable-next-line no-console
       console.error("Tisch-auflösen-Fehler:", err);
     },
   });
@@ -812,7 +810,6 @@ function PlayerPanel({
         void navigate({ to: "/lobby" });
         return;
       }
-      // eslint-disable-next-line no-console
       console.error("Leave-Table-Fehler:", err);
     },
   });
