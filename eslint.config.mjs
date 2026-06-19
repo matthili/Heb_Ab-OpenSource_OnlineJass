@@ -1,6 +1,7 @@
 // Root ESLint flat-config — gilt für alle Workspace-Pakete.
 // Einzelne Pakete dürfen einen eigenen `eslint.config.mjs` mit Spreads anlegen.
 import js from "@eslint/js";
+import reactHooks from "eslint-plugin-react-hooks";
 import tseslint from "typescript-eslint";
 
 export default tseslint.config(
@@ -83,6 +84,20 @@ export default tseslint.config(
     ],
     rules: {
       "@typescript-eslint/consistent-type-imports": "off",
+    },
+  },
+  {
+    // React-Hooks-Linting nur fürs Web-Frontend (React 19). Wir aktivieren
+    // bewusst nur die zwei klassischen Regeln — NICHT das komplette v7-
+    // „recommended"-Set mit den React-Compiler-Regeln (das wäre ein eigener,
+    // viel größerer Schritt). `rules-of-hooks` fängt echte Bugs (bedingte
+    // Hooks); `exhaustive-deps` bleibt Warnung (manche Deps lässt man bewusst
+    // weg — dann mit `// eslint-disable-next-line` + Begründung).
+    files: ["apps/web/**/*.{ts,tsx}"],
+    plugins: { "react-hooks": reactHooks },
+    rules: {
+      "react-hooks/rules-of-hooks": "error",
+      "react-hooks/exhaustive-deps": "warn",
     },
   }
 );

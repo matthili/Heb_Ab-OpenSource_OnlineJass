@@ -59,6 +59,7 @@
     "@types/node": "^22.10.0",
     "@vitest/coverage-v8": "^4.1.6",
     "eslint": "^9.16.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
     "extract-zip": "^2.0.1",
     "lefthook": "^1.10.0",
     "prettier": "^3.4.0",

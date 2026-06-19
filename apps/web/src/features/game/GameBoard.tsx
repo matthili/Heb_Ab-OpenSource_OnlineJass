@@ -113,6 +113,11 @@ export function GameBoard({
       dealStartedFor.current = view.gameId;
       setDeal({ gameId: view.gameId, announcerSeat: view.announcement.announcerSeat });
     }
+    // Bewusst nur auf (status, gameId, announcerSeat) reagieren: die
+    // dealStartedFor-Ref macht den Effekt idempotent pro gameId. Das ganze
+    // `view.announcement`-Objekt als Dep würde bei jedem Server-Frame neu
+    // feuern, ohne dass sich am Auslöser etwas ändert.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [view.status, view.gameId, view.announcement?.announcerSeat]);
   // `dealActive` synchron (ohne 1-Frame-Flacker): bereits true, sobald die
   // Ansage-Phase für eine neue gameId da ist — im selben Render, bevor der

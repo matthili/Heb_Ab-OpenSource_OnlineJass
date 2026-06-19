@@ -174,7 +174,7 @@ export function DealCinematic({
       timeouts.forEach(clearTimeout);
       timeouts = [];
     };
-  }, [phase, skip]);
+  }, [phase, skip, mode]);
 
   const onCutClick = useCallback(() => {
     if (phase === "wait-cut") setPhase("cut");
