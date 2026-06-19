@@ -80,6 +80,8 @@ export interface UserGameSummary {
   startedAt: string;
   endedAt: string | null;
   status: "playing" | "finished";
+  /** Habe ich dieses Spiel vorzeitig verlassen? → History zeigt „Trend …". */
+  iAbandoned: boolean;
   finalScore: ReplayFinalScore | null;
   seats: ReplaySeat[];
 }

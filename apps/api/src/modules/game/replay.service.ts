@@ -294,6 +294,10 @@ export class ReplayService {
       startedAt: s.game.startedAt.toISOString(),
       endedAt: s.game.endedAt?.toISOString() ?? null,
       status: s.game.endedAt ? "finished" : "playing",
+      // Habe ICH dieses Spiel vorzeitig verlassen? (Sitz wurde dann durch KI
+      // fortgeführt.) Die History zeigt daraus „Trend (vor Ende abgebrochen)"
+      // statt eines echten Sieg/Niederlage-Ergebnisses.
+      iAbandoned: s.leftAt !== null,
       finalScore: s.game.finalScore as ReplayFinalScore | null,
       seats: s.game.seats.map((seat) => ({
         seat: seat.seat,
@@ -318,6 +322,8 @@ export interface UserGameSummary {
   startedAt: string;
   endedAt: string | null;
   status: "playing" | "finished";
+  /** Hat der abrufende User dieses Spiel vorzeitig verlassen (Sitz → KI)? */
+  iAbandoned: boolean;
   finalScore: ReplayFinalScore | null;
   seats: ReplaySeat[];
 }

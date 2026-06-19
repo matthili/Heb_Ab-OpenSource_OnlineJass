@@ -118,15 +118,23 @@ function MatchGroup({ games }: { games: UserGameSummary[] }) {
   // Partie und es folgt eine Trennlinie (spiegelt die Server-MATCH_OVER-Logik).
   const dividers = detectMatchBoundaries(games, first.targetScore);
   const matchCount = dividers.size + 1;
+  // Wurde das Punkteziel erreicht (= Partie regulär zu Ende gespielt)? Sonst
+  // wurde vorzeitig abgebrochen → nur ein „Trend", kein echter Sieg/Niederlage.
+  const matchCompleted =
+    first.targetScore != null && (cumOwn >= first.targetScore || cumOpp >= first.targetScore);
   // Ausgang-Badge nur bei genau EINER Partie (sonst mehrdeutig) und nicht-Solo.
   const result: ResultKind | null = anyRunning
     ? "running"
     : matchCount === 1 && !isSolo
-      ? cumOwn > cumOpp
-        ? "won"
-        : cumOwn < cumOpp
-          ? "lost"
-          : "draw"
+      ? cumOwn === cumOpp
+        ? "draw"
+        : matchCompleted
+          ? cumOwn > cumOpp
+            ? "won"
+            : "lost"
+          : cumOwn > cumOpp
+            ? "trend-won"
+            : "trend-lost"
       : null;
   return (
     <li className="rounded border border-stone-300 bg-stone-50">
@@ -147,6 +155,11 @@ function MatchGroup({ games }: { games: UserGameSummary[] }) {
           <span className="text-xs text-stone-600">
             {t("profile.history.match.games", { count: games.length })}
           </span>
+          {first.tableId && (
+            <span className="rounded bg-stone-100 px-2 py-0.5 text-xs text-stone-500">
+              {t("profile.history.match.table", { id: first.tableId.slice(-6) })}
+            </span>
+          )}
           {result && (
             <span className={`rounded px-2 py-0.5 text-xs ${badgeForResult(result)}`}>
               {labelForResult(result, t)}
@@ -297,6 +310,11 @@ function gamePoints(game: UserGameSummary): { ownPts: number; oppPts: number } {
 /** Ausgang eines Spiels (läuft/Sieg/Niederlage/Matsch). */
 function gameResultKind(game: UserGameSummary, ownPts: number, oppPts: number): ResultKind {
   if (game.status !== "finished") return "running";
+  // Vorzeitig verlassen → kein echtes Ergebnis, nur ein Trend (die KI hat den
+  // Sitz zu Ende gespielt). Matsch-Sonderfall hier bewusst ignorieren.
+  if (game.iAbandoned) {
+    return ownPts > oppPts ? "trend-won" : ownPts < oppPts ? "trend-lost" : "draw";
+  }
   // matsch_team trägt bei Kreuz den Team-Index, bei Bodensee/Solo den
   // Sitz-Index — in beiden Fällen vergleichbar mit `myIdx`.
   const isPerSeat = game.variant === "BODENSEE_2P" || game.variant === "SOLO_4P";
@@ -307,7 +325,17 @@ function gameResultKind(game: UserGameSummary, ownPts: number, oppPts: number): 
   return ownPts > oppPts ? "won" : ownPts < oppPts ? "lost" : "draw";
 }
 
-type ResultKind = "running" | "won" | "lost" | "draw" | "matsch-won" | "matsch-lost";
+type ResultKind =
+  | "running"
+  | "won"
+  | "lost"
+  | "draw"
+  | "matsch-won"
+  | "matsch-lost"
+  // Vorzeitig abgebrochen (Spiel verlassen / Partie vor dem Punkteziel beendet):
+  // kein echtes Ergebnis, nur die Tendenz nach Stand.
+  | "trend-won"
+  | "trend-lost";
 
 function badgeForResult(r: ResultKind): string {
   switch (r) {
@@ -323,6 +351,11 @@ function badgeForResult(r: ResultKind): string {
       return "bg-emerald-600 text-white";
     case "matsch-lost":
       return "bg-rose-600 text-white";
+    // „Trend": dezenter (heller Grund + Rand) — signalisiert „nicht final".
+    case "trend-won":
+      return "bg-emerald-50 text-emerald-800 border border-emerald-300";
+    case "trend-lost":
+      return "bg-rose-50 text-rose-800 border border-rose-300";
   }
 }
 
@@ -340,5 +373,9 @@ function labelForResult(r: ResultKind, t: (key: string) => string): string {
       return `${t("profile.history.matsch")} (${t("profile.history.won")})`;
     case "matsch-lost":
       return `${t("profile.history.matsch")} (${t("profile.history.lost")})`;
+    case "trend-won":
+      return t("profile.history.trendWon");
+    case "trend-lost":
+      return t("profile.history.trendLost");
   }
 }

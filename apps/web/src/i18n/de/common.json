@@ -156,7 +156,7 @@
       "dismiss": "Später"
     },
     "history": {
-      "title": "Bisherige Partien",
+      "title": "Bisherige Jass-Partien",
       "loading": "Lade Partien…",
       "empty": "Du hast noch keine Partie gespielt. Geh in die Lobby und öffne oder joine einen Tisch.",
       "loadError": "Konnte History nicht laden: {{message}}",
@@ -165,13 +165,16 @@
       "lost": "verloren",
       "draw": "unentschieden",
       "matsch": "Matsch!",
-      "duringGame": "Während Partie #{{shortId}} · Mitspieler: {{partners}}",
-      "partnersPrefix": "Während Partie #{{shortId}} · Mitspieler:",
+      "trendWon": "Trend: Sieg (vor Ende abgebrochen)",
+      "trendLost": "Trend: Niederlage (vor Ende abgebrochen)",
+      "duringGame": "Während Spiel #{{shortId}} · Mitspieler: {{partners}}",
+      "partnersPrefix": "Während Spiel #{{shortId}} · Mitspieler:",
       "viewReplay": "Replay ansehen",
       "running": "läuft noch",
       "finalScore": "{{own}} : {{opp}}",
       "match": {
-        "label": "Partie",
+        "label": "Jass-Partie vom",
+        "table": "Tisch {{id}}",
         "games": "{{count}} Spiele",
         "matches": "{{count}} Partien",
         "total": "Gesamt {{own}} : {{opp}}",

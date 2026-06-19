@@ -156,7 +156,7 @@
       "dismiss": "Later"
     },
     "history": {
-      "title": "Past games",
+      "title": "Past Jass matches",
       "loading": "Loading games…",
       "empty": "You haven't played a game yet. Visit the lobby to open or join a table.",
       "loadError": "Could not load history: {{message}}",
@@ -165,13 +165,16 @@
       "lost": "lost",
       "draw": "draw",
       "matsch": "Matsch!",
+      "trendWon": "Trend: win (ended early)",
+      "trendLost": "Trend: loss (ended early)",
       "duringGame": "During game #{{shortId}} · partners: {{partners}}",
       "partnersPrefix": "During game #{{shortId}} · partners:",
       "viewReplay": "View replay",
       "running": "in progress",
       "finalScore": "{{own}} : {{opp}}",
       "match": {
-        "label": "Match",
+        "label": "Jass match from",
+        "table": "Table {{id}}",
         "games": "{{count}} games",
         "matches": "{{count}} matches",
         "total": "Total {{own}} : {{opp}}",
