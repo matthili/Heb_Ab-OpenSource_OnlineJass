@@ -79,6 +79,8 @@ services:
       BETTER_AUTH_URL: https://${JASS_DOMAIN:?required}
       WEB_PUBLIC_URL: https://${JASS_DOMAIN}/app
       LANDING_PUBLIC_URL: https://${JASS_DOMAIN}
+      # Internes Health-Check-Ziel der Admin-System-Status-Seite (gleicher Compose-Service).
+      LANDING_URL: http://landing
       # Captcha-Pflicht (kein SELF_HOST-Bypass).
       TURNSTILE_SECRET_KEY: ${TURNSTILE_SECRET_KEY:?required}
       INFERENCE_URL: http://inference:4000

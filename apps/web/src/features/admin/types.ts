@@ -10,6 +10,8 @@ export interface SystemStatus {
   migrations: { applied: number; latest: string | null; latestAt: string | null };
   redis: { ok: boolean };
   inference: { available: boolean; lastCheckedAt: number | null; baseUrl: string };
+  smtp: { host: string; port: number; ok: boolean };
+  landing: { url: string | null; ok: boolean | null };
   mode: {
     nodeEnv: string;
     selfHost: boolean;

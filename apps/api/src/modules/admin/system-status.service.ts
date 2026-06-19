@@ -13,6 +13,7 @@
 import { Injectable } from "@nestjs/common";
 
 import { InferenceClient } from "../inference/inference-client.service.js";
+import { MailService } from "../mail/mail.service.js";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { RedisService } from "../redis/redis.service.js";
 
@@ -21,6 +22,10 @@ export interface SystemStatus {
   migrations: { applied: number; latest: string | null; latestAt: string | null };
   redis: { ok: boolean };
   inference: { available: boolean; lastCheckedAt: number | null; baseUrl: string };
+  /** SMTP-Erreichbarkeit. `ok=false` heißt: Verify-Mails kommen nicht raus. */
+  smtp: { host: string; port: number; ok: boolean };
+  /** Landing-Site (interner Health-Check). `ok=null` = `LANDING_URL` nicht gesetzt. */
+  landing: { url: string | null; ok: boolean | null };
   mode: {
     nodeEnv: string;
     selfHost: boolean;
@@ -38,14 +43,17 @@ export class SystemStatusService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly redis: RedisService,
-    private readonly inference: InferenceClient
+    private readonly inference: InferenceClient,
+    private readonly mail: MailService
   ) {}
 
   async getStatus(): Promise<SystemStatus> {
-    const [dbOk, migrations, redisOk] = await Promise.all([
+    const [dbOk, migrations, redisOk, smtp, landing] = await Promise.all([
       this.checkDb(),
       this.getMigrations(),
       this.redis.ping(),
+      this.checkSmtp(),
+      this.checkLanding(),
     ]);
 
     // Frischer Inferenz-Ping aktualisiert den im Client gecachten Status.
@@ -61,6 +69,8 @@ export class SystemStatusService {
         lastCheckedAt: inf.lastCheckedAt,
         baseUrl: inf.baseUrl,
       },
+      smtp,
+      landing,
       mode: {
         nodeEnv: process.env["NODE_ENV"] ?? "development",
         selfHost: process.env["SELF_HOST"] === "1",
@@ -81,6 +91,36 @@ export class SystemStatusService {
       return true;
     } catch {
       return false;
+    }
+  }
+
+  /** SMTP-Handshake via MailService (wirft nie — liefert host/port + ok). */
+  private async checkSmtp(): Promise<{ host: string; port: number; ok: boolean }> {
+    try {
+      return await this.mail.verifyConnection();
+    } catch {
+      return { host: "?", port: 0, ok: false };
+    }
+  }
+
+  /**
+   * Interner GET auf die Landing-Site. Quelle ist `LANDING_URL` (im Prod-/
+   * Self-Host-Stack z.B. `http://landing`); ohne diese Var liefern wir
+   * `ok=null` (= „nicht konfiguriert", z.B. im reinen Dev-Lauf).
+   */
+  private async checkLanding(): Promise<{ url: string | null; ok: boolean | null }> {
+    const url = process.env["LANDING_URL"];
+    if (!url) return { url: null, ok: null };
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 3000);
+    try {
+      const res = await fetch(url, { signal: ctrl.signal });
+      // 2xx = die statische Site liefert ihre index.html aus.
+      return { url, ok: res.ok };
+    } catch {
+      return { url, ok: false };
+    } finally {
+      clearTimeout(timer);
     }
   }
 

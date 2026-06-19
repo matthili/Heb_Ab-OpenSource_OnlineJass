@@ -80,6 +80,9 @@ spec:
               value: "https://{{ .Values.ingress.host }}"
             - name: INFERENCE_URL
               value: "http://{{ include "jass-app.fullname" . }}-inference:{{ .Values.inference.port }}"
+            # Internes Health-Check-Ziel der Admin-System-Status-Seite (Cluster-DNS).
+            - name: LANDING_URL
+              value: "http://{{ include "jass-app.fullname" . }}-landing:{{ .Values.landing.port }}"
             {{- if .Values.api.env.extraOrigins }}
             - name: CORS_EXTRA_ORIGINS
               value: {{ .Values.api.env.extraOrigins | quote }}

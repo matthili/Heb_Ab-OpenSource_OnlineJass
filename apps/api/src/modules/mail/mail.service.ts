@@ -84,6 +84,33 @@ export class MailService {
     return { transporter: this.cachedTransporter, from: cfg.from };
   }
 
+  /**
+   * SMTP-Erreichbarkeit für die Admin-System-Status-Seite prüfen. Baut (bzw.
+   * nutzt den gecachten) Transporter und ruft `verify()` — das öffnet eine
+   * Verbindung + handshaket (inkl. AUTH, falls gesetzt). Ein Timeout schützt
+   * das Dashboard, falls der Host stumm bleibt. Wirft nie — liefert `ok:false`.
+   */
+  async verifyConnection(): Promise<{ host: string; port: number; ok: boolean }> {
+    const cfg = await this.resolveConfig();
+    let ok = false;
+    try {
+      const { transporter } = await this.getTransporter();
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      const timeout = new Promise<never>((_resolve, reject) => {
+        timer = setTimeout(() => reject(new Error("SMTP-Verify-Timeout")), 4000);
+      });
+      try {
+        await Promise.race([transporter.verify(), timeout]);
+        ok = true;
+      } finally {
+        if (timer) clearTimeout(timer);
+      }
+    } catch (err) {
+      this.log.debug({ err, host: cfg.host, port: cfg.port }, "SMTP-Verify fehlgeschlagen");
+    }
+    return { host: cfg.host, port: cfg.port, ok };
+  }
+
   async send(envelope: MailEnvelope): Promise<void> {
     const { transporter, from } = await this.getTransporter();
     await transporter.sendMail({

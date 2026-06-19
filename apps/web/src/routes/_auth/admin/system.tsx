@@ -90,6 +90,32 @@ function SystemStatusPage() {
             <Pill kind="warn" label={t("admin.system.inferenceFallback")} />
           )}
         </Row>
+        <Row label={t("admin.system.smtp")}>
+          <span className="flex items-center justify-end gap-2">
+            <code className="text-xs text-stone-500">
+              {data.smtp.host}:{data.smtp.port}
+            </code>
+            {data.smtp.ok ? (
+              okPill
+            ) : data.mode.accountActivation === "email" ? (
+              failPill
+            ) : (
+              <Pill kind="warn" label={t("admin.system.smtpOptional")} />
+            )}
+          </span>
+        </Row>
+        {!data.smtp.ok && data.mode.accountActivation === "email" && (
+          <p className="mt-1 text-xs text-amber-700">{t("admin.system.smtpDownNote")}</p>
+        )}
+        <Row label={t("admin.system.landing")}>
+          {data.landing.ok === null ? (
+            <span className="text-stone-400">{t("admin.system.notConfigured")}</span>
+          ) : data.landing.ok ? (
+            okPill
+          ) : (
+            failPill
+          )}
+        </Row>
       </Group>
 
       <Group title={t("admin.system.migrations")}>

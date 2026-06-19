@@ -71,6 +71,8 @@ services:
       BETTER_AUTH_URL: ${JASS_HOST:-http://localhost}
       WEB_PUBLIC_URL: ${JASS_HOST:-http://localhost}
       LANDING_PUBLIC_URL: ${JASS_HOST:-http://localhost}
+      # Internes Health-Check-Ziel der Admin-System-Status-Seite (gleicher Compose-Service).
+      LANDING_URL: http://landing
       ADMIN_EMAIL: ${ADMIN_EMAIL:-}
       # APP_SECRET / BETTER_AUTH_SECRET bewusst NICHT gesetzt → der Entrypoint
       # generiert sie einmalig und persistiert sie nach /app/data.
