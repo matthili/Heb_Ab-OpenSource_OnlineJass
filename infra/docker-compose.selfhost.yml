@@ -26,10 +26,19 @@
 # liegt im selben Ordner und nutzt sonst denselben Default-Projektnamen).
 name: jass-selfhost
 
+# Gemeinsame Log-Rotation für alle Container (json-file, gedeckelt) — verhindert,
+# dass Container-Logs unbemerkt die Platte füllen. Pro Service via `*logging`.
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
 services:
   postgres:
     image: postgres:16-alpine
     restart: unless-stopped
+    logging: *logging
     environment:
       POSTGRES_DB: jass
       POSTGRES_USER: jass
@@ -46,6 +55,7 @@ services:
   redis:
     image: redis:7-alpine
     restart: unless-stopped
+    logging: *logging
     command: ["redis-server", "--appendonly", "yes"]
     volumes:
       - jass-selfhost-redis:/data
@@ -61,6 +71,7 @@ services:
   backup:
     image: postgres:16-alpine
     restart: unless-stopped
+    logging: *logging
     environment:
       PGPASSWORD: jass-selfhost
       BACKUP_INTERVAL_SECONDS: ${BACKUP_INTERVAL_SECONDS:-86400}
@@ -80,6 +91,7 @@ services:
   autoheal:
     image: willfarrell/autoheal:1.2.0
     restart: unless-stopped
+    logging: *logging
     environment:
       AUTOHEAL_CONTAINER_LABEL: all
       AUTOHEAL_INTERVAL: 15
@@ -92,6 +104,7 @@ services:
       context: ..
       dockerfile: apps/api/Dockerfile
     restart: unless-stopped
+    logging: *logging
     environment:
       NODE_ENV: production
       SELF_HOST: "1"
@@ -123,6 +136,7 @@ services:
         # der Server überspringt die Prüfung (SELF_HOST, kein Secret).
         VITE_TURNSTILE_SITE_KEY: ""
     restart: unless-stopped
+    logging: *logging
     networks: [jass]
 
   landing:
@@ -130,11 +144,13 @@ services:
       context: ..
       dockerfile: apps/landing/Dockerfile
     restart: unless-stopped
+    logging: *logging
     networks: [jass]
 
   caddy:
     image: caddy:2-alpine
     restart: unless-stopped
+    logging: *logging
     ports:
       - "80:80"
     volumes:

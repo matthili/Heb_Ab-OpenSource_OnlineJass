@@ -29,11 +29,20 @@
 #   2. docker compose ... pull
 #   3. docker compose ... up -d  (rolling restart pro Service)
 
+# Gemeinsame Log-Rotation für alle Container (json-file, gedeckelt) — verhindert,
+# dass Container-Logs unbemerkt die Platte füllen. Pro Service via `*logging`.
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
 services:
   postgres:
     image: postgres:16-alpine
     container_name: jass-pg
     restart: unless-stopped
+    logging: *logging
     environment:
       POSTGRES_DB: jass
       POSTGRES_USER: jass
@@ -52,6 +61,7 @@ services:
     image: redis:7-alpine
     container_name: jass-redis
     restart: unless-stopped
+    logging: *logging
     command: ["redis-server", "--appendonly", "yes"]
     volumes:
       - jass-redis-data:/data
@@ -68,6 +78,7 @@ services:
     image: postgres:16-alpine
     container_name: jass-backup
     restart: unless-stopped
+    logging: *logging
     environment:
       PGPASSWORD: ${POSTGRES_PASSWORD:?required}
       BACKUP_INTERVAL_SECONDS: ${BACKUP_INTERVAL_SECONDS:-86400}
@@ -87,6 +98,7 @@ services:
     image: willfarrell/autoheal:1.2.0
     container_name: jass-autoheal
     restart: unless-stopped
+    logging: *logging
     environment:
       AUTOHEAL_CONTAINER_LABEL: all
       AUTOHEAL_INTERVAL: 15
@@ -101,6 +113,7 @@ services:
       dockerfile: apps/api/Dockerfile
     container_name: jass-api
     restart: unless-stopped
+    logging: *logging
     environment:
       NODE_ENV: production
       API_PORT: "3000"
@@ -148,6 +161,7 @@ services:
       context: ./watchdog
     container_name: jass-watchdog
     restart: unless-stopped
+    logging: *logging
     environment:
       WATCHDOG_TARGET_URL: http://api:3000/health
       WATCHDOG_INTERVAL_SECONDS: ${WATCHDOG_INTERVAL_SECONDS:-30}
@@ -170,6 +184,7 @@ services:
       dockerfile: apps/inference/Dockerfile
     container_name: jass-inference
     restart: unless-stopped
+    logging: *logging
     environment:
       NODE_ENV: production
       INFERENCE_PORT: "4000"
@@ -204,6 +219,7 @@ services:
         VITE_TURNSTILE_SITE_KEY: ${VITE_TURNSTILE_SITE_KEY:?required}
     container_name: jass-web
     restart: unless-stopped
+    logging: *logging
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1/"]
       interval: 30s
@@ -218,6 +234,7 @@ services:
       dockerfile: apps/landing/Dockerfile
     container_name: jass-landing
     restart: unless-stopped
+    logging: *logging
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1/"]
       interval: 30s
@@ -229,6 +246,7 @@ services:
     image: caddy:2-alpine
     container_name: jass-caddy
     restart: unless-stopped
+    logging: *logging
     ports:
       - "80:80"
       - "443:443"

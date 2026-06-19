@@ -34,10 +34,19 @@
 
 name: jass-tunnel
 
+# Gemeinsame Log-Rotation für alle Container (json-file, gedeckelt) — verhindert,
+# dass Container-Logs unbemerkt die Platte füllen. Pro Service via `*logging`.
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
 services:
   postgres:
     image: postgres:16-alpine
     restart: unless-stopped
+    logging: *logging
     environment:
       POSTGRES_DB: jass
       POSTGRES_USER: jass
@@ -54,6 +63,7 @@ services:
   redis:
     image: redis:7-alpine
     restart: unless-stopped
+    logging: *logging
     command: ["redis-server", "--appendonly", "yes"]
     volumes:
       - jass-tunnel-redis:/data
@@ -69,6 +79,7 @@ services:
   backup:
     image: postgres:16-alpine
     restart: unless-stopped
+    logging: *logging
     environment:
       PGPASSWORD: ${POSTGRES_PASSWORD:?required}
       BACKUP_INTERVAL_SECONDS: ${BACKUP_INTERVAL_SECONDS:-86400}
@@ -88,6 +99,7 @@ services:
   autoheal:
     image: willfarrell/autoheal:1.2.0
     restart: unless-stopped
+    logging: *logging
     environment:
       AUTOHEAL_CONTAINER_LABEL: all
       AUTOHEAL_INTERVAL: 15
@@ -100,6 +112,7 @@ services:
       context: ..
       dockerfile: apps/api/Dockerfile
     restart: unless-stopped
+    logging: *logging
     environment:
       NODE_ENV: production
       API_PORT: "3000"
@@ -150,6 +163,7 @@ services:
     build:
       context: ./watchdog
     restart: unless-stopped
+    logging: *logging
     environment:
       WATCHDOG_TARGET_URL: http://api:3000/health
       WATCHDOG_INTERVAL_SECONDS: ${WATCHDOG_INTERVAL_SECONDS:-30}
@@ -170,6 +184,7 @@ services:
       context: ..
       dockerfile: apps/inference/Dockerfile
     restart: unless-stopped
+    logging: *logging
     environment:
       NODE_ENV: production
       INFERENCE_PORT: "4000"
@@ -203,6 +218,7 @@ services:
       args:
         VITE_TURNSTILE_SITE_KEY: ${VITE_TURNSTILE_SITE_KEY:?required}
     restart: unless-stopped
+    logging: *logging
     networks: [jass]
 
   landing:
@@ -210,11 +226,13 @@ services:
       context: ..
       dockerfile: apps/landing/Dockerfile
     restart: unless-stopped
+    logging: *logging
     networks: [jass]
 
   caddy:
     image: caddy:2-alpine
     restart: unless-stopped
+    logging: *logging
     # Nur :80 — cloudflared verbindet sich hierher; TLS macht Cloudflare.
     ports:
       - "80:80"
