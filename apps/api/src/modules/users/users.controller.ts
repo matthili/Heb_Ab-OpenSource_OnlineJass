@@ -20,6 +20,7 @@ import {
   UseGuards,
 } from "@nestjs/common";
 import type { FastifyReply, FastifyRequest } from "fastify";
+import { z } from "zod";
 
 import { SessionGuard } from "../../common/guards/session.guard.js";
 import { OptionalSessionGuard } from "../../common/guards/optional-session.guard.js";
@@ -32,6 +33,10 @@ import { SessionsService, type SessionView } from "./sessions.service.js";
 import { UserStatsService, type UserStats } from "./user-stats.service.js";
 import { UpdateProfileDtoSchema, type UpdateProfileDto } from "./users.dto.js";
 import { UsersService, type MyProfileView, type PublicProfileView } from "./users.service.js";
+import { UsernameService, type NameHistoryEntry } from "./username.service.js";
+
+const ChangeNameDtoSchema = z.object({ name: z.string().min(1).max(64) }).strict();
+type ChangeNameDto = z.infer<typeof ChangeNameDtoSchema>;
 
 @Controller("api/users")
 export class UsersController {
@@ -41,7 +46,8 @@ export class UsersController {
     private readonly friends: FriendsService,
     private readonly sessions: SessionsService,
     private readonly stats: UserStatsService,
-    private readonly reports: ReportsService
+    private readonly reports: ReportsService,
+    private readonly username: UsernameService
   ) {}
 
   @Get("me")
@@ -59,6 +65,27 @@ export class UsersController {
     @Body(new ZodValidationPipe(UpdateProfileDtoSchema)) dto: UpdateProfileDto
   ): Promise<MyProfileView> {
     return this.users.updateMyProfile(req.user!.id, dto);
+  }
+
+  /**
+   * Spielername ändern — eigener Endpunkt mit Änderungs- + Freigabe-Cooldown
+   * und Historie (NICHT mehr Better-Auth `update-user`). Eindeutigkeit bleibt
+   * über `User.name @unique` als DB-Backstop erhalten.
+   */
+  @Patch("me/name")
+  @UseGuards(SessionGuard)
+  async changeName(
+    @Req() req: FastifyRequest,
+    @Body(new ZodValidationPipe(ChangeNameDtoSchema)) dto: ChangeNameDto
+  ): Promise<{ name: string }> {
+    return this.username.changeName(req.user!.id, dto.name);
+  }
+
+  /** Bisherige Spielernamen eines Users (Namen sind per Plan öffentlich). */
+  @Get(":id/name-history")
+  @UseGuards(SessionGuard)
+  async nameHistory(@Param("id") id: string): Promise<{ history: NameHistoryEntry[] }> {
+    return { history: await this.username.getHistory(id) };
   }
 
   /**

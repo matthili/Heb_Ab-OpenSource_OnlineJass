@@ -110,6 +110,11 @@
         "saved": "Name geändert.",
         "error": "Name konnte nicht geändert werden — vielleicht ist er schon vergeben."
       },
+      "nameHistory": {
+        "label": "Bisherige Spielernamen:",
+        "until": "{{name}} bis {{date}}",
+        "current": "seither aktueller Spielername"
+      },
       "namesHint": "{{firstName}}, {{lastName}} & Co. sind alle freiwillig — Spielername ({{name}}) und E-Mail ({{email}}) änderst du über die Konto-Verwaltung.",
       "realFirstName": "Vorname",
       "realLastName": "Nachname",
@@ -649,6 +654,8 @@
       "teamLabel": "Sitz {{n}}",
       "team0": "Team 1 (Sitz 1 + 3)",
       "team1": "Team 2 (Sitz 2 + 4)",
+      "teamMembers": "Team {{n}} ({{members}})",
+      "memberOnSeat": "{{name}} auf Sitz {{seat}}",
       "ownerActions": "Owner-Aktionen",
       "editSettings": "Einstellungen ändern",
       "saveSettings": "Speichern",
@@ -1075,6 +1082,11 @@
       "unreachable": "nicht erreichbar",
       "inferenceOk": "NN aktiv",
       "inferenceFallback": "Heuristik-Fallback",
+      "smtp": "SMTP (Mail-Versand)",
+      "smtpOptional": "optional",
+      "smtpDownNote": "SMTP nicht erreichbar — Verify- und Reset-Mails kommen aktuell nicht raus. Im Tab „SMTP“ prüfen.",
+      "landing": "Landing-Site",
+      "notConfigured": "nicht konfiguriert",
       "migrations": "Datenbank-Migrationen",
       "migrationsApplied": "Angewandt",
       "migrationsLatest": "Neueste",
@@ -1236,7 +1248,15 @@
       "defaultPointsLabel": "Default-Punkte-Ziel",
       "defaultPointsHelp": "Fallback, wenn der Tisch-Eröffner kein eigenes Punkteziel angibt.",
       "save": "Speichern",
-      "saved": "Gespeichert."
+      "saved": "Gespeichert.",
+      "nameCooldowns": {
+        "title": "Spielernamen-Cooldowns",
+        "intro": "Sperrfristen rund um Namensänderungen. 0 Stunden = aus. Der erste Wechsel weg vom Registrierungsnamen ist immer frei.",
+        "changeLabel": "Änderungs-Cooldown (Stunden)",
+        "changeHelp": "Wartezeit zwischen zwei eigenen Namensänderungen. Standard: 168 (7 Tage).",
+        "releaseLabel": "Freigabe-Cooldown (Stunden)",
+        "releaseHelp": "So lange bleibt ein freigegebener Name für andere Spieler gesperrt. Standard: 168 (7 Tage)."
+      }
     },
     "smtp": {
       "loading": "Lade Settings …",

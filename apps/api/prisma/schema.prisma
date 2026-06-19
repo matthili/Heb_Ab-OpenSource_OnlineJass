@@ -93,8 +93,30 @@ model User {
   // gesperrt). Tisch-scoped, kein globaler Bann.
   tableBans TableBan[] @relation("TableBanned")
 
+  // Bisherige Spielernamen (mit Zeitraum) — Profil-Anzeige + Namens-Cooldowns.
+  usernameHistory UsernameHistory[] @relation("UsernameHistory")
+
   @@index([status])
   @@index([deletedAt])
+}
+
+model UsernameHistory {
+  // Protokolliert jeden Spielernamen (User.name) mit Gültigkeitszeitraum.
+  // Der aktuell aktive Name hat `untilAt = null` (offener Eintrag). Genutzt für
+  // die Profil-Anzeige der bisherigen Namen UND die Namens-Cooldowns:
+  //   - Änderungs-Cooldown: wann hat der User zuletzt umbenannt (offener Eintrag)?
+  //   - Freigabe-Cooldown:  wurde dieser Name kürzlich von jemand anderem
+  //                         freigegeben? → (name, untilAt).
+  id      String    @id @default(cuid())
+  userId  String
+  name    String
+  fromAt  DateTime  @default(now())
+  untilAt DateTime? // null = aktuell aktiver Name
+
+  user User @relation("UsernameHistory", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([name, untilAt])
 }
 
 model Session {

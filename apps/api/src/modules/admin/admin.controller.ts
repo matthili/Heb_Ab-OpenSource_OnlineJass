@@ -35,6 +35,7 @@ import {
   type SetReportStatusDto,
 } from "../reports/reports.dto.js";
 import { ReportsService, type AdminReportView } from "../reports/reports.service.js";
+import { UsernameService, type NameCooldownSettings } from "../users/username.service.js";
 import {
   AddBannedWordDtoSchema,
   AddBlocklistDtoSchema,
@@ -45,6 +46,7 @@ import {
   SetUserStatusDtoSchema,
   SmtpSettingsDtoSchema,
   UpdateLobbySettingsDtoSchema,
+  UpdateNameCooldownsDtoSchema,
   type AddBannedWordDto,
   type AddBlocklistDto,
   type ListAuditQuery,
@@ -54,6 +56,7 @@ import {
   type SetUserStatusDto,
   type SmtpSettingsDto,
   type UpdateLobbySettingsDto,
+  type UpdateNameCooldownsDto,
 } from "./admin.dto.js";
 import {
   AdminService,
@@ -74,7 +77,8 @@ export class AdminController {
     private readonly reports: ReportsService,
     private readonly lobby: LobbyService,
     private readonly inference: InferenceClient,
-    private readonly systemStatus: SystemStatusService
+    private readonly systemStatus: SystemStatusService,
+    private readonly username: UsernameService
   ) {}
 
   // ─── Meldungen (Reports) ───────────────────────────────────────────
@@ -181,6 +185,22 @@ export class AdminController {
   ): Promise<LobbySettings> {
     await this.lobbySettings.update(req.user!.id, dto);
     return this.lobbySettings.getAll();
+  }
+
+  // ─── Spielernamen-Cooldowns (Änderung + Freigabe) ──────────────────
+
+  @Get("name-cooldowns")
+  async getNameCooldowns(): Promise<NameCooldownSettings> {
+    return this.username.getCooldowns();
+  }
+
+  @Put("name-cooldowns")
+  async updateNameCooldowns(
+    @Req() req: FastifyRequest,
+    @Body(new ZodValidationPipe(UpdateNameCooldownsDtoSchema)) dto: UpdateNameCooldownsDto
+  ): Promise<NameCooldownSettings> {
+    await this.username.updateCooldowns(req.user!.id, dto);
+    return this.username.getCooldowns();
   }
 
   // ─── Tische (Moderation / Aufräumen) ───────────────────────────────

@@ -110,6 +110,11 @@
         "saved": "Name changed.",
         "error": "Could not change the name — it may already be taken."
       },
+      "nameHistory": {
+        "label": "Previous player names:",
+        "until": "{{name}} until {{date}}",
+        "current": "since then the current name"
+      },
       "namesHint": "{{firstName}}, {{lastName}} & co. are all optional — change your player name ({{name}}) and e-mail ({{email}}) via account management.",
       "realFirstName": "First name",
       "realLastName": "Last name",
@@ -649,6 +654,8 @@
       "teamLabel": "Seat {{n}}",
       "team0": "Team 1 (seats 1 + 3)",
       "team1": "Team 2 (seats 2 + 4)",
+      "teamMembers": "Team {{n}} ({{members}})",
+      "memberOnSeat": "{{name}} on seat {{seat}}",
       "ownerActions": "Owner actions",
       "editSettings": "Edit settings",
       "saveSettings": "Save",
@@ -1075,6 +1082,11 @@
       "unreachable": "unreachable",
       "inferenceOk": "NN active",
       "inferenceFallback": "Heuristic fallback",
+      "smtp": "SMTP (mail delivery)",
+      "smtpOptional": "optional",
+      "smtpDownNote": "SMTP unreachable — verification and reset mails are not going out right now. Check the “SMTP” tab.",
+      "landing": "Landing site",
+      "notConfigured": "not configured",
       "migrations": "Database migrations",
       "migrationsApplied": "Applied",
       "migrationsLatest": "Latest",
@@ -1236,7 +1248,15 @@
       "defaultPointsLabel": "Default points target",
       "defaultPointsHelp": "Fallback when the table opener doesn't specify their own target.",
       "save": "Save",
-      "saved": "Saved."
+      "saved": "Saved.",
+      "nameCooldowns": {
+        "title": "Player-name cooldowns",
+        "intro": "Lockout periods around name changes. 0 hours = off. The first change away from the sign-up name is always free.",
+        "changeLabel": "Change cooldown (hours)",
+        "changeHelp": "Wait time between two of your own name changes. Default: 168 (7 days).",
+        "releaseLabel": "Release cooldown (hours)",
+        "releaseHelp": "How long a released name stays locked for other players. Default: 168 (7 days)."
+      }
     },
     "smtp": {
       "loading": "Loading settings …",

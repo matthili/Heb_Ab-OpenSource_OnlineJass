@@ -23,7 +23,6 @@ import { useEffect, useMemo, useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
 
 import { api, ApiError } from "~/lib/api";
-import { authClient } from "~/lib/auth-client";
 
 import { PushTogglePanel } from "./PushTogglePanel";
 
@@ -210,6 +209,7 @@ export function ProfileEditPanel() {
       {/* Spielername (Better-Auth-Feld, eigener Endpunkt) — getrennt vom
           Profil-PATCH darunter. */}
       <DisplayNameSection currentName={data.name} />
+      <NameHistorySection userId={data.id} />
       <form onSubmit={onSubmit} className="space-y-4">
         <header className="space-y-1">
           <h2 className="text-lg font-semibold">{t("profile.edit.title")}</h2>
@@ -504,9 +504,10 @@ function FieldRow({
 }
 
 /**
- * Spielername (= öffentlicher, eindeutiger Anzeigename) ändern. Läuft über
- * Better Auth (`authClient.updateUser`), NICHT über den Profil-PATCH — der
- * Server prüft die Unique-Constraint und liefert sonst einen Fehler.
+ * Spielername (= öffentlicher, eindeutiger Anzeigename) ändern. Läuft über den
+ * eigenen Endpunkt `PATCH /api/users/me/name` (Änderungs- + Freigabe-Cooldown,
+ * Namens-Historie) — NICHT mehr über Better-Auth `update-user`. Eindeutigkeit
+ * bleibt serverseitig über `User.name @unique` erzwungen.
  */
 function DisplayNameSection({ currentName }: { currentName: string }) {
   const { t } = useTranslation();
@@ -526,16 +527,18 @@ function DisplayNameSection({ currentName }: { currentName: string }) {
     setSaving(true);
     setError(null);
     try {
-      const res = await authClient.updateUser({ name: trimmed });
-      if (res.error) {
-        setError(res.error.message ?? t("profile.edit.displayName.error"));
-        return;
-      }
+      await api<{ name: string }>("/api/users/me/name", {
+        method: "PATCH",
+        body: { name: trimmed },
+      });
       setSavedAt(Date.now());
       // Header-Begrüßung + Rollen-Query teilen sich den Key ["users", "me"].
       await queryClient.invalidateQueries({ queryKey: ["users", "me"] });
-    } catch {
-      setError(t("profile.edit.displayName.error"));
+      // Namens-Historie auf der Profilseite nachziehen.
+      await queryClient.invalidateQueries({ queryKey: ["users", "name-history"] });
+    } catch (e) {
+      // Cooldown-/Freigabe-/Vergabe-Fehler kommen als ApiError mit klarer Meldung.
+      setError(e instanceof ApiError ? e.message : t("profile.edit.displayName.error"));
     } finally {
       setSaving(false);
     }
@@ -573,5 +576,34 @@ function DisplayNameSection({ currentName }: { currentName: string }) {
         <p className="text-xs text-emerald-700">{t("profile.edit.displayName.saved")}</p>
       )}
     </section>
+  );
+}
+
+/**
+ * „Bisherige Spielernamen" — zeigt die Namens-Historie (GET :id/name-history).
+ * Erst ab dem ersten Namenswechsel sichtbar (vorher gibt es nichts zu zeigen).
+ */
+function NameHistorySection({ userId }: { userId: string }) {
+  const { t } = useTranslation();
+  const { data } = useQuery<{
+    history: { name: string; fromAt: string; untilAt: string | null }[];
+  }>({
+    queryKey: ["users", "name-history", userId],
+    queryFn: () => api(`/api/users/${userId}/name-history`),
+  });
+  const history = data?.history ?? [];
+  if (history.length <= 1) return null;
+  const parts = history.map((h) =>
+    h.untilAt
+      ? t("profile.edit.nameHistory.until", {
+          name: h.name,
+          date: new Date(h.untilAt).toLocaleDateString("de-AT"),
+        })
+      : t("profile.edit.nameHistory.current")
+  );
+  return (
+    <p className="text-xs text-stone-500">
+      {t("profile.edit.nameHistory.label")} {parts.join(", ")}
+    </p>
   );
 }

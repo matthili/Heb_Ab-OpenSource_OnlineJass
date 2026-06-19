@@ -49,6 +49,16 @@ export const UpdateLobbySettingsDtoSchema = z
   .strict();
 export type UpdateLobbySettingsDto = z.infer<typeof UpdateLobbySettingsDtoSchema>;
 
+export const UpdateNameCooldownsDtoSchema = z
+  .object({
+    /** Stunden, die nach einer Umbenennung bis zur nächsten vergehen müssen (0 = aus). */
+    changeHours: z.number().int().min(0).max(8760).optional(),
+    /** Stunden, die ein freigegebener Name für andere gesperrt bleibt (0 = aus). */
+    releaseHours: z.number().int().min(0).max(8760).optional(),
+  })
+  .strict();
+export type UpdateNameCooldownsDto = z.infer<typeof UpdateNameCooldownsDtoSchema>;
+
 export const SetUserRoleDtoSchema = z
   .object({
     role: z.enum(["PLAYER", "MODERATOR", "ADMIN"]),

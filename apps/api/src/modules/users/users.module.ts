@@ -11,6 +11,7 @@ import { LeaderboardController } from "./leaderboard.controller.js";
 import { LeaderboardService } from "./leaderboard.service.js";
 import { SessionsService } from "./sessions.service.js";
 import { UserStatsService } from "./user-stats.service.js";
+import { UsernameService } from "./username.service.js";
 import { UsersController } from "./users.controller.js";
 import { UsersService } from "./users.service.js";
 
@@ -19,6 +20,7 @@ import { UsersService } from "./users.service.js";
   controllers: [UsersController, LeaderboardController],
   providers: [
     UsersService,
+    UsernameService,
     GdprService,
     FriendsService,
     SessionsService,
@@ -29,6 +31,7 @@ import { UsersService } from "./users.service.js";
   ],
   exports: [
     UsersService,
+    UsernameService,
     GdprService,
     FriendsService,
     SessionsService,

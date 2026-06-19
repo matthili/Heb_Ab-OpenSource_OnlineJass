@@ -188,6 +188,13 @@ export class AuthService implements OnModuleInit {
                 meta: { email: user.email, name: user.name },
                 ip: extractIp(ctx),
               });
+              // Initialen Namens-Historie-Eintrag anlegen (offener Eintrag) —
+              // Basis für die Profil-Anzeige + die Namens-Cooldowns.
+              await this.prisma.usernameHistory
+                .create({ data: { userId: user.id, name: user.name } })
+                .catch(() => {
+                  /* Historie ist Best-effort; ein Fehler darf die Registrierung nicht kippen. */
+                });
               // ── Erst-Admin-Bootstrap ─────────────────────────────────
               // Registriert sich der in ADMIN_EMAIL hinterlegte Account,
               // wird er sofort befördert — ohne API-Neustart. Der Start-up-
