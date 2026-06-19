@@ -118,6 +118,68 @@ describe("Chat-Wortfilter", () => {
     }
   });
 
+  it("Regex-Eintrag: roh gespeichert (nicht lowercase) + maskiert Live-Nachricht", async () => {
+    process.env["ADMIN_EMAIL"] = "mod-admin-rx@jass.local";
+    try {
+      const { http: adminHttp } = await signUpAndIn(app, {
+        email: "mod-admin-rx@jass.local",
+        password: "mod-admin-rx-passw0rd-12!",
+        name: "mod_admin_rx",
+      });
+      const add = await adminHttp.request("/api/admin/banned-words", {
+        method: "POST",
+        body: JSON.stringify({ word: "\\d{4,}", isRegex: true, reason: "Telefonnummern" }),
+      });
+      expect(add.status, JSON.stringify(add.body)).toBe(201);
+
+      const list = await adminHttp.request<{
+        entries: { word: string; isRegex: boolean }[];
+      }>("/api/admin/banned-words", { method: "GET" });
+      expect(list.body.entries[0]?.word).toBe("\\d{4,}"); // NICHT zu lowercase verändert
+      expect(list.body.entries[0]?.isRegex).toBe(true);
+
+      const { http: userHttp } = await signUpAndIn(app, {
+        email: "rx-chatty@jass.local",
+        password: "rx-chatty-passw0rd-12!",
+        name: "rx_chatty",
+      });
+      const send = await userHttp.request<{ body: string }>("/api/chat", {
+        method: "POST",
+        body: JSON.stringify({ channelKey: "lobby:global", body: "Ruf an: 123456" }),
+      });
+      expect(send.status, JSON.stringify(send.body)).toBe(201);
+      expect(send.body.body).toContain("***");
+      expect(send.body.body).not.toContain("123456");
+    } finally {
+      delete process.env["ADMIN_EMAIL"];
+    }
+  });
+
+  it("Regex-Validierung: ungültiges + nicht unterstütztes Muster → 409", async () => {
+    process.env["ADMIN_EMAIL"] = "mod-admin-bad@jass.local";
+    try {
+      const { http } = await signUpAndIn(app, {
+        email: "mod-admin-bad@jass.local",
+        password: "mod-admin-bad-passw0rd-12!",
+        name: "mod_admin_bad",
+      });
+      const unclosed = await http.request("/api/admin/banned-words", {
+        method: "POST",
+        body: JSON.stringify({ word: "(unclosed", isRegex: true }),
+      });
+      expect(unclosed.status).toBe(409);
+
+      // Rückbezug — von RE2 nicht unterstützt → muss abgelehnt werden.
+      const backref = await http.request("/api/admin/banned-words", {
+        method: "POST",
+        body: JSON.stringify({ word: "(a)\\1", isRegex: true }),
+      });
+      expect(backref.status).toBe(409);
+    } finally {
+      delete process.env["ADMIN_EMAIL"];
+    }
+  });
+
   it("Nicht-Admin bekommt Forbidden auf /api/admin/banned-words", async () => {
     const { http } = await signUpAndIn(app, {
       email: "no-admin@jass.local",

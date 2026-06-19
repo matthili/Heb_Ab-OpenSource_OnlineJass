@@ -624,11 +624,14 @@ model ChatMessage {
 /// sieht trotzdem, was er geschrieben hat, kann umformulieren). Audit-
 /// Eintrag pro Treffer.
 ///
-/// `word` ist lowercase gespeichert; Substring-Match ist case-insensitive.
+/// Literal-Einträge: `word` lowercase gespeichert, case-insensitiver Substring-
+/// Match. Regex-Einträge (`isRegex=true`): `word` ist das RE2-Muster (NICHT
+/// lowercase; Groß-/Kleinschreibung über das i-Flag), zeilenweise gematcht.
 model BannedWord {
   id        Int      @id @default(autoincrement())
   word      String   @unique
   reason    String?
+  isRegex   Boolean  @default(false)
   createdAt DateTime @default(now())
 
   @@index([createdAt])

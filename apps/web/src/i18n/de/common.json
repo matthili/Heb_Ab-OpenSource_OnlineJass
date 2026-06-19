@@ -1209,9 +1209,16 @@
       "loadOlder": "Ältere laden →"
     },
     "bannedWords": {
-      "intro": "Wörter, die in Chat-Nachrichten (Lobby, Spiel, DM) durch <code>***</code> ersetzt werden. Substring-Match, Groß-/Kleinschreibung egal. Für die Sperre von Registrierungen siehe <em>Blocklist</em> — anderes Feature.",
+      "intro": "Wörter, die in Chat-Nachrichten (Lobby, Spiel, DM) durch <code>***</code> ersetzt werden. Substring-Match, Groß-/Kleinschreibung egal. Einzelne Einträge lassen sich als RegEx (RE2) markieren. Für die Sperre von Registrierungen siehe <em>Blocklist</em> — anderes Feature.",
       "addHeading": "Wort hinzufügen",
       "wordPlaceholder": "z.B. Schimpfwort",
+      "regexLabel": "Als RegEx behandeln (RE2)",
+      "regexBadge": "RegEx",
+      "regexPlaceholder": "z.B. \\bidiot\\w*\\b  oder  \\d{6,}",
+      "regexHelpSummary": "Welche RegEx-Funktionen sind erlaubt?",
+      "regexHelpAllowed": "Erlaubt: \\w \\W \\d \\D \\s \\S, Wortgrenzen \\b, Zeichenklassen […], Gruppen (…), Quantifizierer * + ? {n,m} (auch faul: *?), Alternation |, Anker ^ $.",
+      "regexHelpNotAllowed": "Nicht möglich (genau das ist die Sicherheitsgarantie): Rückbezüge \\1 und Lookahead/Lookbehind (?=…).",
+      "regexHelpNotes": "Immer case-insensitiv; Treffer enden am Zeilenumbruch; „.“ erfasst kein \\n.",
       "add": "Hinzufügen",
       "reasonPlaceholder": "Grund (optional, intern sichtbar)",
       "addError": "Hinzufügen fehlgeschlagen.",

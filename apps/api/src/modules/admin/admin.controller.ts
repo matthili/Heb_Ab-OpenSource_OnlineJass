@@ -158,7 +158,7 @@ export class AdminController {
     @Req() req: FastifyRequest,
     @Body(new ZodValidationPipe(AddBannedWordDtoSchema)) dto: AddBannedWordDto
   ): Promise<{ ok: true }> {
-    await this.bannedWords.add(req.user!.id, dto.word, dto.reason ?? null);
+    await this.bannedWords.add(req.user!.id, dto.word, dto.reason ?? null, dto.isRegex ?? false);
     return { ok: true };
   }
 

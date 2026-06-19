@@ -140,6 +140,9 @@ importers:
       prisma:
         specifier: ^7.8.0
         version: 7.8.0(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(magicast@0.5.3)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(typescript@5.9.3)
+      re2js:
+        specifier: ^2.8.3
+        version: 2.8.3
       reflect-metadata:
         specifier: ^0.2.0
         version: 0.2.2
@@ -6323,6 +6326,10 @@ packages:
 
   rc9@3.0.1:
     resolution: {integrity: sha512-gMDyleLWVE+i6Sgtc0QbbY6pEKqYs97NGi6isHQPqYlLemPoO8dxQ3uGi0f4NiP98c+jMW6cG1Kx9dDwfvqARQ==}
+
+  re2js@2.8.3:
+    resolution: {integrity: sha512-lUKeXVwMqU302DM/WaOm33XF2hhzjGUZ8CbLg4zSAMpW2PPkJ2+is25AROevNiw+DytFmKU5gsQ92cB1Kxy+fA==}
+    engines: {node: '>=18.0.0'}
 
   react-dom@19.2.6:
     resolution: {integrity: sha512-0prMI+hvBbPjsWnxDLxlCGyM8PN6UuWjEUCYmZhO67xIV9Xasa/r/vDnq+Xyq4Lo27g8QSbO5YzARu0D1Sps3g==}
@@ -14121,6 +14128,8 @@ snapshots:
     dependencies:
       defu: 6.1.7
       destr: 2.0.5
+
+  re2js@2.8.3: {}
 
   react-dom@19.2.6(react@19.2.6):
     dependencies:

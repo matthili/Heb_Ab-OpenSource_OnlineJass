@@ -29,17 +29,19 @@ function BannedWordsPage() {
 
   const [word, setWord] = useState("");
   const [reason, setReason] = useState("");
+  const [isRegex, setIsRegex] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const addMut = useMutation({
     mutationFn: () =>
       api("/api/admin/banned-words", {
         method: "POST",
-        body: { word: word.trim(), ...(reason.trim() ? { reason: reason.trim() } : {}) },
+        body: { word: word.trim(), isRegex, ...(reason.trim() ? { reason: reason.trim() } : {}) },
       }),
     onSuccess: () => {
       setWord("");
       setReason("");
+      setIsRegex(false);
       setError(null);
       queryClient.invalidateQueries({ queryKey });
     },
@@ -72,10 +74,14 @@ function BannedWordsPage() {
             type="text"
             value={word}
             onChange={(e) => setWord(e.target.value)}
-            placeholder={t("admin.bannedWords.wordPlaceholder")}
+            placeholder={
+              isRegex
+                ? t("admin.bannedWords.regexPlaceholder")
+                : t("admin.bannedWords.wordPlaceholder")
+            }
             required
-            maxLength={64}
-            className="flex-1 rounded border border-stone-300 px-3 py-2"
+            maxLength={isRegex ? 200 : 64}
+            className={`flex-1 rounded border border-stone-300 px-3 py-2 ${isRegex ? "font-mono" : ""}`}
           />
           <button
             type="submit"
@@ -85,6 +91,20 @@ function BannedWordsPage() {
             {t("admin.bannedWords.add")}
           </button>
         </div>
+        <label className="flex items-center gap-2 text-sm text-stone-700">
+          <input type="checkbox" checked={isRegex} onChange={(e) => setIsRegex(e.target.checked)} />
+          {t("admin.bannedWords.regexLabel")}
+        </label>
+        {isRegex && (
+          <details className="text-xs text-stone-500">
+            <summary className="cursor-pointer">{t("admin.bannedWords.regexHelpSummary")}</summary>
+            <ul className="mt-1 list-disc space-y-0.5 pl-5">
+              <li>{t("admin.bannedWords.regexHelpAllowed")}</li>
+              <li>{t("admin.bannedWords.regexHelpNotAllowed")}</li>
+              <li>{t("admin.bannedWords.regexHelpNotes")}</li>
+            </ul>
+          </details>
+        )}
         <input
           type="text"
           value={reason}
@@ -119,7 +139,14 @@ function BannedWordsPage() {
             <tbody>
               {data.entries.map((e) => (
                 <tr key={e.word} className="border-b border-stone-100">
-                  <td className="py-2 pr-3 font-mono text-xs">{e.word}</td>
+                  <td className="py-2 pr-3 font-mono text-xs">
+                    {e.isRegex && (
+                      <span className="mr-1 inline-block rounded border border-violet-300 bg-violet-50 px-1 text-[10px] font-medium text-violet-900">
+                        {t("admin.bannedWords.regexBadge")}
+                      </span>
+                    )}
+                    {e.word}
+                  </td>
                   <td className="py-2 pr-3 text-stone-600">{e.reason ?? "—"}</td>
                   <td className="py-2 pr-3 text-stone-500 text-xs">
                     {new Date(e.createdAt).toLocaleString()}

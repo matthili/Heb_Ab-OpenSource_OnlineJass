@@ -39,6 +39,7 @@ export interface BlocklistEntry {
 export interface BannedWordEntry {
   word: string;
   reason: string | null;
+  isRegex: boolean;
   createdAt: string;
 }
 

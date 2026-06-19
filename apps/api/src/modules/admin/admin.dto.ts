@@ -31,8 +31,11 @@ export type AddBlocklistDto = z.infer<typeof AddBlocklistDtoSchema>;
 
 export const AddBannedWordDtoSchema = z
   .object({
-    word: z.string().min(1).max(64).trim(),
+    // 200 statt 64: Regex-Muster brauchen mehr Platz als ein literales Wort.
+    word: z.string().min(1).max(200).trim(),
     reason: z.string().max(500).optional(),
+    /** true = `word` ist ein RE2-Muster (eingeschränktes Regex), kein Literal. */
+    isRegex: z.boolean().optional(),
   })
   .strict();
 export type AddBannedWordDto = z.infer<typeof AddBannedWordDtoSchema>;

@@ -1209,9 +1209,16 @@
       "loadOlder": "Load older →"
     },
     "bannedWords": {
-      "intro": "Words that get replaced with <code>***</code> in chat messages (lobby, game, DM). Substring match, case-insensitive. To block registrations see <em>Blocklist</em> — a different feature.",
+      "intro": "Words that get replaced with <code>***</code> in chat messages (lobby, game, DM). Substring match, case-insensitive. Individual entries can be marked as RegEx (RE2). To block registrations see <em>Blocklist</em> — a different feature.",
       "addHeading": "Add word",
       "wordPlaceholder": "e.g. swear word",
+      "regexLabel": "Treat as RegEx (RE2)",
+      "regexBadge": "RegEx",
+      "regexPlaceholder": "e.g. \\bidiot\\w*\\b  or  \\d{6,}",
+      "regexHelpSummary": "Which RegEx features are allowed?",
+      "regexHelpAllowed": "Allowed: \\w \\W \\d \\D \\s \\S, word boundaries \\b, character classes […], groups (…), quantifiers * + ? {n,m} (incl. lazy: *?), alternation |, anchors ^ $.",
+      "regexHelpNotAllowed": "Not possible (that's exactly the safety guarantee): backreferences \\1 and lookahead/lookbehind (?=…).",
+      "regexHelpNotes": "Always case-insensitive; matches stop at line breaks; “.” does not cross \\n.",
       "add": "Add",
       "reasonPlaceholder": "Reason (optional, internal only)",
       "addError": "Could not add.",
