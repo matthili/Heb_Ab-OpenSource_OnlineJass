@@ -11,6 +11,7 @@ import { UsersModule } from "../users/users.module.js";
 import { AdminBootstrapService } from "./admin-bootstrap.service.js";
 import { AdminController } from "./admin.controller.js";
 import { AdminService } from "./admin.service.js";
+import { DegradationAlertService } from "./degradation-alert.service.js";
 import { SystemStatusService } from "./system-status.service.js";
 
 @Module({
@@ -24,7 +25,14 @@ import { SystemStatusService } from "./system-status.service.js";
   controllers: [AdminController],
   // AdminBootstrapService hat keinen Controller — er hängt nur am
   // OnApplicationBootstrap-Lifecycle (Erst-Admin-Beförderung via ADMIN_EMAIL).
-  providers: [AdminService, AdminBootstrapService, SystemStatusService, SessionGuard, RolesGuard],
+  providers: [
+    AdminService,
+    AdminBootstrapService,
+    SystemStatusService,
+    DegradationAlertService,
+    SessionGuard,
+    RolesGuard,
+  ],
   exports: [AdminService],
 })
 export class AdminModule {}
