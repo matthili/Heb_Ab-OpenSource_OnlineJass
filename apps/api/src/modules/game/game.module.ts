@@ -12,6 +12,7 @@ import { GameLockService } from "./game-lock.service.js";
 import { GameService } from "./game.service.js";
 import { PerUserSocketRegistry } from "./per-user-socket-registry.service.js";
 import { ReplayService } from "./replay.service.js";
+import { StuckGameWatchdogService } from "./stuck-game-watchdog.service.js";
 import { AIPlayerFactory } from "./players/ai-player.factory.js";
 
 @Module({
@@ -27,6 +28,7 @@ import { AIPlayerFactory } from "./players/ai-player.factory.js";
     DisconnectVoteService,
     AfkService,
     AIPlayerFactory,
+    StuckGameWatchdogService,
     SessionGuard,
   ],
   exports: [

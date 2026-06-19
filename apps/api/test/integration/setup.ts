@@ -188,6 +188,9 @@ export async function setupTestApp(): Promise<TestAppHandle> {
   // Chat-Cleanup-Interval in Tests deaktivieren — analog zum Auto-Fill,
   // Tests stoßen `ChatCleanupService.tick()` manuell an.
   process.env["DISABLE_CHAT_CLEANUP"] = "1";
+  // Spiel-Watchdog-Interval in Tests deaktivieren — sonst könnte er mitten im
+  // Test eine Partie „wieder antreiben" und die Erwartungen verschieben.
+  process.env["DISABLE_GAME_WATCHDOG"] = "1";
 
   // ─── 3. Prisma-Migrate gegen Test-DB ──────────────────────────────────
   // `prisma migrate deploy` aus apps/api/. Wir spawn'en den CLI-Subprocess statt

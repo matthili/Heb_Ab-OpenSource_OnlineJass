@@ -51,6 +51,7 @@ import { DisconnectVoteService } from "./disconnect-vote.service.js";
 import { GameLockService } from "./game-lock.service.js";
 import { GameService, type AnnouncementDecision, type PlayerView } from "./game.service.js";
 import { PerUserSocketRegistry } from "./per-user-socket-registry.service.js";
+import { StuckGameWatchdogService } from "./stuck-game-watchdog.service.js";
 import { SocketRateTracker } from "../../common/ws-rate-limit.js";
 import type { VoteChoice } from "./disconnect-vote.js";
 
@@ -122,7 +123,8 @@ export class GameGateway
     private readonly disconnectVote: DisconnectVoteService,
     private readonly chatGateway: ChatGateway,
     private readonly prisma: PrismaService,
-    private readonly afk: AfkService
+    private readonly afk: AfkService,
+    private readonly stuckWatchdog: StuckGameWatchdogService
   ) {
     // Defensive: alle DI-Params sollten von NestJS gefüllt sein. Wenn nicht,
     // ist das ein Setup-Problem (z.B. fehlende `reflect-metadata` /
@@ -201,6 +203,12 @@ export class GameGateway
         // async aufgelöst (der Hook ist synchron) → fire-and-forget.
         void this.postSystemToTableChat(gameId, body);
       },
+    });
+
+    // Spiel-Watchdog: treibt hängende Partien wieder an (Selbstheilung). Der
+    // Antrieb läuft durch den Game-Lock + die passende Varianten-Schleife.
+    this.stuckWatchdog.setHooks({
+      resume: (gameId, variant) => this.resumeStuckGame(gameId, variant),
     });
 
     // Nach einem Neustart die persistierten Bodensee-Grace-Fenster wieder
@@ -1184,6 +1192,22 @@ export class GameGateway
       await sleep(aiStepDelayMs());
     }
     this.log.warn({ gameId }, "driveBodenseeAIsLoop hat Sicherheitsgrenze erreicht");
+  }
+
+  /**
+   * Vom Spiel-Watchdog aufgerufen: treibt eine als hängend erkannte Partie
+   * durch den Game-Lock wieder an — derselbe Pfad wie nach einem Zug, also
+   * idempotent (passiert nichts, wenn ein Mensch dran oder das Spiel vorbei
+   * ist). Die Variante entscheidet, welche Antriebs-Schleife greift.
+   */
+  private async resumeStuckGame(gameId: string, variant: string): Promise<void> {
+    await this.locks.withLock(gameId, async () => {
+      if (variant === "BODENSEE_2P") {
+        await this.driveBodenseeAIsLoop(gameId);
+      } else {
+        await this.driveAIsLoop(gameId);
+      }
+    });
   }
 
   /**
