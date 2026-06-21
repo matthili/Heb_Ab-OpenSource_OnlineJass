@@ -1275,6 +1275,8 @@
       "passwordLabelSet": "Passwort (gesetzt; leer = unverändert)",
       "passwordLabel": "Passwort",
       "fromLabel": "Absender (From-Header)",
+      "noReplyLabel": "No-Reply-Adresse",
+      "noReplyHelp": "An: Mails weisen darauf hin, dass Antworten nicht gelesen werden. Aus: für eine betreute Adresse, auf die z. B. Supportanfragen gehen dürfen.",
       "saveError": "Speichern fehlgeschlagen.",
       "saveSuccess": "Gespeichert. Der nächste Mail-Versand nutzt die neuen Settings.",
       "saving": "Speichere …",

@@ -135,6 +135,8 @@ services:
       SMTP_USER: ${SMTP_USER:-}
       SMTP_PASSWORD: ${SMTP_PASSWORD:-}
       SMTP_FROM: ${SMTP_FROM:-}
+      # No-Reply-Adresse? (leer/true = ja → Hinweis in Mails; 0/false = überwacht)
+      SMTP_NO_REPLY: ${SMTP_NO_REPLY:-}
       LOG_LEVEL: ${LOG_LEVEL:-info}
       # APP_SECRET / BETTER_AUTH_SECRET bewusst NICHT gesetzt → der Entrypoint
       # generiert sie einmalig und persistiert sie nach /app/data.
@@ -175,6 +177,8 @@ services:
       SMTP_USER: ${SMTP_USER:-}
       SMTP_PASSWORD: ${SMTP_PASSWORD:-}
       SMTP_FROM: ${SMTP_FROM:-}
+      # No-Reply-Adresse? (leer/true = ja → Hinweis in Mails; 0/false = überwacht)
+      SMTP_NO_REPLY: ${SMTP_NO_REPLY:-}
     depends_on:
       - api
     networks: [jass]

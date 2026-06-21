@@ -1275,6 +1275,8 @@
       "passwordLabelSet": "Password (set; empty = unchanged)",
       "passwordLabel": "Password",
       "fromLabel": "Sender (From header)",
+      "noReplyLabel": "No-reply address",
+      "noReplyHelp": "On: mails note that replies are not read. Off: for a monitored address that may receive e.g. support requests.",
       "saveError": "Could not save.",
       "saveSuccess": "Saved. The next mail delivery uses the new settings.",
       "saving": "Saving …",

@@ -27,6 +27,8 @@ export interface SmtpSettingsView {
   port?: number;
   user?: string | null;
   from?: string;
+  /** true = No-Reply-Adresse (Antworten werden verworfen). Default true. */
+  noReply?: boolean;
   hasPassword: boolean;
 }
 

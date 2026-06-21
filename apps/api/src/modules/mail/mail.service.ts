@@ -28,6 +28,8 @@ interface SmtpConfig {
   user: string | undefined;
   password: string | undefined;
   from: string;
+  /** true = No-Reply-Adresse (Antworten werden verworfen) → Hinweis in der Mail. */
+  noReply: boolean;
 }
 
 interface MailEnvelope {
@@ -58,6 +60,7 @@ export class MailService {
       user: fromDb.user ?? (process.env["SMTP_USER"] || undefined),
       password: fromDb.password ?? (process.env["SMTP_PASSWORD"] || undefined),
       from: fromDb.from ?? process.env["SMTP_FROM"] ?? "noreply@jass.local",
+      noReply: fromDb.noReply ?? parseNoReply(process.env["SMTP_NO_REPLY"]),
     };
   }
 
@@ -130,6 +133,7 @@ export class MailService {
     verifyUrl: string;
   }): Promise<void> {
     const { to, displayName, verifyUrl } = opts;
+    const note = replyPolicyNote((await this.resolveConfig()).noReply);
     const subject = "Willkommen beim Vorarlberger Kreuz-Jass — E-Mail bestätigen";
     const text = [
       `Servus ${displayName},`,
@@ -140,6 +144,8 @@ export class MailService {
       `Der Link ist 24 Stunden gültig.`,
       ``,
       `Wenn du diese Mail nicht erwartet hast, ignoriere sie einfach — niemand kann ohne Bestätigung mit deiner Adresse spielen.`,
+      ``,
+      note,
       ``,
       `Pfiati,`,
       `Die Vorarlberger Jass-App`,
@@ -160,6 +166,7 @@ export class MailService {
     <p style="font-size: 12px; color: #999; margin-top: 32px;">
       Der Link ist 24 Stunden gültig. Wenn du diese Mail nicht erwartet hast, ignoriere sie.
     </p>
+    <p style="font-size: 12px; color: #999;">${escapeHtml(note)}</p>
   </body>
 </html>`;
     await this.send({ to, subject, html, text });
@@ -176,6 +183,7 @@ export class MailService {
     resetUrl: string;
   }): Promise<void> {
     const { to, displayName, resetUrl } = opts;
+    const note = replyPolicyNote((await this.resolveConfig()).noReply);
     const subject = "Heb ab! — Passwort zurücksetzen";
     const text = [
       `Servus ${displayName},`,
@@ -186,6 +194,8 @@ export class MailService {
       `Der Link ist 1 Stunde gültig.`,
       ``,
       `Wenn du den Reset nicht angefordert hast, ignoriere diese Mail — dein Passwort bleibt unverändert.`,
+      ``,
+      note,
       ``,
       `Pfiati,`,
       `Die Vorarlberger Jass-App`,
@@ -206,10 +216,27 @@ export class MailService {
     <p style="font-size: 12px; color: #999; margin-top: 32px;">
       Der Link ist 1 Stunde gültig. Wenn du den Reset nicht angefordert hast, ignoriere diese Mail.
     </p>
+    <p style="font-size: 12px; color: #999;">${escapeHtml(note)}</p>
   </body>
 </html>`;
     await this.send({ to, subject, html, text });
   }
+}
+
+/**
+ * Parst SMTP_NO_REPLY. Unbekannt/leer → true (Default, passend zur
+ * `noreply@`-Standardadresse). „0/false/no/off" (case-insensitiv) → false.
+ */
+export function parseNoReply(raw: string | undefined): boolean {
+  if (raw === undefined || raw.trim() === "") return true;
+  return !/^(0|false|no|off)$/i.test(raw.trim());
+}
+
+/** Fußnote zur Antwort-Politik der Absende-Adresse (No-Reply vs. überwacht). */
+export function replyPolicyNote(noReply: boolean): string {
+  return noReply
+    ? "Diese Nachricht kommt von einer No-Reply-Adresse — Antworten darauf werden nicht gelesen und automatisch verworfen."
+    : "Bei Fragen kannst du direkt auf diese E-Mail antworten.";
 }
 
 function escapeHtml(s: string): string {

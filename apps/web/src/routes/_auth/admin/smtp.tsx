@@ -28,6 +28,7 @@ function SmtpPage() {
   const [user, setUser] = useState("");
   const [password, setPassword] = useState("");
   const [from, setFrom] = useState("");
+  const [noReply, setNoReply] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
@@ -38,6 +39,7 @@ function SmtpPage() {
       setPort(data.port ?? "");
       setUser(data.user ?? "");
       setFrom(data.from ?? "");
+      setNoReply(data.noReply ?? true);
     }
   }, [data]);
 
@@ -66,6 +68,7 @@ function SmtpPage() {
     if (user.trim() !== (data?.user ?? "")) patch.user = user.trim() || null;
     if (from.trim()) patch.from = from.trim();
     if (password) patch.password = password;
+    patch.noReply = noReply;
     mut.mutate(patch);
   }
 
@@ -130,6 +133,19 @@ function SmtpPage() {
           className="w-full rounded border border-stone-300 px-3 py-2"
         />
       </FieldRow>
+
+      <label className="flex items-start gap-2 text-sm text-stone-700">
+        <input
+          type="checkbox"
+          checked={noReply}
+          onChange={(e) => setNoReply(e.target.checked)}
+          className="mt-1"
+        />
+        <span>
+          {t("admin.smtp.noReplyLabel")}
+          <span className="block text-xs text-stone-500">{t("admin.smtp.noReplyHelp")}</span>
+        </span>
+      </label>
 
       {error && (
         <p role="alert" className="text-sm text-rose-700">

@@ -133,6 +133,8 @@ services:
       SMTP_USER: ${SMTP_USER:-}
       SMTP_PASSWORD: ${SMTP_PASSWORD:-}
       SMTP_FROM: ${SMTP_FROM:?required}
+      # No-Reply-Adresse? (leer/true = ja → Hinweis in Mails; 0/false = überwacht)
+      SMTP_NO_REPLY: ${SMTP_NO_REPLY:-}
       LOG_LEVEL: ${LOG_LEVEL:-info}
     depends_on:
       postgres: { condition: service_healthy }
@@ -173,6 +175,8 @@ services:
       SMTP_USER: ${SMTP_USER:-}
       SMTP_PASSWORD: ${SMTP_PASSWORD:-}
       SMTP_FROM: ${SMTP_FROM:?required}
+      # No-Reply-Adresse? (leer/true = ja → Hinweis in Mails; 0/false = überwacht)
+      SMTP_NO_REPLY: ${SMTP_NO_REPLY:-}
     depends_on:
       - api
     networks: [jass-internal]

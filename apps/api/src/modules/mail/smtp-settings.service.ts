@@ -30,6 +30,8 @@ export interface SmtpSettings {
   user: string | null;
   password: string | null;
   from: string;
+  /** true = No-Reply-Adresse (Antworten werden verworfen → Hinweis in Mails). */
+  noReply: boolean;
 }
 
 interface EncryptedBlob {
@@ -44,6 +46,7 @@ const KEYS = {
   user: "smtp.user",
   password: "smtp.password",
   from: "smtp.from",
+  noReply: "smtp.noReply",
 } as const;
 
 @Injectable()
@@ -84,6 +87,8 @@ export class SmtpSettingsService {
     if (user) result.user = user.value ?? null;
     const from = map.get(KEYS.from) as { value?: string } | undefined;
     if (from?.value) result.from = from.value;
+    const noReply = map.get(KEYS.noReply) as { value?: boolean } | undefined;
+    if (typeof noReply?.value === "boolean") result.noReply = noReply.value;
 
     const pwBlob = map.get(KEYS.password) as EncryptedBlob | { value: null } | undefined;
     if (pwBlob && "ciphertext" in pwBlob) {
@@ -112,6 +117,7 @@ export class SmtpSettingsService {
       user?: string | null | undefined;
       password?: string | null | undefined;
       from?: string | undefined;
+      noReply?: boolean | undefined;
     }
   ): Promise<void> {
     const upserts: { key: string; value: unknown }[] = [];
@@ -119,6 +125,8 @@ export class SmtpSettingsService {
     if (patch.port !== undefined) upserts.push({ key: KEYS.port, value: { value: patch.port } });
     if (patch.user !== undefined) upserts.push({ key: KEYS.user, value: { value: patch.user } });
     if (patch.from !== undefined) upserts.push({ key: KEYS.from, value: { value: patch.from } });
+    if (patch.noReply !== undefined)
+      upserts.push({ key: KEYS.noReply, value: { value: patch.noReply } });
     if (patch.password !== undefined) {
       const blob = patch.password === null ? { value: null } : this.encrypt(patch.password);
       upserts.push({ key: KEYS.password, value: blob });

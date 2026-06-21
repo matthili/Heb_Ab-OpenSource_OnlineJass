@@ -10,6 +10,8 @@ export const SmtpSettingsDtoSchema = z
     user: z.string().max(255).nullable().optional(),
     password: z.string().max(512).nullable().optional(),
     from: z.string().min(1).max(255).optional(),
+    /** true = No-Reply-Adresse (Antworten werden verworfen → Hinweis in Mails). */
+    noReply: z.boolean().optional(),
   })
   .strict();
 export type SmtpSettingsDto = z.infer<typeof SmtpSettingsDtoSchema>;
