@@ -124,7 +124,7 @@ Erreichbar unter `http://localhost` (für andere LAN-Geräte zusätzlich `JASS_H
 
 ### Variante B — öffentlich (Domain + Cloudflare Tunnel)
 
-Selbst-Registrierung mit Captcha + E-Mail-Verifikation; TLS macht Cloudflare. Lege eine `.env` neben die Compose-Datei — diese gut ein Dutzend Zeilen genügen:
+Selbst-Registrierung mit Captcha + E-Mail-Verifikation; TLS macht Cloudflare. Am schnellsten per Vorlage: `cp .env.tunnel.example .env` und ausfüllen. Inhalt (diese gut ein Dutzend Zeilen genügen):
 
 ```dotenv
 # Frei wählbar:

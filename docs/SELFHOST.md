@@ -163,7 +163,8 @@ Admin** —, muss SMTP **schon beim ersten Start** laufen, sonst kann sich niema
 `.env` auf **deinem** Rechner — das ist normal; später kannst du SMTP ins
 Admin-Panel umziehen (dort verschlüsselt).
 
-**2. `.env` anlegen — ohne Editor.** Werte oben einsetzen, dann den **ganzen
+**2. `.env` anlegen.** Am einfachsten die mitgelieferte Vorlage kopieren und die
+Werte eintragen: `cp .env.tunnel.example .env`. Oder ohne Editor den **ganzen
 Block** auf einmal in die Konsole einfügen (schreibt die Datei in einem Rutsch,
 kein nano nötig):
 
