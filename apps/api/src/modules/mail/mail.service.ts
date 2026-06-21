@@ -16,7 +16,7 @@
  * eine Mail-Art (Verify), inzwischen sind's drei. Bei mehr Templates
  * können wir auf eine Template-Lib umsteigen.
  */
-import { Injectable, Logger } from "@nestjs/common";
+import { Injectable, Logger, type OnApplicationBootstrap } from "@nestjs/common";
 import { createHash } from "node:crypto";
 import nodemailer, { type Transporter } from "nodemailer";
 
@@ -40,12 +40,39 @@ interface MailEnvelope {
 }
 
 @Injectable()
-export class MailService {
+export class MailService implements OnApplicationBootstrap {
   private readonly log = new Logger(MailService.name);
   private cachedTransporter: Transporter | null = null;
   private cachedConfigHash = "";
 
   constructor(private readonly settings: SmtpSettingsService) {}
+
+  /**
+   * SMTP-Preflight beim Start: Läuft die Instanz mit E-Mail-Aktivierung
+   * (`ACCOUNT_ACTIVATION=email`), ist funktionierendes SMTP Pflicht — sonst kann
+   * sich niemand (auch der Admin nicht) verifizieren. Wir prüfen das EINMAL beim
+   * Boot und warnen LAUT, damit ein kaputtes SMTP nicht erst beim gesperrten
+   * Login auffällt. Fire-and-forget: blockiert den Boot nicht; in Tests aus.
+   */
+  onApplicationBootstrap(): void {
+    if (process.env["NODE_ENV"] === "test") return;
+    if ((process.env["ACCOUNT_ACTIVATION"] ?? "email") !== "email") return;
+    void this.preflightSmtp();
+  }
+
+  private async preflightSmtp(): Promise<void> {
+    const { host, port, ok } = await this.verifyConnection();
+    if (ok) {
+      this.log.log({ host, port }, "SMTP-Preflight ok — Verifikations-Mails können raus.");
+    } else {
+      this.log.error(
+        { host, port },
+        "SMTP NICHT erreichbar, aber ACCOUNT_ACTIVATION=email — Verifikations- und " +
+          "Reset-Mails kommen nicht an; niemand (auch kein Admin) kann sich verifizieren. " +
+          "SMTP_*-Variablen bzw. die SMTP-Einstellungen prüfen."
+      );
+    }
+  }
 
   /**
    * Effektive Config laden: erst Env-Default, dann DB-Werte drüber.
