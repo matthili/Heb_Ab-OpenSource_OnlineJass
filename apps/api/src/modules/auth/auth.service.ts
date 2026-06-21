@@ -204,7 +204,10 @@ export class AuthService implements OnModuleInit {
               if (adminEmail && user.email.trim().toLowerCase() === adminEmail) {
                 await this.prisma.user.update({
                   where: { id: user.id },
-                  data: { role: "ADMIN" },
+                  // Zugleich verifizieren: sonst bliebe der Admin bei (noch)
+                  // nicht funktionierendem SMTP ausgesperrt und käme nicht ins
+                  // Panel, um SMTP zu reparieren. Eigene ADMIN_EMAIL → ok.
+                  data: { role: "ADMIN", emailVerified: true },
                 });
                 await audit.record({
                   action: ADMIN_BOOTSTRAP_ACTION,

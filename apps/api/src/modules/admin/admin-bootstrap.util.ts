@@ -55,13 +55,21 @@ export async function promoteUserToAdmin(
   const normalized = email.trim().toLowerCase();
   const user = await prisma.user.findFirst({
     where: { email: { equals: normalized, mode: "insensitive" } },
-    select: { id: true, email: true, role: true },
+    select: { id: true, email: true, role: true, emailVerified: true },
   });
   if (!user) return { kind: "user-not-found", email: normalized };
-  if (user.role === ADMIN_ROLE) {
+  // Das Admin-Konto wird zugleich als verifiziert markiert: bei E-Mail-
+  // Aktivierung wäre der Betreiber sonst ausgesperrt, falls SMTP beim
+  // Erst-Setup (noch) nicht läuft — er käme nicht ins Panel, um SMTP zu
+  // reparieren. Es ist seine eigene, in ADMIN_EMAIL hinterlegte Adresse →
+  // unbedenklich. Deshalb gilt „nichts zu tun" erst, wenn BEIDES schon stimmt.
+  if (user.role === ADMIN_ROLE && user.emailVerified) {
     return { kind: "already-admin", userId: user.id, email: user.email };
   }
-  await prisma.user.update({ where: { id: user.id }, data: { role: ADMIN_ROLE } });
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { role: ADMIN_ROLE, emailVerified: true },
+  });
   return { kind: "promoted", userId: user.id, email: user.email, previousRole: user.role };
 }
 

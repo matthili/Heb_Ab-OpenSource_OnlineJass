@@ -93,16 +93,19 @@ describe("Erst-Admin-Bootstrap — ADMIN_EMAIL", () => {
     expect(user?.role).toBe("PLAYER");
   });
 
-  it("Startup-Pfad: bereits existierender User wird nachträglich befördert — idempotent", async () => {
+  it("Startup-Pfad: bereits existierender User wird nachträglich befördert + verifiziert — idempotent", async () => {
     // 1. User registriert sich, BEVOR ADMIN_EMAIL gesetzt ist → bleibt PLAYER.
     const { userId } = await signUpAndIn(app, {
       email: "spaeter-admin@jass.local",
       password: PASSWORD,
       name: "spaeter_admin",
     });
+    // Unverifizierten Erst-Setup-Zustand simulieren (z.B. SMTP lief noch nicht,
+    // also kein Verify-Klick). signUpAndIn verifiziert sonst mit.
+    await app.prisma.user.update({ where: { id: userId }, data: { emailVerified: false } });
     let user = await app.prisma.user.findUnique({
       where: { id: userId },
-      select: { role: true },
+      select: { role: true, emailVerified: true },
     });
     expect(user?.role).toBe("PLAYER");
 
@@ -113,9 +116,12 @@ describe("Erst-Admin-Bootstrap — ADMIN_EMAIL", () => {
 
     user = await app.prisma.user.findUnique({
       where: { id: userId },
-      select: { role: true },
+      select: { role: true, emailVerified: true },
     });
     expect(user?.role).toBe("ADMIN");
+    // Deadlock-Breaker: das Admin-Konto ist jetzt auch verifiziert — der
+    // Betreiber kommt also auch bei (noch) nicht laufendem SMTP rein.
+    expect(user?.emailVerified).toBe(true);
 
     // 3. Zweiter Aufruf (z.B. nächster API-Start) ist idempotent.
     const second = await promoteConfiguredAdminEmail(app.prisma);
