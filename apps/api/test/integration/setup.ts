@@ -45,6 +45,7 @@ import { ReplayService } from "../../src/modules/game/replay.service.js";
 import { GdprService } from "../../src/modules/users/gdpr.service.js";
 import { AutoFillService } from "../../src/modules/lobby/auto-fill.service.js";
 import { MailService } from "../../src/modules/mail/mail.service.js";
+import { SmtpSettingsService } from "../../src/modules/mail/smtp-settings.service.js";
 import { PrismaService } from "../../src/modules/prisma/prisma.service.js";
 import { RedisService } from "../../src/modules/redis/redis.service.js";
 
@@ -242,7 +243,17 @@ export async function setupTestApp(): Promise<TestAppHandle> {
 
   // ─── 5. Mail-Sink statt echtem SMTP ───────────────────────────────────
   const capturedMails: CapturedMail[] = [];
-  const mailSink: Pick<MailService, "send" | "sendVerificationMail"> = {
+  // Nach dem App-Bau mit der echten SmtpSettingsService befüllt — so liefert
+  // `effectiveConfig()` echte Env+DB-Werte, statt die Merge-Logik im Stub zu doppeln.
+  let realSmtpSettings: SmtpSettingsService | null = null;
+  const mailSink: Pick<
+    MailService,
+    | "send"
+    | "sendVerificationMail"
+    | "sendResetPasswordMail"
+    | "verifyConnection"
+    | "effectiveConfig"
+  > = {
     async send() {
       /* no-op — Verify-Mails laufen via sendVerificationMail */
     },
@@ -252,6 +263,17 @@ export async function setupTestApp(): Promise<TestAppHandle> {
         displayName: opts.displayName,
         verifyUrl: opts.verifyUrl,
       });
+    },
+    async sendResetPasswordMail() {
+      /* no-op — Passwort-Reset-Mails werden im Test nicht versendet */
+    },
+    async verifyConnection() {
+      // Kein echter SMTP-Connect im Test; das Status-Dashboard begnügt sich mit ok:false.
+      return { host: "test", port: 0, ok: false };
+    },
+    async effectiveConfig() {
+      // Delegiert an die ECHTE Konfig-Auflösung (Env + DB) — nur das Senden ist gefälscht.
+      return new MailService(realSmtpSettings!).effectiveConfig();
     },
   };
 
@@ -285,6 +307,8 @@ export async function setupTestApp(): Promise<TestAppHandle> {
   const replaySvc = app.get(ReplayService);
   const gdprSvc = app.get(GdprService);
   const adminSvc = app.get(AdminService);
+  // Echte SmtpSettingsService für den Mail-Stub-Delegate (effectiveConfig).
+  realSmtpSettings = app.get(SmtpSettingsService);
   const autoFillSvc = app.get(AutoFillService);
   const chatCleanupSvc = app.get(ChatCleanupService);
 

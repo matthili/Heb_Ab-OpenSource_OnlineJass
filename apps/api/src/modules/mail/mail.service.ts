@@ -91,6 +91,31 @@ export class MailService implements OnApplicationBootstrap {
     };
   }
 
+  /**
+   * Effektive SMTP-Konfiguration für die Admin-Anzeige — Env-Defaults + DB-
+   * Overrides gemerged (genau wie beim echten Versand), aber OHNE das Passwort
+   * im Klartext (nur `hasPassword`). So zeigt das Panel, was wirklich aktiv ist,
+   * auch wenn die Werte nur per `.env` gesetzt sind.
+   */
+  async effectiveConfig(): Promise<{
+    host: string;
+    port: number;
+    user: string | null;
+    from: string;
+    noReply: boolean;
+    hasPassword: boolean;
+  }> {
+    const cfg = await this.resolveConfig();
+    return {
+      host: cfg.host,
+      port: cfg.port,
+      user: cfg.user ?? null,
+      from: cfg.from,
+      noReply: cfg.noReply,
+      hasPassword: typeof cfg.password === "string" && cfg.password.length > 0,
+    };
+  }
+
   private hashConfig(cfg: SmtpConfig): string {
     return createHash("sha256")
       .update(`${cfg.host}|${cfg.port}|${cfg.user ?? ""}|${cfg.password ?? ""}`)

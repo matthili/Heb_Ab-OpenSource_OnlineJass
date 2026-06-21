@@ -26,7 +26,8 @@ import type {
   SetUserStatusDto,
   SmtpSettingsDto,
 } from "./admin.dto.js";
-import { SmtpSettingsService, type SmtpSettings } from "../mail/smtp-settings.service.js";
+import { MailService } from "../mail/mail.service.js";
+import { SmtpSettingsService } from "../mail/smtp-settings.service.js";
 
 export interface AdminUserView {
   id: string;
@@ -57,7 +58,8 @@ export class AdminService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
-    private readonly smtp: SmtpSettingsService
+    private readonly smtp: SmtpSettingsService,
+    private readonly mail: MailService
   ) {}
 
   // ─── SMTP ──────────────────────────────────────────────────────────
@@ -67,10 +69,19 @@ export class AdminService {
    * Admins sehen es nie im Klartext). Stattdessen ein Flag, ob ein
    * Passwort gesetzt ist.
    */
-  async getSmtp(): Promise<Omit<Partial<SmtpSettings>, "password"> & { hasPassword: boolean }> {
-    const s = await this.smtp.get();
-    const { password, ...rest } = s;
-    return { ...rest, hasPassword: typeof password === "string" && password.length > 0 };
+  async getSmtp(): Promise<{
+    host: string;
+    port: number;
+    user: string | null;
+    from: string;
+    noReply: boolean;
+    hasPassword: boolean;
+  }> {
+    // Effektiv aktive Konfiguration (Env-Defaults + DB-Overrides gemerged) — so
+    // sieht der Admin im Panel auch die per `.env` gesetzten Werte und kann ein
+    // einzelnes Feld gefahrlos ändern, ohne die übrigen zu „verlieren". Das
+    // Passwort bleibt write-only (nur `hasPassword`).
+    return this.mail.effectiveConfig();
   }
 
   async updateSmtp(actorId: string, dto: SmtpSettingsDto): Promise<void> {
