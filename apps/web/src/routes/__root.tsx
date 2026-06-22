@@ -160,8 +160,11 @@ function Header() {
                 </Link>
               )}
               <span className="text-sm text-jass-inkSoft">
-                {t("nav.greeting", { name: data.user.name }).replace(data.user.name, "")}
-                <strong className="text-jass-ink">{data.user.name}</strong>
+                <Trans
+                  i18nKey="nav.greeting"
+                  values={{ name: data.user.name }}
+                  components={{ strong: <strong className="text-jass-ink" /> }}
+                />
               </span>
               <Link
                 to="/profile"

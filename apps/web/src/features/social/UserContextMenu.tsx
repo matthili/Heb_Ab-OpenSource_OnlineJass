@@ -13,8 +13,9 @@ import { useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 
-import { api } from "~/lib/api";
+import { api, ApiError } from "~/lib/api";
 import { useDmWindows } from "~/lib/dm-windows";
+import { useToast } from "~/lib/toast";
 
 type FriendStatus = "NONE" | "PENDING_OUT" | "PENDING_IN" | "ACCEPTED" | "BLOCKED";
 
@@ -38,6 +39,7 @@ export function UserContextMenu({ userId, name, anchor, onClose, onReport, kick 
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { open: openDm } = useDmWindows();
+  const { showToast } = useToast();
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -66,13 +68,25 @@ export function UserContextMenu({ userId, name, anchor, onClose, onReport, kick 
     void queryClient.invalidateQueries({ queryKey: statusKey });
     void queryClient.invalidateQueries({ queryKey: ["friends"] });
   };
+  const onMutationError = (e: unknown) =>
+    showToast(t("social.toast.error", { message: e instanceof ApiError ? e.message : "" }), {
+      variant: "error",
+    });
   const request = useMutation({
     mutationFn: () => api(`/api/users/${userId}/friend-request`, { method: "POST" }),
-    onSuccess: invalidate,
+    onSuccess: () => {
+      invalidate();
+      showToast(t("social.toast.requestSent"), { variant: "success" });
+    },
+    onError: onMutationError,
   });
   const accept = useMutation({
     mutationFn: () => api(`/api/users/${userId}/friend-accept`, { method: "POST" }),
-    onSuccess: invalidate,
+    onSuccess: () => {
+      invalidate();
+      showToast(t("social.toast.accepted"), { variant: "success" });
+    },
+    onError: onMutationError,
   });
   const kickMut = useMutation({
     mutationFn: () =>

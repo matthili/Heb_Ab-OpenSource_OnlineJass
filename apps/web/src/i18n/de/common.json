@@ -22,6 +22,11 @@
       "report": "Melden",
       "kickFromTable": "Vom Tisch entfernen & sperren"
     },
+    "toast": {
+      "requestSent": "Freundschaftsanfrage gesendet.",
+      "accepted": "Freundschaft bestätigt.",
+      "error": "Hat nicht geklappt: {{message}}"
+    },
     "dm": {
       "minimize": "Minimieren",
       "restore": "Wiederherstellen",
@@ -73,7 +78,7 @@
     "signOutFailed": "Abmelden fehlgeschlagen. Bitte erneut versuchen.",
     "signOutMore": "Weitere Abmelde-Optionen",
     "signOutEverywhere": "Überall abmelden",
-    "greeting": "Servus, {{name}}",
+    "greeting": "Servus, <strong>{{name}}</strong>",
     "profile": "Profil",
     "leaderboard": "Rangliste",
     "admin": "Admin",

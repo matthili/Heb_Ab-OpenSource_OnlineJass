@@ -22,6 +22,11 @@
       "report": "Report",
       "kickFromTable": "Remove from table & block"
     },
+    "toast": {
+      "requestSent": "Friend request sent.",
+      "accepted": "Friendship confirmed.",
+      "error": "Didn't work: {{message}}"
+    },
     "dm": {
       "minimize": "Minimize",
       "restore": "Restore",
@@ -73,7 +78,7 @@
     "signOutFailed": "Sign-out failed. Please try again.",
     "signOutMore": "More sign-out options",
     "signOutEverywhere": "Sign out everywhere",
-    "greeting": "Hi, {{name}}",
+    "greeting": "Hi, <strong>{{name}}</strong>",
     "profile": "Profile",
     "leaderboard": "Leaderboard",
     "admin": "Admin",
