@@ -150,6 +150,11 @@ export class AuthService implements OnModuleInit {
         window: 60, // Sekunden für den globalen Default
         max: 60,
         customRules: {
+          // Session-Check der SPA: läuft bei jeder geschützten Navigation +
+          // bei useSession. Muss großzügig sein, sonst laufen mehrere Spieler
+          // hinter EINER (NAT-)IP beim normalen Klicken in 429 → fälschlicher
+          // Auto-Logout. Read-only + günstig, daher unkritisch.
+          "/get-session": { window: 60, max: 1000 },
           "/sign-up/email": { window: 3600, max: 3 }, // 3 Registrierungen / Stunde / IP
           "/sign-in/email": { window: 900, max: 5 }, // 5 Login-Versuche / 15 min / IP
           "/forget-password": { window: 3600, max: 3 },

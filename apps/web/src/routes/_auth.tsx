@@ -35,7 +35,11 @@ async function needsProfileSetup(): Promise<boolean> {
 export const Route = createFileRoute("/_auth")({
   beforeLoad: async ({ location }) => {
     const session = await authClient.getSession();
-    if (!session.data?.user) {
+    // Nur bei BESTÄTIGT fehlender Session zum Login. Ein transienter Fehler
+    // (z.B. 429 Rate-Limit oder Netz-Hänger) liefert ebenfalls keinen User,
+    // darf aber NICHT ausloggen — sonst fliegt man bei einem Anfrage-Schwall
+    // (mehrere Spieler hinter einer IP) fälschlich raus.
+    if (!session.data?.user && !session.error) {
       throw redirect({
         to: "/login",
         search: { redirect: location.href },
