@@ -29,15 +29,29 @@ const CONFETTI_COUNT = 40;
 
 interface Props {
   gameId: string;
-  /** Kumulative Partie-Stände: 2 bei Kreuz (Teams), 4 bei Solo (Spieler). */
+  /** Kumulative Partie-Stände: 2 bei Kreuz (Teams), 4 bei Solo / 2 bei Bodensee (Spieler). */
   cumulativeScores: readonly number[];
   mySeat: number;
   seats: readonly SeatView[];
   /** Seed für stabile KI-Namen (Tisch-ID). */
   nameSeed: string;
+  /**
+   * Konten = einzelne Spieler statt Teams? Default aus der Länge abgeleitet
+   * (4 = Solo). Bodensee hat 2 SPIELER-Konten (keine Teams) und muss das
+   * explizit setzen — sonst würde die Länge 2 fälschlich als Kreuz (Teams)
+   * gelesen und „Team 1/2" statt der Spielernamen angezeigt.
+   */
+  perPlayer?: boolean;
 }
 
-export function MatchOverOverlay({ gameId, cumulativeScores, mySeat, seats, nameSeed }: Props) {
+export function MatchOverOverlay({
+  gameId,
+  cumulativeScores,
+  mySeat,
+  seats,
+  nameSeed,
+  perPlayer: perPlayerProp,
+}: Props) {
   const { t } = useTranslation();
   const [dismissed, setDismissed] = useState(false);
 
@@ -64,8 +78,8 @@ export function MatchOverOverlay({ gameId, cumulativeScores, mySeat, seats, name
   if (dismissed) return null;
   if (cumulativeScores.length === 0) return null;
 
-  // Solo = 4 Konten (jeder Spieler eigenes „Team"); Kreuz = 2 Konten.
-  const isSolo = cumulativeScores.length === 4;
+  // Pro-Spieler-Konten (Solo = 4, Bodensee = 2) vs. Team-Konten (Kreuz = 2).
+  const perPlayer = perPlayerProp ?? cumulativeScores.length === 4;
 
   // Sieger = höchster kumulativer Stand. winnerIndex ist bei Solo der Sitz,
   // bei Kreuz die Team-ID (0/1).
@@ -83,13 +97,13 @@ export function MatchOverOverlay({ gameId, cumulativeScores, mySeat, seats, name
 
   // Gewinner-Sitze: Solo = nur der Sitz, Kreuz = beide Sitze des Teams
   // (Team 0 → Sitze 0+2, Team 1 → Sitze 1+3).
-  const winningSeats = isSolo ? [winnerIndex] : [winnerIndex, winnerIndex + 2];
+  const winningSeats = perPlayer ? [winnerIndex] : [winnerIndex, winnerIndex + 2];
   const winnerNames = winningSeats.map(nameOfSeat);
-  const iWon = isSolo ? mySeat === winnerIndex : mySeat % 2 === winnerIndex;
+  const iWon = perPlayer ? mySeat === winnerIndex : mySeat % 2 === winnerIndex;
 
   // Endstand absteigend.
   const standings = (
-    isSolo
+    perPlayer
       ? cumulativeScores.map((score, seat) => ({
           label: nameOfSeat(seat),
           score,
@@ -144,7 +158,7 @@ export function MatchOverOverlay({ gameId, cumulativeScores, mySeat, seats, name
             {t("game.matchOver.banner")}
           </div>
           <div className="mt-2 text-lg font-semibold">
-            {isSolo
+            {perPlayer
               ? t("game.matchOver.wonBySolo", { name: winnerNames[0] })
               : t("game.matchOver.wonByTeam", { names: winnerNames.join(" + ") })}
           </div>

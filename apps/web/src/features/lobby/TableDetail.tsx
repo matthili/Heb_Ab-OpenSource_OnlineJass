@@ -201,6 +201,7 @@ export function TableDetail({ tableId }: Props) {
             tableSeats={data.seats}
             isAtTable={amIAtTable}
             tableStatus={data.status}
+            cumulativeScores={data.cumulativeScores}
             nameSeed={data.id}
           />
         ) : (
@@ -1006,6 +1007,7 @@ function BodenseeGameSection({
   tableSeats,
   isAtTable,
   tableStatus,
+  cumulativeScores,
   nameSeed,
 }: {
   gameId: string;
@@ -1014,6 +1016,8 @@ function BodenseeGameSection({
   tableSeats: TableDetailView["seats"];
   isAtTable: boolean;
   tableStatus: TableDetailView["status"];
+  /** Kumulative Partie-Stände (2 Spieler-Konten) für den Pokal-Abschluss. */
+  cumulativeScores: readonly number[];
   /** Seed für stabile KI-Namen — die Tisch-ID. */
   nameSeed: string;
 }) {
@@ -1050,7 +1054,8 @@ function BodenseeGameSection({
         tableId={tableId}
         onPlayOn={dismissOpponentLeft}
       />
-      <div className="space-y-4">
+      {/* `relative`: Verankerung für das MatchOverOverlay (absolute inset-0). */}
+      <div className="space-y-4 relative">
         <BodenseeBoard
           view={view}
           seats={tableSeats}
@@ -1063,6 +1068,16 @@ function BodenseeGameSection({
         />
         {tableStatus === "POST_GAME" && view.status === "finished" && (
           <BodenseeRematchPanel gameId={gameId} />
+        )}
+        {tableStatus === "MATCH_OVER" && view.status === "finished" && (
+          <MatchOverOverlay
+            gameId={gameId}
+            cumulativeScores={cumulativeScores}
+            seats={tableSeats}
+            mySeat={view.mySeat}
+            nameSeed={nameSeed}
+            perPlayer
+          />
         )}
       </div>
       {/* Rechte Spalte: Chat + darunter die Sitze als Liste. */}
