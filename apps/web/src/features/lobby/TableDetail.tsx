@@ -75,6 +75,22 @@ export function TableDetail({ tableId }: Props) {
   );
   useTableStateEvents(tableId, onWsUpdate);
 
+  // **Neue Beitritts-Anfrage an MEINEN Tisch** (nur der Owner bekommt dieses
+  // persönliche Event): Tisch-Query neu laden, damit die Anfrage live in der
+  // Owner-Liste auftaucht. Der `lobby:table-state`-Broadcast trägt die
+  // owner-privaten `joinRequests` NICHT mit (Broadcast läuft ohne Owner-
+  // Kontext), darum hier gezielt refetchen statt auf den Broadcast zu warten.
+  const onJoinRequestIncoming = useCallback(
+    (payload: unknown) => {
+      const p = payload as { tableId?: string };
+      if (p?.tableId === tableId) {
+        void queryClient.invalidateQueries({ queryKey });
+      }
+    },
+    [tableId, queryClient, queryKey]
+  );
+  useUserEvents("lobby:join-request-incoming", onJoinRequestIncoming);
+
   // **Game-Ende-Trigger**: Wenn das Game per `game:ended` schließt, wechselt
   // der Tisch-Status backend-seitig auf POST_GAME (oder MATCH_OVER). Das
   // Lobby-WS-Event `lobby:table-state` kommt aber NICHT automatisch
@@ -311,7 +327,15 @@ function CumulativeScoreBar({ table }: { table: TableDetailView }) {
   // (zeigt Ziel + 0:0), damit der Partie-Stand nicht erst nach Spiel 1 „einpoppt".
   if (scores.length === 0) return null;
   const isPerPlayer = table.variant === "SOLO_4P" || table.variant === "BODENSEE_2P";
-  const winner = scores.findIndex((s) => s >= target); // -1 = noch offen
+  // Partie-Sieger = das Konto mit den MEISTEN Punkten, sobald irgendwer das Ziel
+  // erreicht hat. Wichtig: In der Schluss-Partie können BEIDE Seiten dasselbe
+  // Spiel übers Ziel bringen (z.B. 573 und 521 bei Ziel 500). `findIndex(>=
+  // target)` würde dann den kleineren Sitz-Index krönen statt den Höherpunktigen
+  // — also fälschlich den Verlierer. Daher das Maximum nehmen. (-1 = noch offen.)
+  const someoneReached = scores.some((s) => s >= target);
+  const winner = someoneReached
+    ? scores.reduce((best, s, i) => (s > (scores[best] ?? 0) ? i : best), 0)
+    : -1;
 
   // Zeilen-Label: bei Solo/Bodensee der Spielername (Konto je Sitz), bei
   // Kreuz die Team-Bezeichnung mit den zugehörigen Sitzen.

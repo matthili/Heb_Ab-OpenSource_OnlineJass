@@ -150,11 +150,33 @@ function UserEventToasts() {
     [showToast, t, queryClient]
   );
 
+  // Neue Beitritts-Anfrage an meinen Tisch (nur der Owner bekommt das Event):
+  // global als Toast melden — egal auf welcher Seite man gerade ist. Auf der
+  // Tisch-Seite aktualisiert TableDetail zusätzlich die Anfragen-Liste.
+  const onJoinRequest = useCallback(
+    (payload: unknown) => {
+      const p = payload as { tableId?: string; userName?: string };
+      if (!p?.tableId) return;
+      showToast(
+        <span>
+          <Trans
+            i18nKey="nav.toasts.joinRequestIncoming"
+            values={{ name: p.userName ?? "" }}
+            components={{ link: <a href={`/table/${p.tableId}`} className="underline" /> }}
+          />
+        </span>,
+        { variant: "info", duration: 8_000 }
+      );
+    },
+    [showToast]
+  );
+
   // Wir registrieren die Listener immer; sie feuern nur, wenn man
   // eingeloggt ist (lobby:user:<id>-Room ist sonst nicht gejoint).
   useUserEvents("lobby:invite-received", onInvite);
   useUserEvents("lobby:request-decided", onRequestDecided);
   useUserEvents("lobby:owner-changed", onOwnerChanged);
+  useUserEvents("lobby:join-request-incoming", onJoinRequest);
   useUserEvents("friend:request-received", onFriendRequest);
   useUserEvents("friend:request-accepted", onFriendAccepted);
 

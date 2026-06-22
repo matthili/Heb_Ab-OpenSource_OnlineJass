@@ -39,12 +39,15 @@ export function IncomingInvites() {
     queryFn: () => api<{ invites: IncomingInvite[] }>("/api/lobby/invites/incoming"),
   });
 
-  // Neue Einladung per WS → Liste sofort neu laden (Handler stabil halten,
-  // useUserEvents re-subscribed sonst bei jedem Render).
-  const onInvite = useCallback(() => {
+  // Neue ODER zurückgezogene Einladung per WS → Liste sofort neu laden (Handler
+  // stabil halten, useUserEvents re-subscribed sonst bei jedem Render). Das
+  // Backend pusht `lobby:invite-cancelled` an den Eingeladenen, wenn der Owner
+  // die Einladung zurückzieht — sonst bliebe sie hier stehen.
+  const refreshInvites = useCallback(() => {
     void queryClient.invalidateQueries({ queryKey: QUERY_KEY });
   }, [queryClient]);
-  useUserEvents("lobby:invite-received", onInvite);
+  useUserEvents("lobby:invite-received", refreshInvites);
+  useUserEvents("lobby:invite-cancelled", refreshInvites);
 
   const accept = useMutation({
     mutationFn: (inv: IncomingInvite) =>

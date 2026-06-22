@@ -91,7 +91,8 @@
       "ownerChanged": "Table host changed to {{name}}.",
       "ownerChangedFallback": "another player",
       "friendRequestReceived": "{{name}} wants to be your friend. <link>View</link>",
-      "friendRequestAccepted": "{{name}} accepted your friend request."
+      "friendRequestAccepted": "{{name}} accepted your friend request.",
+      "joinRequestIncoming": "{{name}} wants to join your table. <link>View</link>"
     }
   },
 
