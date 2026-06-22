@@ -129,8 +129,13 @@ export default defineConfig(({ command }) => {
       // Firewall-Port 5173 freigeben + die LAN-Origin in TRUSTED_ORIGINS (API).
       host: true,
       proxy: {
-        "/api": { target: "http://localhost:3000", changeOrigin: true },
-        "/ws": { target: "http://localhost:3000", ws: true, changeOrigin: true },
+        // `xfwd: true` hängt X-Forwarded-For/-Host an, damit Better-Auth im Dev
+        // pro Client einen eigenen Rate-Limit-Eimer bekommt. Ohne den Header
+        // fällt Better-Auth im Dev-Modus auf die Konstante 127.0.0.1 für ALLE
+        // zurück — dann teilen sich alle Spieler ein 60/min-Limit und kippen
+        // gemeinsam in „Too many requests".
+        "/api": { target: "http://localhost:3000", changeOrigin: true, xfwd: true },
+        "/ws": { target: "http://localhost:3000", ws: true, changeOrigin: true, xfwd: true },
       },
     },
   };

@@ -137,6 +137,17 @@ export class AuthService implements OnModuleInit {
       },
       advanced: {
         cookiePrefix: "jass",
+        // Client-IP fürs Rate-Limit (und IP-Tracking). Better-Auth liest
+        // standardmäßig NUR `x-forwarded-for`. Fehlt der Header, fällt es im
+        // Dev-Modus auf die Konstante 127.0.0.1 zurück (→ ALLE Clients teilen
+        // EINEN Rate-Limit-Eimer) und in Production auf `null` (→ Rate-Limit
+        // wird stillschweigend übersprungen). Beides ist falsch. Hinter dem
+        // Cloudflare-Tunnel steht die echte Client-IP in `cf-connecting-ip`,
+        // hinter Caddy/anderen Reverse-Proxies in `x-forwarded-for` — wir
+        // werten beide aus, damit jeder Client seinen eigenen Eimer bekommt.
+        ipAddress: {
+          ipAddressHeaders: ["cf-connecting-ip", "x-forwarded-for"],
+        },
       },
       // Rate-Limit: globaler Fallback + strengere Regeln pro Auth-Pfad.
       // Storage in-memory ist ok solange wir Single-Instance laufen; in M11
@@ -151,9 +162,11 @@ export class AuthService implements OnModuleInit {
         max: 60,
         customRules: {
           // Session-Check der SPA: läuft bei jeder geschützten Navigation +
-          // bei useSession. Muss großzügig sein, sonst laufen mehrere Spieler
-          // hinter EINER (NAT-)IP beim normalen Klicken in 429 → fälschlicher
-          // Auto-Logout. Read-only + günstig, daher unkritisch.
+          // bei useSession (cookieCache ist aus → jeder Aufruf trifft den
+          // Server). Muss großzügig sein, sonst laufen Spieler, die sich einen
+          // Rate-Limit-Eimer teilen (echte geteilte IP via CGNAT, oder ein
+          // Proxy, der die Client-IP nicht durchreicht), beim normalen Klicken
+          // in 429. Read-only + günstig, daher unkritisch.
           "/get-session": { window: 60, max: 1000 },
           "/sign-up/email": { window: 3600, max: 3 }, // 3 Registrierungen / Stunde / IP
           "/sign-in/email": { window: 900, max: 5 }, // 5 Login-Versuche / 15 min / IP
@@ -373,18 +386,23 @@ export class AuthService implements OnModuleInit {
 }
 
 /**
- * Holt die Client-IP aus dem Better-Auth-Context-Headers — fallback null.
- * In M11 hinter Caddy/Cloudflare wird X-Forwarded-For ausgewertet (Fastify
- * `trustProxy: true` ist bereits gesetzt, also ist `req.ip` korrekt).
+ * Holt die Client-IP für den Audit-Eintrag. Primär nimmt Better-Auth seine
+ * bereits aufgelöste IP (`ctx.ip`) — die folgt jetzt der `ipAddressHeaders`-
+ * Konfig (cf-connecting-ip → x-forwarded-for). Als Fallback werten wir
+ * dieselben Header selbst aus, damit der Audit-Log dieselbe IP sieht wie das
+ * Rate-Limit.
  */
 function extractIp(ctx: unknown): string | null {
   // ctx ist Better-Auth-spezifisch; defensiv per Property-Sondierung.
   const c = ctx as { request?: { headers?: Headers }; ip?: string } | undefined;
   if (!c) return null;
   if (typeof c.ip === "string") return c.ip;
-  const forwarded = c.request?.headers?.get?.("x-forwarded-for");
-  if (typeof forwarded === "string" && forwarded.length > 0) {
-    return forwarded.split(",")[0]?.trim() ?? null;
+  const headers = c.request?.headers;
+  for (const name of ["cf-connecting-ip", "x-forwarded-for"]) {
+    const value = headers?.get?.(name);
+    if (typeof value === "string" && value.length > 0) {
+      return value.split(",")[0]?.trim() ?? null;
+    }
   }
   return null;
 }
