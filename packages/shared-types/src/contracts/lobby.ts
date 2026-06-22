@@ -27,6 +27,16 @@ export type JoinMode = z.infer<typeof JoinModeSchema>;
 export const RestartModeSchema = z.enum(["WELI", "SIEGER_GIBT"]);
 export type RestartMode = z.infer<typeof RestartModeSchema>;
 
+/**
+ * **Sieg-Modus**: Wie wird der Partie-Sieger bestimmt, wenn das Punkteziel
+ * erreicht ist? `FIRST_TO_TARGET` („Bergpreis", Default/Tradition): wer beim
+ * Hochzählen der Schluss-Partie das Ziel ZUERST berührt — auch mit am Ende
+ * weniger Gesamtpunkten. `HIGHEST`: höchster Gesamtstand gewinnt. Der
+ * Unterschied greift nur, wenn mehrere im selben Schluss-Spiel übers Ziel gehen.
+ */
+export const WinModeSchema = z.enum(["FIRST_TO_TARGET", "HIGHEST"]);
+export type WinMode = z.infer<typeof WinModeSchema>;
+
 /** Spielarten: Kreuz-Jass (4er-Team, 4 Sitze), Solo-Jass (jeder gegen jeden,
  * 4 Sitze) und Bodensee-Jass (2 Spieler). KREUZ_6P / KREUZ_STEIGERN folgen. */
 export const VariantEnumSchema = z.enum(["KREUZ_4P", "SOLO_4P", "BODENSEE_2P"]);
@@ -87,6 +97,8 @@ export const OpenTableDtoSchema = z
      */
     autoFillSeconds: z.number().int().min(5).max(600).nullable().default(30),
     restartMode: RestartModeSchema.default("SIEGER_GIBT"),
+    /** Sieg-Modus der Partie (s. WinModeSchema). Default „Bergpreis". */
+    winMode: WinModeSchema.default("FIRST_TO_TARGET"),
     /**
      * **Punkteziel** für die Partie. Sobald ein Team kumulativ über alle
      * Spiele am Tisch diese Punkte erreicht, ist die Partie gewonnen
@@ -245,6 +257,13 @@ export type SeatSwapSnapshot = z.infer<typeof SeatSwapSnapshotSchema>;
 export const TableDetailViewSchema = TableListEntrySchema.extend({
   seats: z.array(SeatViewSchema),
   currentGameId: z.string().nullable(),
+  /** Sieg-Modus der Partie (Tisch-Einstellung). */
+  winMode: WinModeSchema,
+  /**
+   * Vom Server ermittelter Partie-Sieger-Team-Index — nur bei MATCH_OVER
+   * gesetzt (sonst null). Für FIRST_TO_TARGET maßgeblich.
+   */
+  matchWinner: z.number().int().nullable(),
   // Laufender Sitzplatz-Tausch + Start-Countdown bei vollem Tisch (in-memory,
   // nur in der Warte-Phase relevant). Null/fehlend = nichts aktiv.
   seatSwap: SeatSwapSnapshotSchema.nullable().optional(),

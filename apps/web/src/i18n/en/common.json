@@ -516,6 +516,7 @@
         "aiType": "Which AI fills free seats?",
         "autoFill": "Auto-fill empty seats",
         "targetScore": "Target score of the match",
+        "winMode": "Who wins the match?",
         "restart": "Who starts the next game?",
         "announceLevel": "Allowed announcements",
         "scoringRules": "House rules"
@@ -590,7 +591,17 @@
       "autoFillHint": "After {{seconds}}s with no further join, open seats are filled automatically by AI.",
       "targetScoreCustom": "custom:",
       "targetScoreAria": "Custom target score",
-      "targetScoreHint": "Vorarlberg standard: 1000 or 1200. The first team over the target wins.",
+      "targetScoreHint": "Vorarlberg standard: 1000 or 1200.",
+      "winMode": {
+        "FIRST_TO_TARGET": {
+          "title": "First to the target (Bergpreis)",
+          "hint": "Whoever reaches the target first while counting up the final game wins — even with fewer total points."
+        },
+        "HIGHEST": {
+          "title": "Highest score",
+          "hint": "If several cross the target in the same final game, the highest total wins."
+        }
+      },
       "restart": {
         "SIEGER_GIBT": {
           "title": "Winner deals",

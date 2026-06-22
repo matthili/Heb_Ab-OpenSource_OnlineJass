@@ -33,7 +33,7 @@ import { useTranslation } from "react-i18next";
 
 import { ANNOUNCE_LEVELS, type AnnounceLevel } from "@jass/engine";
 import { api, ApiError } from "~/lib/api";
-import type { JoinMode, OpenTableDto, RestartMode, TableVariant } from "./types";
+import type { JoinMode, OpenTableDto, RestartMode, TableVariant, WinMode } from "./types";
 
 interface Props {
   open: boolean;
@@ -95,6 +95,7 @@ export function OpenTableDialog({ open, onClose }: Props) {
   const [aiSeatType, setAiSeatType] = useState<AiSeatType>("heuristic");
   const [autoFill, setAutoFill] = useState<number | null>(30);
   const [restartMode, setRestartMode] = useState<RestartMode>("SIEGER_GIBT");
+  const [winMode, setWinMode] = useState<WinMode>("FIRST_TO_TARGET");
   const [targetScore, setTargetScore] = useState<number>(1000);
   const [announceLevel, setAnnounceLevel] = useState<AnnounceLevel>("ALLES");
   const [sackRule, setSackRule] = useState(false);
@@ -165,6 +166,7 @@ export function OpenTableDialog({ open, onClose }: Props) {
       aiSeatType,
       autoFillSeconds: autoFill,
       restartMode,
+      winMode,
       targetScore,
       announceLevel,
       sackRule,
@@ -394,6 +396,22 @@ export function OpenTableDialog({ open, onClose }: Props) {
               </label>
             </div>
             <p className="text-xs text-jass-inkSoft mt-2">{t("lobby.openTable.targetScoreHint")}</p>
+          </Section>
+
+          {/* Sieg-Modus: wie wird der Partie-Sieger ermittelt, wenn das Ziel
+              erreicht ist? */}
+          <Section title={t("lobby.openTable.sections.winMode")}>
+            <TileGrid>
+              {(["FIRST_TO_TARGET", "HIGHEST"] as const).map((opt) => (
+                <Tile
+                  key={opt}
+                  selected={winMode === opt}
+                  onClick={() => setWinMode(opt)}
+                  title={t(`lobby.openTable.winMode.${opt}.title`)}
+                  hint={t(`lobby.openTable.winMode.${opt}.hint`)}
+                />
+              ))}
+            </TileGrid>
           </Section>
 
           {/* Re-Match-Modus */}

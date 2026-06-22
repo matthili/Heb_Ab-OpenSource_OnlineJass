@@ -516,6 +516,7 @@
         "aiType": "Welche KI füllt freie Sitze?",
         "autoFill": "Auto-Fill leerer Sitze",
         "targetScore": "Punkteziel der Partie",
+        "winMode": "Wer gewinnt die Partie?",
         "restart": "Wer beginnt das nächste Spiel?",
         "announceLevel": "Erlaubte Ansage-Arten",
         "scoringRules": "Hausregeln"
@@ -590,7 +591,17 @@
       "autoFillHint": "Nach {{seconds}}s ohne weiteren Beitritt werden offene Sitze automatisch von KI besetzt.",
       "targetScoreCustom": "eigenes:",
       "targetScoreAria": "Eigenes Punkteziel",
-      "targetScoreHint": "Vorarlberger Standard: 1000 oder 1200. Erstes Team über dem Ziel gewinnt.",
+      "targetScoreHint": "Vorarlberger Standard: 1000 oder 1200.",
+      "winMode": {
+        "FIRST_TO_TARGET": {
+          "title": "Bergpreis (zuerst am Ziel)",
+          "hint": "Wer das Punkteziel beim Hochzählen der Schluss-Partie zuerst berührt, gewinnt — auch mit am Ende weniger Punkten."
+        },
+        "HIGHEST": {
+          "title": "Höchster Stand",
+          "hint": "Gehen mehrere im selben Schluss-Spiel übers Ziel, gewinnt der höchste Gesamtstand."
+        }
+      },
       "restart": {
         "SIEGER_GIBT": {
           "title": "Sieger gibt",

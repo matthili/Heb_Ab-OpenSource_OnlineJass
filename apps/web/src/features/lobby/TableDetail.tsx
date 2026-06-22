@@ -202,6 +202,7 @@ export function TableDetail({ tableId }: Props) {
             isAtTable={amIAtTable}
             tableStatus={data.status}
             cumulativeScores={data.cumulativeScores}
+            matchWinner={data.matchWinner}
             nameSeed={data.id}
           />
         ) : (
@@ -213,6 +214,7 @@ export function TableDetail({ tableId }: Props) {
             tableStatus={data.status}
             isFirstGame={data.cumulativeScores.every((s) => s === 0)}
             cumulativeScores={data.cumulativeScores}
+            matchWinner={data.matchWinner}
             targetScore={data.targetScore}
             nameSeed={data.id}
           />
@@ -328,15 +330,18 @@ function CumulativeScoreBar({ table }: { table: TableDetailView }) {
   // (zeigt Ziel + 0:0), damit der Partie-Stand nicht erst nach Spiel 1 „einpoppt".
   if (scores.length === 0) return null;
   const isPerPlayer = table.variant === "SOLO_4P" || table.variant === "BODENSEE_2P";
-  // Partie-Sieger = das Konto mit den MEISTEN Punkten, sobald irgendwer das Ziel
-  // erreicht hat. Wichtig: In der Schluss-Partie können BEIDE Seiten dasselbe
-  // Spiel übers Ziel bringen (z.B. 573 und 521 bei Ziel 500). `findIndex(>=
-  // target)` würde dann den kleineren Sitz-Index krönen statt den Höherpunktigen
-  // — also fälschlich den Verlierer. Daher das Maximum nehmen. (-1 = noch offen.)
+  // Partie-Sieger: bei beendeter Partie der vom SERVER ermittelte Sieger
+  // (`matchWinner`) — der respektiert den Sieg-Modus, inkl. „Bergpreis" (wer das
+  // Ziel beim Hochzählen ZUERST berührt). Fallback (laufende Partie / alte
+  // Tische ohne matchWinner): höchster Stand, sobald irgendwer das Ziel erreicht
+  // hat. (Nicht `findIndex(>= target)` — das krönte bei zwei Zielerreichern im
+  // selben Schlussspiel den kleineren Sitz-Index statt den Höherpunktigen.)
   const someoneReached = scores.some((s) => s >= target);
-  const winner = someoneReached
+  const argmaxWinner = someoneReached
     ? scores.reduce((best, s, i) => (s > (scores[best] ?? 0) ? i : best), 0)
     : -1;
+  const winner =
+    table.status === "MATCH_OVER" && table.matchWinner != null ? table.matchWinner : argmaxWinner;
 
   // Zeilen-Label: bei Solo/Bodensee der Spielername (Konto je Sitz), bei
   // Kreuz die Team-Bezeichnung mit den zugehörigen Sitzen.
@@ -874,6 +879,7 @@ function GameSection({
   tableStatus,
   isFirstGame,
   cumulativeScores,
+  matchWinner,
   targetScore,
   nameSeed,
 }: {
@@ -887,6 +893,8 @@ function GameSection({
   isFirstGame: boolean;
   /** Kumulative Partie-Stände (2 bei Kreuz, 4 bei Solo) für RematchPanel. */
   cumulativeScores: readonly number[];
+  /** Vom Server ermittelter Partie-Sieger (Sieg-Modus-konform), sonst null. */
+  matchWinner: number | null;
   targetScore: number;
   /** Seed für stabile KI-Namen — die Tisch-ID (über die ganze Partie konstant). */
   nameSeed: string;
@@ -962,6 +970,7 @@ function GameSection({
             seats={tableSeats}
             mySeat={view.mySeat}
             nameSeed={nameSeed}
+            winnerTeam={matchWinner}
           />
         )}
         <DisconnectOverlay
@@ -1008,6 +1017,7 @@ function BodenseeGameSection({
   isAtTable,
   tableStatus,
   cumulativeScores,
+  matchWinner,
   nameSeed,
 }: {
   gameId: string;
@@ -1018,6 +1028,8 @@ function BodenseeGameSection({
   tableStatus: TableDetailView["status"];
   /** Kumulative Partie-Stände (2 Spieler-Konten) für den Pokal-Abschluss. */
   cumulativeScores: readonly number[];
+  /** Vom Server ermittelter Partie-Sieger (Sieg-Modus-konform), sonst null. */
+  matchWinner: number | null;
   /** Seed für stabile KI-Namen — die Tisch-ID. */
   nameSeed: string;
 }) {
@@ -1077,6 +1089,7 @@ function BodenseeGameSection({
             mySeat={view.mySeat}
             nameSeed={nameSeed}
             perPlayer
+            winnerTeam={matchWinner}
           />
         )}
       </div>

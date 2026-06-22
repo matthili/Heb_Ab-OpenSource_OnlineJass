@@ -20,6 +20,8 @@ export {
 
 export { legalMovesBodensee, cardSource, visibleTableCards, hiddenTableCount } from "./rules.js";
 
+export { bodenseeBergpreisWinnerFromState } from "./bergpreis.js";
+
 export {
   InvalidBodenseeMoveError,
   dealBodensee,

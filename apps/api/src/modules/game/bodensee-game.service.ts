@@ -15,6 +15,7 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { randomBytes } from "node:crypto";
 import type { Prisma } from "@prisma/client";
+// WinMode-Vergleich per String-Literal (kein Typ-Import nötig).
 
 import {
   announceConstraints,
@@ -24,6 +25,7 @@ import {
   bodenseeViewAsPlayer,
   cardIndex,
   dealBodensee,
+  bodenseeBergpreisWinnerFromState,
   encodeBodenseeState,
   finalBodenseeScore,
   findWeliHolderBodensee,
@@ -493,14 +495,33 @@ export class BodenseeGameService {
           sackedPointsTeam0: { increment: sacked[0] ?? 0 },
           sackedPointsTeam1: { increment: sacked[1] ?? 0 },
         },
-        select: { targetScore: true, cumulativeScoreTeam0: true, cumulativeScoreTeam1: true },
+        select: {
+          targetScore: true,
+          winMode: true,
+          cumulativeScoreTeam0: true,
+          cumulativeScoreTeam1: true,
+        },
       });
       matchOver =
         after.cumulativeScoreTeam0 >= after.targetScore ||
         after.cumulativeScoreTeam1 >= after.targetScore;
+      // Partie-Sieger (nur bei MATCH_OVER). FIRST_TO_TARGET („Bergpreis"): wer
+      // beim Hochzählen der Schluss-Partie das Ziel zuerst berührt; HIGHEST:
+      // höheres Konto. Bei Gleichstand/kein-Erreicher Fallback auf das höhere.
+      const highest = after.cumulativeScoreTeam1 > after.cumulativeScoreTeam0 ? 1 : 0;
+      let matchWinnerTeam: number | null = null;
+      if (matchOver) {
+        if (after.winMode === "FIRST_TO_TARGET") {
+          const preGame = [after.cumulativeScoreTeam0 - p0, after.cumulativeScoreTeam1 - p1];
+          const w = bodenseeBergpreisWinnerFromState(state, preGame, after.targetScore);
+          matchWinnerTeam = w >= 0 ? w : highest;
+        } else {
+          matchWinnerTeam = highest;
+        }
+      }
       await this.prisma.lobbyTable.update({
         where: { id: updated.tableId },
-        data: { status: matchOver ? "MATCH_OVER" : "POST_GAME" },
+        data: { status: matchOver ? "MATCH_OVER" : "POST_GAME", matchWinnerTeam },
       });
     }
     await this.audit.record({

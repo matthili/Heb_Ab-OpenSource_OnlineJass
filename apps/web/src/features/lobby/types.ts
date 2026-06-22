@@ -9,6 +9,7 @@ export type {
   LobbyStatus,
   JoinMode,
   RestartMode,
+  WinMode,
   VariantEnum as TableVariant,
   TableListEntry,
   SeatView,

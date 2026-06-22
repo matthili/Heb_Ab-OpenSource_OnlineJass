@@ -92,6 +92,14 @@ export interface TableListEntry {
 export interface TableDetailView extends TableListEntry {
   seats: SeatView[];
   currentGameId: string | null;
+  /** Sieg-Modus der Partie (Tisch-Einstellung). */
+  winMode: "FIRST_TO_TARGET" | "HIGHEST";
+  /**
+   * Vom Server ermittelter Partie-Sieger-Team-Index — nur gesetzt bei
+   * MATCH_OVER (sonst null). Für FIRST_TO_TARGET maßgeblich, weil sich „wer
+   * zuerst" nicht aus den Endständen ableiten lässt.
+   */
+  matchWinner: number | null;
   joinRequests?: { id: string; userId: string; userName: string; createdAt: Date }[];
   invites?: { id: string; inviteeUserId: string; inviteeName: string; createdAt: Date }[];
   /** Laufender Sitzplatz-Tausch (ephemerer Vorspiel-Zustand), sonst null. */
@@ -238,6 +246,8 @@ export class LobbyService {
           autoFillSeconds: dto.autoFillSeconds,
           restartMode: dto.restartMode,
           targetScore: effectiveTargetScore,
+          // undefined → Prisma nimmt den Schema-Default (FIRST_TO_TARGET).
+          ...(dto.winMode !== undefined ? { winMode: dto.winMode } : {}),
           status: LobbyTableStatus.WAITING,
         },
       });
@@ -455,6 +465,8 @@ export class LobbyService {
       createdAt: table.createdAt,
       seats,
       currentGameId: table.currentGameId,
+      winMode: table.winMode,
+      matchWinner: table.matchWinnerTeam,
     };
     if (isOwner) {
       view.joinRequests = table.joinRequests.map((r) => ({
@@ -1531,6 +1543,7 @@ export class LobbyService {
         cumulativeScoreTeam1: 0,
         cumulativeScoreTeam2: 0,
         cumulativeScoreTeam3: 0,
+        matchWinnerTeam: null,
         currentGameId: null,
         lastSeatChangeAt: new Date(),
       },

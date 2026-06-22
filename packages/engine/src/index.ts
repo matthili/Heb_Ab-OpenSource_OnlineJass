@@ -17,6 +17,7 @@ export {
   trickWinner,
 } from "./rules.js";
 export { encodeState, legalActionMask } from "./encoder.js";
+export { bergpreisWinner, bergpreisWinnerFromState, type BergpreisInput } from "./bergpreis.js";
 export { inferForbiddenCards, seatIsVoidInTrump } from "./void-inference.js";
 export {
   type Move,

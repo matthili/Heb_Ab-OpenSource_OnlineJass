@@ -30,7 +30,7 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { randomBytes } from "node:crypto";
-import type { GameVariant, Prisma } from "@prisma/client";
+import type { GameVariant, Prisma, WinMode } from "@prisma/client";
 
 import {
   type Announcement,
@@ -48,6 +48,7 @@ import {
   clickWeisenButton,
   cutDeck,
   dealCards,
+  bergpreisWinnerFromState,
   dealFromDeck,
   finalRoundScore,
   handOf,
@@ -808,6 +809,7 @@ export class GameService {
           },
           select: {
             targetScore: true,
+            winMode: true,
             cumulativeScoreTeam0: true,
             cumulativeScoreTeam1: true,
             cumulativeScoreTeam2: true,
@@ -822,9 +824,23 @@ export class GameService {
           tableAfter.cumulativeScoreTeam3,
         ];
         matchOver = cumulatives.some((c) => c >= tableAfter.targetScore);
+        // Partie-Sieger bestimmen (nur bei MATCH_OVER). FIRST_TO_TARGET
+        // („Bergpreis"): wer beim Hochzählen der Schluss-Partie das Ziel ZUERST
+        // berührt — dazu brauchen wir die Stände VOR diesem Spiel + den
+        // Schluss-RoundState. HIGHEST: höchstes Konto. Fallback auf HIGHEST,
+        // falls der Bergpreis keinen Erreicher findet (sollte nicht vorkommen).
+        const matchWinnerTeam = matchOver
+          ? this.resolveMatchWinner(
+              tableAfter.winMode,
+              nextState,
+              cumulatives,
+              [pts[0] ?? 0, pts[1] ?? 0, pts[2] ?? 0, pts[3] ?? 0],
+              tableAfter.targetScore
+            )
+          : null;
         await this.prisma.lobbyTable.update({
           where: { id: updated.tableId },
-          data: { status: matchOver ? "MATCH_OVER" : "POST_GAME" },
+          data: { status: matchOver ? "MATCH_OVER" : "POST_GAME", matchWinnerTeam },
         });
       }
       await this.audit.record({
@@ -839,6 +855,36 @@ export class GameService {
     }
 
     return { view: await this.viewForSeat(gameId, seat) };
+  }
+
+  /**
+   * Partie-Sieger-Team gemäß Sieg-Modus. FIRST_TO_TARGET („Bergpreis"): wer das
+   * Ziel beim Hochzählen der Schluss-Partie ZUERST berührt (Stände VOR diesem
+   * Spiel + Schluss-RoundState). HIGHEST: höchstes Konto. Beschränkt auf die
+   * aktiven Teams (2 bei Kreuz, 4 bei Solo).
+   */
+  private resolveMatchWinner(
+    winMode: WinMode,
+    finalState: RoundState,
+    cumulativesAfter: readonly number[],
+    thisGamePts: readonly number[],
+    target: number
+  ): number {
+    const numTeams = finalState.team_card_points.length;
+    const active = cumulativesAfter.slice(0, numTeams);
+    const argmax = (): number => {
+      let best = 0;
+      for (let i = 1; i < active.length; i++) {
+        if ((active[i] ?? 0) > (active[best] ?? 0)) best = i;
+      }
+      return best;
+    };
+    if (winMode === "FIRST_TO_TARGET") {
+      const preGame = cumulativesAfter.map((c, i) => c - (thisGamePts[i] ?? 0));
+      const w = bergpreisWinnerFromState(finalState, preGame, target);
+      return w >= 0 ? w : argmax();
+    }
+    return argmax();
   }
 
   // ───────────────────────────────────────────────────────────────────

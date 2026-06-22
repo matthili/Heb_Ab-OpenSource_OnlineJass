@@ -42,6 +42,12 @@ interface Props {
    * gelesen und „Team 1/2" statt der Spielernamen angezeigt.
    */
   perPlayer?: boolean;
+  /**
+   * Vom Server ermittelter Sieger-Team-Index (respektiert den Sieg-Modus, inkl.
+   * „Bergpreis"). Wenn gesetzt (≥ 0), maßgeblich; sonst Fallback auf den
+   * höchsten Stand.
+   */
+  winnerTeam?: number | null;
 }
 
 export function MatchOverOverlay({
@@ -51,6 +57,7 @@ export function MatchOverOverlay({
   seats,
   nameSeed,
   perPlayer: perPlayerProp,
+  winnerTeam,
 }: Props) {
   const { t } = useTranslation();
   const [dismissed, setDismissed] = useState(false);
@@ -81,11 +88,14 @@ export function MatchOverOverlay({
   // Pro-Spieler-Konten (Solo = 4, Bodensee = 2) vs. Team-Konten (Kreuz = 2).
   const perPlayer = perPlayerProp ?? cumulativeScores.length === 4;
 
-  // Sieger = höchster kumulativer Stand. winnerIndex ist bei Solo der Sitz,
-  // bei Kreuz die Team-ID (0/1).
-  let winnerIndex = 0;
-  for (let i = 1; i < cumulativeScores.length; i++) {
-    if ((cumulativeScores[i] ?? 0) > (cumulativeScores[winnerIndex] ?? 0)) winnerIndex = i;
+  // Sieger: bevorzugt der vom Server ermittelte (respektiert den Sieg-Modus,
+  // inkl. „Bergpreis"); sonst Fallback auf den höchsten kumulativen Stand.
+  // winnerIndex ist bei Solo/Bodensee der Sitz, bei Kreuz die Team-ID (0/1).
+  let winnerIndex = winnerTeam != null && winnerTeam >= 0 ? winnerTeam : 0;
+  if (winnerTeam == null || winnerTeam < 0) {
+    for (let i = 1; i < cumulativeScores.length; i++) {
+      if ((cumulativeScores[i] ?? 0) > (cumulativeScores[winnerIndex] ?? 0)) winnerIndex = i;
+    }
   }
 
   const nameOfSeat = (seat: number): string => {
