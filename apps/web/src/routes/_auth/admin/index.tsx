@@ -91,6 +91,13 @@ function AdminDashboard() {
           <p className="text-sm text-stone-500">{t("admin.index.audit.desc")}</p>
         </Link>
         <Link
+          to="/admin/system-log"
+          className="block rounded border border-stone-200 px-4 py-3 hover:bg-stone-50"
+        >
+          <strong>{t("admin.index.systemLog.title")}</strong>
+          <p className="text-sm text-stone-500">{t("admin.index.systemLog.desc")}</p>
+        </Link>
+        <Link
           to="/admin/reports"
           className="block rounded border border-stone-200 px-4 py-3 hover:bg-stone-50"
         >

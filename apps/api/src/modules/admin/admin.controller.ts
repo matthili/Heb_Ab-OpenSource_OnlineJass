@@ -24,6 +24,7 @@ import { Roles } from "../../common/decorators/roles.decorator.js";
 import { RolesGuard } from "../../common/guards/roles.guard.js";
 import { SessionGuard } from "../../common/guards/session.guard.js";
 import { ZodValidationPipe } from "../../common/pipes/zod.pipe.js";
+import type { SystemLogEntry } from "../../common/system-log.buffer.js";
 import { BannedWordsService, type BannedWordView } from "../chat/banned-words.service.js";
 import { LobbySettingsService, type LobbySettings } from "../lobby/lobby-settings.service.js";
 import { InferenceClient } from "../inference/inference-client.service.js";
@@ -310,6 +311,14 @@ export class AdminController {
   ): Promise<{ entries: AdminAuditEntry[] }> {
     const entries = await this.admin.listAudit(query);
     return { entries };
+  }
+
+  // ─── System-Log (flüchtiger WARN+-Ringpuffer) ──────────────────────
+
+  @Get("system-log")
+  getSystemLog(@Query("level") level?: string): { entries: SystemLogEntry[] } {
+    const minLevel = level === "error" ? "error" : undefined;
+    return { entries: this.admin.getSystemLog(minLevel) };
   }
 
   // ─── Quitter-Stats ─────────────────────────────────────────────────

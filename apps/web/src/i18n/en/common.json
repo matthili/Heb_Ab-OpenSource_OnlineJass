@@ -1123,6 +1123,7 @@
         "blocklist": "Blocklist",
         "bannedWords": "Banned words",
         "audit": "Audit log",
+        "systemLog": "System log",
         "system": "System",
         "reports": "Reports",
         "tables": "Tables",
@@ -1154,6 +1155,10 @@
       "audit": {
         "title": "Audit log",
         "desc": "All security-relevant actions (auth, lobby, admin, …)."
+      },
+      "systemLog": {
+        "title": "System log",
+        "desc": "Recent API warnings and errors — volatile, empty after a restart."
       },
       "reports": {
         "title": "Reports",
@@ -1214,6 +1219,18 @@
       "colMeta": "Meta",
       "colIp": "IP",
       "loadOlder": "Load older →"
+    },
+    "systemLog": {
+      "onlyErrors": "Errors only",
+      "refresh": "Refresh",
+      "hint": "Recent warnings/errors (max. 500). Volatile — empty after an API restart. The permanent trail is in the audit log.",
+      "loading": "Loading system log …",
+      "empty": "No warnings or errors — all quiet.",
+      "colWhen": "When",
+      "colLevel": "Level",
+      "colContext": "Context",
+      "colMessage": "Message",
+      "stack": "Stack trace"
     },
     "bannedWords": {
       "intro": "Words that get replaced with <code>***</code> in chat messages (lobby, game, DM). Substring match, case-insensitive. Individual entries can be marked as RegEx (RE2). To block registrations see <em>Blocklist</em> — a different feature.",

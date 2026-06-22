@@ -88,6 +88,13 @@ function AdminLayout() {
             {t("admin.layout.nav.audit")}
           </Link>
           <Link
+            to="/admin/system-log"
+            activeProps={{ className: "font-semibold text-stone-900" }}
+            inactiveProps={{ className: "text-stone-600 hover:text-stone-900" }}
+          >
+            {t("admin.layout.nav.systemLog")}
+          </Link>
+          <Link
             to="/admin/reports"
             activeProps={{ className: "font-semibold text-stone-900" }}
             inactiveProps={{ className: "text-stone-600 hover:text-stone-900" }}

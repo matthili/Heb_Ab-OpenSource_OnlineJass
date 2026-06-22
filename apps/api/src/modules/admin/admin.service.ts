@@ -16,6 +16,7 @@ import {
 } from "@nestjs/common";
 import type { Prisma, Role, UserStatus } from "@prisma/client";
 
+import { systemLogBuffer, type SystemLogEntry } from "../../common/system-log.buffer.js";
 import { AuditService } from "../audit/audit.service.js";
 import { PrismaService } from "../prisma/prisma.service.js";
 import type {
@@ -305,6 +306,18 @@ export class AdminService {
       ip: r.ip,
       createdAt: r.createdAt.toISOString(),
     }));
+  }
+
+  // ─── System-Log (flüchtiger WARN+-Ringpuffer) ──────────────────────
+
+  /**
+   * Letzte WARN/ERROR/FATAL-Logzeilen (neueste zuerst), optional auf ein
+   * Mindest-Level gefiltert. Rein In-Memory — nach einem Neustart leer.
+   */
+  getSystemLog(minLevel?: "warn" | "error"): SystemLogEntry[] {
+    const entries = systemLogBuffer.list();
+    if (minLevel === "error") return entries.filter((e) => e.level >= 50);
+    return entries;
   }
 
   // ─── Quitter-Statistik ──────────────────────────────────────────────

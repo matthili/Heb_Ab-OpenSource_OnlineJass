@@ -1123,6 +1123,7 @@
         "blocklist": "Blocklist",
         "bannedWords": "Wortfilter",
         "audit": "Audit-Log",
+        "systemLog": "System-Log",
         "system": "System",
         "reports": "Meldungen",
         "tables": "Tische",
@@ -1154,6 +1155,10 @@
       "audit": {
         "title": "Audit-Log",
         "desc": "Alle sicherheitsrelevanten Aktionen (auth, lobby, admin, …)."
+      },
+      "systemLog": {
+        "title": "System-Log",
+        "desc": "Letzte Warnungen und Fehler der API — flüchtig, nach Neustart leer."
       },
       "reports": {
         "title": "Meldungen",
@@ -1214,6 +1219,18 @@
       "colMeta": "Meta",
       "colIp": "IP",
       "loadOlder": "Ältere laden →"
+    },
+    "systemLog": {
+      "onlyErrors": "Nur Fehler",
+      "refresh": "Aktualisieren",
+      "hint": "Letzte Warnungen/Fehler (max. 500). Flüchtig — nach einem API-Neustart leer. Der dauerhafte Verlauf steht im Audit-Log.",
+      "loading": "Lade System-Log …",
+      "empty": "Keine Warnungen oder Fehler — alles ruhig.",
+      "colWhen": "Wann",
+      "colLevel": "Level",
+      "colContext": "Kontext",
+      "colMessage": "Meldung",
+      "stack": "Stacktrace"
     },
     "bannedWords": {
       "intro": "Wörter, die in Chat-Nachrichten (Lobby, Spiel, DM) durch <code>***</code> ersetzt werden. Substring-Match, Groß-/Kleinschreibung egal. Einzelne Einträge lassen sich als RegEx (RE2) markieren. Für die Sperre von Registrierungen siehe <em>Blocklist</em> — anderes Feature.",

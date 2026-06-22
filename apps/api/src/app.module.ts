@@ -8,9 +8,12 @@ import type { IncomingMessage } from "node:http";
 import { Module } from "@nestjs/common";
 import { APP_GUARD } from "@nestjs/core";
 import { LoggerModule } from "nestjs-pino";
+import { multistream } from "pino";
+import pinoPretty from "pino-pretty";
 
 import { AppSecretModule } from "./common/app-secret.module.js";
 import { OriginCheckGuard } from "./common/guards/origin-check.guard.js";
+import { createSystemLogStream } from "./common/system-log.buffer.js";
 import { AdminModule } from "./modules/admin/admin.module.js";
 import { AuditModule } from "./modules/audit/audit.module.js";
 import { AuthModule } from "./modules/auth/auth.module.js";
@@ -48,19 +51,26 @@ const pinoHttpBase = {
   },
 };
 
-const pinoHttp = isDev
-  ? {
-      ...pinoHttpBase,
-      transport: {
-        target: "pino-pretty",
-        options: { singleLine: true, translateTime: "SYS:HH:MM:ss" },
-      },
-    }
-  : pinoHttpBase;
+// Konsolen-Ausgabe: im Dev hübsch (pino-pretty als In-Process-Stream — KEIN
+// Worker-`transport`, sonst ließe sich der WARN+-Ringpuffer nicht per
+// `multistream` danebenhängen), in Production rohes JSON nach stdout.
+const consoleStream = isDev
+  ? pinoPretty({ singleLine: true, translateTime: "SYS:HH:MM:ss", colorize: true })
+  : process.stdout;
 
 @Module({
   imports: [
-    LoggerModule.forRoot({ pinoHttp }),
+    // Zwei Log-Ziele: Konsole (alle Level) + WARN+-Ringpuffer für den
+    // Admin-System-Log. `pinoHttp` als [Optionen, Ziel-Stream]-Tupel.
+    LoggerModule.forRoot({
+      pinoHttp: [
+        pinoHttpBase,
+        multistream([
+          { level: isDev ? "debug" : "info", stream: consoleStream },
+          { level: "warn", stream: createSystemLogStream() },
+        ]),
+      ],
+    }),
     AppSecretModule,
     PrismaModule,
     RedisModule,

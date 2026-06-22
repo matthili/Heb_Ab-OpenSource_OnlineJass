@@ -69,6 +69,16 @@ export interface AdminAuditEntry {
   createdAt: string;
 }
 
+/** Eine Zeile aus dem flüchtigen WARN+-Ringpuffer (Admin → System-Log). */
+export interface SystemLogEntry {
+  time: number;
+  level: number;
+  levelLabel: string;
+  msg: string;
+  context?: string;
+  err?: { type?: string; message?: string; stack?: string };
+}
+
 export interface MeProfileResponse {
   id: string;
   email: string;
