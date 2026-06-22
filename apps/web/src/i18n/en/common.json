@@ -89,7 +89,9 @@
       "requestApprovedNoLink": "Your request was accepted.",
       "requestDenied": "Your request was declined.",
       "ownerChanged": "Table host changed to {{name}}.",
-      "ownerChangedFallback": "another player"
+      "ownerChangedFallback": "another player",
+      "friendRequestReceived": "{{name}} wants to be your friend. <link>View</link>",
+      "friendRequestAccepted": "{{name}} accepted your friend request."
     }
   },
 

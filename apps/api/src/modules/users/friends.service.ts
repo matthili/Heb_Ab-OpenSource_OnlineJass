@@ -22,6 +22,7 @@ import type { FriendshipStatus } from "@prisma/client";
 
 import { AuditService } from "../audit/audit.service.js";
 import { PrismaService } from "../prisma/prisma.service.js";
+import { FriendsGateway } from "./friends.gateway.js";
 import { resolveVisibility, type VisibilityMap } from "./visibility.js";
 
 export type FriendStatusOut = "NONE" | "PENDING_OUT" | "PENDING_IN" | "ACCEPTED" | "BLOCKED";
@@ -43,7 +44,8 @@ export interface FriendsList {
 export class FriendsService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly audit: AuditService
+    private readonly audit: AuditService,
+    private readonly gateway: FriendsGateway
   ) {}
 
   async getStatus(meId: string, otherId: string): Promise<FriendStatusOut> {
@@ -95,6 +97,12 @@ export class FriendsService {
       actorId: meId,
       target: otherId,
     });
+    // Empfänger live benachrichtigen — sonst sieht er die Anfrage nur, wenn er
+    // zufällig sein Kontextmenü oder den Freunde-Tab öffnet.
+    this.gateway.notifyRequestReceived(otherId, {
+      fromId: meId,
+      fromName: await this.displayName(meId),
+    });
   }
 
   async accept(meId: string, otherId: string): Promise<void> {
@@ -113,6 +121,11 @@ export class FriendsService {
       action: "friend.accept",
       actorId: meId,
       target: otherId,
+    });
+    // Den ursprünglichen Anfrager (otherId) live über die Annahme informieren.
+    this.gateway.notifyRequestAccepted(otherId, {
+      fromId: meId,
+      fromName: await this.displayName(meId),
     });
   }
 
@@ -215,6 +228,15 @@ export class FriendsService {
     }
     out.sort((a, b) => a.name.localeCompare(b.name));
     return out;
+  }
+
+  /** Anzeigename für die Live-Benachrichtigung; leer, falls der User weg ist. */
+  private async displayName(userId: string): Promise<string> {
+    const u = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { name: true },
+    });
+    return u?.name ?? "";
   }
 
   /**

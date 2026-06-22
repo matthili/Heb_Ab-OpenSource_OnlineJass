@@ -89,7 +89,9 @@
       "requestApprovedNoLink": "Deine Anfrage wurde angenommen.",
       "requestDenied": "Deine Anfrage wurde abgelehnt.",
       "ownerChanged": "Tisch-Verwalter hat gewechselt zu {{name}}.",
-      "ownerChangedFallback": "einem anderen Spieler"
+      "ownerChangedFallback": "einem anderen Spieler",
+      "friendRequestReceived": "{{name}} möchte mit dir befreundet sein. <link>Ansehen</link>",
+      "friendRequestAccepted": "{{name}} hat deine Freundschaftsanfrage angenommen."
     }
   },
 

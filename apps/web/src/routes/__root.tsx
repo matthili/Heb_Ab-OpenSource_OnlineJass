@@ -6,7 +6,7 @@
  * Auth-Status fragen wir hier direkt über `useSession()` ab; im
  * Sub-Layout `_auth.tsx` wird er als Guard verwendet.
  */
-import { useQuery, type QueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { createRootRouteWithContext, Link, Outlet } from "@tanstack/react-router";
 import { useCallback } from "react";
 import { Trans, useTranslation } from "react-i18next";
@@ -55,6 +55,7 @@ function UserEventToasts() {
   const { data } = useSession();
   const { showToast } = useToast();
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
 
   const onInvite = useCallback(
     (payload: unknown) => {
@@ -110,11 +111,52 @@ function UserEventToasts() {
     [showToast, t]
   );
 
+  // Eingehende Freundschaftsanfrage: Toast + Live-Refresh der Freunde-Queries,
+  // damit Freunde-Tab und Kontextmenü sofort den neuen Stand zeigen.
+  const onFriendRequest = useCallback(
+    (payload: unknown) => {
+      const p = payload as { fromId?: string; fromName?: string };
+      void queryClient.invalidateQueries({ queryKey: ["friends"] });
+      if (p?.fromId) {
+        void queryClient.invalidateQueries({ queryKey: ["friends", "status", p.fromId] });
+      }
+      showToast(
+        <span>
+          <Trans
+            i18nKey="nav.toasts.friendRequestReceived"
+            values={{ name: p?.fromName ?? "" }}
+            components={{ link: <a href="/profile?tab=friends" className="underline" /> }}
+          />
+        </span>,
+        { variant: "info", duration: 8_000 }
+      );
+    },
+    [showToast, queryClient]
+  );
+
+  // Eine von mir gesendete Anfrage wurde angenommen.
+  const onFriendAccepted = useCallback(
+    (payload: unknown) => {
+      const p = payload as { fromId?: string; fromName?: string };
+      void queryClient.invalidateQueries({ queryKey: ["friends"] });
+      if (p?.fromId) {
+        void queryClient.invalidateQueries({ queryKey: ["friends", "status", p.fromId] });
+      }
+      showToast(t("nav.toasts.friendRequestAccepted", { name: p?.fromName ?? "" }), {
+        variant: "success",
+        duration: 8_000,
+      });
+    },
+    [showToast, t, queryClient]
+  );
+
   // Wir registrieren die Listener immer; sie feuern nur, wenn man
   // eingeloggt ist (lobby:user:<id>-Room ist sonst nicht gejoint).
   useUserEvents("lobby:invite-received", onInvite);
   useUserEvents("lobby:request-decided", onRequestDecided);
   useUserEvents("lobby:owner-changed", onOwnerChanged);
+  useUserEvents("friend:request-received", onFriendRequest);
+  useUserEvents("friend:request-accepted", onFriendAccepted);
 
   return data?.user ? null : null;
 }
