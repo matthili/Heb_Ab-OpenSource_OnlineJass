@@ -81,6 +81,7 @@
     "greeting": "Servus, <strong>{{name}}</strong>",
     "profile": "Profil",
     "leaderboard": "Rangliste",
+    "school": "Jass-Schule",
     "admin": "Admin",
     "toLink": "Zum Tisch",
     "toasts": {

@@ -81,6 +81,7 @@
     "greeting": "Hi, <strong>{{name}}</strong>",
     "profile": "Profile",
     "leaderboard": "Leaderboard",
+    "school": "Jass school",
     "admin": "Admin",
     "toLink": "Go to table",
     "toasts": {

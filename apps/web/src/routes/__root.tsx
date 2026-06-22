@@ -184,8 +184,15 @@ function UserEventToasts() {
 }
 
 function Header() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { data, isPending } = useSession();
+  // Jass-Schule liegt in der Landing-App (/rules, /en/rules). In Production
+  // same-origin; im lokalen Dev läuft die Landing als eigener Astro-Server
+  // (Port 4321). Neuer Tab → das Spiel bleibt offen + verbunden (kein AFK,
+  // da AFK manuell ist und kein Tab-Wechsel-Trigger existiert).
+  const schoolHref = `${import.meta.env.DEV ? "http://localhost:4321" : ""}${
+    i18n.language.startsWith("en") ? "/en/rules" : "/rules"
+  }`;
   // DB-Rolle lädt nur, wenn eingeloggt — für den optionalen "Admin"-
   // Nav-Link. 401 (anonym) wird stillschweigend geschluckt.
   const { data: me } = useQuery<MeProfileResponse>({
@@ -210,6 +217,15 @@ function Header() {
           <BrandLogo variant="horizontal" alt={t("appName")} className="h-16 w-auto sm:h-24" />
         </Link>
         <div className="ml-auto flex items-center gap-3">
+          {/* Jass-Schule — für alle sichtbar (auch im Spiel); öffnet im neuen Tab. */}
+          <a
+            href={schoolHref}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-sm font-medium text-jass-inkSoft hover:text-jass-ink transition-colors"
+          >
+            {t("nav.school")}
+          </a>
           {isPending ? (
             <span className="text-sm text-jass-inkSoft">…</span>
           ) : data?.user ? (
