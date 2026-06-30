@@ -70,13 +70,14 @@ const DEFAULT_SCORE: Record<TableVariant, number> = {
 
 const VARIANT_OPTIONS: readonly TableVariant[] = ["KREUZ_4P", "SOLO_4P", "BODENSEE_2P"];
 
-// Kaskaden-Stufen der erlaubten Ansagen ÜBER Trumpf hinaus (Trumpf ist immer
-// an). `index` = Position in ANNOUNCE_LEVELS: GEISS_BOCK=1, SLALOM=2, ALLES
-// (=+Gumpf)=3. Eine Checkbox ist aktivierbar, sobald die vorige Stufe an ist.
+// Kaskade für Oben/Unten + Slalom ÜBER Trumpf hinaus (Trumpf ist immer an).
+// `index` = Position in ANNOUNCE_LEVELS: GEISS_BOCK=1, SLALOM=2. Eine Checkbox
+// ist aktivierbar, sobald die vorige Stufe an ist (Slalom braucht Oben/Unten).
+// Gumpf ist KEINE Stufe mehr, sondern ein unabhängiger Schalter (allowGumpf,
+// Veronika C1) — separat unten, damit Gumpf auch ohne Slalom wählbar ist.
 const ANNOUNCE_STEPS = [
   { key: "geissBock", index: 1 },
   { key: "slalom", index: 2 },
-  { key: "gumpf", index: 3 },
 ] as const;
 
 /** KI-Sitze für den „allein gegen KI"-Shortcut — bei Bodensee nur Sitz 1. */
@@ -97,7 +98,10 @@ export function OpenTableDialog({ open, onClose }: Props) {
   const [restartMode, setRestartMode] = useState<RestartMode>("SIEGER_GIBT");
   const [winMode, setWinMode] = useState<WinMode>("FIRST_TO_TARGET");
   const [targetScore, setTargetScore] = useState<number>(1000);
-  const [announceLevel, setAnnounceLevel] = useState<AnnounceLevel>("ALLES");
+  // Leiter für Oben/Unten/Slalom (Trumpf immer an). Default SLALOM = alle
+  // Leiter-Stufen aktiv; Gumpf liegt separat in `allowGumpf` (Veronika C1).
+  const [announceLevel, setAnnounceLevel] = useState<AnnounceLevel>("SLALOM");
+  const [allowGumpf, setAllowGumpf] = useState(true);
   const [sackRule, setSackRule] = useState(false);
   const [weisNeedsTrick, setWeisNeedsTrick] = useState(false);
   const [cutEnabled, setCutEnabled] = useState(true);
@@ -169,6 +173,7 @@ export function OpenTableDialog({ open, onClose }: Props) {
       winMode,
       targetScore,
       announceLevel,
+      allowGumpf,
       sackRule,
       weisNeedsTrick,
       cutEnabled,
@@ -288,6 +293,15 @@ export function OpenTableDialog({ open, onClose }: Props) {
                   />
                 );
               })}
+              {/* Gumpf — UNABHÄNGIGER Schalter (Veronika C1): immer aktivierbar,
+                  auch wenn Slalom abgewählt ist. */}
+              <AnnounceCheck
+                checked={allowGumpf}
+                disabled={false}
+                label={t("lobby.openTable.announceLevel.gumpf")}
+                hint={t("lobby.openTable.announceLevel.gumpfHint")}
+                onChange={() => setAllowGumpf((v) => !v)}
+              />
             </div>
           </Section>
 

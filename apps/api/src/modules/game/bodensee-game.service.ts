@@ -75,6 +75,8 @@ interface BodenseePending {
   announcerIdx: number;
   /** Erlaubte-Ansagen-Stufe (optional → alte Pending-Objekte = ALLES). */
   announceLevel?: AnnounceLevel;
+  /** Gumpf erlaubt — unabhängig von der Stufe (Veronika C1). Default false. */
+  allowGumpf?: boolean;
   /** Tisch-Option „Sack" (optional → alte Pending-Objekte = aus). */
   sackRule?: boolean;
 }
@@ -98,6 +100,8 @@ export interface CreateBodenseeGameInput {
   announcerSeat?: number;
   /** Erlaubte Ansage-Arten. Default: vom Tisch geladen bzw. ALLES. */
   announceLevel?: AnnounceLevel;
+  /** Gumpf erlaubt — unabhängig von der Stufe (Veronika C1). Default false. */
+  allowGumpf?: boolean;
 }
 
 /**
@@ -152,6 +156,8 @@ export interface BodenseePlayerView {
     announcerSeat: number;
     iAmAnnouncer: boolean;
     announceLevel: AnnounceLevel;
+    /** Gumpf erlaubt — unabhängig von der Stufe (Veronika C1). */
+    allowGumpf: boolean;
   };
   finalScore?: {
     player_total_points: readonly number[];
@@ -194,12 +200,14 @@ export class BodenseeGameService {
     const tableRules = input.tableId
       ? await this.prisma.lobbyTable.findUnique({
           where: { id: input.tableId },
-          select: { announceLevel: true, sackRule: true },
+          select: { announceLevel: true, allowGumpf: true, sackRule: true },
         })
       : null;
     // Erlaubte-Ansagen-Stufe: explizit > vom Tisch geladen > ALLES.
     const announceLevel: AnnounceLevel =
       input.announceLevel ?? tableRules?.announceLevel ?? "ALLES";
+    // Gumpf-Schalter: explizit > Tisch > aus (unabhängig von der Stufe, C1).
+    const allowGumpf = input.allowGumpf ?? tableRules?.allowGumpf ?? false;
     const sackRule = tableRules?.sackRule ?? false;
 
     const game = await this.prisma.$transaction(async (tx) => {
@@ -207,6 +215,7 @@ export class BodenseeGameService {
         data: {
           variant: "BODENSEE_2P",
           announceLevel,
+          allowGumpf,
           ruleVersion: SPEC_VERSION,
           ...(input.tableId !== undefined ? { tableId: input.tableId } : {}),
         },
@@ -244,7 +253,14 @@ export class BodenseeGameService {
       return created;
     });
 
-    await this.writePending(game.id, { hands, tables, announcerIdx, announceLevel, sackRule });
+    await this.writePending(game.id, {
+      hands,
+      tables,
+      announcerIdx,
+      announceLevel,
+      allowGumpf,
+      sackRule,
+    });
     await this.audit.record({
       action: "bodensee.game.created",
       target: game.id,
@@ -272,7 +288,7 @@ export class BodenseeGameService {
     }
     // Erlaubte-Ansagen-Stufe des Tisches server-seitig durchsetzen.
     const level: AnnounceLevel = pending.announceLevel ?? "ALLES";
-    if (!isAnnouncementAllowed(announcement, level)) {
+    if (!isAnnouncementAllowed(announcement, level, pending.allowGumpf ?? false)) {
       throw new BadRequestException(
         `Ansage ${announcement.slalom ? "SLALOM" : announcement.variant.mode} ist an diesem Tisch nicht erlaubt.`
       );
@@ -355,6 +371,7 @@ export class BodenseeGameService {
           announcerSeat: pending.announcerIdx,
           iAmAnnouncer: pending.announcerIdx === seat,
           announceLevel: pending.announceLevel ?? "ALLES",
+          allowGumpf: pending.allowGumpf ?? false,
         },
       };
     }
@@ -565,7 +582,10 @@ export class BodenseeGameService {
     const pending = await this.loadPending(gameId);
     if (!pending) throw new BadRequestException("Kein Ansage-Modus.");
     const pool = [...(pending.hands[seat] ?? []), ...visibleTableCards(pending.tables[seat] ?? [])];
-    const constraints = announceConstraints(pending.announceLevel ?? "ALLES");
+    const constraints = announceConstraints(
+      pending.announceLevel ?? "ALLES",
+      pending.allowGumpf ?? false
+    );
     return BODENSEE_HEURISTIC.chooseAnnouncement(pool, constraints);
   }
 

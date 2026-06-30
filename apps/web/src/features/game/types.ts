@@ -76,6 +76,8 @@ export interface PlayerView {
     pushedFromSeat: number | null;
     /** Erlaubte-Ansagen-Stufe des Tisches — der Dialog blendet gesperrte Modi aus. */
     announceLevel: AnnounceLevel;
+    /** Gumpf erlaubt — unabhängig von der Stufe (Veronika C1). */
+    allowGumpf: boolean;
     /** Schiebe-Slalom: nur noch die Start-Richtung (Oben/Unten) ist zu wählen. */
     slalomDirectionOnly: boolean;
   };

@@ -530,7 +530,7 @@
         "slalom": "Slalom",
         "slalomHint": "Modus wechselt pro Stich zwischen Oben und Unten — braucht Oben/Unten.",
         "gumpf": "Gumpf",
-        "gumpfHint": "Zusätzlich die anspruchsvollste Ansage (Gumpf) erlauben."
+        "gumpfHint": "Gumpf zusätzlich erlauben — unabhängig von Slalom (auch ohne Slalom wählbar)."
       },
       "scoringRules": {
         "weisNeedsTrick": "Weis nur mit Stich",

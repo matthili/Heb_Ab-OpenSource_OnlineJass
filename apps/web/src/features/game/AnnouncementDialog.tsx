@@ -47,7 +47,7 @@ export function AnnouncementDialog({ view, seatNames, pending, onAnnounce }: Pro
   const [slalomStart, setSlalomStart] = useState<"OBEN" | "UNTEN">("OBEN");
 
   // Nur die an diesem Tisch erlaubten Ansage-Arten anbieten (Stufe vom Server).
-  const { allowedModes, allowSlalom } = announceConstraints(ann.announceLevel);
+  const { allowedModes, allowSlalom } = announceConstraints(ann.announceLevel, ann.allowGumpf);
   const visibleModes: ModeChoice[] = [
     ...(["TRUMPF", "GUMPF", "OBEN", "UNTEN"] as const).filter((m) => allowedModes.has(m)),
     ...(allowSlalom ? (["SLALOM"] as const) : []),

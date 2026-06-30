@@ -296,6 +296,9 @@ model Game {
   // Erlaubte Ansage-Arten für dieses Spiel — beim Game-Start aus dem
   // LobbyTable kopiert (Default ALLES für direkt/test angelegte Spiele).
   announceLevel  AnnounceLevel @default(ALLES)
+  // Gumpf erlaubt — UNABHÄNGIG von der Stufe (Veronika C1). Alt-Spiele: false
+  // (ALLES enthält Gumpf weiterhin selbst); neue Tische setzen es explizit.
+  allowGumpf     Boolean       @default(false)
   // Optionale Wertungsregeln (beim Game-Start aus dem LobbyTable kopiert).
   // sackRule: < 21 Kartenpunkte → Rundenwertung verfällt komplett.
   // weisNeedsTrick: kein Stich → Weis-Punkte verfallen wieder.
@@ -430,6 +433,9 @@ model LobbyTable {
   // Erlaubte Ansage-Arten am Tisch (Owner wählt beim Eröffnen). Default
   // ALLES = alle Möglichkeiten aktiv. Wird beim Game-Start auf das Game kopiert.
   announceLevel   AnnounceLevel @default(ALLES)
+  // Gumpf erlaubt — UNABHÄNGIG von der Stufe (Veronika C1). Beim Game-Start
+  // aufs Game kopiert. Alt-Tische: false (ALLES enthält Gumpf selbst).
+  allowGumpf      Boolean       @default(false)
   // Optionale Wertungsregeln (Owner wählt beim Eröffnen, beim Game-Start
   // aufs Game kopiert). sackRule: < 21 Kartenpunkte → Runde verfällt komplett.
   // weisNeedsTrick: kein Stich → Weis-Punkte verfallen wieder.

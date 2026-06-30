@@ -130,6 +130,8 @@ interface CutPending {
   announcerSeat: number;
   isSolo?: boolean;
   announceLevel?: AnnounceLevel;
+  /** Gumpf erlaubt — unabhängig von der Stufe (Veronika C1). Default false. */
+  allowGumpf?: boolean;
   sackRule?: boolean;
   weisNeedsTrick?: boolean;
 }
@@ -150,6 +152,8 @@ interface PendingAnnouncement {
    * ohne das Feld als `ALLES` (= keine Einschränkung) interpretiert werden.
    */
   announceLevel?: AnnounceLevel;
+  /** Gumpf erlaubt — unabhängig von der Stufe (Veronika C1). Default false. */
+  allowGumpf?: boolean;
   /** Optionale Wertungsregeln des Tisches (Default false, s. createGame). */
   sackRule?: boolean;
   weisNeedsTrick?: boolean;
@@ -217,6 +221,8 @@ export interface CreateGameInput {
    * Einschränkung — passt zu Tests/Direkt-Pfaden, die das Feld weglassen.
    */
   announceLevel?: AnnounceLevel;
+  /** Gumpf erlaubt — unabhängig von der Stufe (Veronika C1). Default false. */
+  allowGumpf?: boolean;
   /**
    * Optionale Wertungsregeln (Tisch-Einstellung). Default `false`. Werden
    * wie `announceLevel` aufgelöst (explizit > Tisch > aus) und aufs Game
@@ -288,6 +294,8 @@ export interface PlayerView {
     pushedFromSeat: number | null;
     /** Erlaubte-Ansagen-Stufe des Tisches — der Dialog blendet gesperrte Modi aus. */
     announceLevel: AnnounceLevel;
+    /** Gumpf erlaubt — unabhängig von der Stufe (Veronika C1). */
+    allowGumpf: boolean;
     /**
      * Schiebe-Slalom: der Partner hat Slalom angesagt, offen ist nur noch die
      * Start-Richtung (Oben/Unten), die DU als Starter wählst. Der Dialog zeigt
@@ -449,6 +457,7 @@ export class GameService {
           where: { id: input.tableId },
           select: {
             announceLevel: true,
+            allowGumpf: true,
             sackRule: true,
             weisNeedsTrick: true,
             cutEnabled: true,
@@ -457,6 +466,8 @@ export class GameService {
       : null;
     const announceLevel: AnnounceLevel =
       input.announceLevel ?? tableRules?.announceLevel ?? "ALLES";
+    // Gumpf-Schalter: explizit > Tisch > aus (unabhängig von der Stufe, C1).
+    const allowGumpf = input.allowGumpf ?? tableRules?.allowGumpf ?? false;
     // Optionale Wertungsregeln: explizit > Tisch > aus (analog announceLevel).
     const sackRule = input.sackRule ?? tableRules?.sackRule ?? false;
     const weisNeedsTrick = input.weisNeedsTrick ?? tableRules?.weisNeedsTrick ?? false;
@@ -489,6 +500,7 @@ export class GameService {
         data: {
           variant: variantToEnum(input.gameType ?? "kreuz"),
           announceLevel,
+          allowGumpf,
           sackRule,
           weisNeedsTrick,
           ruleVersion: SPEC_VERSION,
@@ -552,6 +564,7 @@ export class GameService {
         announcerSeat: announcerSeat!,
         isSolo,
         announceLevel,
+        allowGumpf,
         sackRule,
         weisNeedsTrick,
       });
@@ -562,6 +575,7 @@ export class GameService {
         pushedFromSeat: null,
         isSolo,
         announceLevel,
+        allowGumpf,
         sackRule,
         weisNeedsTrick,
       });
@@ -654,6 +668,7 @@ export class GameService {
           canPush,
           pushedFromSeat: pending.pushedFromSeat,
           announceLevel: pending.announceLevel ?? "ALLES",
+          allowGumpf: pending.allowGumpf ?? false,
           slalomDirectionOnly: pending.slalomDirectionOnly ?? false,
         },
         inferenceAvailable,
@@ -1186,6 +1201,7 @@ export class GameService {
       pushedFromSeat: null,
       ...(cut.isSolo !== undefined ? { isSolo: cut.isSolo } : {}),
       ...(cut.announceLevel !== undefined ? { announceLevel: cut.announceLevel } : {}),
+      ...(cut.allowGumpf !== undefined ? { allowGumpf: cut.allowGumpf } : {}),
       ...(cut.sackRule !== undefined ? { sackRule: cut.sackRule } : {}),
       ...(cut.weisNeedsTrick !== undefined ? { weisNeedsTrick: cut.weisNeedsTrick } : {}),
     });
@@ -1346,6 +1362,7 @@ export class GameService {
         pushedFromSeat: seat,
         ...(pending.isSolo !== undefined ? { isSolo: pending.isSolo } : {}),
         ...(pending.announceLevel !== undefined ? { announceLevel: pending.announceLevel } : {}),
+        ...(pending.allowGumpf !== undefined ? { allowGumpf: pending.allowGumpf } : {}),
         ...(pending.sackRule !== undefined ? { sackRule: pending.sackRule } : {}),
         ...(pending.weisNeedsTrick !== undefined ? { weisNeedsTrick: pending.weisNeedsTrick } : {}),
       };
@@ -1366,7 +1383,7 @@ export class GameService {
     // manipulierter Client könnte sonst eine gesperrte Ansage (z.B. Gumpf)
     // schicken, obwohl der Tisch sie nicht anbietet.
     const level: AnnounceLevel = pending.announceLevel ?? "ALLES";
-    if (!isAnnouncementAllowed(ann, level)) {
+    if (!isAnnouncementAllowed(ann, level, pending.allowGumpf ?? false)) {
       throw new BadRequestException(
         `Ansage ${ann.slalom ? "SLALOM" : ann.variant.mode} ist an diesem Tisch nicht erlaubt.`
       );
@@ -1390,6 +1407,7 @@ export class GameService {
         pushedFromSeat: starterSeat,
         ...(pending.isSolo !== undefined ? { isSolo: pending.isSolo } : {}),
         ...(pending.announceLevel !== undefined ? { announceLevel: pending.announceLevel } : {}),
+        ...(pending.allowGumpf !== undefined ? { allowGumpf: pending.allowGumpf } : {}),
         ...(pending.sackRule !== undefined ? { sackRule: pending.sackRule } : {}),
         ...(pending.weisNeedsTrick !== undefined ? { weisNeedsTrick: pending.weisNeedsTrick } : {}),
         slalomDirectionOnly: true,
@@ -1640,7 +1658,10 @@ export class GameService {
     // (random/heuristic/nn) nutzen für die Ansage den HeuristicPlayer; der
     // filtert Kandidaten nach allowedModes/allowSlalom. TRUMPF ist auf jeder
     // Stufe erlaubt → es gibt immer mindestens eine wählbare Ansage.
-    const { allowedModes, allowSlalom } = announceConstraints(pending.announceLevel ?? "ALLES");
+    const { allowedModes, allowSlalom } = announceConstraints(
+      pending.announceLevel ?? "ALLES",
+      pending.allowGumpf ?? false
+    );
     // Getunte Ansage-Parameter je Spielart (NN-Briefings v0.7.2 Kreuz / v0.8.2 Solo).
     const tuned = pending.isSolo ? SOLO_ANNOUNCE_PARAMS : KREUZ_ANNOUNCE_PARAMS;
     const heur = new HeuristicPlayer({ allowedModes, allowSlalom, ...tuned });

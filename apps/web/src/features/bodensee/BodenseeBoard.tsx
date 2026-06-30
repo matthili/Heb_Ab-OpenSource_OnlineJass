@@ -342,6 +342,7 @@ export function BodenseeBoard({
             pending={announcePending}
             onAnnounce={onAnnounce}
             announceLevel={view.announcement.announceLevel}
+            allowGumpf={view.announcement.allowGumpf}
           />
         ) : (
           <p className="rounded-lg border border-jass-paperEdge bg-jass-cream px-4 py-3 text-sm text-jass-inkSoft panel-jass">
@@ -575,10 +576,12 @@ function AnnouncePanel({
   pending,
   onAnnounce,
   announceLevel,
+  allowGumpf,
 }: {
   pending: boolean;
   onAnnounce: (a: BodenseeAnnouncement) => void;
   announceLevel: AnnounceLevel;
+  allowGumpf: boolean;
 }) {
   const { t } = useTranslation();
   const [mode, setMode] = useState<AnnounceMode>("TRUMPF");
@@ -587,7 +590,7 @@ function AnnouncePanel({
   const needsSuit = mode === "TRUMPF" || mode === "GUMPF";
 
   // Nur die an diesem Tisch erlaubten Ansage-Arten anbieten.
-  const { allowedModes, allowSlalom } = announceConstraints(announceLevel);
+  const { allowedModes, allowSlalom } = announceConstraints(announceLevel, allowGumpf);
   const visibleModes: AnnounceMode[] = [
     ...(["TRUMPF", "GUMPF", "OBEN", "UNTEN"] as const).filter((m) => allowedModes.has(m)),
     ...(allowSlalom ? (["SLALOM"] as const) : []),

@@ -70,8 +70,17 @@ export const OpenTableDtoSchema = z
   .object({
     joinMode: JoinModeSchema.default("OPEN"),
     variant: VariantEnumSchema.default("KREUZ_4P"),
-    /** Erlaubte Ansage-Arten. Default ALLES = alle Möglichkeiten aktiv. */
+    /**
+     * Ansage-Leiter für Oben/Unten/Slalom (Trumpf immer an). Default `ALLES`
+     * bleibt aus Abwärtskompatibilität; die UI setzt sie auf ≤ SLALOM und
+     * steuert Gumpf separat über `allowGumpf`.
+     */
     announceLevel: AnnounceLevelSchema.default("ALLES"),
+    /**
+     * **Gumpf erlaubt** — UNABHÄNGIG von der Stufe (Veronika C1): so ist Gumpf
+     * auch ohne Slalom wählbar. Default an (= entspricht dem bisherigen „alles").
+     */
+    allowGumpf: z.boolean().default(true),
     /**
      * **„Sack"**: Wer pro Runde < 21 reine Kartenpunkte (aus Stichen) macht,
      * bekommt gar nichts gewertet — Kartenpunkte UND Weis verfallen (kein

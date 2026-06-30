@@ -132,30 +132,48 @@ export interface AnnounceConstraints {
   readonly allowSlalom: boolean;
 }
 
-/** Leitet aus der Stufe die erlaubten Modi + das Slalom-Flag ab. */
-export function announceConstraints(level: AnnounceLevel): AnnounceConstraints {
+/**
+ * Leitet aus der Stufe + dem **unabhängigen Gumpf-Schalter** die erlaubten Modi
+ * + das Slalom-Flag ab. `allowGumpf` liegt bewusst NEBEN der Leiter, damit Gumpf
+ * auch ohne Slalom erlaubt werden kann (Tisch-Einstellung). Die Alt-Stufe `ALLES`
+ * enthält Gumpf weiterhin selbst — Abwärtskompatibilität für bestehende Spiele.
+ */
+export function announceConstraints(level: AnnounceLevel, allowGumpf = false): AnnounceConstraints {
+  let allowedModes: Set<PlayMode>;
+  let allowSlalom: boolean;
   switch (level) {
     case "TRUMPF":
-      return { allowedModes: new Set<PlayMode>(["TRUMPF"]), allowSlalom: false };
+      allowedModes = new Set<PlayMode>(["TRUMPF"]);
+      allowSlalom = false;
+      break;
     case "GEISS_BOCK":
-      return { allowedModes: new Set<PlayMode>(["TRUMPF", "OBEN", "UNTEN"]), allowSlalom: false };
+      allowedModes = new Set<PlayMode>(["TRUMPF", "OBEN", "UNTEN"]);
+      allowSlalom = false;
+      break;
     case "SLALOM":
-      return { allowedModes: new Set<PlayMode>(["TRUMPF", "OBEN", "UNTEN"]), allowSlalom: true };
+      allowedModes = new Set<PlayMode>(["TRUMPF", "OBEN", "UNTEN"]);
+      allowSlalom = true;
+      break;
     case "ALLES":
-      return {
-        allowedModes: new Set<PlayMode>(["TRUMPF", "GUMPF", "OBEN", "UNTEN"]),
-        allowSlalom: true,
-      };
+      allowedModes = new Set<PlayMode>(["TRUMPF", "GUMPF", "OBEN", "UNTEN"]);
+      allowSlalom = true;
+      break;
   }
+  if (allowGumpf) allowedModes.add("GUMPF");
+  return { allowedModes, allowSlalom };
 }
 
 /**
- * Prüft, ob eine konkrete Ansage unter der gegebenen Stufe erlaubt ist.
+ * Prüft, ob eine konkrete Ansage unter Stufe + Gumpf-Schalter erlaubt ist.
  * Bei Slalom zählt nur `allowSlalom` (der `variant.mode` ist dann der
  * Startmodus OBEN/UNTEN, der auf jeder Slalom-fähigen Stufe erlaubt ist).
  */
-export function isAnnouncementAllowed(ann: Announcement, level: AnnounceLevel): boolean {
-  const { allowedModes, allowSlalom } = announceConstraints(level);
+export function isAnnouncementAllowed(
+  ann: Announcement,
+  level: AnnounceLevel,
+  allowGumpf = false
+): boolean {
+  const { allowedModes, allowSlalom } = announceConstraints(level, allowGumpf);
   if (ann.slalom) return allowSlalom;
   return allowedModes.has(ann.variant.mode);
 }

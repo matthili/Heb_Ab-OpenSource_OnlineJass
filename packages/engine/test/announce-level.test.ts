@@ -71,3 +71,31 @@ describe("isAnnouncementAllowed", () => {
     }
   });
 });
+
+describe("announceConstraints — unabhängiger Gumpf-Schalter (Veronika C1)", () => {
+  it("GEISS_BOCK + allowGumpf: Gumpf erlaubt, Slalom NICHT (entkoppelt)", () => {
+    const c = announceConstraints("GEISS_BOCK", true);
+    expect([...c.allowedModes].sort()).toEqual(["GUMPF", "OBEN", "TRUMPF", "UNTEN"]);
+    expect(c.allowSlalom).toBe(false);
+  });
+
+  it("SLALOM + allowGumpf: Gumpf UND Slalom erlaubt", () => {
+    const c = announceConstraints("SLALOM", true);
+    expect([...c.allowedModes].sort()).toEqual(["GUMPF", "OBEN", "TRUMPF", "UNTEN"]);
+    expect(c.allowSlalom).toBe(true);
+  });
+
+  it("TRUMPF + allowGumpf: nur Trumpf + Gumpf, kein Oben/Unten/Slalom", () => {
+    const c = announceConstraints("TRUMPF", true);
+    expect([...c.allowedModes].sort()).toEqual(["GUMPF", "TRUMPF"]);
+    expect(c.allowSlalom).toBe(false);
+  });
+
+  it("isAnnouncementAllowed: Gumpf folgt dem Schalter, nicht der Stufe", () => {
+    expect(isAnnouncementAllowed(gumpf, "GEISS_BOCK", true)).toBe(true);
+    expect(isAnnouncementAllowed(gumpf, "GEISS_BOCK", false)).toBe(false);
+    // Slalom bleibt an die Stufe gebunden — vom Gumpf-Schalter unberührt.
+    expect(isAnnouncementAllowed(slalom, "GEISS_BOCK", true)).toBe(false);
+    expect(isAnnouncementAllowed(slalom, "SLALOM", false)).toBe(true);
+  });
+});

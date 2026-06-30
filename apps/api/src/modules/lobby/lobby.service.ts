@@ -239,6 +239,7 @@ export class LobbyService {
           joinMode: dto.joinMode,
           variant: dto.variant,
           announceLevel: dto.announceLevel,
+          allowGumpf: dto.allowGumpf,
           sackRule: dto.sackRule,
           weisNeedsTrick: dto.weisNeedsTrick,
           cutEnabled: dto.cutEnabled,

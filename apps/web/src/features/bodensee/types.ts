@@ -41,7 +41,13 @@ export interface BodenseeView {
   lastTrick?: { cards: readonly Card[]; starter: number; winner: number };
   /** Erster Stich der Runde — dauerhaft als Mini angezeigt. */
   firstTrick?: { cards: readonly Card[]; starter: number; winner: number };
-  announcement?: { announcerSeat: number; iAmAnnouncer: boolean; announceLevel: AnnounceLevel };
+  announcement?: {
+    announcerSeat: number;
+    iAmAnnouncer: boolean;
+    announceLevel: AnnounceLevel;
+    /** Gumpf erlaubt — unabhängig von der Stufe (Veronika C1). */
+    allowGumpf: boolean;
+  };
   finalScore?: { player_total_points: readonly number[]; matsch_player: number | null };
 }
 

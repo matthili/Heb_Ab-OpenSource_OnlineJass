@@ -530,7 +530,7 @@
         "slalom": "Slalom",
         "slalomHint": "Mode alternates between Top-down and Bottom-up each trick — requires Oben/Unten.",
         "gumpf": "Gumpf",
-        "gumpfHint": "Also allow the hardest announcement (Gumpf)."
+        "gumpfHint": "Also allow Gumpf — independent of Slalom (selectable even without it)."
       },
       "scoringRules": {
         "weisNeedsTrick": "Declaration needs a trick",
