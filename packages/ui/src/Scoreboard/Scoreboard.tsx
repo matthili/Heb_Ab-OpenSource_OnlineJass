@@ -128,21 +128,32 @@ function useRisingEdgePop(active: boolean): { seq: number } | null {
 }
 
 /**
- * Ein einzelnes Solo-Konto mit Hochzähl-Animation + „+X"-Pop.
- * Eigene Komponente, damit die Hooks pro Spieler sauber instanziiert
- * werden (Hooks dürfen nicht in Schleifen stehen).
+ * Punktwert mit Hochzähl-Animation. Der „+X"-Pop (und der „+20 Stöck"-Pop)
+ * schwebt GENAU über der Zahl — dafür umschließt ein `relative inline-block`
+ * NUR den Wert, nicht das vorangestellte Label. Sonst zentriert der Pop über
+ * „Eigenes Team:" / „Gegner:" statt über dem Punktewert (Veronika E1).
  */
-function SoloScoreEntry({ label, points, isMe, stoeck }: SoloScoreEntryData) {
-  const animated = useAnimatedNumber(points);
-  const pop = useScorePop(points);
+function ScoreNumber({
+  value,
+  popColor,
+  stoeck,
+}: {
+  value: number;
+  /** Tailwind-Textfarbe des Pops (grün für eigenes Team, rot für Gegner). */
+  popColor: string;
+  /** Stöck angesagt → einmaliger „+20 Stöck"-Pop bei steigender Flanke. */
+  stoeck?: boolean | undefined;
+}) {
+  const animated = useAnimatedNumber(value);
+  const pop = useScorePop(value);
   const stoeckPop = useRisingEdgePop(!!stoeck);
   return (
-    <span className={`relative ${isMe ? "text-jass-ink font-semibold" : "text-jass-inkSoft"}`}>
-      {label}: <strong className="text-jass-ink tabular-nums">{animated}</strong>
+    <span className="relative inline-block">
+      <strong className="text-jass-ink tabular-nums">{animated}</strong>
       {pop && (
         <span
           key={pop.seq}
-          className="jass-score-pop absolute -top-1 left-1/2 -translate-x-1/2 text-jass-green font-semibold text-base"
+          className={`jass-score-pop absolute -top-1 left-1/2 -translate-x-1/2 font-semibold text-base ${popColor}`}
         >
           +{pop.delta}
         </span>
@@ -150,11 +161,24 @@ function SoloScoreEntry({ label, points, isMe, stoeck }: SoloScoreEntryData) {
       {stoeckPop && (
         <span
           key={`stoeck-${stoeckPop.seq}`}
-          className="jass-score-pop absolute -top-1 left-1/2 -translate-x-1/2 whitespace-nowrap text-jass-green font-semibold text-base"
+          className={`jass-score-pop absolute -top-1 left-1/2 -translate-x-1/2 whitespace-nowrap font-semibold text-base ${popColor}`}
         >
           +20 Stöck
         </span>
       )}
+    </span>
+  );
+}
+
+/**
+ * Ein einzelnes Solo-Konto mit Hochzähl-Animation + „+X"-Pop über der Zahl.
+ * Eigene Komponente, damit die Hooks pro Spieler sauber instanziiert
+ * werden (Hooks dürfen nicht in Schleifen stehen).
+ */
+function SoloScoreEntry({ label, points, isMe, stoeck }: SoloScoreEntryData) {
+  return (
+    <span className={isMe ? "text-jass-ink font-semibold" : "text-jass-inkSoft"}>
+      {label}: <ScoreNumber value={points} popColor="text-jass-green" stoeck={stoeck} />
     </span>
   );
 }
@@ -228,52 +252,19 @@ function TeamScoreboard({
   modeText: string | null;
   stoeckSide?: "own" | "opp" | null;
 }) {
-  const ownAnimated = useAnimatedNumber(ownTeamScore);
-  const oppAnimated = useAnimatedNumber(oppTeamScore);
-  const ownPop = useScorePop(ownTeamScore);
-  const oppPop = useScorePop(oppTeamScore);
-  const ownStoeckPop = useRisingEdgePop(stoeckSide === "own");
-  const oppStoeckPop = useRisingEdgePop(stoeckSide === "opp");
-
   return (
     <div className="flex gap-4 text-sm rounded-lg border border-jass-paperEdge bg-jass-cream px-3 py-2 items-center panel-jass">
-      <span className="text-jass-inkSoft relative">
-        Eigenes Team: <strong className="text-jass-ink tabular-nums">{ownAnimated}</strong>
-        {ownPop && (
-          <span
-            key={ownPop.seq}
-            className="jass-score-pop absolute -top-1 left-1/2 -translate-x-1/2 text-jass-green font-semibold text-base"
-          >
-            +{ownPop.delta}
-          </span>
-        )}
-        {ownStoeckPop && (
-          <span
-            key={`stoeck-${ownStoeckPop.seq}`}
-            className="jass-score-pop absolute -top-1 left-1/2 -translate-x-1/2 whitespace-nowrap text-jass-green font-semibold text-base"
-          >
-            +20 Stöck
-          </span>
-        )}
+      <span className="text-jass-inkSoft">
+        Eigenes Team:{" "}
+        <ScoreNumber
+          value={ownTeamScore}
+          popColor="text-jass-green"
+          stoeck={stoeckSide === "own"}
+        />
       </span>
-      <span className="text-jass-inkSoft relative">
-        Gegner: <strong className="text-jass-ink tabular-nums">{oppAnimated}</strong>
-        {oppPop && (
-          <span
-            key={oppPop.seq}
-            className="jass-score-pop absolute -top-1 left-1/2 -translate-x-1/2 text-jass-red font-semibold text-base"
-          >
-            +{oppPop.delta}
-          </span>
-        )}
-        {oppStoeckPop && (
-          <span
-            key={`stoeck-${oppStoeckPop.seq}`}
-            className="jass-score-pop absolute -top-1 left-1/2 -translate-x-1/2 whitespace-nowrap text-jass-red font-semibold text-base"
-          >
-            +20 Stöck
-          </span>
-        )}
+      <span className="text-jass-inkSoft">
+        Gegner:{" "}
+        <ScoreNumber value={oppTeamScore} popColor="text-jass-red" stoeck={stoeckSide === "opp"} />
       </span>
       {modeText && (
         <span className="jass-mode-glow rounded bg-jass-yellow px-2.5 py-1 text-sm text-jass-ink font-bold ring-1 ring-jass-yellowDark">
