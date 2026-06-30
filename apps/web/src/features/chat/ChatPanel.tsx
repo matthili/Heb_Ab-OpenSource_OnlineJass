@@ -232,7 +232,7 @@ export function ChatPanel({
           <button
             type="submit"
             disabled={isSending || draft.trim().length === 0 || dmBlocked}
-            className="rounded bg-stone-900 px-3 py-1 text-sm text-white hover:bg-stone-700 disabled:opacity-50"
+            className="btn-jass-primary text-sm"
           >
             {isSending ? "…" : t("chat.send")}
           </button>

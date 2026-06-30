@@ -183,6 +183,19 @@ function UserEventToasts() {
   return data?.user ? null : null;
 }
 
+// ── Header-Nav-Link-Stil ────────────────────────────────────────────────
+// Gemeinsamer Stil der Text-Nav-Links (Profil/Rangliste/Anmelden). Der
+// AKTIVE Link bekommt volle Tinte + goldene Unterstreichung → man sieht auf
+// einen Blick, auf welcher Seite man ist (Veronika-Feedback G1). TanStack-
+// Router hängt `activeProps`/`inactiveProps`-className an die Basis an, daher
+// trägt die Basis nur die gemeinsamen Teile.
+const NAV_LINK_BASE = "text-sm font-medium transition-colors";
+const NAV_LINK_ACTIVE = {
+  className:
+    "text-jass-ink font-semibold underline decoration-2 decoration-jass-yellow underline-offset-[6px]",
+};
+const NAV_LINK_INACTIVE = { className: "text-jass-inkSoft hover:text-jass-ink" };
+
 function Header() {
   const { t, i18n } = useTranslation();
   const { data, isPending } = useSession();
@@ -217,19 +230,11 @@ function Header() {
           <BrandLogo variant="horizontal" alt={t("appName")} className="h-16 w-auto sm:h-24" />
         </Link>
         <div className="ml-auto flex items-center gap-3">
-          {/* Jass-Schule — für alle sichtbar (auch im Spiel); öffnet im neuen Tab. */}
-          <a
-            href={schoolHref}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-sm font-medium text-jass-inkSoft hover:text-jass-ink transition-colors"
-          >
-            {t("nav.school")}
-          </a>
           {isPending ? (
             <span className="text-sm text-jass-inkSoft">…</span>
           ) : data?.user ? (
-            // Reihenfolge: [Admin], Begrüßung, Profil, Farbmodus, Sprache, Abmelden
+            // Reihenfolge (Veronika B3): [Admin] · Servus · AFK · Profil ·
+            // Rangliste · Jass-Schule · Farbmodus · Sprache · Abmelden.
             <>
               {me?.role === "ADMIN" && (
                 <Link
@@ -246,30 +251,54 @@ function Header() {
                   components={{ strong: <strong className="text-jass-ink" /> }}
                 />
               </span>
+              <AfkButton />
               <Link
                 to="/profile"
-                className="text-sm font-medium text-jass-inkSoft hover:text-jass-ink transition-colors"
+                className={NAV_LINK_BASE}
+                activeProps={NAV_LINK_ACTIVE}
+                inactiveProps={NAV_LINK_INACTIVE}
               >
                 {t("nav.profile")}
               </Link>
               <Link
                 to="/leaderboard"
-                className="text-sm font-medium text-jass-inkSoft hover:text-jass-ink transition-colors"
+                className={NAV_LINK_BASE}
+                activeProps={NAV_LINK_ACTIVE}
+                inactiveProps={NAV_LINK_INACTIVE}
               >
                 {t("nav.leaderboard")}
               </Link>
-              <AfkButton />
+              {/* Jass-Schule liegt in der Landing-App → externer Link, neuer
+                  Tab, kein SPA-Aktiv-Zustand. */}
+              <a
+                href={schoolHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={`${NAV_LINK_BASE} text-jass-inkSoft hover:text-jass-ink`}
+              >
+                {t("nav.school")}
+              </a>
               <ContrastToggle />
               <LanguageSwitcher />
               <SignOutMenu />
             </>
           ) : (
             <>
+              <a
+                href={schoolHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={`${NAV_LINK_BASE} text-jass-inkSoft hover:text-jass-ink`}
+              >
+                {t("nav.school")}
+              </a>
               <ContrastToggle />
               <LanguageSwitcher />
               <Link
                 to="/login"
-                className="text-sm font-medium text-jass-inkSoft hover:text-jass-ink transition-colors"
+                className={NAV_LINK_BASE}
+                activeProps={NAV_LINK_ACTIVE}
+                inactiveProps={NAV_LINK_INACTIVE}
               >
                 {t("nav.signIn")}
               </Link>
@@ -317,28 +346,36 @@ function ContrastToggle() {
       onClick={() => setTheme(THEME_NEXT[theme])}
       aria-label={label}
       title={label}
-      className="rounded border border-jass-paperEdge bg-jass-paper px-2 py-1 text-sm hover:bg-jass-cream text-jass-ink"
+      // Feste Quadrat-Größe (Veronika B1): das Icon wechselt je Theme (◐/🌙/🎨)
+      // und die Emoji-Glyphen sind verschieden breit — eine fixe h-9 w-9-Box
+      // hält den Button konstant groß. Optik = Landing-Theme-Toggle.
+      className="inline-flex h-9 w-9 items-center justify-center rounded border border-jass-paperEdge bg-jass-paper text-sm leading-none text-jass-ink transition-colors hover:bg-jass-cream"
     >
       {THEME_ICON[theme]}
     </button>
   );
 }
 
+/**
+ * Sprach-Umschalter — ein Toggle-Knopf wie auf der Landing-Page (Veronika B2),
+ * kein Dropdown mehr. Beschriftung = Zielsprache ("EN" auf Deutsch, "DE" auf
+ * Englisch), Tooltip in der Zielsprache. Klick wechselt direkt zwischen de↔en.
+ */
 function LanguageSwitcher() {
-  const { i18n, t } = useTranslation();
-  const current = i18n.resolvedLanguage ?? i18n.language;
+  const { i18n } = useTranslation();
+  const isEn = (i18n.resolvedLanguage ?? i18n.language).startsWith("en");
+  const target = isEn ? "de" : "en";
+  const label = isEn ? "DE" : "EN";
+  const title = isEn ? "Auf Deutsch wechseln" : "Switch to English";
   return (
-    <label className="text-sm flex items-center gap-1">
-      <span className="sr-only">{t("language.label")}</span>
-      <select
-        value={current}
-        onChange={(e) => void i18n.changeLanguage(e.target.value)}
-        className="rounded border border-stone-300 px-2 py-1 text-sm bg-white"
-        aria-label={t("language.label")}
-      >
-        <option value="de">{t("language.de")}</option>
-        <option value="en">{t("language.en")}</option>
-      </select>
-    </label>
+    <button
+      type="button"
+      onClick={() => void i18n.changeLanguage(target)}
+      aria-label={title}
+      title={title}
+      className="inline-flex h-9 items-center rounded border border-jass-paperEdge bg-jass-paper px-2.5 text-sm font-semibold tracking-wide text-jass-ink transition-colors hover:bg-jass-cream"
+    >
+      {label}
+    </button>
   );
 }

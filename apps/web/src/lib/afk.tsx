@@ -148,7 +148,7 @@ export function AfkButton() {
       onClick={() => setAfk(true)}
       disabled={disabled}
       title={atTable ? t("afk.button.atTableHint") : undefined}
-      className="rounded border border-jass-paperEdge px-2 py-1 text-sm font-medium text-jass-inkSoft transition-colors hover:text-jass-ink disabled:cursor-not-allowed disabled:opacity-50"
+      className="btn-jass-primary text-sm"
     >
       {t("afk.button.label")}
     </button>

@@ -63,6 +63,13 @@ const STRINGS = {
   },
 } as const;
 const s = STRINGS[lang];
+
+// Aktiver Nav-Link (Veronika G1): aktuelle Seite in der Navigation
+// hervorheben. Astro liefert den Pfad je nach Seite mit/ohne Trailing-Slash
+// → vor dem Vergleich normalisieren.
+const norm = (p: string) => p.replace(/\/+$/, "") || "/";
+const path = norm(Astro.url.pathname);
+const isActive = (href: string) => path === norm(href);
 ---
 
 <!doctype html>
@@ -89,8 +96,18 @@ const s = STRINGS[lang];
             <img src="/logo/lockup-horizontal-dunkel.svg" alt="" class="brand-dark" />
           </a>
           <div class="nav-right">
-            <a href={s.rules} class="nav-link">{s.navRules}</a>
-            <a href={s.about} class="nav-link">{s.navAbout}</a>
+            <a
+              href={s.rules}
+              class:list={["nav-link", { active: isActive(s.rules) }]}
+              aria-current={isActive(s.rules) ? "page" : undefined}
+              >{s.navRules}</a
+            >
+            <a
+              href={s.about}
+              class:list={["nav-link", { active: isActive(s.about) }]}
+              aria-current={isActive(s.about) ? "page" : undefined}
+              >{s.navAbout}</a
+            >
             <a href={altHref} class="nav-link lang-switch" title={s.switchTitle}>{s.switchLabel}</a>
             <button type="button" id="theme-toggle" class="theme-toggle" aria-label={s.themeAria}
               >◐</button

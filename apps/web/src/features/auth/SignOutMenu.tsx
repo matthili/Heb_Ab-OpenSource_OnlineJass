@@ -88,7 +88,7 @@ export function SignOutMenu() {
           type="button"
           onClick={thisDevice}
           disabled={busy}
-          className="btn-jass-secondary rounded-r-none text-sm disabled:opacity-50"
+          className="btn-jass-primary rounded-r-none text-sm disabled:opacity-50"
         >
           {t("nav.signOut")}
         </button>
@@ -99,7 +99,7 @@ export function SignOutMenu() {
           aria-haspopup="menu"
           aria-expanded={open}
           aria-label={t("nav.signOutMore")}
-          className="btn-jass-secondary -ml-px rounded-l-none px-2 text-sm disabled:opacity-50"
+          className="btn-jass-primary -ml-px rounded-l-none px-2 text-sm disabled:opacity-50"
         >
           <span aria-hidden="true">▾</span>
         </button>

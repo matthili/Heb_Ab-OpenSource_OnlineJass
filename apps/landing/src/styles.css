@@ -195,6 +195,17 @@ a:hover {
   color: var(--ink);
   text-decoration: none;
 }
+/* Aktiver Nav-Link (Veronika G1): volle Tinte + goldene Unterstreichung,
+ * damit man auf einen Blick sieht, auf welcher Seite man ist. Pendant zum
+ * Aktiv-Zustand im Spiel-Header (Profil/Rangliste). */
+.nav-link.active {
+  color: var(--ink);
+  font-weight: 600;
+  text-decoration: underline;
+  text-decoration-color: var(--accent);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 6px;
+}
 .nav-cta {
   background: var(--accent);
   color: var(--accent-fg) !important;
