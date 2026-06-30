@@ -66,6 +66,44 @@ function cardKey(c: CardModel): string {
   return `${c.suit}-${c.rank}`;
 }
 
+/**
+ * Status-Block für die rechte Spalte (Veronika J1): Stich-Zähler, Modus/Trumpf
+ * und Punktestand. **Vertikal gestapelt**, damit die Info in der schmalen
+ * 20-rem-Seitenspalte nicht auf eine gequetschte Zeile gepresst wird, sondern
+ * auf mehrere Zeilen verteilt steht. `oppName` = Anzeigename des Gegners.
+ */
+export function BodenseeStatusBar({ view, oppName }: { view: BodenseeView; oppName: string }) {
+  const { t } = useTranslation();
+  return (
+    <div className="flex flex-col gap-2 rounded-lg border border-jass-paperEdge bg-jass-cream px-4 py-3 text-sm panel-jass">
+      <span className="text-jass-inkSoft">
+        <Trans
+          i18nKey="bodensee.status.trick"
+          values={{ n: Math.min(view.trickIdx + 1, 18) }}
+          components={{ strong: <strong className="text-jass-ink" /> }}
+        />
+      </span>
+      <span className="jass-mode-glow self-start rounded bg-jass-yellow px-2.5 py-1 text-sm font-bold text-jass-ink ring-1 ring-jass-yellowDark">
+        {t("bodensee.status.mode", {
+          mode: view.slalom
+            ? t("game.announce.mode.SLALOM")
+            : view.playMode
+              ? modeLabel(t, view.playMode)
+              : "—",
+        })}
+        {!view.slalom && view.trumpSuit ? ` ${suitLabel(t, view.trumpSuit)}` : ""}
+      </span>
+      <span className="text-jass-inkSoft">
+        <Trans
+          i18nKey="bodensee.status.score"
+          values={{ own: view.ownScore, opp: view.oppScore, name: oppName }}
+          components={{ strong: <strong className="text-jass-ink" /> }}
+        />
+      </span>
+    </div>
+  );
+}
+
 export function BodenseeBoard({
   view,
   seats,
@@ -135,33 +173,8 @@ export function BodenseeBoard({
   return (
     <div className="space-y-3 relative">
       {announceInfo && <AnnounceOverlay gameId={view.gameId} info={announceInfo} />}
-      {/* Status-Leiste */}
-      <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-jass-paperEdge bg-jass-cream px-4 py-2 text-sm panel-jass">
-        <span className="text-jass-inkSoft">
-          <Trans
-            i18nKey="bodensee.status.trick"
-            values={{ n: Math.min(view.trickIdx + 1, 18) }}
-            components={{ strong: <strong className="text-jass-ink" /> }}
-          />
-        </span>
-        <span className="jass-mode-glow rounded bg-jass-yellow px-2.5 py-1 text-sm font-bold text-jass-ink ring-1 ring-jass-yellowDark">
-          {t("bodensee.status.mode", {
-            mode: view.slalom
-              ? t("game.announce.mode.SLALOM")
-              : view.playMode
-                ? modeLabel(t, view.playMode)
-                : "—",
-          })}
-          {!view.slalom && view.trumpSuit ? ` ${suitLabel(t, view.trumpSuit)}` : ""}
-        </span>
-        <span className="text-jass-inkSoft">
-          <Trans
-            i18nKey="bodensee.status.score"
-            values={{ own: view.ownScore, opp: view.oppScore, name: seatName(oppSeat) }}
-            components={{ strong: <strong className="text-jass-ink" /> }}
-          />
-        </span>
-      </div>
+      {/* Status-Leiste (Stich/Modus/Punkte) sitzt jetzt in der rechten Spalte
+          (BodenseeGameSection) — siehe BodenseeStatusBar. Veronika J1. */}
 
       {error && (
         <p
@@ -201,7 +214,7 @@ export function BodenseeBoard({
         </div>
         {/* min-h-14 reserviert die Höhe einer xs-Karte, damit die Hand-Zeile
             nicht kollabiert, wenn der Gegner keine Handkarten mehr hat. */}
-        <div className="flex min-h-14 flex-wrap items-end gap-1">
+        <div className="flex min-h-14 flex-wrap items-end justify-center gap-1">
           {Array.from({ length: view.opponentHandCount }).map((_, i) => (
             <FaceDownCard key={`oh-${i}`} size="xs" />
           ))}
@@ -210,7 +223,7 @@ export function BodenseeBoard({
             Stapel leer sind. Sonst schrumpft das Gegner-Rechteck gegen Spielende
             (keine Tischkarten mehr → ganze Zeile wäre weg). Leere Stapel zeigt
             TableStackSlot als Platzhalter, die Höhe bleibt konstant. */}
-        <div className="flex flex-wrap items-end gap-1.5 border-t border-jass-paperEdge pt-2">
+        <div className="flex flex-wrap items-end justify-center gap-1.5 border-t border-jass-paperEdge pt-2">
           {view.opponentTable.map((stack, i) => (
             <TableStackSlot
               key={`opp-stack-${i}`}
@@ -279,7 +292,7 @@ export function BodenseeBoard({
           <p className="text-xs uppercase tracking-wide text-jass-inkSoft mb-1">
             {t("bodensee.yourTable")}
           </p>
-          <div className="flex flex-wrap items-end gap-1.5">
+          <div className="flex flex-wrap items-end justify-center gap-1.5">
             {view.ownTable.map((stack, i) => (
               <TableStackSlot
                 key={`my-stack-${i}`}
@@ -297,7 +310,7 @@ export function BodenseeBoard({
           <p className="text-xs uppercase tracking-wide text-jass-inkSoft mb-1">
             {t("bodensee.yourHand")}
           </p>
-          <div className="flex flex-wrap items-end gap-1.5">
+          <div className="flex flex-wrap items-end justify-center gap-1.5">
             {view.hand.length === 0 && (
               <span className="text-sm text-jass-inkSoft italic">{t("bodensee.noHandCards")}</span>
             )}

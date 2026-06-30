@@ -17,13 +17,13 @@ import { useNavigate } from "@tanstack/react-router";
 import { type FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
 
-import { BodenseeBoard } from "~/features/bodensee/BodenseeBoard";
+import { BodenseeBoard, BodenseeStatusBar } from "~/features/bodensee/BodenseeBoard";
 import { OpponentLeftDialog } from "~/features/bodensee/OpponentLeftDialog";
 import { BodenseeRematchPanel } from "~/features/bodensee/BodenseeRematchPanel";
 import { useBodenseeView } from "~/features/bodensee/useBodenseeView";
 import { ChatPanel } from "~/features/chat/ChatPanel";
 import { UserName } from "~/features/social/UserName";
-import { aiName, aiSeatTooltip } from "~/features/game/aiNames";
+import { aiName, aiSeatTooltip, seatDisplayName } from "~/features/game/aiNames";
 import { DisconnectOverlay } from "~/features/game/DisconnectOverlay";
 import { GameBoard } from "~/features/game/GameBoard";
 import { MatchOverOverlay } from "~/features/game/MatchOverOverlay";
@@ -204,6 +204,7 @@ export function TableDetail({ tableId }: Props) {
             cumulativeScores={data.cumulativeScores}
             matchWinner={data.matchWinner}
             nameSeed={data.id}
+            table={data}
           />
         ) : (
           <GameSection
@@ -227,9 +228,11 @@ export function TableDetail({ tableId }: Props) {
         <ChatPanel channelKey={`table:${data.id}`} title={t("lobby.tableDetail.tableChat")} />
       )}
 
-      {/* Partie-Stand bewusst weiter unten, direkt über den Aktionen — oben
-          bleibt Platz für Tisch + Hand (weniger Scrollen). */}
-      <CumulativeScoreBar table={data} />
+      {/* Partie-Stand: bei Kreuz/Solo unten direkt über den Aktionen. Bei
+          Bodensee im Spiel steht er in der rechten Seitenspalte der Spielfläche
+          (Veronika J1) → hier nur außerhalb des Spiels (z.B. Warteraum) zeigen,
+          damit er nicht doppelt erscheint. */}
+      {!(data.variant === "BODENSEE_2P" && inGame) && <CumulativeScoreBar table={data} />}
 
       {isOwner ? (
         <OwnerPanel table={data} queryKey={queryKey} ownerSeated={amIAtTable} />
@@ -1020,6 +1023,7 @@ function BodenseeGameSection({
   cumulativeScores,
   matchWinner,
   nameSeed,
+  table,
 }: {
   gameId: string;
   /** Tisch-ID — für den tisch-weiten Chat (stabil über Re-Matches). */
@@ -1033,6 +1037,8 @@ function BodenseeGameSection({
   matchWinner: number | null;
   /** Seed für stabile KI-Namen — die Tisch-ID. */
   nameSeed: string;
+  /** Voller Tisch-Datensatz — für die Partie-Stand-Leiste in der Seitenspalte (J1). */
+  table: TableDetailView;
 }) {
   const { t } = useTranslation();
   const {
@@ -1057,6 +1063,12 @@ function BodenseeGameSection({
   if (!view) {
     return <p className="text-stone-500">{t("lobby.tableDetail.loadingGame")}</p>;
   }
+
+  // Gegner-Name für die Status-Leiste in der rechten Seitenspalte (J1).
+  const oppSeat = 1 - view.mySeat;
+  const oppSeatView = tableSeats.find((s) => s.seat === oppSeat);
+  const oppFallback = t("game.seatFallback", { n: oppSeat + 1 });
+  const oppName = oppSeatView ? seatDisplayName(oppSeatView, nameSeed, oppFallback) : oppFallback;
 
   return (
     <section className="grid grid-cols-1 lg:grid-cols-[1fr_20rem] gap-4">
@@ -1094,8 +1106,11 @@ function BodenseeGameSection({
           />
         )}
       </div>
-      {/* Rechte Spalte: Chat + darunter die Sitze als Liste. */}
+      {/* Rechte Spalte (Veronika J1): Status + Partie-Stand oben, dann Chat,
+          darunter die Sitze. So bleibt das Spielfeld links ruhig und mittig. */}
       <div className="flex h-full flex-col gap-4">
+        <BodenseeStatusBar view={view} oppName={oppName} />
+        <CumulativeScoreBar table={table} />
         {/* fillHeight + flex-1: der Chat füllt die Spalte bis zur Brett-Höhe
             (statt fix 24rem) — relevant bei Bodensee, wo das Brett mit dem
             Spielverlauf höher als 24rem werden kann. */}
