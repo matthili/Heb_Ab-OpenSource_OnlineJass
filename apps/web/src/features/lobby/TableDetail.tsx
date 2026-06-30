@@ -329,6 +329,11 @@ function CumulativeScoreBar({ table }: { table: TableDetailView }) {
   // Immer einblenden, sobald es Punktekonten gibt — auch vor dem ersten Spiel
   // (zeigt Ziel + 0:0), damit der Partie-Stand nicht erst nach Spiel 1 „einpoppt".
   if (scores.length === 0) return null;
+  // Balken-Skala: bis zum tatsächlichen Höchststand, nicht nur bis zum Ziel.
+  // Sonst kleben — sobald jemand das Ziel überschreitet (z.B. 1270 bei Ziel
+  // 1000) — Sieger UND Gegner gleichermaßen bei 100 %, und die Relation
+  // zwischen den Balken geht verloren (D2). So bleiben alle Balken vergleichbar.
+  const scaleMax = Math.max(target, ...scores);
   const isPerPlayer = table.variant === "SOLO_4P" || table.variant === "BODENSEE_2P";
   // Partie-Sieger: bei beendeter Partie der vom SERVER ermittelte Sieger
   // (`matchWinner`) — der respektiert den Sieg-Modus, inkl. „Bergpreis" (wer das
@@ -409,7 +414,7 @@ function CumulativeScoreBar({ table }: { table: TableDetailView }) {
           label={labelFor(i)}
           labelTitle={titleFor(i)}
           score={score}
-          pct={Math.min(100, Math.round((score / target) * 100))}
+          pct={Math.round((score / scaleMax) * 100)}
           highlight={winner === i}
           sacked={table.sackedPoints[i] ?? 0}
         />
