@@ -72,14 +72,18 @@ export function RematchPanel({
     },
   });
 
-  // Sendet den Vote genau einmal — egal wie oft aufgerufen.
+  // Sendet den Vote genau einmal — egal wie oft aufgerufen. Abhängigkeit ist
+  // bewusst `voteMut.mutate` (referenz-STABIL), NICHT das bei jedem Render neue
+  // `voteMut`-Objekt — sonst setzt der Countdown-Effekt sein `setTimeout` bei
+  // jedem Render zurück und Auto-YES feuert nie (Re-Match hängt).
+  const mutate = voteMut.mutate;
   const castVote = useCallback(
     (vote: "YES" | "NO") => {
       if (votedRef.current) return;
       votedRef.current = true;
-      voteMut.mutate(vote);
+      mutate(vote);
     },
-    [voteMut]
+    [mutate]
   );
 
   // Auto-YES-Countdown: läuft, solange noch nicht gevotet wurde.

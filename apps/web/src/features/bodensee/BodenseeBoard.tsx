@@ -394,19 +394,9 @@ function TrickArea({
     );
   }
 
-  // 3) Idle: zuletzt abgeschlossener Stich (bis der nächste startet).
-  if (view.lastTrick) {
-    return (
-      <CompletedTrickView
-        trick={view.lastTrick}
-        mySeat={view.mySeat}
-        seatName={seatName}
-        emphasised={false}
-      />
-    );
-  }
-
-  // 4) Noch kein Stich.
+  // 3) Idle nach dem Linger: die große Mitte leeren, statt den fertigen Stich
+  //    bis zum nächsten Zug stehen zu lassen (das wirkte „zu lange sichtbar").
+  //    Was gespielt wurde, zeigt weiterhin die „Letzter Stich"-Mini darunter.
   return <p className="text-sm text-white/80">{t("bodensee.trick.starting")}</p>;
 }
 

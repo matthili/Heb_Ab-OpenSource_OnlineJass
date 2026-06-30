@@ -99,8 +99,11 @@ export function LobbyList() {
               <StatusBadge status={tbl.status} />
             </div>
             <div className="text-sm text-jass-inkSoft">
-              {t("lobby.seatsTaken", { taken: tbl.seatsTaken })} ·{" "}
-              {t("lobby.ai", { type: tbl.aiSeatType })} ·{" "}
+              {t("lobby.seatsTaken", {
+                taken: tbl.seatsTaken,
+                max: tbl.variant === "BODENSEE_2P" ? 2 : 4,
+              })}{" "}
+              · {t("lobby.ai", { type: tbl.aiSeatType })} ·{" "}
               {tbl.autoFillSeconds === null
                 ? t("lobby.autoFillNone")
                 : t("lobby.autoFill", { seconds: tbl.autoFillSeconds })}
@@ -172,13 +175,13 @@ function JoinButton(props: {
     return <span className="text-sm text-stone-400">{t("lobby.join.closed")}</span>;
   }
 
-  const label =
-    table.joinMode === "REQUEST"
-      ? t("lobby.join.request")
-      : table.joinMode === "INVITE"
-        ? t("lobby.join.inviteOnly")
-        : t("lobby.join.join");
-  const disabled = table.joinMode === "INVITE" || isPending;
+  // Nur-Einladung-Tische: kein Beitritts-Button. Das rote „Nur Einladung"-Badge
+  // sagt schon alles; ein deaktivierter Button wäre bloß Klick-Frust. Beitritt
+  // läuft hier ohnehin über die Einladung (IncomingInvites), nicht die Liste.
+  if (table.joinMode === "INVITE") return null;
+
+  const label = table.joinMode === "REQUEST" ? t("lobby.join.request") : t("lobby.join.join");
+  const disabled = isPending;
 
   return (
     <div className="flex flex-col items-end gap-1">

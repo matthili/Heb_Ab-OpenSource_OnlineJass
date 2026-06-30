@@ -48,14 +48,20 @@ export function BodenseeRematchPanel({ gameId }: { gameId: string }) {
     },
   });
 
-  // Sendet den Vote genau einmal — egal wie oft aufgerufen.
+  // Sendet den Vote genau einmal — egal wie oft aufgerufen. Abhängigkeit ist
+  // bewusst `voteMut.mutate` (referenz-STABIL über Re-Renders), NICHT `voteMut`
+  // (das `useMutation`-Objekt ist bei jedem Render neu). Sonst änderte sich
+  // `castVote` ständig, der Countdown-Effekt liefe bei jedem Render neu und sein
+  // `setTimeout` würde vor Ablauf immer wieder zurückgesetzt → Auto-YES feuert
+  // nie → der Re-Match hängt (genau dieser Bug).
+  const mutate = voteMut.mutate;
   const castVote = useCallback(
     (vote: "YES" | "NO") => {
       if (votedRef.current) return;
       votedRef.current = true;
-      voteMut.mutate(vote);
+      mutate(vote);
     },
-    [voteMut]
+    [mutate]
   );
 
   // Auto-YES-Countdown — läuft, solange noch nicht gevotet wurde.

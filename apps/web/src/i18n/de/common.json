@@ -448,7 +448,7 @@
       "MATCH_OVER": "Partie gewonnen",
       "CLOSED": "geschlossen"
     },
-    "seatsTaken": "Sitze: {{taken}}/4",
+    "seatsTaken": "Sitze: {{taken}}/{{max}}",
     "ai": "KI: {{type}}",
     "autoFill": "Auto-Fill {{seconds}}s",
     "autoFillNone": "kein Auto-Fill",
@@ -727,7 +727,7 @@
       "dealer": "{{name}} gab die Karten aus",
       "cutter": "{{name}} durfte abheben"
     },
-    "finished": "Durchgang beendet — der Partie-Stand steht oben.",
+    "finished": "Durchgang beendet — der Partie-Stand steht unten.",
     "trick": "Stich {{n}} / 9",
     "scoreOwn": "Eigenes Team: <strong>{{score}}</strong>",
     "scoreOpp": "Gegner: <strong>{{score}}</strong>",
@@ -1043,7 +1043,7 @@
       "moveProgress": "Zug {{seq}} / {{total}}",
       "movePlays": " — Sitz {{seat}} spielt {{suit}}-{{rank}}",
       "moveListSummary": "Zug-Liste ({{count}})",
-      "moveListItem": "#{{seq}} — Stich {{trick}}, {{name}}: Karte-Index {{cardIndex}}",
+      "moveListItem": "#{{seq}} — Stich {{trick}}, {{name}}: {{suit}}-{{rank}}",
       "play": "Abspielen",
       "pause": "Pause",
       "speed": "Tempo",

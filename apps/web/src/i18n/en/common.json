@@ -448,7 +448,7 @@
       "MATCH_OVER": "match won",
       "CLOSED": "closed"
     },
-    "seatsTaken": "Seats: {{taken}}/4",
+    "seatsTaken": "Seats: {{taken}}/{{max}}",
     "ai": "AI: {{type}}",
     "autoFill": "Auto-fill {{seconds}}s",
     "autoFillNone": "no auto-fill",
@@ -727,7 +727,7 @@
       "dealer": "{{name}} dealt the cards",
       "cutter": "{{name}} cut the deck"
     },
-    "finished": "Round over — match standing is shown above.",
+    "finished": "Round over — match standing is shown below.",
     "trick": "Trick {{n}} / 9",
     "scoreOwn": "Your team: <strong>{{score}}</strong>",
     "scoreOpp": "Opponents: <strong>{{score}}</strong>",
@@ -1043,7 +1043,7 @@
       "moveProgress": "Move {{seq}} / {{total}}",
       "movePlays": " — seat {{seat}} plays {{suit}}-{{rank}}",
       "moveListSummary": "Move list ({{count}})",
-      "moveListItem": "#{{seq}} — Trick {{trick}}, {{name}}: card index {{cardIndex}}",
+      "moveListItem": "#{{seq}} — Trick {{trick}}, {{name}}: {{suit}}-{{rank}}",
       "play": "Play",
       "pause": "Pause",
       "speed": "Speed",

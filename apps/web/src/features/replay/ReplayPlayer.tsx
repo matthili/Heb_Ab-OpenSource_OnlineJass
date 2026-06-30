@@ -18,6 +18,7 @@ import { useEffect, useState } from "react";
 import type { TFunction } from "i18next";
 import { useTranslation } from "react-i18next";
 import { Trick, Scoreboard } from "@jass/ui";
+import { indexToCard } from "@jass/engine";
 import type { Card } from "@jass/engine";
 
 import { aiName } from "~/features/game/aiNames";
@@ -301,6 +302,7 @@ function MoveList({
       <ol className="divide-y divide-stone-100 max-h-80 overflow-auto">
         {moves.map((m) => {
           const isCurrent = m.seq === currentSeq;
+          const card = indexToCard(m.cardIndex);
           return (
             <li key={m.seq}>
               <button
@@ -314,7 +316,8 @@ function MoveList({
                   seq: m.seq,
                   trick: m.trickIdx + 1,
                   name: nameOf(m.seat),
-                  cardIndex: m.cardIndex,
+                  suit: t(`game.announce.suit.${card.suit}`),
+                  rank: t(`replay.rank.${card.rank}`),
                 })}
               </button>
             </li>
