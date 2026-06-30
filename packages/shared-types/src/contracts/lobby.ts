@@ -43,9 +43,11 @@ export const VariantEnumSchema = z.enum(["KREUZ_4P", "SOLO_4P", "BODENSEE_2P"]);
 export type VariantEnum = z.infer<typeof VariantEnumSchema>;
 
 /**
- * Erlaubte Ansage-Arten am Tisch (strikte Leiter, jede Stufe erweitert die
- * vorige): TRUMPF → GEISS_BOCK (+Oben/Unten) → SLALOM (+Slalom) → ALLES
- * (+Gumpf, Default). Siehe @jass/engine `AnnounceLevel` / `announceConstraints`.
+ * Ansage-Leiter am Tisch — nur für Oben/Unten/Slalom: TRUMPF → GEISS_BOCK
+ * (+Oben/Unten) → SLALOM (+Slalom). Gumpf liegt SEPARAT im Flag `allowGumpf`
+ * (Veronika C1) und ist unabhängig wählbar. `ALLES` ist nur noch ein
+ * abwärtskompatibler Alt-Wert (enthält Gumpf selbst); neue Tische nutzen
+ * ≤ SLALOM + `allowGumpf`. Siehe @jass/engine `announceConstraints`.
  */
 export const AnnounceLevelSchema = z.enum(["TRUMPF", "GEISS_BOCK", "SLALOM", "ALLES"]);
 export type AnnounceLevel = z.infer<typeof AnnounceLevelSchema>;

@@ -780,12 +780,14 @@ enum GameVariant {
   BODENSEE_2P
 }
 
-// Erlaubte Ansage-Arten pro Tisch (strikte Leiter, jede Stufe erweitert die
-// vorige). Siehe @jass/engine `AnnounceLevel` / `announceConstraints`.
+// Ansage-Leiter pro Tisch — nur für Oben/Unten/Slalom. Gumpf liegt SEPARAT im
+// Boolean `allowGumpf` (Veronika C1) und ist unabhängig wählbar. Siehe
+// @jass/engine `announceConstraints`.
 //   TRUMPF     — nur Trumpf
 //   GEISS_BOCK — + Oben (Bock) / Unten (Geiss)
 //   SLALOM     — + Slalom (alterniert Oben/Unten, braucht daher Geiss/Bock)
-//   ALLES      — + Gumpf (Default)
+//   ALLES      — Alt-Wert: enthält Gumpf selbst (abwärtskompatibel). Neue Tische
+//                nutzen ≤ SLALOM + `allowGumpf` statt ALLES.
 enum AnnounceLevel {
   TRUMPF
   GEISS_BOCK
