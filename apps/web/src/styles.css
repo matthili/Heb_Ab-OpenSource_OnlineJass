@@ -56,6 +56,13 @@
 
   /* Headline-Font — EB Garamond ist via @fontsource geladen */
   --font-serif: "EB Garamond", "Times New Roman", serif;
+
+  /* RADIUS — ein einziger Eck-Radius für die ganze App (Veronika A1):
+   * abgeleitet vom „Tisch-Chat"-Panel (Tailwind `rounded` = 0.25rem), dessen
+   * dezente Ecken uns am besten gefallen. Registriert zugleich die
+   * `rounded-jass`-Utility (Spielfeld & Panels). Spielkarten sind bewusst
+   * ausgenommen — sie bringen ihren eigenen Radius im @jass/ui-Paket mit. */
+  --radius-jass: 0.25rem;
 }
 
 :root {
@@ -165,7 +172,7 @@ h1 {
   color: var(--color-jass-cream);
   font-weight: 600;
   padding: 0.5rem 1rem;
-  border-radius: 0.375rem;
+  border-radius: var(--radius-jass);
   box-shadow:
     0 1px 0 0 var(--color-jass-cream) inset,
     0 2px 0 0 var(--color-jass-brownDark),
@@ -201,7 +208,7 @@ h1 {
   color: var(--color-jass-ink);
   font-weight: 500;
   padding: 0.5rem 1rem;
-  border-radius: 0.375rem;
+  border-radius: var(--radius-jass);
   border: 1px solid var(--color-jass-paperEdge);
   box-shadow:
     0 1px 0 0 var(--color-jass-white) inset,
@@ -233,7 +240,7 @@ h1 {
 .card-jass {
   background-color: var(--color-jass-cream);
   border: 1px solid var(--color-jass-paperEdge);
-  border-radius: 0.5rem;
+  border-radius: var(--radius-jass);
   box-shadow:
     0 1px 0 0 var(--color-jass-white) inset,
     0 2px 4px 0 rgba(0, 0, 0, 0.08);

@@ -144,7 +144,7 @@ export function BodenseeReplayPlayer({ bundle, frames, mySeat }: Props) {
       />
 
       {/* Stich-Mitte */}
-      <section className="min-h-[9rem] rounded-xl bg-jass-felt px-4 py-5 text-center text-white/90">
+      <section className="min-h-[9rem] rounded-jass bg-jass-felt px-4 py-5 text-center text-white/90">
         <TrickArea state={state} mySeat={mySeat} seatName={seatName} t={t} />
       </section>
 

@@ -225,7 +225,7 @@ export function BodenseeBoard({
 
       {/* Stich-Mitte — mit Modus-Wasserzeichen dahinter (gut sichtbar statt
           des zu kleinen Icons oben). */}
-      <section className="relative min-h-[10rem] overflow-hidden rounded-xl bg-jass-felt px-4 py-5 text-center text-white/90">
+      <section className="relative min-h-[10rem] overflow-hidden rounded-jass bg-jass-felt px-4 py-5 text-center text-white/90">
         {announceInfo && (
           <ModeWatermark info={announceInfo} currentMode={watermarkMode} align="left" />
         )}

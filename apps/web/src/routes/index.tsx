@@ -46,13 +46,10 @@ function HomePage() {
       </div>
       <p>{t("home.body")}</p>
       <div className="flex gap-3">
-        <Link to="/login" className="rounded bg-stone-900 px-4 py-2 text-white hover:bg-stone-700">
+        <Link to="/login" className="btn-jass-primary">
           {t("home.ctaSignIn")}
         </Link>
-        <Link
-          to="/register"
-          className="rounded border border-stone-300 px-4 py-2 text-stone-900 hover:bg-stone-100"
-        >
+        <Link to="/register" className="btn-jass-secondary">
           {t("home.ctaSignUp")}
         </Link>
       </div>

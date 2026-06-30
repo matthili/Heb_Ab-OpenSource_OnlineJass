@@ -556,7 +556,7 @@ function PlayingArea({
       // `svh` statt `vh`: die „small viewport height" ändert sich NICHT, wenn
       // mobil die URL-Leiste beim Scrollen ein-/ausblendet → der Tisch behält
       // seine Größe (sonst „hüpfte" das ganze Layout beim Scrollen).
-      className="grid grid-cols-3 grid-rows-[auto_1fr_auto] gap-2 min-h-[32rem] h-[clamp(32rem,65svh,48rem)] rounded-lg p-4 relative bg-jass-felt"
+      className="grid grid-cols-3 grid-rows-[auto_1fr_auto] gap-2 min-h-[32rem] h-[clamp(32rem,65svh,48rem)] rounded-jass p-4 relative bg-jass-felt"
       style={{ border: "2px solid var(--color-jass-brownDark)" }}
       role="region"
       aria-label={t("game.playingArea")}
