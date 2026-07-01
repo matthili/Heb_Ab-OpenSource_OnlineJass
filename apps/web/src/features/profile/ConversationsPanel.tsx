@@ -16,6 +16,7 @@
  */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
+import DOMPurify from "dompurify";
 import { useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
@@ -25,6 +26,13 @@ import { EmojiPicker } from "~/features/chat/EmojiPicker";
 import { UserName } from "~/features/social/UserName";
 import { api } from "~/lib/api";
 import { useSession } from "~/lib/auth-client";
+
+// Defense-in-Depth wie in ChatBubble.tsx: der Server liefert bereits
+// sanitized HTML (chat.sanitize.ts), wir sanitizen vor dem Rendern trotzdem
+// nochmal client-seitig (Plan-Doc-Sicherheits-Checkliste #6, Sicherheitsaudit
+// 2026-06-30 — diese Stelle hatte das double-sanitize bislang nicht).
+const ALLOWED_TAGS = ["p", "strong", "em", "code", "a", "br"];
+const ALLOWED_ATTR = ["href", "title", "target", "rel"];
 
 interface Partner {
   partner: { id: string; name: string };
@@ -305,11 +313,18 @@ function MessageList({ view }: { view: ConversationView }) {
                 {/*
                  * Body kommt sanitized vom Server (DOMPurify, allowlist).
                  * Wir rendern als HTML, damit Markdown-Formatierung (z.B.
-                 * **fett**) sichtbar ist.
+                 * **fett**) sichtbar ist — und sanitizen zusätzlich hier
+                 * nochmal client-seitig (siehe Kommentar bei den Imports).
                  */}
                 <div
                   className="prose prose-sm max-w-none text-stone-800"
-                  dangerouslySetInnerHTML={{ __html: m.body }}
+                  dangerouslySetInnerHTML={{
+                    __html: DOMPurify.sanitize(m.body, {
+                      ALLOWED_TAGS,
+                      ALLOWED_ATTR,
+                      KEEP_CONTENT: true,
+                    }),
+                  }}
                 />
               </li>
             ))}

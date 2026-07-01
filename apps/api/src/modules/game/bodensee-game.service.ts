@@ -709,9 +709,19 @@ export class BodenseeGameService {
   // DB-Helfer
   // ───────────────────────────────────────────────────────────────────
 
+  /**
+   * Sucht den Sitz für einen User; wirft, wenn er nicht am Tisch sitzt
+   * **oder** sein Sitz schon dauerhaft von der KI übernommen wurde
+   * (`replacedByAiSeatType` gesetzt, siehe `replaceSeatWithAi`) — Pendant zu
+   * `GameService.findSeatForUser` (dort `leftAt`, Bodensee kennt kein
+   * `leftAt` und markiert die KI-Übernahme ausschließlich hierüber). Ohne
+   * diesen Filter könnte ein ersetzter Spieler über eine noch offene alte
+   * Verbindung weiter Züge/Ansagen für seinen eigenen, inzwischen
+   * KI-gesteuerten Sitz schicken (Sicherheitsaudit 2026-06-30).
+   */
   private async findSeatForUser(gameId: string, userId: string): Promise<number> {
     const row = await this.prisma.gameSeat.findFirst({
-      where: { gameId, userId },
+      where: { gameId, userId, replacedByAiSeatType: null },
       select: { seat: true },
     });
     if (!row) throw new NotFoundException("Du sitzt nicht an diesem Tisch.");

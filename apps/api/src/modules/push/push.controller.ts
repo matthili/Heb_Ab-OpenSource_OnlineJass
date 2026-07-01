@@ -16,9 +16,43 @@ import { SessionGuard } from "../../common/guards/session.guard.js";
 import { ZodValidationPipe } from "../../common/pipes/zod.pipe.js";
 import { PushService } from "./push.service.js";
 
+// Bekannte Web-Push-Anbieter der gängigen Browser. Suffix-Match, weil manche
+// Anbieter (v.a. Windows/WNS) die Subdomain pro Push-Server rotieren lassen
+// (z.B. wns2-par02p.notify.windows.com).
+const TRUSTED_PUSH_HOSTS = [
+  "fcm.googleapis.com", // Chrome, Edge (Chromium), Android
+  "push.services.mozilla.com", // Firefox (z.B. updates.push.services.mozilla.com)
+  "notify.windows.com", // Windows/Legacy-Edge (WNS)
+  "push.apple.com", // Safari (web.push.apple.com)
+];
+
+/**
+ * Verhindert, dass ein Spieler eine beliebige URL als Push-Endpoint
+ * registriert. Ohne diese Prüfung würde der Server bei jedem ausgelösten
+ * Push (`PushService.sendToUser`) serverseitig einen Request an eine vom
+ * Client frei wählbare URL schicken (SSRF-artig) — hier auf bekannte
+ * Browser-Push-Anbieter eingeschränkt (Sicherheitsaudit 2026-06-30).
+ */
+function isTrustedPushEndpoint(endpoint: string): boolean {
+  let url: URL;
+  try {
+    url = new URL(endpoint);
+  } catch {
+    return false;
+  }
+  if (url.protocol !== "https:") return false;
+  return TRUSTED_PUSH_HOSTS.some(
+    (host) => url.hostname === host || url.hostname.endsWith(`.${host}`)
+  );
+}
+
 const SubscribeDtoSchema = z
   .object({
-    endpoint: z.string().min(1).max(2048),
+    endpoint: z
+      .string()
+      .min(1)
+      .max(2048)
+      .refine(isTrustedPushEndpoint, "Unbekannter Push-Anbieter."),
     keys: z
       .object({
         p256dh: z.string().min(1).max(512),
