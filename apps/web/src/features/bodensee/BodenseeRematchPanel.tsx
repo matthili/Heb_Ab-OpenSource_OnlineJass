@@ -76,7 +76,7 @@ export function BodenseeRematchPanel({ gameId }: { gameId: string }) {
   }, [secondsLeft, myVote, castVote]);
 
   return (
-    <section className="space-y-3 rounded-lg border border-jass-paperEdge bg-jass-cream p-4 panel-jass">
+    <section className="space-y-3 rounded-jass border border-jass-paperEdge bg-jass-cream p-4 panel-jass">
       {!myVote ? (
         <div className="space-y-2">
           <p className="font-medium text-jass-ink">{t("bodensee.rematch.playAgain")}</p>

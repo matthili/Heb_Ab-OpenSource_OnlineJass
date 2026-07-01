@@ -46,7 +46,7 @@ export function VoidOverlay({ gameId, finalScore, mySeat, teams }: Props) {
       aria-modal="true"
       aria-labelledby="void-title"
       onClick={() => setDismissed(true)}
-      className="absolute inset-0 z-40 flex items-center justify-center bg-black/65 backdrop-blur-sm rounded-lg p-4 cursor-pointer"
+      className="absolute inset-0 z-40 flex items-center justify-center bg-black/65 backdrop-blur-sm rounded-jass p-4 cursor-pointer"
     >
       <div className="max-w-sm rounded-2xl border-4 border-rose-400 bg-gradient-to-br from-rose-50 via-stone-50 to-rose-50 px-8 py-7 text-center shadow-2xl">
         <div className="text-5xl">💨</div>

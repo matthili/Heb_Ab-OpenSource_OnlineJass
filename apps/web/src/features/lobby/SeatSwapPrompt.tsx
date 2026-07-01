@@ -76,7 +76,7 @@ export function SeatSwapPrompt({
       <div
         role="dialog"
         aria-modal="true"
-        className="w-full max-w-sm space-y-4 rounded-lg bg-white p-5 shadow-xl"
+        className="w-full max-w-sm space-y-4 rounded-jass bg-white p-5 shadow-xl"
       >
         <h2 className="text-lg font-bold text-stone-900">{t("lobby.seatSwap.promptTitle")}</h2>
         <p className="text-sm text-stone-700">

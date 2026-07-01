@@ -62,7 +62,7 @@ export function CompleteProfilePrompt() {
 
   return (
     <aside
-      className="rounded-lg border border-jass-yellowDark bg-jass-cream px-4 py-3 flex flex-wrap items-center gap-3"
+      className="rounded-jass border border-jass-yellowDark bg-jass-cream px-4 py-3 flex flex-wrap items-center gap-3"
       role="status"
     >
       <div className="flex-1 min-w-[16rem]">

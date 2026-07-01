@@ -110,7 +110,7 @@ export function RematchPanel({
   }
 
   return (
-    <section className="space-y-4 rounded-lg border border-jass-paperEdge bg-jass-cream p-4 panel-jass">
+    <section className="space-y-4 rounded-jass border border-jass-paperEdge bg-jass-cream p-4 panel-jass">
       <h2 className="text-xl font-bold text-jass-ink">{t("rematch.title")}</h2>
 
       {finalScore && <FinalScoreView score={finalScore} isSolo={isSolo} seatLabel={seatLabel} />}

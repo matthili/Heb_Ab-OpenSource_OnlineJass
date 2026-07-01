@@ -99,9 +99,9 @@ export function WeisenResultOverlay({ gameId, weisen, seats, mySeat, nameSeed, t
       role="dialog"
       aria-modal="true"
       aria-labelledby="weisen-result-title"
-      className="absolute inset-0 z-40 flex items-center justify-center bg-black/55 backdrop-blur-sm rounded-lg p-4 overflow-y-auto"
+      className="absolute inset-0 z-40 flex items-center justify-center bg-black/55 backdrop-blur-sm rounded-jass p-4 overflow-y-auto"
     >
-      <div className="max-w-xl w-full my-auto rounded-lg bg-jass-paper border border-jass-paperEdge shadow-xl p-5 space-y-4">
+      <div className="max-w-xl w-full my-auto rounded-jass bg-jass-paper border border-jass-paperEdge shadow-xl p-5 space-y-4">
         <header className="text-center">
           <h2 id="weisen-result-title" className="text-xl font-bold text-jass-ink">
             {t("game.weisen.result.title")}
@@ -134,7 +134,7 @@ export function WeisenResultOverlay({ gameId, weisen, seats, mySeat, nameSeed, t
             return (
               <li
                 key={seat}
-                className={`rounded-lg border p-3 ${
+                className={`rounded-jass border p-3 ${
                   isWinner
                     ? "border-jass-yellowDark bg-jass-yellow/20"
                     : "border-jass-paperEdge bg-jass-cream"

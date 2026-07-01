@@ -165,7 +165,7 @@ function Backdrop({ children }: { children: React.ReactNode }) {
       role="dialog"
       aria-modal="true"
       aria-labelledby="disconnect-title"
-      className="absolute inset-0 z-40 flex items-center justify-center bg-black/55 backdrop-blur-sm rounded-lg p-4"
+      className="absolute inset-0 z-40 flex items-center justify-center bg-black/55 backdrop-blur-sm rounded-jass p-4"
     >
       {children}
     </div>
@@ -176,7 +176,7 @@ function Card({ children }: { children: React.ReactNode }) {
   return (
     <div
       id="disconnect-title"
-      className="max-w-md w-full rounded-lg bg-jass-paper border border-jass-paperEdge shadow-xl p-5 space-y-4"
+      className="max-w-md w-full rounded-jass bg-jass-paper border border-jass-paperEdge shadow-xl p-5 space-y-4"
     >
       {children}
     </div>

@@ -44,7 +44,7 @@ export function ConfirmDialog({
     <dialog
       ref={ref}
       onClose={onCancel}
-      className="w-full max-w-md rounded-lg bg-jass-paper p-0 text-jass-ink backdrop:bg-black/40"
+      className="w-full max-w-md rounded-jass bg-jass-paper p-0 text-jass-ink backdrop:bg-black/40"
     >
       <div className="space-y-4 p-6">
         <h2 className="text-xl font-bold text-jass-ink">{title}</h2>

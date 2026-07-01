@@ -100,7 +100,7 @@ export function MatschOverlay({ gameId, finalScore, mySeat, teams, seats, nameSe
       aria-modal="true"
       aria-labelledby="matsch-title"
       onClick={() => setDismissed(true)}
-      className="absolute inset-0 z-40 flex items-center justify-center bg-black/65 backdrop-blur-sm rounded-lg p-4 cursor-pointer"
+      className="absolute inset-0 z-40 flex items-center justify-center bg-black/65 backdrop-blur-sm rounded-jass p-4 cursor-pointer"
     >
       <div className="relative">
         {/* Confetti ringsherum */}

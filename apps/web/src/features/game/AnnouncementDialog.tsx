@@ -58,7 +58,7 @@ export function AnnouncementDialog({ view, seatNames, pending, onAnnounce }: Pro
       seatNames.get(ann.announcerSeat) ?? t("game.seatFallback", { n: ann.announcerSeat });
     return (
       <div
-        className="rounded-lg border border-jass-paperEdge bg-jass-cream p-6 text-center space-y-2 panel-jass"
+        className="rounded-jass border border-jass-paperEdge bg-jass-cream p-6 text-center space-y-2 panel-jass"
         role="status"
         aria-live="polite"
       >
@@ -87,7 +87,7 @@ export function AnnouncementDialog({ view, seatNames, pending, onAnnounce }: Pro
   // der ersten Karte raus) wähle nur noch die Start-Richtung (Oben/Unten).
   if (ann.slalomDirectionOnly) {
     return (
-      <div className="rounded-lg border border-jass-paperEdge bg-jass-cream p-4 space-y-4 panel-jass">
+      <div className="rounded-jass border border-jass-paperEdge bg-jass-cream p-4 space-y-4 panel-jass">
         <header>
           <h3 className="font-semibold text-jass-ink">{t("game.announce.slalomDirectionTitle")}</h3>
           <p className="text-sm text-jass-inkSoft">{t("game.announce.slalomDirectionPrompt")}</p>
@@ -138,7 +138,7 @@ export function AnnouncementDialog({ view, seatNames, pending, onAnnounce }: Pro
   const canConfirm = decision !== null && !pending;
 
   return (
-    <div className="rounded-lg border border-jass-paperEdge bg-jass-cream p-4 space-y-4 panel-jass">
+    <div className="rounded-jass border border-jass-paperEdge bg-jass-cream p-4 space-y-4 panel-jass">
       <header>
         <h3 className="font-semibold text-jass-ink">{t("game.announce.title")}</h3>
         <p className="text-sm text-jass-inkSoft">

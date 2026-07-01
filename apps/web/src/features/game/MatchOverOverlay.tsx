@@ -132,7 +132,7 @@ export function MatchOverOverlay({
       aria-modal="true"
       aria-labelledby="matchover-title"
       onClick={() => setDismissed(true)}
-      className="absolute inset-0 z-40 flex items-center justify-center bg-black/70 backdrop-blur-sm rounded-lg p-4 cursor-pointer"
+      className="absolute inset-0 z-40 flex items-center justify-center bg-black/70 backdrop-blur-sm rounded-jass p-4 cursor-pointer"
     >
       <div className="relative">
         {/* Confetti ringsherum */}

@@ -71,7 +71,7 @@ export function ReportDialog({ open, userId, name, onClose }: Props) {
     <dialog
       ref={ref}
       onClose={onClose}
-      className="w-full max-w-md rounded-lg bg-jass-paper p-0 text-jass-ink backdrop:bg-black/40"
+      className="w-full max-w-md rounded-jass bg-jass-paper p-0 text-jass-ink backdrop:bg-black/40"
     >
       <form
         method="dialog"

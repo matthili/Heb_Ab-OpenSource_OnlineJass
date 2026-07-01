@@ -199,7 +199,7 @@ export function OpenTableDialog({ open, onClose }: Props) {
     <dialog
       ref={dialogRef}
       onClose={onClose}
-      className="rounded-lg p-0 backdrop:bg-black/40 w-full max-w-xl"
+      className="rounded-jass p-0 backdrop:bg-black/40 w-full max-w-xl"
     >
       <form onSubmit={submit} className="bg-jass-paper">
         {/* Header */}
@@ -223,7 +223,7 @@ export function OpenTableDialog({ open, onClose }: Props) {
           <button
             type="button"
             onClick={applySoloPreset}
-            className={`w-full rounded-lg border-2 px-4 py-3 text-left transition ${
+            className={`w-full rounded-jass border-2 px-4 py-3 text-left transition ${
               soloVsAi
                 ? "border-jass-yellowDark bg-jass-yellow/20"
                 : "border-jass-paperEdge bg-jass-cream hover:bg-jass-yellow/10"
@@ -525,7 +525,7 @@ function Tile({
       type="button"
       onClick={onClick}
       aria-pressed={selected}
-      className={`text-left rounded-lg border-2 px-3 py-2 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-jass-yellowDark ${
+      className={`text-left rounded-jass border-2 px-3 py-2 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-jass-yellowDark ${
         selected
           ? "border-jass-yellowDark bg-jass-yellow/25"
           : "border-jass-paperEdge bg-jass-cream hover:bg-jass-yellow/10"
@@ -578,7 +578,7 @@ function AnnounceCheck({
 }) {
   return (
     <label
-      className={`flex items-start gap-2 rounded-lg border px-3 py-2 transition ${
+      className={`flex items-start gap-2 rounded-jass border px-3 py-2 transition ${
         disabled
           ? "cursor-not-allowed border-jass-paperEdge opacity-50"
           : "cursor-pointer border-jass-paperEdge hover:bg-jass-yellow/10"
@@ -622,7 +622,7 @@ function SummaryRow({
   const aiLabel = t(`lobby.openTable.aiType.${aiSeatType}.title`);
   const restartLabel = t(`lobby.openTable.restart.${restartMode}.title`);
   return (
-    <div className="rounded-lg bg-jass-cream border border-jass-paperEdge px-4 py-3 text-sm">
+    <div className="rounded-jass bg-jass-cream border border-jass-paperEdge px-4 py-3 text-sm">
       <div className="text-xs font-semibold uppercase text-jass-inkSoft mb-1">
         {t("lobby.openTable.summary.heading")}
       </div>
