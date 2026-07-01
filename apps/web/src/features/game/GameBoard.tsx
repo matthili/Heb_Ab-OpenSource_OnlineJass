@@ -217,20 +217,9 @@ export function GameBoard({
   const stoeckTeam = view.stoeckAnnouncedTeam ?? null;
 
   // Solo-Jass erkennen: jeder Sitz hat ein eigenes Team (4 unterschiedliche
-  // Team-IDs). Dann zeigt das Scoreboard 4 Einzelkonten statt own/opp.
+  // Team-IDs). Bei Solo entfällt das breite Kopf-Scoreboard über dem Brett —
+  // Modus/Stich stehen rechts (GameStatusBar), die Punkte in der Sitzliste.
   const isSolo = new Set(state.teams).size === state.teams.length;
-  const soloPlayers =
-    isSolo && state.team_card_points
-      ? state.teams.map((teamId, seat) => ({
-          label:
-            seat === mySeat
-              ? t("game.you")
-              : (seatNames.get(seat) ?? t("game.seatFallback", { n: seat + 1 })),
-          points: state.team_card_points![teamId] ?? 0,
-          isMe: seat === mySeat,
-          stoeck: stoeckTeam !== null && teamId === stoeckTeam,
-        }))
-      : undefined;
 
   // Kreuz-Jass: auf welcher Seite (eigenes Team / Gegner) wurde Stöck gerufen?
   const stoeckSide: "own" | "opp" | null =
@@ -240,19 +229,22 @@ export function GameBoard({
     <div className="relative" style={dealActive ? { minHeight: "32rem" } : undefined}>
       {dealOverlay}
       <div className="space-y-4">
-        <Scoreboard
-          ownTeamScore={state.own_team_score}
-          oppTeamScore={state.opp_team_score}
-          trickIdx={state.trick_idx}
-          // Bei Slalom den STABILEN Startmodus + slalom-Flag zeigen, nicht die
-          // pro-Stich wechselnde effektive Variante (sonst stünde mal „Oben",
-          // mal „Unten" da statt „Slalom").
-          mode={state.announcement.slalom ? state.announcement.variant.mode : variant.mode}
-          {...(variant.trump_suit !== undefined ? { trumpSuit: variant.trump_suit } : {})}
-          {...(state.announcement.slalom ? { slalom: true } : {})}
-          {...(soloPlayers ? { soloPlayers } : {})}
-          stoeckSide={stoeckSide}
-        />
+        {/* Kreuz: kompakte Team-Kopfzeile. Solo: entfällt hier (Modus/Stich +
+            Punkte stehen rechts) → das Brett rückt hoch. Veronika. */}
+        {!isSolo && (
+          <Scoreboard
+            ownTeamScore={state.own_team_score}
+            oppTeamScore={state.opp_team_score}
+            trickIdx={state.trick_idx}
+            // Bei Slalom den STABILEN Startmodus + slalom-Flag zeigen, nicht die
+            // pro-Stich wechselnde effektive Variante (sonst stünde mal „Oben",
+            // mal „Unten" da statt „Slalom").
+            mode={state.announcement.slalom ? state.announcement.variant.mode : variant.mode}
+            {...(variant.trump_suit !== undefined ? { trumpSuit: variant.trump_suit } : {})}
+            {...(state.announcement.slalom ? { slalom: true } : {})}
+            stoeckSide={stoeckSide}
+          />
+        )}
         <StatusBanner view={view} seats={seats} nameSeed={nameSeed} />
         {error && (
           <div
@@ -668,6 +660,46 @@ function PlayingArea({
       </div>
     </div>
   );
+}
+
+/**
+ * Status-Feld für die rechte Spalte (Solo): Modus-Badge + Stich-Zähler. Spart
+ * beim Solo-Jass die breite Kopfzeile über dem Brett (Veronika) — das Brett
+ * rückt hoch. Kreuz behält seine kompakte Team-Kopfzeile (Scoreboard).
+ */
+export function GameStatusBar({ state }: { state: NonNullable<PlayerView["state"]> }) {
+  const { t } = useTranslation();
+  const { announcement, variant, trick_idx } = state;
+  const modeText = announcement.slalom
+    ? t("game.announce.mode.SLALOM")
+    : `${t(`game.announce.mode.${variant.mode}`)}${
+        variant.trump_suit ? ` ${t(`game.announce.suit.${variant.trump_suit}`)}` : ""
+      }`;
+  return (
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-jass border border-jass-paperEdge bg-jass-cream px-4 py-3 text-sm panel-jass">
+      <span className="jass-mode-glow rounded bg-jass-yellow px-2.5 py-1 text-sm font-bold text-jass-ink ring-1 ring-jass-yellowDark">
+        {t("game.modeLabel", { mode: modeText })}
+      </span>
+      <span className="text-jass-inkSoft">
+        {t("game.trick", { n: Math.min(trick_idx + 1, 9) })}
+      </span>
+    </div>
+  );
+}
+
+/**
+ * Solo-Punkte je Sitz (aktuelles Spiel) für die Sitzliste in der rechten Spalte.
+ * Nur bei Solo-Jass (4 verschiedene Team-IDs); sonst null. Veronika.
+ */
+export function soloScoresBySeat(
+  state: NonNullable<PlayerView["state"]>
+): ReadonlyMap<number, number> | null {
+  const teams = state.teams;
+  const isSolo = new Set(teams).size === teams.length;
+  if (!isSolo || !state.team_card_points) return null;
+  const m = new Map<number, number>();
+  teams.forEach((teamId, seat) => m.set(seat, state.team_card_points![teamId] ?? 0));
+  return m;
 }
 
 /**

@@ -29,7 +29,7 @@ import { ChatPanel } from "~/features/chat/ChatPanel";
 import { UserName } from "~/features/social/UserName";
 import { aiName, aiSeatTooltip, seatDisplayName } from "~/features/game/aiNames";
 import { DisconnectOverlay } from "~/features/game/DisconnectOverlay";
-import { GameBoard } from "~/features/game/GameBoard";
+import { GameBoard, GameStatusBar, soloScoresBySeat } from "~/features/game/GameBoard";
 import { MatchOverOverlay } from "~/features/game/MatchOverOverlay";
 import { RematchPanel } from "~/features/game/RematchPanel";
 import { useGameView } from "~/features/game/useGameView";
@@ -253,6 +253,7 @@ function SeatRow({
   stacked = false,
   inferenceAvailable = true,
   kickTableId,
+  scoresBySeat,
 }: {
   seats: TableDetailView["seats"];
   nameSeed: string;
@@ -269,6 +270,8 @@ function SeatRow({
    * ein — außer beim eigenen Sitz.
    */
   kickTableId?: string;
+  /** Solo-Punkte je Sitz (aktuelles Spiel) — rechts am Sitz angezeigt. */
+  scoresBySeat?: ReadonlyMap<number, number>;
 }) {
   const { t } = useTranslation();
   const { data: session } = useSession();
@@ -305,6 +308,11 @@ function SeatRow({
               {aiName(`${nameSeed}:${s.seat}`, s.aiSeatType)}
             </span>
           ) : null}
+          {scoresBySeat?.has(s.seat) && (
+            <span className="ml-auto tabular-nums font-semibold text-jass-ink">
+              {scoresBySeat.get(s.seat)}
+            </span>
+          )}
         </li>
       ))}
     </ul>
@@ -935,6 +943,10 @@ function GameSection({
     return <p className="text-stone-500">{t("lobby.tableDetail.loadingGame")}</p>;
   }
 
+  // Solo: Punkte je Sitz für die Sitzliste; bei Kreuz null (dort bleibt das
+  // Team-Scoreboard über dem Brett). Veronika.
+  const soloScores = view.state ? soloScoresBySeat(view.state) : null;
+
   return (
     <section className="grid grid-cols-1 lg:grid-cols-[1fr_20rem] gap-4">
       {/* `relative` macht den GameBoard-Container zur Verankerung für das
@@ -988,9 +1000,10 @@ function GameSection({
           nameSeed={nameSeed}
         />
       </div>
-      {/* Rechte Spalte: Chat + darunter die Sitze als Liste (füllt die vorher
-          halbleere Chat-Spalte; die Namen sind auf dem Felt ohnehin schon). */}
+      {/* Rechte Spalte: (Solo) Modus/Stich-Feld oben, dann Chat, darunter die
+          Sitze — bei Solo mit den Spiel-Punkten je Sitz (Veronika). */}
       <div className="flex h-full flex-col gap-4">
+        {soloScores && view.state && <GameStatusBar state={view.state} />}
         {/* fillHeight + flex-1: der Chat füllt die Spalte bis zur Brett-Höhe
             (statt fix 24rem) — relevant bei Bodensee, wo das Brett mit dem
             Spielverlauf höher als 24rem werden kann. */}
@@ -1005,6 +1018,7 @@ function GameSection({
           nameSeed={nameSeed}
           stacked
           inferenceAvailable={view.inferenceAvailable}
+          {...(soloScores ? { scoresBySeat: soloScores } : {})}
         />
       </div>
     </section>

@@ -729,6 +729,7 @@
     },
     "finished": "Durchgang beendet — der Partie-Stand steht unten.",
     "trick": "Stich {{n}} / 9",
+    "modeLabel": "Modus: {{mode}}",
     "scoreOwn": "Eigenes Team: <strong>{{score}}</strong>",
     "scoreOpp": "Gegner: <strong>{{score}}</strong>",
     "emptyHand": "Keine Karten mehr in der Hand.",

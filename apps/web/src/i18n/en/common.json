@@ -729,6 +729,7 @@
     },
     "finished": "Round over — match standing is shown below.",
     "trick": "Trick {{n}} / 9",
+    "modeLabel": "Mode: {{mode}}",
     "scoreOwn": "Your team: <strong>{{score}}</strong>",
     "scoreOpp": "Opponents: <strong>{{score}}</strong>",
     "emptyHand": "No more cards in hand.",
