@@ -76,7 +76,7 @@ export function AnnounceOverlay({ gameId, info }: { gameId: string; info: Announ
       role="status"
       aria-live="polite"
       onClick={() => setVisible(false)}
-      className="absolute inset-0 z-40 flex cursor-pointer flex-col items-center justify-center gap-3 rounded-lg bg-black/55 px-6 text-center backdrop-blur-sm"
+      className="absolute inset-0 z-40 flex cursor-pointer flex-col items-center justify-center gap-3 rounded-jass bg-black/55 px-6 text-center backdrop-blur-sm"
     >
       {d.iconSrc ? (
         <img
@@ -120,19 +120,36 @@ export function ModeWatermark({
   const { t } = useTranslation();
   const d = announceDisplay(t, info);
   return (
-    <div
-      aria-hidden="true"
-      className="pointer-events-none absolute inset-0 z-0 flex flex-col items-center justify-center gap-2"
-    >
+    <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-0">
+      {/* Symbol IMMER exakt in der Feld-Mitte — eigener zentrierter Layer,
+          damit das Slalom-Label es nicht (wie vorher) nach unten aus der Mitte
+          drückt. 10 % kleiner als früher (User-Wunsch, Kreuz/Solo). */}
+      <div className="absolute inset-0 flex items-center justify-center">
+        {d.iconSrc ? (
+          <img
+            src={d.iconSrc}
+            alt=""
+            draggable={false}
+            className="h-[10.8rem] w-[10.8rem] object-contain opacity-30"
+          />
+        ) : (
+          // Heller Glyph: das Wasserzeichen liegt immer auf dunklem Filz
+          // (greenDark / emerald-800), in HELL wie DUNKEL.
+          <span className="text-[9rem] font-black leading-none text-white opacity-25">
+            {d.glyph}
+          </span>
+        )}
+      </div>
       {info.slalom && currentMode && (
-        // Zwei Zeilen: „SLALOM" (das angesagte Spiel) + der aktuelle Stich-
-        // Modus „OBEN (BOCK)" / „UNTEN (GEISS)". So keine Verwechslung mehr mit
-        // einem einheitlichen Bock-/Geiss-Spiel.
+        // Zwei Zeilen: „SLALOM" (das angesagte Spiel) + der aktuelle Stich-Modus
+        // „OBEN (BOCK)" / „UNTEN (GEISS)". Schwebt ABSOLUT über dem Symbol, ohne
+        // dessen Mitte zu verschieben. Bei Bodensee (align="left") am linken Rand,
+        // sonst mittig oberhalb der Symbol-Mitte.
         <div
           className={
             align === "left"
               ? "absolute left-3 top-1/2 flex -translate-y-1/2 flex-col items-start gap-1"
-              : "flex flex-col items-center gap-1"
+              : "absolute left-1/2 top-[14%] flex -translate-x-1/2 flex-col items-center gap-1"
           }
         >
           <span className="rounded bg-black/40 px-3 py-0.5 text-lg font-black uppercase tracking-[0.2em] text-white">
@@ -142,20 +159,6 @@ export function ModeWatermark({
             {t(`game.announce.mode.${currentMode}`)}
           </span>
         </div>
-      )}
-      {d.iconSrc ? (
-        <img
-          src={d.iconSrc}
-          alt=""
-          draggable={false}
-          className="h-48 w-48 object-contain opacity-30"
-        />
-      ) : (
-        // Heller Glyph: das Wasserzeichen liegt immer auf dunklem Filz
-        // (greenDark / emerald-800), in HELL wie DUNKEL.
-        <span className="text-[10rem] font-black leading-none text-white opacity-25">
-          {d.glyph}
-        </span>
       )}
     </div>
   );

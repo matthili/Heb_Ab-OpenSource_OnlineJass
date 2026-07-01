@@ -207,7 +207,7 @@ export function Scoreboard({
   // Rules-of-Hooks-Verstoß verursacht.
   if (soloPlayers && soloPlayers.length > 0) {
     return (
-      <div className="flex gap-4 text-sm rounded-lg border border-jass-paperEdge bg-jass-cream px-3 py-2 items-center flex-wrap panel-jass">
+      <div className="flex gap-4 text-sm rounded-jass border border-jass-paperEdge bg-jass-cream px-3 py-2 items-center flex-wrap panel-jass">
         {soloPlayers.map((p, i) => (
           <SoloScoreEntry
             key={i}
@@ -253,7 +253,7 @@ function TeamScoreboard({
   stoeckSide?: "own" | "opp" | null;
 }) {
   return (
-    <div className="flex gap-4 text-sm rounded-lg border border-jass-paperEdge bg-jass-cream px-3 py-2 items-center panel-jass">
+    <div className="flex gap-4 text-sm rounded-jass border border-jass-paperEdge bg-jass-cream px-3 py-2 items-center panel-jass">
       <span className="text-jass-inkSoft">
         Eigenes Team:{" "}
         <ScoreNumber

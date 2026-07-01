@@ -67,32 +67,33 @@ function cardKey(c: CardModel): string {
 }
 
 /**
- * Status-Block für die rechte Spalte (Veronika J1): Stich-Zähler, Modus/Trumpf
- * und Punktestand. **Vertikal gestapelt**, damit die Info in der schmalen
- * 20-rem-Seitenspalte nicht auf eine gequetschte Zeile gepresst wird, sondern
- * auf mehrere Zeilen verteilt steht. `oppName` = Anzeigename des Gegners.
+ * Status-Block für die rechte Spalte (Veronika): Zeile 1 = Modus-Badge + Stich-
+ * Zähler nebeneinander (passt in eine Zeile, bricht bei Bedarf um); Zeile 2 =
+ * Punktestand. `oppName` = Anzeigename des Gegners.
  */
 export function BodenseeStatusBar({ view, oppName }: { view: BodenseeView; oppName: string }) {
   const { t } = useTranslation();
   return (
-    <div className="flex flex-col gap-2 rounded-lg border border-jass-paperEdge bg-jass-cream px-4 py-3 text-sm panel-jass">
-      <span className="text-jass-inkSoft">
-        <Trans
-          i18nKey="bodensee.status.trick"
-          values={{ n: Math.min(view.trickIdx + 1, 18) }}
-          components={{ strong: <strong className="text-jass-ink" /> }}
-        />
-      </span>
-      <span className="jass-mode-glow self-start rounded bg-jass-yellow px-2.5 py-1 text-sm font-bold text-jass-ink ring-1 ring-jass-yellowDark">
-        {t("bodensee.status.mode", {
-          mode: view.slalom
-            ? t("game.announce.mode.SLALOM")
-            : view.playMode
-              ? modeLabel(t, view.playMode)
-              : "—",
-        })}
-        {!view.slalom && view.trumpSuit ? ` ${suitLabel(t, view.trumpSuit)}` : ""}
-      </span>
+    <div className="flex flex-col gap-2 rounded-jass border border-jass-paperEdge bg-jass-cream px-4 py-3 text-sm panel-jass">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+        <span className="jass-mode-glow rounded bg-jass-yellow px-2.5 py-1 text-sm font-bold text-jass-ink ring-1 ring-jass-yellowDark">
+          {t("bodensee.status.mode", {
+            mode: view.slalom
+              ? t("game.announce.mode.SLALOM")
+              : view.playMode
+                ? modeLabel(t, view.playMode)
+                : "—",
+          })}
+          {!view.slalom && view.trumpSuit ? ` ${suitLabel(t, view.trumpSuit)}` : ""}
+        </span>
+        <span className="text-jass-inkSoft">
+          <Trans
+            i18nKey="bodensee.status.trick"
+            values={{ n: Math.min(view.trickIdx + 1, 18) }}
+            components={{ strong: <strong className="text-jass-ink" /> }}
+          />
+        </span>
+      </div>
       <span className="text-jass-inkSoft">
         <Trans
           i18nKey="bodensee.status.score"
@@ -100,6 +101,51 @@ export function BodenseeStatusBar({ view, oppName }: { view: BodenseeView; oppNa
           components={{ strong: <strong className="text-jass-ink" /> }}
         />
       </span>
+    </div>
+  );
+}
+
+/**
+ * Erster + letzter abgeschlossener Stich als kleine Kacheln — für die rechte
+ * Spalte (zwischen Partie-Stand und Tisch-Chat, Veronika). Nebeneinander,
+ * bricht bei Bedarf um. Rendert nichts, solange noch kein Stich fertig ist.
+ */
+export function BodenseeMiniTricks({
+  view,
+  seats,
+  nameSeed,
+}: {
+  view: BodenseeView;
+  seats: SeatView[];
+  nameSeed: string;
+}) {
+  const { t } = useTranslation();
+  if (!view.firstTrick && !view.lastTrick) return null;
+  const seatName = (seat: number): string => {
+    const fallback = t("game.seatFallback", { n: seat + 1 });
+    const s = seats.find((x) => x.seat === seat);
+    return s ? seatDisplayName(s, nameSeed, fallback) : fallback;
+  };
+  return (
+    <div className="flex flex-wrap justify-center gap-2">
+      {view.firstTrick && (
+        <MiniTrick
+          label={t("game.trickMini.first")}
+          trick={view.firstTrick}
+          mySeat={view.mySeat}
+          seatName={seatName}
+          t={t}
+        />
+      )}
+      {view.lastTrick && (
+        <MiniTrick
+          label={t("game.trickMini.last")}
+          trick={view.lastTrick}
+          mySeat={view.mySeat}
+          seatName={seatName}
+          t={t}
+        />
+      )}
     </div>
   );
 }
@@ -171,7 +217,9 @@ export function BodenseeBoard({
       : view.playMode;
 
   return (
-    <div className="space-y-3 relative">
+    <div className="space-y-3 relative pb-2">
+      {/* pb-2: das Ansage-Overlay (inset-0) deckt so auch den panel-jass-Schatten
+          der untersten Karten-Sektion mit ab — sonst ragte er ~5mm heraus. */}
       {announceInfo && <AnnounceOverlay gameId={view.gameId} info={announceInfo} />}
       {/* Status-Leiste (Stich/Modus/Punkte) sitzt jetzt in der rechten Spalte
           (BodenseeGameSection) — siehe BodenseeStatusBar. Veronika J1. */}
@@ -186,7 +234,7 @@ export function BodenseeBoard({
       )}
 
       {/* Gegner-Bereich */}
-      <section className="rounded-lg border border-jass-paperEdge bg-jass-paper p-3 space-y-2 panel-jass">
+      <section className="rounded-jass border border-jass-paperEdge bg-jass-paper p-3 space-y-2 panel-jass">
         <div className="flex items-center justify-between text-sm">
           {(() => {
             // Engine-Status-Tooltip am KI-Gegner (Name bleibt stabil).
@@ -238,7 +286,7 @@ export function BodenseeBoard({
 
       {/* Stich-Mitte — mit Modus-Wasserzeichen dahinter (gut sichtbar statt
           des zu kleinen Icons oben). */}
-      <section className="relative min-h-[10rem] overflow-hidden rounded-jass bg-jass-felt px-4 py-5 text-center text-white/90">
+      <section className="relative min-h-[212px] overflow-hidden rounded-jass bg-jass-felt px-4 py-5 text-center text-white/90">
         {announceInfo && (
           <ModeWatermark info={announceInfo} currentMode={watermarkMode} align="left" />
         )}
@@ -247,32 +295,11 @@ export function BodenseeBoard({
         </div>
       </section>
 
-      {/* Erster + letzter abgeschlossener Stich als Minis (wie regulär) */}
-      {(view.firstTrick || view.lastTrick) && (
-        <section className="flex justify-center gap-4">
-          {view.firstTrick && (
-            <MiniTrick
-              label={t("game.trickMini.first")}
-              trick={view.firstTrick}
-              mySeat={view.mySeat}
-              seatName={seatName}
-              t={t}
-            />
-          )}
-          {view.lastTrick && (
-            <MiniTrick
-              label={t("game.trickMini.last")}
-              trick={view.lastTrick}
-              mySeat={view.mySeat}
-              seatName={seatName}
-              t={t}
-            />
-          )}
-        </section>
-      )}
+      {/* Erster + letzter Stich sind in die rechte Spalte gewandert
+          (BodenseeMiniTricks, zwischen Partie-Stand und Tisch-Chat) — Veronika. */}
 
       {/* Eigener Bereich */}
-      <section className="rounded-lg border border-jass-paperEdge bg-jass-paper p-3 space-y-3 panel-jass">
+      <section className="rounded-jass border border-jass-paperEdge bg-jass-paper p-3 space-y-3 panel-jass">
         {/* min-h reserviert die Zeilenhöhe, damit das 2-s-Ausblenden das
             Layout darunter nicht hochrutschen lässt. */}
         <div className="text-sm min-h-[1.5rem]">
@@ -345,7 +372,7 @@ export function BodenseeBoard({
             allowGumpf={view.announcement.allowGumpf}
           />
         ) : (
-          <p className="rounded-lg border border-jass-paperEdge bg-jass-cream px-4 py-3 text-sm text-jass-inkSoft panel-jass">
+          <p className="rounded-jass border border-jass-paperEdge bg-jass-cream px-4 py-3 text-sm text-jass-inkSoft panel-jass">
             {t("bodensee.announce.otherChoosing", {
               name: seatName(view.announcement?.announcerSeat ?? oppSeat),
             })}
@@ -491,7 +518,7 @@ function MiniTrick({
   t: TFunction;
 }) {
   return (
-    <div className="rounded-lg border border-jass-paperEdge bg-jass-cream px-3 py-2 text-center">
+    <div className="rounded-jass border border-jass-paperEdge bg-jass-cream px-3 py-2 text-center panel-jass">
       <p className="text-xs uppercase tracking-wide text-jass-inkSoft">{label}</p>
       <div className="my-1 flex justify-center gap-1">
         {trick.cards.map((c, i) => (
@@ -610,7 +637,7 @@ function AnnouncePanel({
   }
 
   return (
-    <section className="rounded-lg border-2 border-jass-yellowDark bg-jass-yellow/15 p-4 space-y-3">
+    <section className="rounded-jass border-2 border-jass-yellowDark bg-jass-yellow/15 p-4 space-y-3">
       <h3 className="font-semibold text-jass-ink">{t("bodensee.announce.title")}</h3>
       <div className="flex flex-wrap gap-2">
         {visibleModes.map((m) => (
@@ -698,7 +725,7 @@ function FinishedPanel({ view, oppName }: { view: BodenseeView; oppName: string 
   const matschMe = view.finalScore!.matsch_player === view.mySeat;
 
   return (
-    <section className="rounded-lg border-2 border-jass-yellowDark bg-jass-yellow/20 p-4 text-center space-y-1">
+    <section className="rounded-jass border-2 border-jass-yellowDark bg-jass-yellow/20 p-4 text-center space-y-1">
       <h3 className="text-lg font-bold text-jass-ink">
         {draw
           ? t("bodensee.finished.draw")

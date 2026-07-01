@@ -17,7 +17,11 @@ import { useNavigate } from "@tanstack/react-router";
 import { type FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
 
-import { BodenseeBoard, BodenseeStatusBar } from "~/features/bodensee/BodenseeBoard";
+import {
+  BodenseeBoard,
+  BodenseeMiniTricks,
+  BodenseeStatusBar,
+} from "~/features/bodensee/BodenseeBoard";
 import { OpponentLeftDialog } from "~/features/bodensee/OpponentLeftDialog";
 import { BodenseeRematchPanel } from "~/features/bodensee/BodenseeRematchPanel";
 import { useBodenseeView } from "~/features/bodensee/useBodenseeView";
@@ -390,7 +394,7 @@ function CumulativeScoreBar({ table }: { table: TableDetailView }) {
 
   return (
     <section
-      className="rounded-lg border border-jass-paperEdge bg-jass-paper p-3 space-y-2 panel-jass"
+      className="rounded-jass border border-jass-paperEdge bg-jass-paper p-3 space-y-2 panel-jass"
       aria-label={t("lobby.tableDetail.scoreLabel")}
     >
       <div className="flex items-baseline justify-between text-sm text-jass-inkSoft">
@@ -1111,6 +1115,7 @@ function BodenseeGameSection({
       <div className="flex h-full flex-col gap-4">
         <BodenseeStatusBar view={view} oppName={oppName} />
         <CumulativeScoreBar table={table} />
+        <BodenseeMiniTricks view={view} seats={tableSeats} nameSeed={nameSeed} />
         {/* fillHeight + flex-1: der Chat füllt die Spalte bis zur Brett-Höhe
             (statt fix 24rem) — relevant bei Bodensee, wo das Brett mit dem
             Spielverlauf höher als 24rem werden kann. */}

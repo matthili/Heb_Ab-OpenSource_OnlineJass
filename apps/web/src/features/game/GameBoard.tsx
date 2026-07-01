@@ -185,7 +185,7 @@ export function GameBoard({
             <div
               role="status"
               aria-live="polite"
-              className="jass-weli-banner rounded-lg border-2 border-jass-yellowDark bg-gradient-to-r from-jass-yellow/30 via-jass-yellow/50 to-jass-yellow/30 px-4 py-3 text-center text-jass-ink font-bold shadow-md"
+              className="jass-weli-banner rounded-jass border-2 border-jass-yellowDark bg-gradient-to-r from-jass-yellow/30 via-jass-yellow/50 to-jass-yellow/30 px-4 py-3 text-center text-jass-ink font-bold panel-jass"
             >
               {t("game.weli.youHaveWeli")}
             </div>
@@ -358,7 +358,7 @@ function CutPhase({
   if (!cut.iAmCutter) {
     const name = seatNames.get(cut.cutterSeat) ?? t("game.seatFallback", { n: cut.cutterSeat + 1 });
     return (
-      <div className="rounded-lg border border-jass-paperEdge bg-jass-cream px-4 py-8 text-center text-jass-inkSoft">
+      <div className="rounded-jass border border-jass-paperEdge bg-jass-cream px-4 py-8 text-center text-jass-inkSoft">
         <div className="mb-2 text-4xl">🂠</div>
         {t("game.cut.waiting", { name })}
       </div>
@@ -366,7 +366,7 @@ function CutPhase({
   }
 
   return (
-    <section className="rounded-lg border-2 border-jass-yellowDark bg-jass-yellow/15 p-4 space-y-4">
+    <section className="rounded-jass border-2 border-jass-yellowDark bg-jass-yellow/15 p-4 space-y-4">
       <div>
         <h3 className="font-semibold text-jass-ink">{t("game.cut.title")}</h3>
         <p className="mt-1 text-sm text-jass-inkSoft">{t("game.cut.explain")}</p>
@@ -453,8 +453,8 @@ function StoeckButton({ lastCard, onCall }: { lastCard: boolean; onCall: () => v
       aria-busy={called}
       className={
         called
-          ? "w-full rounded-lg border-2 border-emerald-600 bg-emerald-500 px-4 py-3 text-lg font-bold text-white shadow-md cursor-default"
-          : "jass-your-turn-glow w-full rounded-lg border-2 border-jass-yellowDark bg-jass-yellow px-4 py-3 text-lg font-bold text-jass-ink shadow-md hover:bg-jass-yellow/90"
+          ? "w-full rounded-jass border-2 border-emerald-600 bg-emerald-500 px-4 py-3 text-lg font-bold text-white panel-jass cursor-default"
+          : "jass-your-turn-glow w-full rounded-jass border-2 border-jass-yellowDark bg-jass-yellow px-4 py-3 text-lg font-bold text-jass-ink panel-jass hover:bg-jass-yellow/90"
       }
     >
       {called
@@ -697,9 +697,10 @@ function RoleHints({
   const nameOf = (seat: number) => shortName(seatNames.get(seat) ?? `#${seat + 1}`);
   return (
     <div
-      // ~50% größer (User-Wunsch), Anker unten links wie die Trick-Minis.
-      style={{ transform: "scale(1.5)", transformOrigin: "left bottom" }}
-      className="max-w-[12rem] space-y-0.5 rounded bg-jass-paper/90 px-2 py-1 text-xs leading-tight text-jass-ink shadow-sm ring-1 ring-jass-paperEdge"
+      // Schriftgröße wie die Gegner-Namen (text-sm); die Box passt sich per
+      // w-fit dynamisch dem Inhalt an (kein fixes breites Feld mehr). Anker
+      // unten links wie die Trick-Minis; Radius + Schatten wie der Tisch-Chat.
+      className="w-fit space-y-0.5 rounded-jass bg-jass-paper/90 px-2.5 py-1.5 text-sm leading-tight text-jass-ink panel-jass ring-1 ring-jass-paperEdge"
     >
       <div>
         {t(weliRound ? "game.roleHints.announcerWeli" : "game.roleHints.announcer", {
