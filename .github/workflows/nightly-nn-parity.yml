@@ -32,7 +32,6 @@ on:
 
 env:
   NODE_VERSION: "24"
-  PNPM_VERSION: "10"
 
 jobs:
   parity:
@@ -44,9 +43,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Kein `version:`-Input — pnpm/action-setup@v4 liest die Version aus
+      # `package.json#packageManager` (pnpm@10.33.2). Beides gleichzeitig
+      # setzen lehnt die Action ab (ERR_PNPM_BAD_PM_VERSION → Job rot).
       - uses: pnpm/action-setup@v4
-        with:
-          version: ${{ env.PNPM_VERSION }}
 
       - uses: actions/setup-node@v4
         with:

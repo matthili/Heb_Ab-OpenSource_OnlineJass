@@ -12,7 +12,6 @@ concurrency:
 
 env:
   NODE_VERSION: "24"
-  PNPM_VERSION: "10"
 
 jobs:
   # ─────────────────────────────────────────────────────────────────
@@ -24,9 +23,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Version kommt aus package.json#packageManager (pnpm@10.33.2) —
+      # kein `version:`-Input, sonst ERR_PNPM_BAD_PM_VERSION.
       - uses: pnpm/action-setup@v4
-        with:
-          version: ${{ env.PNPM_VERSION }}
 
       - uses: actions/setup-node@v4
         with:
@@ -54,9 +53,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Version kommt aus package.json#packageManager (pnpm@10.33.2) —
+      # kein `version:`-Input, sonst ERR_PNPM_BAD_PM_VERSION.
       - uses: pnpm/action-setup@v4
-        with:
-          version: ${{ env.PNPM_VERSION }}
 
       - uses: actions/setup-node@v4
         with:
@@ -90,9 +89,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Version kommt aus package.json#packageManager (pnpm@10.33.2) —
+      # kein `version:`-Input, sonst ERR_PNPM_BAD_PM_VERSION.
       - uses: pnpm/action-setup@v4
-        with:
-          version: ${{ env.PNPM_VERSION }}
 
       - uses: actions/setup-node@v4
         with:
