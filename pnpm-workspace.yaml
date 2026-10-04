@@ -1,3 +1,19 @@
 packages:
   - "apps/*"
   - "packages/*"
+
+overrides:
+  # NestJS 11 (@nestjs/platform-fastify 11.2.x) pinnt fastify 5.11.3 — dort
+  # stecken vier hohe Schwachstellen (u. a. Auth-Bypass über fehlerhafte
+  # URLs). Erst NestJS 12 bringt eine gefixte 5.12.x mit. Bis zum
+  # Nest-Major-Update erzwingen wir die gefixte 5.x (Minor-Sprung, gleiche API).
+  fastify: ^5.12.5
+  # mysql2 hängt an Better Auth (erlaubt ^3.0.0) und am Prisma-CLI (pinnt
+  # 3.15.3, verwundbar). Wir nutzen Postgres — mysql2 wird nie geladen. Der
+  # Override hebt beide auf die gefixte 3.x (Minor-Sprung, gleiche API).
+  mysql2: ^3.24.5
+  # @prisma/config pinnt deepmerge-ts 7.1.5 (auch Prisma 7.10). Es ruft nur
+  # `deepmerge(a, b)` auf — die Basis-API ist in v8 unverändert (die Breaking
+  # Changes betreffen deepmergeInto, Typnamen und Maps). Geprüft mit
+  # `prisma generate` und `prisma migrate deploy` (Integrationstests).
+  "@prisma/config>deepmerge-ts": ^8.0.2

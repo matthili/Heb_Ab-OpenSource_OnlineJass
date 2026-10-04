@@ -16,4 +16,9 @@ export default defineConfig({
   // unter "/app/". Caddy routet die beiden Pfad-Präfixe an die richtigen
   // Container.
   site: "https://heb-ab.example.com",
+  // Astro 7 entfernt Leerraum standardmäßig nach JSX-Regeln (`'jsx'`) — dann
+  // kleben Wörter zusammen, wo im Quelltext nur ein Zeilenumbruch zwischen
+  // einem Inline-Element und dem Text steht. `true` behält das Verhalten von
+  // Astro 6 bei (sichtbarer Text aller Seiten beim Upgrade identisch geprüft).
+  compressHTML: true,
 });
