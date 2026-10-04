@@ -23,6 +23,7 @@ import { AuditService } from "../audit/audit.service.js";
 import { BlocklistService } from "../blocklist/blocklist.service.js";
 import { MailService } from "../mail/mail.service.js";
 import { PrismaService } from "../prisma/prisma.service.js";
+import { UserSocketsService } from "../realtime/user-sockets.service.js";
 import { hashPassword, verifyPassword } from "./password.js";
 import { checkPasswordStrength } from "./password-strength.js";
 import { checkPasswordBreached } from "./pwned-passwords.js";
@@ -43,7 +44,8 @@ export class AuthService implements OnModuleInit {
     private readonly mail: MailService,
     private readonly blocklist: BlocklistService,
     private readonly audit: AuditService,
-    private readonly turnstile: TurnstileService
+    private readonly turnstile: TurnstileService,
+    private readonly userSockets: UserSocketsService
   ) {}
 
   onModuleInit(): void {
@@ -123,16 +125,31 @@ export class AuthService implements OnModuleInit {
             ip: extractIp({ request }),
           });
         },
-        // Neues Passwort gesetzt. Wer den Link aus der Mail hatte, hatte Zugriff
-        // auf das Postfach des Kontos → als Akteur zählt der Konto-Inhaber.
+        // Neues Passwort gesetzt → alle Sitzungen des Kontos beenden (falls der
+        // Reset passiert, weil das Passwort in fremde Hände geraten ist) und
+        // offene WebSockets trennen — die WS-Auth prüft die Sitzung nur beim
+        // Verbindungsaufbau, ein offener Spieltisch/Chat liefe sonst weiter.
+        //
+        // Reihenfolge: Better Auth ruft diesen Callback VOR seinem eigenen
+        // `revokeSessionsOnPasswordReset` auf. Würden wir hier nur trennen,
+        // könnte sich ein Client in den Millisekunden dazwischen mit der noch
+        // gültigen Sitzung neu verbinden. Deshalb löschen wir die Sitzungen
+        // selbst zuerst; Better Auths Löschen danach ist dann ein No-op und
+        // bleibt als zweite Sicherung an.
         onPasswordReset: async ({ user }, request) => {
+          const { count } = await this.prisma.session.deleteMany({ where: { userId: user.id } });
+          this.userSockets.disconnectUser(user.id);
+          // Wer den Link aus der Mail hatte, hatte Zugriff auf das Postfach
+          // des Kontos → als Akteur zählt der Konto-Inhaber.
           await this.audit.record({
             action: "auth.password.reset_completed",
             actorId: user.id,
             target: user.id,
+            meta: { sessionsRevoked: count },
             ip: extractIp({ request }),
           });
         },
+        revokeSessionsOnPasswordReset: true,
         resetPasswordTokenExpiresIn: 60 * 60, // 1 Stunde
       },
       emailVerification: {

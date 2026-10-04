@@ -23,6 +23,7 @@ Sicherheit wird **ab Tag 1** mitgedacht, nicht „später nachgerüstet". **Stan
 | 17  | Soft-Delete mit Anonymisierung statt Hard-Delete                | User-Model                                | M10                     |
 | 18  | Pino redact für PII (Passwort-Felder, Tokens)                   | Pino-Config                               | M3                      |
 | 19  | HIBP-Pwned-Passwords-Check (k-Anonymity) bei Register + Reset   | `modules/auth`                            | M3                      |
+| 20  | Passwort-Reset beendet alle Sitzungen + trennt WebSockets       | `modules/auth` + `modules/realtime`       | Okt 2026                |
 
 ## Threat-Model (Kurzfassung)
 
@@ -30,7 +31,7 @@ Sicherheit wird **ab Tag 1** mitgedacht, nicht „später nachgerüstet". **Stan
 - **Manipulation der KI-Inferenz:** KI läuft im eigenen Microservice; Client sendet niemals state-Vektoren. Eingaben kommen ausschließlich aus dem server-gehaltenen Zustand.
 - **Brute-Force auf Login:** Argon2id + Rate-Limit pro IP+E-Mail + Turnstile-Challenge ab Fail-Schwelle.
 - **XSS via Chat:** Markdown-Allowlist, DOMPurify im Client _und_ Server-seitige Sanitization vor Persistenz.
-- **Account-Übernahme:** Better Auth-Sessions in DB sofort widerrufbar (z.B. bei Passwort-Reset oder Block); Verify-Tokens single-use mit kurzem TTL.
+- **Account-Übernahme:** Better Auth-Sessions liegen in der DB und sind sofort widerrufbar. Ein Passwort-Reset beendet alle Sitzungen des Kontos und trennt dessen offene WebSockets (die WS-Auth prüft die Sitzung nur beim Verbindungsaufbau). Beim Sperren durch einen Admin werden die Sitzungen gelöscht, bereits offene WebSockets bleiben aber bis zum nächsten Verbindungsabbruch bestehen — **offener Punkt**. Verify- und Reset-Tokens single-use mit kurzem TTL.
 - **DSGVO-Verletzung:** Soft-Delete + Anonymisierung statt Hard-Delete; Cookie-Banner mit echter Wahl; Daten-Export.
 
 ## Reporting

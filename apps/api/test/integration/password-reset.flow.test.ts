@@ -11,18 +11,33 @@
  *      Audit `auth.password.reset_requested`.
  *   2. GET  <Link aus der Mail>              → 302 auf redirectTo?token=…
  *   3. POST /api/auth/reset-password          → 200, Audit
- *      `auth.password.reset_completed`.
+ *      `auth.password.reset_completed`; alle Sitzungen des Kontos beendet,
+ *      offene WebSockets getrennt.
  *   4. Login mit dem neuen Passwort klappt, mit dem alten nicht mehr.
  */
+import { io } from "socket.io-client";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { TurnstileService } from "../../src/modules/auth/turnstile.service.js";
-import { signUpAndIn } from "./auth-helper.js";
+import { cookieHeaderFor, signUpAndIn } from "./auth-helper.js";
 import { createHttpClient, type HttpClient } from "./http-client.js";
 import { MAIL_FAIL_PREFIX, setupTestApp, type TestAppHandle } from "./setup.js";
 
 const RESET_REQUEST = "/api/auth/request-password-reset";
 const PASSWORD = "test-passw0rd-very-long-12!";
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+function withTimeout<T>(promise: Promise<T>, ms: number, what: string): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_resolve, reject) =>
+      setTimeout(() => reject(new Error(`Timeout (${ms} ms): ${what}`)), ms)
+    ),
+  ]);
+}
 
 describe("Passwort vergessen (request-password-reset → Link → neues Passwort)", () => {
   let app: TestAppHandle;
@@ -41,6 +56,25 @@ describe("Passwort vergessen (request-password-reset → Link → neues Passwort
   afterEach(() => {
     vi.restoreAllMocks();
   });
+
+  /** Reset anfordern, Link aus der Mail öffnen, Token aus der Weiterleitung holen. */
+  async function requestResetToken(email: string): Promise<string> {
+    const request = await http.request(RESET_REQUEST, {
+      method: "POST",
+      body: JSON.stringify({ email, redirectTo: "/reset-password" }),
+    });
+    expect(request.status, JSON.stringify(request.body)).toBe(200);
+    const mail = app.capturedResetMails.filter((m) => m.to === email).pop();
+    expect(mail, "keine Reset-Mail im Sink").toBeDefined();
+    const link = new URL(mail!.resetUrl);
+    const callback = await fetch(`${app.baseUrl}${link.pathname}${link.search}`, {
+      redirect: "manual",
+    });
+    const location = callback.headers.get("location") ?? "";
+    const token = new URL(location, app.baseUrl).searchParams.get("token");
+    expect(token, location).toBeTruthy();
+    return token!;
+  }
 
   it("schickt eine Reset-Mail, deren Link ein neues Passwort setzen lässt", async () => {
     const email = "reset@jass.local";
@@ -103,6 +137,67 @@ describe("Passwort vergessen (request-password-reset → Link → neues Passwort
       body: JSON.stringify({ email, password: newPassword }),
     });
     expect(newLogin.status, JSON.stringify(newLogin.body)).toBe(200);
+  });
+
+  it("beendet nach dem Reset alle Sitzungen und trennt offene Live-Verbindungen", async () => {
+    const email = "revoke@jass.local";
+    const owner = await signUpAndIn(app, { email, password: PASSWORD, name: "revoke_user" });
+
+    // Offene Live-Verbindung mit der gleich widerrufenen Sitzung. Automatisches
+    // Wiederverbinden AN, wie im Web-Client (gleiche socket.io-client-Version).
+    const socket = io(app.baseUrl, {
+      path: "/ws",
+      transports: ["websocket"],
+      extraHeaders: { Cookie: cookieHeaderFor(owner.http) },
+      reconnection: true,
+      reconnectionDelay: 50,
+    });
+    try {
+      await withTimeout(
+        new Promise<void>((resolve, reject) => {
+          socket.once("connect", () => resolve());
+          socket.once("connect_error", (err) => reject(new Error(err.message)));
+        }),
+        5_000,
+        "WS-Verbindung"
+      );
+      let reconnectAttempts = 0;
+      socket.io.on("reconnect_attempt", () => {
+        reconnectAttempts++;
+      });
+      const disconnected = new Promise<string>((resolve) =>
+        socket.once("disconnect", (reason) => resolve(reason))
+      );
+
+      const token = await requestResetToken(email);
+      const reset = await http.request("/api/auth/reset-password", {
+        method: "POST",
+        body: JSON.stringify({ newPassword: "neues-passw0rt-sehr-lang-56!", token }),
+      });
+      expect(reset.status, JSON.stringify(reset.body)).toBe(200);
+
+      // Der Server trennt die Live-Verbindung …
+      expect(await withTimeout(disconnected, 3_000, "WS-Trennung")).toBe("io server disconnect");
+      // … und der Client versucht nicht, sich neu zu verbinden.
+      await sleep(500);
+      expect(socket.connected).toBe(false);
+      expect(reconnectAttempts).toBe(0);
+
+      // Alle Sitzungen des Kontos sind weg, das alte Cookie gilt nicht mehr.
+      expect(await app.prisma.session.count({ where: { userId: owner.userId } })).toBe(0);
+      const session = await owner.http.request<{ user?: unknown } | null>("/api/auth/get-session", {
+        method: "GET",
+      });
+      expect(session.body?.user ?? null).toBeNull();
+
+      const completed = await app.prisma.auditLog.findFirst({
+        where: { action: "auth.password.reset_completed" },
+      });
+      const meta = completed?.meta as { sessionsRevoked?: number } | undefined;
+      expect(meta?.sessionsRevoked).toBeGreaterThanOrEqual(1);
+    } finally {
+      socket.disconnect();
+    }
   });
 
   it("antwortet bei unbekannter Adresse gleich und verschickt nichts", async () => {

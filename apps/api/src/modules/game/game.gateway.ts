@@ -44,6 +44,7 @@ import { AuditService } from "../audit/audit.service.js";
 import { AuthService } from "../auth/auth.service.js";
 import { ChatGateway } from "../chat/chat.gateway.js";
 import { PrismaService } from "../prisma/prisma.service.js";
+import { UserSocketsService } from "../realtime/user-sockets.service.js";
 import { RedisService } from "../redis/redis.service.js";
 import { AfkService } from "./afk.service.js";
 import { BodenseeGameService, type BodenseePlayerView } from "./bodensee-game.service.js";
@@ -124,7 +125,8 @@ export class GameGateway
     private readonly chatGateway: ChatGateway,
     private readonly prisma: PrismaService,
     private readonly afk: AfkService,
-    private readonly stuckWatchdog: StuckGameWatchdogService
+    private readonly stuckWatchdog: StuckGameWatchdogService,
+    private readonly userSockets: UserSocketsService
   ) {
     // Defensive: alle DI-Params sollten von NestJS gefüllt sein. Wenn nicht,
     // ist das ein Setup-Problem (z.B. fehlende `reflect-metadata` /
@@ -141,7 +143,8 @@ export class GameGateway
       !disconnectVote ||
       !chatGateway ||
       !prisma ||
-      !afk
+      !afk ||
+      !userSockets
     ) {
       throw new Error(
         "GameGateway: Constructor-DI unvollständig. " +
@@ -174,6 +177,10 @@ export class GameGateway
       socket.data.userId = userId;
       next();
     });
+
+    // Gezieltes Trennen aller Sockets eines Users (z.B. nach Passwort-Reset,
+    // wenn seine Sitzungen widerrufen wurden) — siehe UserSocketsService.
+    this.userSockets.bindServer(server);
 
     // Disconnect-Vote-Service mit Server-Referenz + Outcome-Hooks
     // versorgen. Boot-Recovery läuft danach im Hintergrund.
