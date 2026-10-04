@@ -38,7 +38,7 @@ const DEFAULT_GAME_TYPES = "kreuz,solo";
 /**
  * Pro Spielart die erwartete Encoding-Version + State-Dimension.
  * Kreuz + Solo teilen den 3.0.0-Encoder (421 dim). Bodensee hat einen
- * eigenen Encoder (291 dim) — kommt mit dem Phase-2-Sprint.
+ * eigenen Encoder (`bodensee_1.0.0`, 291 dim).
  */
 const GAME_TYPE_SPEC: Record<string, { encoding: string; stateDim: number }> = {
   kreuz: { encoding: ENCODING_VERSION, stateDim: STATE_DIM },

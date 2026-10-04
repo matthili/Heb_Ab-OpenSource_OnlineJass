@@ -7,8 +7,8 @@
  *   3. `argmax` → `indexToCard` → Karte zurückgeben
  *
  * **Fehler-Verhalten:** Wirft `InferenceUnavailableError` aus dem Client
- * unverändert weiter. Der `GameService` / die `AIPlayerFactory` ist dafür
- * zuständig, in dem Fall auf einen `RandomLegalMovePlayer` zu fallback'en.
+ * unverändert weiter. Der `GameService` fängt ihn ab und lässt den Sitz dann
+ * mit dem `HeuristicPlayer` ziehen (Audit: `game.ai.inference_fallback`).
  *
  * **Modell-Drift-Schutz:** Wir vergleichen `encoding_version` aus jeder
  * Response gegen `@jass/engine.ENCODING_VERSION`. Ein Mismatch hier ist sehr

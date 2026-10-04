@@ -2,8 +2,8 @@
  * Kontextmenü an einem Usernamen (Einfachklick auf `<UserName>`).
  *
  * Punkte: **Privatnachricht** (öffnet DM-Fenster), **Profilseite** (→ /users/:id),
- * **Freundschaft** (status-abhängig über die vorhandenen Friend-Endpunkte).
- * „Melden" kommt mit dem Report-Feature (Phase 3) dazu.
+ * **Freundschaft** (status-abhängig über die vorhandenen Friend-Endpunkte),
+ * **Melden** und — für den Tisch-Owner — **vom Tisch werfen**.
  *
  * Positionierung: fix am Anker (Klickposition). Klick außerhalb / Escape schließt
  * (gleiches Muster wie `SignOutMenu`).

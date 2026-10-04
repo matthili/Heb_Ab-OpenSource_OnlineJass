@@ -22,8 +22,8 @@ overrides:
 # `allowBuilds` (ersetzt `onlyBuiltDependencies` aus der früheren .npmrc, die
 # pnpm nur noch für Registry/Auth liest). Ein Paket mit Build-Skript, das hier
 # fehlt, bricht die Installation ab (`strictDepBuilds`). Die Skripte dieser
-# Pakete sind nötig: Prisma lädt seine Engines, @node-rs/argon2 und
-# @tensorflow/tfjs-node ihre nativen Binaries, lefthook richtet die Git-Hooks ein.
+# Pakete sind nötig: Prisma lädt seine Engines, @node-rs/argon2 sein natives
+# Binary, lefthook richtet die Git-Hooks ein.
 # `false` = Skript bleibt aus (wie schon unter pnpm 10): @swc/core prüft nur
 # sein natives Binary und lädt sonst @swc/wasm nach — das Binary kommt
 # ohnehin über die optionalen Plattform-Pakete.
@@ -36,7 +36,6 @@ allowBuilds:
   "@node-rs/argon2": true
   esbuild: true
   lefthook: true
-  "@tensorflow/tfjs-node": true
   core-js: true
   cpu-features: true
   ssh2: true

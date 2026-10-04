@@ -4,9 +4,8 @@
  * Vertrag (Plan-Doc §6, Sicherheits-Checkliste #9):
  *   Wenn der Inferenz-Microservice nicht erreichbar ist (Timeout, 5xx,
  *   Netzwerk-Fehler, Schema-Mismatch), darf das Spiel **nicht** abbrechen.
- *   Stattdessen wählt der `GameService.aiChooseMove` einen zufälligen
- *   legalen Zug (`RandomLegalMovePlayer`) und schreibt ein
- *   `game.ai.inference_fallback`-AuditLog.
+ *   Stattdessen zieht der `GameService.aiChooseMove` mit dem
+ *   `HeuristicPlayer` und schreibt ein `game.ai.inference_fallback`-AuditLog.
  *
  * Wir verifizieren das, indem wir den Inferenz-Stub auf 503 zwingen und ein
  * 4-Bots-Spiel mit `aiSeatType: "nn"` durchziehen. Erwartung:
@@ -67,7 +66,7 @@ describe("M5 inference-fallback — KI bleibt spielbar bei Inferenz-Ausfall", ()
     return { gameId, movesPlayed };
   }
 
-  it("Stub antwortet mit 503 → Random-Fallback, Spiel läuft durch, AuditLog wächst", async () => {
+  it("Stub antwortet mit 503 → Heuristik-Fallback, Spiel läuft durch, AuditLog wächst", async () => {
     app.inference.setMode({ mode: "status", status: 503 });
 
     const { gameId, movesPlayed } = await playFullGame("nn");

@@ -20,9 +20,9 @@
  *
  * **Dev-/Test-Bypass**: Wenn `TURNSTILE_SECRET_KEY` nicht gesetzt ist UND
  * `NODE_ENV !== production`, übersprigen wir die Prüfung (sonst wäre Dev
- * frustrierend). Production-Boot-Validation (`main.ts`) prüft separat,
- * dass das Secret gesetzt ist — oder dass `DISABLE_TURNSTILE=1` explizit
- * akzeptiert wird (kein-stilles-Aus).
+ * frustrierend). Die Production-Boot-Validation (`main.ts`) bricht ab, wenn
+ * das Secret fehlt — außer bei `SELF_HOST=1` (LAN-Trial, Captcha bewusst aus).
+ * `DISABLE_TURNSTILE=1` ist in production verboten (Boot-Abbruch).
  */
 import { Injectable, Logger } from "@nestjs/common";
 

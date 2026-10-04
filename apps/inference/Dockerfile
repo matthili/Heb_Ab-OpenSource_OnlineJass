@@ -6,17 +6,17 @@
 #   1. `deps`   — pnpm install in einem mageren Layer (Cache-friendly, weil nur
 #                 die package.json/Lockfile bestimmen, wann sich was ändert).
 #   2. `build`  — Sources rein, `@jass/engine` + `@jass/inference` bauen.
-#   3. `runtime`— schlankes Node-Image, prod-deps + dist. Modell selbst kommt
-#                 zur Laufzeit per Volume-Mount aus `external/jass-nn/` (siehe
-#                 `infra/docker-compose.dev.yml` und `MODEL_DIR`-Env).
+#   3. `runtime`— schlankes Node-Image, prod-deps + dist. Die Modelle stecken
+#                 NICHT im Image: Der Entrypoint lädt beim Start per
+#                 `scripts/fetch-nn.mjs` die in `package.json#jassNn` gepinnten
+#                 Releases nach `MODEL_DIR` — nur, was dort noch fehlt. Alternativ
+#                 `external/jass-nn/` vom Host einbinden (Prod-Stack, `pnpm sync:nn`).
 #
 # Warum Modell NICHT ins Image kopieren?
-#   - tfjs/-Files sind ~5 MB pro Release; bei jedem NN-Update neu zu builden
-#     ist verschwenderisch.
-#   - `external/jass-nn/` wird per `pnpm sync:nn` aktualisiert; das soll auch
-#     den Container-Workflow nicht mehr unterbrechen.
-#   - In Prod (M11) wird der Modell-Pfad ein PVC / ein Init-Container, der
-#     `external/jass-nn/`-Layout aus dem Release-ZIP entpackt.
+#   - Ein NN-Update soll kein neues Image erzwingen, wenn die Modelle per Mount
+#     kommen; beim Auto-Download reicht ein Image mit neuem Pin.
+#   - Tunnel-Stack: Volume `jass-tunnel-nn` hält die Modelle über Neustarts;
+#     Helm: `emptyDir` je Pod, dort lädt jeder Pod-Start neu.
 #
 # Build:
 #   docker build -f apps/inference/Dockerfile -t jass-inference .

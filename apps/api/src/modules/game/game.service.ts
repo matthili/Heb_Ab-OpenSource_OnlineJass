@@ -118,8 +118,9 @@ function redisCutKey(gameId: string): string {
 /**
  * **Cut-Pending** — die kurze „Abheben"-Phase VOR dem Austeilen. Der Server
  * hat gemischt (`deck`, 36 Karten ungeschnitten), wartet aber noch auf den
- * Abheber, bevor die Hände entstehen. Nur in Folgespielen (Ansager steht
- * schon fest); der WELI-Deal (Spiel 1) wird nicht abgehoben.
+ * Abheber, bevor die Hände entstehen. Gilt für jedes Spiel mit `cutEnabled`,
+ * auch Spiel 1: dort steht der Ansager erst nach der WELI-Ermittlung fest —
+ * nur diese Ermittlung selbst wird nicht abgehoben.
  */
 interface CutPending {
   /** Gemischtes, noch nicht abgehobenes Deck (36 Karten). */
@@ -177,7 +178,7 @@ export interface SeatAssignment {
   /** 0..3, absolute Sitz-Position. */
   seat: number;
   userId: string | null;
-  /** "random" für RandomLegalMovePlayer, "nn-vX.Y.Z" für NN-basierte KI (M5). */
+  /** KI-Typ, siehe `AIPlayerFactory`: "random", "heuristic", "nn" / "nn-vX.Y". */
   aiSeatType: string | null;
 }
 

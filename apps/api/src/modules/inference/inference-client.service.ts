@@ -6,9 +6,10 @@
  *
  * **Fallback-Strategie**: bei jeder Art von Inferenz-Fehler
  * (Timeout, 5xx, Netzwerk, parse) wirft die `predict()`-Methode einen
- * `InferenceUnavailableError`. Der Aufrufer (NNInferencePlayer) entscheidet
- * dann, ob er auf RandomLegalMovePlayer fallback geht. So bleibt das Spiel
- * spielbar, selbst wenn der Inferenz-Container down/überlastet ist.
+ * `InferenceUnavailableError`. Der `GameService` fängt ihn ab und lässt den
+ * Sitz mit dem `HeuristicPlayer` ziehen (plus Warn-Log und Audit-Eintrag
+ * `game.ai.inference_fallback`). So bleibt das Spiel spielbar, selbst wenn der
+ * Inferenz-Container down/überlastet ist.
  *
  * **Timeout**: per AbortController, defaultmäßig 2 s. Production-Server
  * sollten <100 ms p95 liefern; 2 s ist großzügig, um intermittente

@@ -6,7 +6,8 @@
  *      (view.cut gesetzt, Abheber = (announcer+2)%4, noch keine Hand).
  *   2. applyCut → wechselt in die normale Ansage-Phase, Hände ausgeteilt.
  *   3. Falscher Sitz darf nicht abheben.
- *   4. Spiel 1 (WELI, announcerSeat undefined) wird NICHT abgehoben.
+ *   4. Spiel 1 (WELI, announcerSeat undefined) wird nach der WELI-Ermittlung
+ *      AUCH abgehoben — nur die Ermittlung selbst nicht.
  *   5. KI-Abheber: nextAIAction liefert kind "cut"; Voll-Loop läuft durch.
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";

@@ -198,8 +198,8 @@ export class AuthService implements OnModuleInit {
         },
       },
       // Rate-Limit: globaler Fallback + strengere Regeln pro Auth-Pfad.
-      // Storage in-memory ist ok solange wir Single-Instance laufen; in M11
-      // wechseln wir auf `storage: "secondary-storage"` mit Redis-Adapter.
+      // Storage in-memory reicht, solange die API als eine Instanz läuft; bei
+      // mehreren Instanzen auf `storage: "secondary-storage"` (Redis) umstellen.
       //
       // In Tests setzen wir `DISABLE_AUTH_RATE_LIMIT=1`, damit Tests, die
       // viele User registrieren, nicht in 429 laufen. Production verlässt
@@ -354,9 +354,9 @@ export class AuthService implements OnModuleInit {
           const ip = extractIp(ctx);
 
           // ── Turnstile (Captcha) bei Registrierung + Passwort-Reset-Mail ──
-          // Bewusst NICHT bei /sign-in/email: Login ist durch Rate-Limit
-          // + Lockout-Pattern abgedeckt, ein Captcha dort wäre vor allem
-          // UX-Bremse. Bot-Registrierungen + Mass-Forgot-Password (Spam-
+          // Bewusst NICHT bei /sign-in/email: Login ist durch das Rate-Limit
+          // (5 Versuche / 15 min / IP, siehe customRules) abgedeckt, ein Captcha
+          // dort wäre vor allem UX-Bremse. Bot-Registrierungen + Mass-Forgot-Password (Spam-
           // Vektor) sind die kritischeren Pfade.
           if (needsCaptcha && process.env["DISABLE_TURNSTILE"] !== "1") {
             const tokenFromHeader = (ctx.headers?.get?.("x-turnstile-token") ??
