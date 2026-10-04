@@ -63,11 +63,7 @@ describe("HeuristicPlayer — Trumpf-Disziplin (void-awareness)", () => {
   it("TRUMPF: zieht den Buur, wenn Awareness aus ist (Alt-Verhalten)", () => {
     const variant: Variant = { mode: "TRUMPF", trump_suit: "EICHEL" };
     const state = stateOpponentsVoidInTrump(variant);
-    const hand: Card[] = [
-      card("EICHEL", "UNTER"),
-      card("SCHELLE", "ASS"),
-      card("LAUB", "KOENIG"),
-    ];
+    const hand: Card[] = [card("EICHEL", "UNTER"), card("SCHELLE", "ASS"), card("LAUB", "KOENIG")];
     const legacy = new HeuristicPlayer({ trumpVoidAwareness: false });
     expect(legacy.chooseCard(hand, state)).toEqual(card("EICHEL", "UNTER"));
   });

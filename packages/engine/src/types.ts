@@ -17,15 +17,7 @@
 export type Suit = "EICHEL" | "SCHELLE" | "HERZ" | "LAUB";
 
 export type Rank =
-  | "SECHS"
-  | "SIEBEN"
-  | "ACHT"
-  | "NEUN"
-  | "ZEHN"
-  | "UNTER"
-  | "OBER"
-  | "KOENIG"
-  | "ASS";
+  "SECHS" | "SIEBEN" | "ACHT" | "NEUN" | "ZEHN" | "UNTER" | "OBER" | "KOENIG" | "ASS";
 
 export const SUITS: readonly Suit[] = ["EICHEL", "SCHELLE", "HERZ", "LAUB"];
 export const RANKS: readonly Rank[] = [

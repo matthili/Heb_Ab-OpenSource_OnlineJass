@@ -82,8 +82,7 @@ export function createSystemLogStream(): Writable {
           // Optionale Felder nur setzen, wenn vorhanden (exactOptionalPropertyTypes).
           if (typeof o["context"] === "string") entry.context = o["context"];
           const rawErr = o["err"] as
-            | { type?: string; message?: string; stack?: string }
-            | undefined;
+            { type?: string; message?: string; stack?: string } | undefined;
           if (rawErr) entry.err = rawErr;
           systemLogBuffer.push(entry);
         } catch {

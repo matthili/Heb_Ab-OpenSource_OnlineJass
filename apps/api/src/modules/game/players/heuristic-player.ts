@@ -425,9 +425,7 @@ export class HeuristicPlayer implements AIPlayer {
       if (state.teams[s] !== myTeam) opponents.push(s);
     }
     if (opponents.length === 0) return false;
-    return opponents.every((s) =>
-      seatIsVoidInTrump(forbidden.get(s) ?? new Set<string>(), trumpf)
-    );
+    return opponents.every((s) => seatIsVoidInTrump(forbidden.get(s) ?? new Set<string>(), trumpf));
   }
 
   private chooseOpening(legal: readonly Card[], state: GameState): Card {

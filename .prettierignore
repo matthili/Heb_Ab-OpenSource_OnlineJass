@@ -22,3 +22,6 @@ infra/helm/*/templates/
 # OpenAPI-Output: aus den Zod-Schemas generiert (`pnpm gen:openapi`).
 # Prettier würde das Format ändern, ohne dass der Generator nachzieht.
 packages/shared-types/openapi.json
+# TanStack-Router-Routenbaum: generiert (Vite-Plugin bzw. `tsr generate` im
+# Typecheck), gitignored — laut TanStack-Doku nicht formatieren.
+apps/web/src/routeTree.gen.ts

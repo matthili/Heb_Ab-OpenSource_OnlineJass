@@ -130,7 +130,8 @@ export class BodenseeHeuristicPlayer {
     const trumpCount = pool.filter((c) => c.suit === trumpf).length;
     score += Math.max(0, trumpCount - 4) * 6;
     for (const c of pool) {
-      score += c.suit === trumpf ? TRUMP_HAND_VALUES[c.rank] : (GUMPF_NON_TRUMP_VALUES[c.rank] ?? 0);
+      score +=
+        c.suit === trumpf ? TRUMP_HAND_VALUES[c.rank] : (GUMPF_NON_TRUMP_VALUES[c.rank] ?? 0);
     }
     return score;
   }
@@ -155,11 +156,7 @@ export class BodenseeHeuristicPlayer {
    * @param currentTrickCards Karten im laufenden Stich (0 = ich spiele an,
    *   1 = Gegner hat vorgelegt; mehr gibt es bei 2 Spielern nicht).
    */
-  chooseCard(
-    legal: readonly Card[],
-    currentTrickCards: readonly Card[],
-    variant: Variant
-  ): Card {
+  chooseCard(legal: readonly Card[], currentTrickCards: readonly Card[], variant: Variant): Card {
     if (legal.length === 0) {
       throw new Error("BodenseeHeuristicPlayer: keine legale Karte verfügbar.");
     }

@@ -95,8 +95,7 @@ function simulatedSmtpLoginError(): Error {
  * mit dem gegebenen HTTP-Status (z.B. 503 für Fallback-Tests).
  */
 export type InferenceStubMode =
-  | { mode: "argmax-of-mask" }
-  | { mode: "status"; status: number; body?: unknown };
+  { mode: "argmax-of-mask" } | { mode: "status"; status: number; body?: unknown };
 
 export interface InferenceStubControl {
   /** Anzahl bisheriger /predict-Aufrufe. Zwischen Tests via `reset()` auf 0. */

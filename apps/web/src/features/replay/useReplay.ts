@@ -224,9 +224,7 @@ function reconstructBodensee(bundle: ReplayBundle): BodenseeResult {
     return { bundle, bodenseeFrames: [], error: i18n.t("replay.error.noRound") };
   }
   const deal = round0.bodenseeDeal as
-    | { hands?: Card[][]; tables?: TableStack[][] }
-    | null
-    | undefined;
+    { hands?: Card[][]; tables?: TableStack[][] } | null | undefined;
   if (!deal || !Array.isArray(deal.hands) || !Array.isArray(deal.tables)) {
     return { bundle, bodenseeFrames: [], error: i18n.t("replay.error.bodenseeNoDeal") };
   }
