@@ -24,6 +24,7 @@ import { createHash } from "node:crypto";
 
 import { AuditService } from "../audit/audit.service.js";
 import { PrismaService } from "../prisma/prisma.service.js";
+import { UserSocketsService } from "../realtime/user-sockets.service.js";
 
 export interface DataExport {
   meta: {
@@ -116,7 +117,8 @@ export class GdprService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly audit: AuditService
+    private readonly audit: AuditService,
+    private readonly userSockets: UserSocketsService
   ) {}
 
   /**
@@ -391,6 +393,10 @@ export class GdprService {
         data: { body: "[gelöscht]" },
       });
     });
+
+    // Erst NACH dem Commit: offene Live-Verbindungen des gelöschten Kontos
+    // trennen (die WS-Auth prüft nur beim Verbindungsaufbau).
+    this.userSockets.disconnectUser(userId);
 
     await this.audit.record({
       action: "user.gdpr.delete",

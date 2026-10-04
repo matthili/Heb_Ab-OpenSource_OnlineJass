@@ -321,6 +321,17 @@ export class AuthService implements OnModuleInit {
               });
             },
           },
+          // Jede Sitzungs-Löschung ÜBER Better Auth (Logout, BA-Revoke-
+          // Endpunkte, abgelaufene Sitzungen, `deleteSessions`) trennt die
+          // offenen Live-Verbindungen genau dieser Sitzung — die WS-Auth prüft
+          // die Sitzung nur beim Verbindungsaufbau. Läuft erst nach dem Commit.
+          // Code, der Sitzungen direkt per Prisma löscht, trennt selbst
+          // (SessionsService, AdminService, GdprService, onPasswordReset).
+          delete: {
+            after: async (session) => {
+              this.userSockets.disconnectSession(session.id);
+            },
+          },
         },
       },
       hooks: {

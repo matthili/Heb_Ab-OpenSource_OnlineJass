@@ -19,7 +19,9 @@
  * Auth-Handshake
  *   Bei jedem Connect wird das Cookie aus `socket.handshake.headers.cookie` an
  *   Better Auth (`auth.api.getSession`) weitergereicht. Schlägt die Session-
- *   Validierung fehl, disconnecten wir den Socket sofort.
+ *   Validierung fehl, disconnecten wir den Socket sofort. Geprüft wird NUR
+ *   hier — endet eine Sitzung später (Logout, Widerruf, Reset, Sperre),
+ *   trennt `UserSocketsService` die betroffenen Sockets aktiv.
  *
  * Multi-Instance
  *   Redis-Adapter ist verkabelt (siehe `bootstrapAdapter`); im Single-Instance-
@@ -58,6 +60,8 @@ import type { VoteChoice } from "./disconnect-vote.js";
 
 interface SocketData {
   userId?: string;
+  /** Sitzung, mit der sich der Socket angemeldet hat (für gezieltes Trennen pro Sitzung). */
+  sessionId?: string;
   userName?: string;
   /** Per-Socket Rate-Limit-Tracker (siehe `common/ws-rate-limit.ts`). */
   rateTracker?: SocketRateTracker;
@@ -169,17 +173,18 @@ export class GameGateway
     // Auth-Middleware: rejected nicht-eingeloggte Verbindungen, bevor
     // `connect` an die Clients gefeuert wird.
     server.use(async (socket, next) => {
-      const userId = await this.authenticate(socket);
-      if (!userId) {
+      const auth = await this.authenticate(socket);
+      if (!auth) {
         next(new Error("Not authenticated"));
         return;
       }
-      socket.data.userId = userId;
+      socket.data.userId = auth.userId;
+      socket.data.sessionId = auth.sessionId;
       next();
     });
 
-    // Gezieltes Trennen aller Sockets eines Users (z.B. nach Passwort-Reset,
-    // wenn seine Sitzungen widerrufen wurden) — siehe UserSocketsService.
+    // Gezieltes Trennen der Sockets eines Users oder einer Sitzung, wenn
+    // Sitzungen enden (Logout, Widerruf, Reset, Sperre) — siehe UserSocketsService.
     this.userSockets.bindServer(server);
 
     // Disconnect-Vote-Service mit Server-Referenz + Outcome-Hooks
@@ -1267,17 +1272,21 @@ export class GameGateway
     }
   }
 
-  private async authenticate(socket: Socket): Promise<string | null> {
+  private async authenticate(
+    socket: Socket
+  ): Promise<{ userId: string; sessionId: string } | null> {
     const cookieHeader = socket.handshake.headers.cookie;
     if (!cookieHeader) return null;
     try {
       const headers = new Headers();
       headers.set("cookie", cookieHeader);
       const result = (await this.auth.auth.api.getSession({ headers })) as {
-        session?: { userId: string };
+        session?: { id: string; userId: string };
         user?: { id: string };
       } | null;
-      if (result?.user?.id) return result.user.id;
+      if (result?.user?.id && result.session?.id) {
+        return { userId: result.user.id, sessionId: result.session.id };
+      }
       return null;
     } catch (err) {
       this.log.warn({ err }, "Session-Lookup im WS-Handshake fehlgeschlagen");

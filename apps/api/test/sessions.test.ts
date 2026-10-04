@@ -1,14 +1,28 @@
 /**
  * Tests für SessionsService — fokussiert auf die sicherheits-kritischen
- * Punkte (Ownership-Check, IP-Anonymisierung, current-Marker).
+ * Punkte (Ownership-Check, IP-Anonymisierung, current-Marker, offene
+ * Live-Verbindungen widerrufener Sitzungen werden getrennt).
  *
- * Prisma wird vollständig gemockt — keine echte DB nötig.
+ * Prisma und UserSocketsService werden vollständig gemockt — keine echte DB nötig.
  */
 import { ForbiddenException, NotFoundException } from "@nestjs/common";
 import { describe, expect, it, vi } from "vitest";
 
 import { SessionsService } from "../src/modules/users/sessions.service.js";
 import type { PrismaService } from "../src/modules/prisma/prisma.service.js";
+import type { UserSocketsService } from "../src/modules/realtime/user-sockets.service.js";
+
+function makeSocketsMock() {
+  return {
+    disconnectUser: vi.fn(),
+    disconnectSession: vi.fn(),
+    disconnectUserExcept: vi.fn(),
+  };
+}
+
+function makeService(prisma: PrismaService, sockets = makeSocketsMock()): SessionsService {
+  return new SessionsService(prisma, sockets as unknown as UserSocketsService);
+}
 
 function makePrismaMock(rows: Array<Record<string, unknown>>) {
   return {
@@ -46,7 +60,7 @@ describe("SessionsService", () => {
         ipAddress: "10.0.0.7",
       },
     ]);
-    const svc = new SessionsService(prisma);
+    const svc = makeService(prisma);
     const list = await svc.listForUser("alice", "sess-A");
     expect(list).toHaveLength(2);
     const current = list.find((s) => s.id === "sess-A");
@@ -69,7 +83,7 @@ describe("SessionsService", () => {
         ipAddress: "2001:db8:abcd:0012:3456:7890:abcd:ef01",
       },
     ]);
-    const list = await new SessionsService(prisma).listForUser("a", "other");
+    const list = await makeService(prisma).listForUser("a", "other");
     expect(list[0]?.ipPrefix).toBe("2001:db8:abcd::/48");
   });
 
@@ -85,13 +99,13 @@ describe("SessionsService", () => {
         ipAddress: null,
       },
     ]);
-    const list = await new SessionsService(prisma).listForUser("a", "other");
+    const list = await makeService(prisma).listForUser("a", "other");
     expect(list[0]?.ipPrefix).toBeNull();
   });
 
   it("revoke verweigert die eigene aktuelle Session", async () => {
     const prisma = makePrismaMock([]);
-    const svc = new SessionsService(prisma);
+    const svc = makeService(prisma);
     await expect(svc.revoke("alice", "sess-A", "sess-A")).rejects.toThrow(ForbiddenException);
   });
 
@@ -99,7 +113,7 @@ describe("SessionsService", () => {
     const prisma = makePrismaMock([
       { id: "sess-X", userId: "bob", expiresAt: new Date(Date.now() + 1e9) },
     ]);
-    const svc = new SessionsService(prisma);
+    const svc = makeService(prisma);
     await expect(svc.revoke("alice", "sess-X", "sess-current")).rejects.toThrow(NotFoundException);
   });
 
@@ -107,7 +121,7 @@ describe("SessionsService", () => {
     const prisma = makePrismaMock([
       { id: "sess-X", userId: "bob", expiresAt: new Date(Date.now() + 1e9) },
     ]);
-    const svc = new SessionsService(prisma);
+    const svc = makeService(prisma);
     // Die Fehler-Klasse muss explizit NotFoundException sein, NICHT ForbiddenException —
     // damit ein Angreifer beim Probieren von Session-IDs nicht erfährt, ob die ID existiert.
     await expect(svc.revoke("alice", "sess-X", "current")).rejects.toBeInstanceOf(
@@ -120,8 +134,38 @@ describe("SessionsService", () => {
 
   it("revokeAllOthers liefert die Anzahl gelöschter Sessions zurück", async () => {
     const prisma = makePrismaMock([{ id: "a" }, { id: "b" }, { id: "c" }]);
-    const r = await new SessionsService(prisma).revokeAllOthers("alice", "a");
+    const r = await makeService(prisma).revokeAllOthers("alice", "a");
     // unser mock liefert (rows.length - 1) zurück
     expect(r.revoked).toBe(2);
+  });
+
+  it("revoke trennt die Live-Verbindungen genau der widerrufenen Sitzung", async () => {
+    const prisma = makePrismaMock([
+      { id: "sess-B", userId: "alice", expiresAt: new Date(Date.now() + 1e9) },
+    ]);
+    const sockets = makeSocketsMock();
+    await makeService(prisma, sockets).revoke("alice", "sess-B", "sess-A");
+    expect(prisma.session.delete).toHaveBeenCalledWith({ where: { id: "sess-B" } });
+    expect(sockets.disconnectSession).toHaveBeenCalledWith("sess-B");
+    expect(sockets.disconnectUser).not.toHaveBeenCalled();
+  });
+
+  it("revoke trennt nichts, wenn der Widerruf abgelehnt wird", async () => {
+    const prisma = makePrismaMock([
+      { id: "sess-X", userId: "bob", expiresAt: new Date(Date.now() + 1e9) },
+    ]);
+    const sockets = makeSocketsMock();
+    const svc = makeService(prisma, sockets);
+    await expect(svc.revoke("alice", "sess-X", "current")).rejects.toThrow(NotFoundException);
+    await expect(svc.revoke("alice", "current", "current")).rejects.toThrow(ForbiddenException);
+    expect(sockets.disconnectSession).not.toHaveBeenCalled();
+  });
+
+  it("revokeAllOthers trennt alle Live-Verbindungen außer der aktuellen Sitzung", async () => {
+    const prisma = makePrismaMock([{ id: "a" }, { id: "b" }]);
+    const sockets = makeSocketsMock();
+    await makeService(prisma, sockets).revokeAllOthers("alice", "a");
+    expect(sockets.disconnectUserExcept).toHaveBeenCalledWith("alice", "a");
+    expect(sockets.disconnectUser).not.toHaveBeenCalled();
   });
 });

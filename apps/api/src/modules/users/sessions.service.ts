@@ -4,9 +4,9 @@
  *
  * Better Auth speichert pro Login eine Row in `Session` (eigene DB-
  * Tabelle, nicht im Cookie). Wir lesen sie direkt mit Prisma, statt
- * über Better Auths interne API — die DB ist die Source-of-Truth, und
- * der Cookie-Cache (5 min) muss eh erst ablaufen, bis ein revoked
- * Cookie endgültig wertlos wird.
+ * über Better Auths interne API — die DB ist die Source-of-Truth. Der
+ * Cookie-Cache ist aus (`auth.service.ts`), ein widerrufenes Cookie ist
+ * also sofort wertlos.
  *
  * **Sicherheits-Punkte:**
  *   - Bei `revoke(sessionId)` MUSS ein Ownership-Check laufen — sonst
@@ -18,10 +18,13 @@
  *   - IP-Adressen werden NUR anonymisiert (/24 für IPv4, /48 für IPv6)
  *     ausgegeben — keine Stalking-Möglichkeit selbst über das eigene
  *     Profil.
+ *   - Widerrufene Sitzungen verlieren auch ihre offenen Live-Verbindungen
+ *     (`UserSocketsService`) — die WS-Auth prüft nur beim Verbindungsaufbau.
  */
 import { ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
 
 import { PrismaService } from "../prisma/prisma.service.js";
+import { UserSocketsService } from "../realtime/user-sockets.service.js";
 
 export interface SessionView {
   id: string;
@@ -38,7 +41,10 @@ export interface SessionView {
 
 @Injectable()
 export class SessionsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly userSockets: UserSocketsService
+  ) {}
 
   async listForUser(userId: string, currentSessionId: string): Promise<SessionView[]> {
     const rows = await this.prisma.session.findMany({
@@ -71,12 +77,14 @@ export class SessionsService {
       throw new NotFoundException("Session nicht gefunden");
     }
     await this.prisma.session.delete({ where: { id: sessionId } });
+    this.userSockets.disconnectSession(sessionId);
   }
 
   async revokeAllOthers(userId: string, currentSessionId: string): Promise<{ revoked: number }> {
     const result = await this.prisma.session.deleteMany({
       where: { userId, NOT: { id: currentSessionId } },
     });
+    this.userSockets.disconnectUserExcept(userId, currentSessionId);
     return { revoked: result.count };
   }
 }

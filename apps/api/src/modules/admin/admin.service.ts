@@ -31,6 +31,7 @@ import type {
 } from "./admin.dto.js";
 import { describeMailError, MailService } from "../mail/mail.service.js";
 import { SmtpSettingsService } from "../mail/smtp-settings.service.js";
+import { UserSocketsService } from "../realtime/user-sockets.service.js";
 
 /** Ergebnis der SMTP-Testmail: geklappt, oder die Meldung des Mailservers. */
 export type SmtpTestResult = { ok: true } | { ok: false; error: string };
@@ -73,7 +74,8 @@ export class AdminService {
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
     private readonly smtp: SmtpSettingsService,
-    private readonly mail: MailService
+    private readonly mail: MailService,
+    private readonly userSockets: UserSocketsService
   ) {}
 
   // ─── SMTP ──────────────────────────────────────────────────────────
@@ -285,9 +287,11 @@ export class AdminService {
       data: { status: dto.status },
     });
     if (dto.status === "BLOCKED") {
-      // Aktive Sessions des blockierten Users invalidieren — sonst läuft
-      // er noch bis zum Cookie-Cache-Refresh weiter rum.
+      // Sitzungen des Gesperrten löschen UND seine offenen Live-Verbindungen
+      // trennen — die WS-Auth prüft nur beim Verbindungsaufbau; an einem
+      // offenen Spieltisch oder Chat könnte er sonst weitermachen.
       await this.prisma.session.deleteMany({ where: { userId: targetId } });
+      this.userSockets.disconnectUser(targetId);
     }
     await this.audit.record({
       action: "admin.user.status",
