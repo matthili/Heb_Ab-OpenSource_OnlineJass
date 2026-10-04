@@ -133,6 +133,8 @@ export interface TestAppHandle {
   capturedResetMails: CapturedResetMail[];
   /** Empfänger erfolgreicher SMTP-Testmails (Admin-Panel). */
   capturedSmtpTestMails: string[];
+  /** Empfänger der Hinweis-Mails nach einem Passwortwechsel. */
+  capturedPasswordChangedMails: string[];
   /** Steuerung des Inferenz-Stubs. */
   inference: InferenceStubControl;
   /** Tabellen-Truncate + Redis-Flush + Capture-Reset. Zwischen Tests aufrufen. */
@@ -269,6 +271,7 @@ export async function setupTestApp(): Promise<TestAppHandle> {
   const capturedMails: CapturedMail[] = [];
   const capturedResetMails: CapturedResetMail[] = [];
   const capturedSmtpTestMails: string[] = [];
+  const capturedPasswordChangedMails: string[] = [];
   // Nach dem App-Bau mit der echten SmtpSettingsService befüllt — so liefert
   // `effectiveConfig()` echte Env+DB-Werte, statt die Merge-Logik im Stub zu doppeln.
   let realSmtpSettings: SmtpSettingsService | null = null;
@@ -278,6 +281,7 @@ export async function setupTestApp(): Promise<TestAppHandle> {
     | "sendVerificationMail"
     | "sendResetPasswordMail"
     | "sendSmtpTestMail"
+    | "sendPasswordChangedMail"
     | "verifyConnection"
     | "effectiveConfig"
   > = {
@@ -302,6 +306,10 @@ export async function setupTestApp(): Promise<TestAppHandle> {
     async sendSmtpTestMail(to) {
       if (to.startsWith(MAIL_FAIL_PREFIX)) throw simulatedSmtpLoginError();
       capturedSmtpTestMails.push(to);
+    },
+    async sendPasswordChangedMail(opts) {
+      if (opts.to.startsWith(MAIL_FAIL_PREFIX)) throw simulatedSmtpLoginError();
+      capturedPasswordChangedMails.push(opts.to);
     },
     async verifyConnection() {
       // Kein echter SMTP-Connect im Test; das Status-Dashboard begnügt sich mit ok:false.
@@ -384,6 +392,7 @@ export async function setupTestApp(): Promise<TestAppHandle> {
     capturedMails.length = 0;
     capturedResetMails.length = 0;
     capturedSmtpTestMails.length = 0;
+    capturedPasswordChangedMails.length = 0;
     stub.control.reset();
     // Raw-SQL bewusst: ein typsicheres "TRUNCATE viele Tabellen mit RESTART
     // IDENTITY CASCADE in einer Anweisung" gibt es im Prisma-Client nicht.
@@ -427,6 +436,7 @@ export async function setupTestApp(): Promise<TestAppHandle> {
     capturedMails,
     capturedResetMails,
     capturedSmtpTestMails,
+    capturedPasswordChangedMails,
     inference: stub.control,
     resetData,
   };

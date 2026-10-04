@@ -18,4 +18,5 @@ export const AUTH_PATHS = {
   requestPasswordReset: "/request-password-reset",
   verifyEmail: "/verify-email",
   resetPassword: "/reset-password",
+  changePassword: "/change-password",
 } as const;

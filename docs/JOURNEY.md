@@ -115,7 +115,7 @@ erwähnte:
 - **Tisch-Regeln** über den Plan hinaus: wählbarer Sieg-Modus (u. a. „Bergpreis"), „Sieger gibt", echtes Abheben, Sitzplatz-Wahl und -Tausch, Spieler vom Tisch werfen und sperren.
 - **Self-Hosting ohne Handarbeit:** ein LAN-Stack, der Secrets und Datenbank-Tabellen beim ersten Start selbst anlegt, und ein öffentlicher Tunnel-Stack (Cloudflare Tunnel, Turnstile, E-Mail-Verifikation), dessen Inferenz-Container die NN-Modelle selbst lädt.
 - **Betrieb:** tägliche DB- und Secret-Backups, Autoheal, Log-Rotation, ein Uptime-Watchdog mit Mail-Alarm und ein Wächter für hängende Partien.
-- **Sitzungsende trennt Live-Verbindungen:** Logout, Sitzungs-Widerruf, Passwort-Reset, Sperre und Konto-Löschung beenden auch offene WebSockets.
+- **Sitzungsende trennt Live-Verbindungen:** Logout, Sitzungs-Widerruf, Passwort-Reset, Passwortwechsel (alle anderen Geräte), Sperre und Konto-Löschung beenden auch offene WebSockets.
 - Eine animierte **Jass-Schule** auf der zweisprachigen Landing-Site.
 
 ## Leitprinzipien, die durchgehalten haben

@@ -7,11 +7,15 @@
  * einzigen `PATCH /api/users/me`-Anfrage.
  *
  * **Spielername** (`name`) ändern: ist jetzt HIER — eigener Abschnitt oben
- * (`DisplayNameSection`) via Better Auth `/api/auth/update-user`, der die
- * Unique-Constraint prüft.
+ * (`DisplayNameSection`) über den eigenen Endpunkt `PATCH /api/users/me/name`
+ * (Cooldowns + Namens-Historie, siehe `username.service.ts`).
  *
- * **Was hier NICHT geht** (mit Absicht):
- *   - E-Mail-Wechsel: Better Auth `/api/auth/change-email` (mit Verify-Mail).
+ * **Passwort ändern**: eigener Abschnitt (`PasswordChangeSection`) über Better
+ * Auths `/change-password`.
+ *
+ * **Was hier NICHT geht:**
+ *   - E-Mail-Wechsel: gibt es derzeit nicht — Better Auths `changeEmail` ist
+ *     nicht aktiviert (`/change-email` antwortet mit CHANGE_EMAIL_DISABLED).
  *   - Account löschen / Datenexport: separater „Meine Daten"-Tab.
  *
  * Visibility-Defaults stehen serverseitig in `DEFAULT_VISIBILITY` und
@@ -24,6 +28,7 @@ import { Trans, useTranslation } from "react-i18next";
 
 import { api, ApiError } from "~/lib/api";
 
+import { PasswordChangeSection } from "./PasswordChangeSection";
 import { PushTogglePanel } from "./PushTogglePanel";
 
 const VISIBILITY_LEVELS = ["PUBLIC", "LOGGED_IN", "FRIENDS", "PRIVATE"] as const;
@@ -210,6 +215,7 @@ export function ProfileEditPanel() {
           Profil-PATCH darunter. */}
       <DisplayNameSection currentName={data.name} />
       <NameHistorySection userId={data.id} />
+      <PasswordChangeSection email={data.email} />
       <form onSubmit={onSubmit} className="space-y-4">
         <header className="space-y-1">
           <h2 className="text-lg font-semibold">{t("profile.edit.title")}</h2>

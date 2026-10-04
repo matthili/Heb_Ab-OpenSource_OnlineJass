@@ -12,7 +12,7 @@
  * Better Auth selbst exposed seinen HTTP-Handler über `auth.handler(req)` —
  * den ruft der AuthController auf und reicht ihn an Fastify durch.
  */
-import { APIError, createAuthMiddleware } from "better-auth/api";
+import { APIError, createAuthMiddleware, getSessionFromCtx, isAPIError } from "better-auth/api";
 import { Injectable, Logger, type OnModuleInit } from "@nestjs/common";
 import { betterAuth, type BetterAuthOptions } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
@@ -221,6 +221,9 @@ export class AuthService implements OnModuleInit {
           [AUTH_PATHS.requestPasswordReset]: { window: 3600, max: 3 }, // 3 Reset-Mails / Stunde / IP
           [AUTH_PATHS.verifyEmail]: { window: 900, max: 10 }, // gegen Token-Brute-Force
           [AUTH_PATHS.resetPassword]: { window: 900, max: 5 },
+          // Passwortwechsel verlangt das aktuelle Passwort — gegen dessen Raten
+          // mit einer erbeuteten Sitzung so streng wie der Login.
+          [AUTH_PATHS.changePassword]: { window: 900, max: 5 },
         },
       },
       databaseHooks: {
@@ -340,9 +343,10 @@ export class AuthService implements OnModuleInit {
           const isSignUp = path === AUTH_PATHS.signUpEmail;
           const isReset = path === AUTH_PATHS.resetPassword;
           const isForgot = path === AUTH_PATHS.requestPasswordReset;
+          const isChangePassword = path === AUTH_PATHS.changePassword;
           const needsCaptcha = isSignUp || isForgot;
-          const needsStrengthCheck = isSignUp || isReset;
-          if (!needsStrengthCheck && !needsCaptcha) return;
+          const needsStrengthCheck = isSignUp || isReset || isChangePassword;
+          if (!needsStrengthCheck && !needsCaptcha) return undefined;
 
           const body = (ctx.body ?? {}) as {
             password?: string;
@@ -350,8 +354,14 @@ export class AuthService implements OnModuleInit {
             email?: string;
             name?: string;
             captchaToken?: string;
+            revokeOtherSessions?: boolean;
           };
           const ip = extractIp(ctx);
+          // Beim Passwortwechsel steht das Konto nicht im Body — für die
+          // Kontext-Eingaben von zxcvbn und den Audit-Eintrag aus der Sitzung holen.
+          const sessionUser = isChangePassword ? (await getSessionFromCtx(ctx))?.user : undefined;
+          const email = body.email ?? sessionUser?.email;
+          const name = body.name ?? sessionUser?.name;
 
           // ── Turnstile (Captcha) bei Registrierung + Passwort-Reset-Mail ──
           // Bewusst NICHT bei /sign-in/email: Login ist durch das Rate-Limit
@@ -366,7 +376,7 @@ export class AuthService implements OnModuleInit {
             if (!result.ok) {
               await this.audit.record({
                 action: "security.captcha.reject",
-                meta: { path, errors: [...result.errors], email: body.email ?? null },
+                meta: { path, errors: [...result.errors], email: email ?? null },
                 ip,
               });
               throw new APIError("BAD_REQUEST", {
@@ -377,7 +387,7 @@ export class AuthService implements OnModuleInit {
           }
 
           // ── Passwort-Checks (zxcvbn + HIBP) ──────────────────────────
-          // Nur auf Pfaden mit *neuem* Passwort (sign-up + reset).
+          // Nur auf Pfaden mit *neuem* Passwort (sign-up, reset, change).
           // Sign-in prüft NICHT, sonst hätten wir Lock-Out für legacy User.
           // Zwei Layer mit unterschiedlichem Zweck:
           //   - zxcvbn = Entropie/Heuristik („Tr0ubadour!" sieht stark aus)
@@ -392,12 +402,12 @@ export class AuthService implements OnModuleInit {
                 // Kontext-Eingaben fließen in zxcvbn ein, damit „matthias2026"
                 // als Passwort von User „matthias" abgelehnt wird.
                 const userInputs: string[] = [];
-                if (body.email) {
-                  userInputs.push(body.email);
-                  const local = body.email.split("@")[0];
+                if (email) {
+                  userInputs.push(email);
+                  const local = email.split("@")[0];
                   if (local) userInputs.push(local);
                 }
-                if (body.name) userInputs.push(body.name);
+                if (name) userInputs.push(name);
 
                 const check = await checkPasswordStrength(pw, userInputs);
                 if (!check.ok) {
@@ -420,7 +430,7 @@ export class AuthService implements OnModuleInit {
                 if (breach.pwned) {
                   await this.audit.record({
                     action: "security.password.pwned_reject",
-                    meta: { path, count: breach.count ?? null, email: body.email ?? null },
+                    meta: { path, count: breach.count ?? null, email: email ?? null },
                     ip,
                   });
                   const countNote =
@@ -437,6 +447,52 @@ export class AuthService implements OnModuleInit {
               }
             }
           }
+
+          // Beim Passwortwechsel melden wir die ANDEREN Sitzungen selbst ab (after-
+          // Hook unten). Better Auths eigenes `revokeOtherSessions` würde auch die
+          // aktuelle Sitzung löschen und neu ausstellen — der Lösch-Hook trennte
+          // dann die Live-Verbindung des eigenen Tabs mit. Deshalb aus.
+          if (isChangePassword) {
+            return { context: { body: { ...body, revokeOtherSessions: false } } };
+          }
+          return undefined;
+        }),
+        // Nach einem erfolgreichen Passwortwechsel: alle anderen Sitzungen des
+        // Kontos beenden und ihre Live-Verbindungen trennen (die eigene bleibt),
+        // Audit-Eintrag, Hinweis-Mail an das Konto. Prisma löscht direkt, ohne
+        // Better-Auth-Hooks — deshalb trennen wir die Sockets hier selbst.
+        after: createAuthMiddleware(async (ctx) => {
+          if (ctx.path !== AUTH_PATHS.changePassword) return;
+          const returned: unknown = ctx.context.returned;
+          if (!returned || isAPIError(returned)) return;
+          const current = await getSessionFromCtx(ctx);
+          if (!current) return;
+          const { user, session } = current;
+          const { count } = await this.prisma.session.deleteMany({
+            where: { userId: user.id, NOT: { id: session.id } },
+          });
+          this.userSockets.disconnectUserExcept(user.id, session.id);
+          await this.audit.record({
+            action: "auth.password.changed",
+            actorId: user.id,
+            target: user.id,
+            meta: { sessionsRevoked: count },
+            ip: extractIp(ctx),
+          });
+          // Nicht abwarten: ein langsamer Mailserver soll die Antwort nicht
+          // aufhalten. Ein Fehler landet laut im System-Log.
+          void this.mail
+            .sendPasswordChangedMail({
+              to: user.email,
+              displayName: user.name,
+              changedAt: new Date(),
+            })
+            .catch((err: unknown) => {
+              this.log.error(
+                { err, userId: user.id },
+                "Hinweis-Mail zum Passwortwechsel konnte nicht verschickt werden"
+              );
+            });
         }),
       },
     };

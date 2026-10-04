@@ -46,5 +46,6 @@ Die Entscheidung steht; im Einsatz ist **Better Auth 1.7**. Ergänzt bzw. präzi
 
 - **Captcha (Turnstile)** bei Registrierung und Passwort-Reset-Anfrage, nicht beim Login. Den Login begrenzt das Better-Auth-Rate-Limit pro IP (5 Versuche / 15 min); jeder Auth-Pfad hat eigene Grenzen.
 - **Passwort-Reset** beendet alle Sitzungen des Kontos (`revokeSessionsOnPasswordReset`).
-- **WS-Auth** prüft die Sitzung nur beim Verbindungsaufbau. Deshalb trennt jedes Sitzungsende — Logout, Sitzungs-Widerruf, Passwort-Reset, Sperre, Konto-Löschung — auch die offenen Sockets (`modules/realtime/user-sockets.service.ts`).
+- **Passwortwechsel im Profil** (`/change-password`) beendet alle _anderen_ Sitzungen, die eigene bleibt. Better Auths `revokeOtherSessions` schaltet ein `before`-Hook dafür ab: es löscht auch die aktuelle Sitzung und stellt sie neu aus, wodurch der eigene Tab seine Live-Verbindung verlöre. Stattdessen löscht ein `after`-Hook die anderen Sitzungen, trennt deren Sockets, schreibt den Audit-Eintrag und verschickt eine Hinweis-Mail. Stärke- und Leak-Prüfung wie bei der Registrierung.
+- **WS-Auth** prüft die Sitzung nur beim Verbindungsaufbau. Deshalb trennt jedes Sitzungsende — Logout, Sitzungs-Widerruf, Passwort-Reset, Passwortwechsel, Sperre, Konto-Löschung — auch die offenen Sockets (`modules/realtime/user-sockets.service.ts`).
 - **CSRF:** zusätzlich zu SameSite=Lax prüft ein globaler Guard den `Origin`-Header jeder zustandsändernden Anfrage (`common/guards/origin-check.guard.ts`).

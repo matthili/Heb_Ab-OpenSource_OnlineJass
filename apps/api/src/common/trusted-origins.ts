@@ -59,6 +59,18 @@ export function getTrustedOrigins(): readonly string[] {
 }
 
 /**
+ * Adresse der Spieloberfläche (Web-SPA) für Hinweise in Mails, z.B. „dort unter
+ * Anmelden → Passwort vergessen?". Nicht `BETTER_AUTH_URL`: das ist die API
+ * bzw. im Tunnel-Betrieb die Landing-Page, beide ohne Anmeldemaske. In
+ * production ohne `WEB_PUBLIC_URL` → `null` (dann lehnt `getTrustedOrigins()`
+ * den Start ohnehin ab).
+ */
+export function getWebPublicUrl(): string | null {
+  const env = process.env["NODE_ENV"] ?? "development";
+  return process.env["WEB_PUBLIC_URL"] ?? (env === "production" ? null : FALLBACK_WEB);
+}
+
+/**
  * Strikter Vergleich: Origin-Header (z.B. "https://heb-ab.example.com")
  * muss **exakt** in der Trust-Liste vorkommen. Keine Pfade, keine
  * Wildcards, keine Subdomain-Matches — das wäre eine subtile Lücke

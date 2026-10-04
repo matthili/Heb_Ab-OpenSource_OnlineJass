@@ -1,10 +1,11 @@
 /**
  * /api/users — eigenes Profil lesen/schreiben, fremde Profile gefiltert lesen.
  *
- * `name` (Spitzname) und `email` werden hier NICHT geändert. Dafür gibt es:
- *   - Spitzname-Wechsel: PATCH /api/auth/update-user (Better Auth, prüft Unique)
- *   - Email-Wechsel:     POST /api/auth/change-email (Better Auth, mit Verify-Mail)
- * Wir routen nicht dupliziert durch, damit Verify-Logiken nicht auseinanderdriften.
+ * `name` (Spitzname) und `email` ändert `PATCH /me` NICHT:
+ *   - Spitzname-Wechsel: eigener Endpunkt `PATCH /me/name` (unten; Cooldowns +
+ *     Namens-Historie, siehe `username.service.ts`)
+ *   - Email-Wechsel: gibt es derzeit nicht (Better Auths `changeEmail` ist nicht
+ *     aktiviert)
  */
 import {
   Body,

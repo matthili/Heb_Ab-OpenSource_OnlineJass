@@ -119,12 +119,28 @@
         "saved": "Name changed.",
         "error": "Could not change the name — it may already be taken."
       },
+      "password": {
+        "title": "Change password",
+        "help": "Afterwards all other devices are signed out; this one stays signed in. For safety, a notice goes to your email address (if email sending is set up).",
+        "current": "Current password",
+        "new": "New password (≥ 12 characters)",
+        "repeat": "Repeat new password",
+        "submit": "Change password",
+        "submitting": "Changing…",
+        "mismatch": "The two new passwords don't match.",
+        "same": "The new password is the same as the current one.",
+        "tooShort": "The new password needs at least 12 characters.",
+        "wrongCurrent": "The current password is wrong.",
+        "tooManyRequests": "Too many attempts. Please wait a few minutes.",
+        "error": "Could not change the password.",
+        "success": "Password changed. All other devices were signed out."
+      },
       "nameHistory": {
         "label": "Previous player names:",
         "until": "{{name}} until {{date}}",
         "current": "since then the current name"
       },
-      "namesHint": "{{firstName}}, {{lastName}} & co. are all optional — change your player name ({{name}}) and e-mail ({{email}}) via account management.",
+      "namesHint": "{{firstName}}, {{lastName}} & co. are all optional. Change your player name ({{name}}) above; your e-mail address ({{email}}) can't be changed at the moment.",
       "realFirstName": "First name",
       "realLastName": "Last name",
       "birthDate": "Date of birth",

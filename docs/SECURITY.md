@@ -22,8 +22,9 @@ Sicherheit wird **ab Tag 1** mitgedacht, nicht „später nachgerüstet". **Stan
 | 16  | E-Mail-Tokens: Reset einmalig + 1 h, zufällig erzeugt; Verify-Link signiert + 24 h                                                            | Better-Auth-Config in `modules/auth`                                         | M3                      |
 | 17  | Soft-Delete mit Anonymisierung statt Hard-Delete                                                                                              | User-Model                                                                   | M10                     |
 | 18  | Pino redact für PII (Cookies, Authorization, Passwort-Felder, Captcha-Token)                                                                  | Pino-Config in `app.module.ts`                                               | M3                      |
-| 19  | HIBP-Pwned-Passwords-Check (k-Anonymity) bei Register + Reset                                                                                 | `modules/auth`                                                               | M3                      |
+| 19  | HIBP-Pwned-Passwords-Check (k-Anonymity) bei Register, Reset und Passwortwechsel                                                              | `modules/auth`                                                               | M3                      |
 | 20  | Sitzungsende (Logout/Reset/Sperre/…) trennt offene WebSockets                                                                                 | `modules/realtime` + auth/users/admin                                        | Okt 2026                |
+| 21  | Passwortwechsel im Profil: aktuelles Passwort nötig, Stärke- + Leak-Prüfung, alle anderen Sitzungen enden, Audit-Eintrag + Hinweis-Mail       | `modules/auth` (`hooks.before`/`hooks.after`)                                | Okt 2026                |
 
 ## Threat-Model (Kurzfassung)
 
@@ -31,7 +32,7 @@ Sicherheit wird **ab Tag 1** mitgedacht, nicht „später nachgerüstet". **Stan
 - **Manipulation der KI-Inferenz:** KI läuft im eigenen Microservice; Client sendet niemals state-Vektoren. Eingaben kommen ausschließlich aus dem server-gehaltenen Zustand.
 - **Brute-Force auf Login:** Argon2id + Rate-Limit pro IP (5 Versuche / 15 min). Ein Captcha gibt es beim Login bewusst nicht (UX); Captcha-geschützt sind Registrierung und Passwort-Reset-Anfrage, die typischen Spam-Pfade.
 - **XSS via Chat:** Markdown-Allowlist, Server-seitige Sanitization vor dem Speichern _und_ ein zweiter DOMPurify-Pass im Client.
-- **Account-Übernahme:** Better Auth-Sessions liegen in der DB und sind sofort widerrufbar. Die WS-Auth prüft die Sitzung nur beim Verbindungsaufbau — deshalb trennt jedes Sitzungsende auch die offenen WebSockets: Logout und „Diese Sitzung abmelden" genau die Sockets dieser Sitzung, „Alle anderen abmelden" alle außer der eigenen, Passwort-Reset, Sperre durch einen Admin und Konto-Löschung alle des Kontos. Verify- und Reset-Tokens single-use mit kurzem TTL.
+- **Account-Übernahme:** Better Auth-Sessions liegen in der DB und sind sofort widerrufbar. Die WS-Auth prüft die Sitzung nur beim Verbindungsaufbau — deshalb trennt jedes Sitzungsende auch die offenen WebSockets: Logout und „Diese Sitzung abmelden" genau die Sockets dieser Sitzung, „Alle anderen abmelden" und ein Passwortwechsel im Profil alle außer der eigenen, Passwort-Reset, Sperre durch einen Admin und Konto-Löschung alle des Kontos. Nach einem Passwortwechsel geht eine Hinweis-Mail ans Konto — so fällt dem Inhaber auf, wenn jemand mit einer erbeuteten Sitzung das Passwort ändert. Verify-Link signiert mit 24 h, Reset-Token einmalig mit 1 h.
 - **DSGVO-Verletzung:** Soft-Delete + Anonymisierung statt Hard-Delete; Cookie-Banner mit echter Wahl; Daten-Export.
 
 ## Reporting

@@ -119,12 +119,28 @@
         "saved": "Name geändert.",
         "error": "Name konnte nicht geändert werden — vielleicht ist er schon vergeben."
       },
+      "password": {
+        "title": "Passwort ändern",
+        "help": "Danach werden alle anderen Geräte abgemeldet, dieses bleibt angemeldet. Zur Sicherheit geht ein Hinweis an deine E-Mail-Adresse (wenn der Mailversand eingerichtet ist).",
+        "current": "Aktuelles Passwort",
+        "new": "Neues Passwort (≥ 12 Zeichen)",
+        "repeat": "Neues Passwort wiederholen",
+        "submit": "Passwort ändern",
+        "submitting": "Ändere…",
+        "mismatch": "Die beiden neuen Passwörter stimmen nicht überein.",
+        "same": "Das neue Passwort ist dasselbe wie das aktuelle.",
+        "tooShort": "Das neue Passwort braucht mindestens 12 Zeichen.",
+        "wrongCurrent": "Das aktuelle Passwort stimmt nicht.",
+        "tooManyRequests": "Zu viele Versuche. Bitte warte ein paar Minuten.",
+        "error": "Das Passwort konnte nicht geändert werden.",
+        "success": "Passwort geändert. Alle anderen Geräte wurden abgemeldet."
+      },
       "nameHistory": {
         "label": "Bisherige Spielernamen:",
         "until": "{{name}} bis {{date}}",
         "current": "seither aktueller Spielername"
       },
-      "namesHint": "{{firstName}}, {{lastName}} & Co. sind alle freiwillig — Spielername ({{name}}) und E-Mail ({{email}}) änderst du über die Konto-Verwaltung.",
+      "namesHint": "{{firstName}}, {{lastName}} & Co. sind alle freiwillig. Deinen Spielernamen ({{name}}) änderst du oben; die E-Mail-Adresse ({{email}}) lässt sich derzeit nicht ändern.",
       "realFirstName": "Vorname",
       "realLastName": "Nachname",
       "birthDate": "Geburtsdatum",

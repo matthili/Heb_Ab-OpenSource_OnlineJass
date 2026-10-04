@@ -7,9 +7,9 @@
  * Nicht im Scope dieses Service:
  *   - Authentifizierung (das macht der AuthGuard via Better-Auth-Session)
  *   - Anlegen des Profile-Records: passiert lazy beim ersten Update.
- *   - Email-Adresse oder Spitzname (`name`) ändern: das geht über Better Auths
- *     `/update-user`-Endpunkt direkt, weil dort spezifische Verify-/Konflikt-
- *     Logiken nötig sind, die wir nicht duplizieren wollen.
+ *   - Spitzname (`name`) ändern: `UsernameService` (Cooldowns + Historie).
+ *   - Email-Adresse ändern: gibt es derzeit nicht (Better Auths `changeEmail`
+ *     ist nicht aktiviert).
  */
 import { Injectable, NotFoundException } from "@nestjs/common";
 import type { Profile, User } from "@prisma/client";

@@ -20,6 +20,7 @@ import { Injectable, Logger, type OnApplicationBootstrap } from "@nestjs/common"
 import { createHash } from "node:crypto";
 import nodemailer, { type Transporter } from "nodemailer";
 
+import { getWebPublicUrl } from "../../common/trusted-origins.js";
 import { SmtpSettingsService } from "./smtp-settings.service.js";
 
 interface SmtpConfig {
@@ -278,6 +279,27 @@ export class MailService implements OnApplicationBootstrap {
   }
 
   /**
+   * Hinweis nach einem Passwortwechsel im Profil. Fällt dem echten Inhaber auf,
+   * wenn jemand mit einer erbeuteten Sitzung das Passwort ändert. Ohne Link zum
+   * Zurücksetzen: der Weg führt bewusst über die bekannte Adresse der
+   * Spieloberfläche (`WEB_PUBLIC_URL`), dort liegt „Anmelden".
+   */
+  async sendPasswordChangedMail(opts: {
+    to: string;
+    displayName: string;
+    changedAt: Date;
+  }): Promise<void> {
+    const cfg = await this.resolveConfig();
+    const content = buildPasswordChangedMail({
+      displayName: opts.displayName,
+      changedAt: opts.changedAt,
+      appUrl: getWebPublicUrl(),
+      noReply: cfg.noReply,
+    });
+    await this.send({ to: opts.to, ...content });
+  }
+
+  /**
    * SMTP-Testmail aus dem Admin-Bereich. Geht mit der EFFEKTIVEN Konfiguration
    * raus (DB-Overrides + Env) — genau wie Verify- und Reset-Mails. Bricht nach
    * `SMTP_TEST_TIMEOUT_MS` ab, damit ein stummer Server das Panel nicht
@@ -364,6 +386,55 @@ export function buildSmtpTestMail(opts: {
       Angefordert im Admin-Bereich unter SMTP. Wenn du damit nichts anfangen kannst, ignoriere diese Mail einfach.
     </p>
     <p style="font-size: 12px; color: #999;">${escapeHtml(note)}</p>
+  </body>
+</html>`;
+  return { subject, text, html };
+}
+
+/**
+ * Inhalt der Hinweis-Mail nach einem Passwortwechsel. Rein (für Unit-Tests
+ * exportiert). Zeitpunkt in österreichischer Zeit, wie die übrige Oberfläche.
+ */
+export function buildPasswordChangedMail(opts: {
+  displayName: string;
+  changedAt: Date;
+  /** Adresse der Spieloberfläche; `null` → Hinweis ohne Adresse. */
+  appUrl: string | null;
+  noReply: boolean;
+}): { subject: string; text: string; html: string } {
+  const note = replyPolicyNote(opts.noReply);
+  const when = `${opts.changedAt.toLocaleString("de-AT", {
+    timeZone: "Europe/Vienna",
+    dateStyle: "long",
+    timeStyle: "short",
+  })} Uhr`;
+  const where = opts.appUrl ? `auf ${opts.appUrl} ` : "";
+  const subject = "Heb ab! — Dein Passwort wurde geändert";
+  const changed = `das Passwort für dein Konto bei „Heb ab!" wurde am ${when} geändert. Alle anderen Geräte wurden dabei abgemeldet.`;
+  const ok = "Warst du das, ist alles in Ordnung — du musst nichts tun.";
+  const notMe = `Warst du das NICHT, setz dein Passwort sofort zurück: ${where}unter „Anmelden" → „Passwort vergessen?".`;
+  const text = [
+    `Servus ${opts.displayName},`,
+    ``,
+    changed,
+    ``,
+    ok,
+    ``,
+    notMe,
+    ``,
+    note,
+    ``,
+    `Pfiati,`,
+    `Die Vorarlberger Jass-App`,
+  ].join("\n");
+  const html = `<!doctype html>
+<html lang="de">
+  <body style="font-family: system-ui, sans-serif; max-width: 540px; margin: 0 auto; padding: 24px;">
+    <h2 style="color:#444;">Servus ${escapeHtml(opts.displayName)},</h2>
+    <p>${escapeHtml(changed)}</p>
+    <p>${escapeHtml(ok)}</p>
+    <p><strong>${escapeHtml(notMe)}</strong></p>
+    <p style="font-size: 12px; color: #999; margin-top: 32px;">${escapeHtml(note)}</p>
   </body>
 </html>`;
   return { subject, text, html };
