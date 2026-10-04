@@ -3,12 +3,13 @@
  *
  * Unterschiede zu `vitest.config.ts` (Unit):
  *   - Eigene `include`-Glob: nur `test/integration/`.
- *   - Single-Fork-Pool: alle Test-Files teilen sich einen Worker, damit unser
- *     Singleton-Setup (PG-Container + Redis + NestJS-App) genau einmal pro
- *     `vitest run` hochgefahren wird. Sonst würde jede File 10 s
- *     Container-Boot zahlen.
+ *   - Ein Worker ohne Isolation (`maxWorkers: 1`, `isolate: false`): alle
+ *     Test-Files teilen sich einen Prozess, damit unser Singleton-Setup
+ *     (PG-Container + Redis + NestJS-App) genau einmal pro `vitest run`
+ *     hochgefahren wird. Sonst zahlt jede File den Container-Boot selbst.
  *   - Längere Timeouts: Container-Start dauert auf Windows-Docker leicht 30 s.
- *   - Globaler Teardown: schließt App + stoppt Container am Worker-Ende.
+ *   - Globaler Teardown: läuft im Vitest-Hauptprozess, nicht im Worker — dort
+ *     gibt es kein Singleton, er bewirkt nichts (siehe global-teardown.ts).
  *   - Kein Coverage: Integration-Tests sind teuer; die Coverage-Schwellen für
  *     CI laufen über `pnpm test:coverage` (Unit).
  */
@@ -30,16 +31,19 @@ export default defineConfig({
       },
     }),
   ],
-  // Vitest 4: `pool` und `poolOptions` sind top-level, nicht mehr unter `test`.
-  pool: "forks",
-  poolOptions: {
-    forks: {
-      singleFork: true,
-    },
-  },
   test: {
     include: ["test/integration/**/*.test.ts"],
     environment: "node",
+    // Alle Test-Files laufen nacheinander in EINEM Worker-Prozess, und dessen
+    // Modul-Cache bleibt zwischen den Files erhalten → das Singleton in
+    // setup.ts fährt Container + App genau einmal hoch. Vitest 4 hat
+    // `poolOptions.forks.singleFork` entfernt; Ersatz laut Migrationsleitfaden
+    // („Pool Rework") ist `maxWorkers: 1` + `isolate: false`, beides unter `test`.
+    // Die frühere Variante (`poolOptions` auf oberster Ebene) hat Vitest nie
+    // gelesen — jede File bekam einen eigenen Prozess samt eigener Container.
+    pool: "forks",
+    maxWorkers: 1,
+    isolate: false,
     // Container-Bootstrap (PG, Redis, Stub, App, Migrate) braucht im Worst-Case
     // (Cold-Image-Pull) deutlich länger als der Default-Hook-Timeout (10 s).
     hookTimeout: 120_000,

@@ -11,10 +11,11 @@
  *      In-Memory-Sink überschreiben, dann `app.listen()` auf zufälligem Port.
  *   5. Beim Teardown alle Ressourcen sauber schließen.
  *
- * **Singleton im Worker-Scope**: Vitest läuft mit `pool: forks, singleFork: true`
- * → alle Test-Files teilen einen Worker, also lohnt es sich, Container und App
- * einmalig hochzufahren und zwischen Tests nur die Daten zu resetten. Das spart
- * pro File rund 10 s Container-Boot.
+ * **Singleton im Worker-Scope**: Vitest läuft mit einem Worker ohne Isolation
+ * (`maxWorkers: 1`, `isolate: false`, siehe vitest.integration.config.ts) →
+ * alle Test-Files teilen einen Prozess samt Modul-Cache, also lohnt es sich,
+ * Container und App einmalig hochzufahren und zwischen Tests nur die Daten zu
+ * resetten. Das spart pro File rund 10 s Container-Boot.
  *
  * **Mail-Sink**: Tests, die den Verify-Flow brauchen, können den Sink lesen
  * und die letzte Verify-URL extrahieren. Schneller und deterministischer als

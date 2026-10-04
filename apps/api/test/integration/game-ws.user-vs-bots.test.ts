@@ -125,6 +125,11 @@ describe("M4 game-ws — 1 User (via WS) + 3 Random-KIs spielen Runde durch", ()
     let lastUpdate: StateUpdate | null = null;
     let finished = false;
     let userMovesPlayed = 0;
+    // Handgröße beim letzten eigenen Zug. Der Server darf für dieselbe
+    // Entscheidung mehrere `game:state` schicken — ruft die KI direkt vor
+    // meinem Zug Stöck, kommt ein zweiter Broadcast, weiterhin mit myTurn.
+    // Ohne diese Sperre ginge dieselbe Karte zweimal raus („Card … not in hand").
+    let movedAtHandSize: number | null = null;
 
     socket.on("game:state", (s: StateUpdate) => {
       lastUpdate = s;
@@ -161,6 +166,7 @@ describe("M4 game-ws — 1 User (via WS) + 3 Random-KIs spielen Runde durch", ()
         return;
       }
       if (s.myTurn) {
+        if (s.hand.length === movedAtHandSize) return; // Zug schon unterwegs
         const idx = s.legalActionMask.indexOf(1);
         if (idx < 0) {
           wsErrors.push("myTurn=true aber legalActionMask leer");
@@ -170,6 +176,7 @@ describe("M4 game-ws — 1 User (via WS) + 3 Random-KIs spielen Runde durch", ()
           suit: SUITS[Math.floor(idx / 9)]!,
           rank: RANKS[idx % 9]!,
         };
+        movedAtHandSize = s.hand.length;
         userMovesPlayed++;
         socket.emit("game:move", { gameId, card });
       }
