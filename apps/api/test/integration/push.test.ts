@@ -3,7 +3,9 @@
  *
  * Im Test-Env sind die VAPID-Variablen NICHT gesetzt → `PushService.isEnabled`
  * ist `false` und `sendToUser` ist ein No-op. Wir prüfen den Subscribe-CRUD-
- * Flow und dass das Public-Key-Endpunkt `enabled: false` meldet.
+ * Flow, dass das Public-Key-Endpunkt `enabled: false` meldet, und den
+ * SSRF-Schutz: nur Endpunkte bekannter Push-Dienste werden angenommen (der
+ * Server ruft die Endpoint-URL beim Senden selbst auf).
  */
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 
@@ -11,8 +13,10 @@ import { createHttpClient } from "./http-client.js";
 import { signUpAndIn } from "./auth-helper.js";
 import { setupTestApp, type TestAppHandle } from "./setup.js";
 
+// Host eines echten Push-Dienstes (FCM), sonst lehnt die Allowlist ab; der
+// Pfad ist erfunden — im Test wird nichts gesendet (keine VAPID-Keys).
 const FAKE_SUB = {
-  endpoint: "https://fcm.example.com/wp/abc123-fake",
+  endpoint: "https://fcm.googleapis.com/fcm/send/abc123-fake",
   keys: { p256dh: "BNxAwzZAa-fakepub-256-key", auth: "fakeauthsecret" },
   userAgent: "Test-Agent",
 };
@@ -98,6 +102,27 @@ describe("Web-Push Setup", () => {
     expect(r.status).toBe(204); // still — deleteMany trifft 0 Rows, kein Fehler
 
     expect(await app.prisma.pushSubscription.count({ where: { userId: alice.userId } })).toBe(1);
+  });
+
+  it("lehnt Endpunkte fremder Hosts ab (SSRF-Schutz)", async () => {
+    const { http, userId } = await signUpAndIn(app, {
+      email: "push-ssrf@jass.local",
+      password: "push-ssrf-passw0rd-12!",
+      name: "push_ssrf",
+    });
+    for (const endpoint of [
+      "https://fcm.example.com/wp/abc123-fake", // ähnlich klingend, aber fremd
+      "https://fcm.googleapis.com.evil.example/fcm/send/x", // Suffix-Trick
+      "http://fcm.googleapis.com/fcm/send/x", // kein HTTPS
+      "https://169.254.169.254/latest/meta-data/", // Cloud-Metadaten
+    ]) {
+      const r = await http.request("/api/push/subscribe", {
+        method: "POST",
+        body: JSON.stringify({ ...FAKE_SUB, endpoint }),
+      });
+      expect(r.status, endpoint).toBe(400);
+    }
+    expect(await app.prisma.pushSubscription.count({ where: { userId } })).toBe(0);
   });
 
   it("Subscribe ohne Session → 401/403", async () => {
