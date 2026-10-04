@@ -1,9 +1,14 @@
 /**
  * Audit-Log-View. Action-Prefix-Filter + Pagination via `before`.
+ *
+ * Die Meta-Spalte ist einzeilig gekürzt; ein Klick auf die Zeile (oder per
+ * Tastatur auf die Meta-Vorschau) klappt darunter eine Detailzeile über die
+ * volle Breite auf — mit dem vollständigen, eingerückten JSON. Mehrere Zeilen
+ * dürfen gleichzeitig offen sein.
  */
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { AdminAuditEntry } from "~/features/admin/types";
@@ -13,10 +18,27 @@ export const Route = createFileRoute("/_auth/admin/audit")({
   component: AuditPage,
 });
 
+/** Nur Einträge mit tatsächlichem Inhalt sind aufklappbar (`{}` = nichts zu zeigen). */
+function hasMetaContent(meta: unknown): boolean {
+  if (meta === null || meta === undefined) return false;
+  if (typeof meta === "object") return Object.keys(meta).length > 0;
+  return true;
+}
+
 function AuditPage() {
   const { t } = useTranslation();
   const [prefix, setPrefix] = useState("");
   const [before, setBefore] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState<ReadonlySet<string>>(() => new Set());
+
+  function toggle(id: string) {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
 
   const params = new URLSearchParams();
   if (prefix) params.set("actionPrefix", prefix);
@@ -65,6 +87,7 @@ function AuditPage() {
 
       {data && data.entries.length > 0 && (
         <>
+          <p className="text-xs text-stone-500">{t("admin.audit.hint")}</p>
           <table className="w-full text-xs border-collapse">
             <thead>
               <tr className="border-b border-stone-300 text-left text-stone-600">
@@ -77,22 +100,73 @@ function AuditPage() {
               </tr>
             </thead>
             <tbody>
-              {data.entries.map((e) => (
-                <tr key={e.id} className="border-b border-stone-100 align-top">
-                  <td className="py-1 pr-3 text-stone-500 whitespace-nowrap">
-                    {new Date(e.createdAt).toLocaleString()}
-                  </td>
-                  <td className="py-1 pr-3">
-                    {e.actorName ?? <span className="text-stone-400">—</span>}
-                  </td>
-                  <td className="py-1 pr-3 font-mono">{e.action}</td>
-                  <td className="py-1 pr-3 font-mono">{e.target ?? "—"}</td>
-                  <td className="py-1 pr-3 font-mono text-stone-600 max-w-[20rem] truncate">
-                    {e.meta ? JSON.stringify(e.meta) : "—"}
-                  </td>
-                  <td className="py-1 pr-3 text-stone-500">{e.ip ?? "—"}</td>
-                </tr>
-              ))}
+              {data.entries.map((e) => {
+                const expandable = hasMetaContent(e.meta);
+                const open = expandable && expanded.has(e.id);
+                return (
+                  <Fragment key={e.id}>
+                    <tr
+                      className={`align-top ${open ? "" : "border-b border-stone-100"} ${
+                        expandable ? "cursor-pointer hover:bg-stone-50" : ""
+                      }`}
+                      onClick={
+                        expandable
+                          ? () => {
+                              // Text markieren (zum Kopieren) soll die Zeile nicht
+                              // nebenbei auf- oder zuklappen.
+                              if (window.getSelection()?.toString()) return;
+                              toggle(e.id);
+                            }
+                          : undefined
+                      }
+                    >
+                      <td className="py-1 pr-3 text-stone-500 whitespace-nowrap">
+                        {new Date(e.createdAt).toLocaleString()}
+                      </td>
+                      <td className="py-1 pr-3">
+                        {e.actorName ?? <span className="text-stone-400">—</span>}
+                      </td>
+                      <td className="py-1 pr-3 font-mono">{e.action}</td>
+                      <td className="py-1 pr-3 font-mono">{e.target ?? "—"}</td>
+                      <td className="py-1 pr-3 font-mono text-stone-600 max-w-[20rem]">
+                        {expandable ? (
+                          // Button = Tastatur-Zugang (Tab + Enter/Leertaste); die
+                          // Maus darf auf die ganze Zeile klicken.
+                          <button
+                            type="button"
+                            aria-expanded={open}
+                            title={open ? t("admin.audit.collapse") : t("admin.audit.expand")}
+                            onClick={(ev) => {
+                              ev.stopPropagation();
+                              toggle(e.id);
+                            }}
+                            className="block w-full max-w-[20rem] truncate text-left"
+                          >
+                            <span aria-hidden="true" className="mr-1 text-stone-400">
+                              {open ? "▾" : "▸"}
+                            </span>
+                            {JSON.stringify(e.meta)}
+                          </button>
+                        ) : e.meta ? (
+                          JSON.stringify(e.meta)
+                        ) : (
+                          "—"
+                        )}
+                      </td>
+                      <td className="py-1 pr-3 text-stone-500">{e.ip ?? "—"}</td>
+                    </tr>
+                    {open && (
+                      <tr className="border-b border-stone-100">
+                        <td colSpan={6} className="pb-2 pr-3">
+                          <pre className="whitespace-pre-wrap break-words rounded bg-stone-50 p-2 text-xs text-stone-700">
+                            {JSON.stringify(e.meta, null, 2)}
+                          </pre>
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
+                );
+              })}
             </tbody>
           </table>
           {data.entries.length >= 100 && (

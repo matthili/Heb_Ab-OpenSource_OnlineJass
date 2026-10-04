@@ -1232,7 +1232,10 @@
       "colTarget": "Target",
       "colMeta": "Meta",
       "colIp": "IP",
-      "loadOlder": "Ältere laden →"
+      "loadOlder": "Ältere laden →",
+      "hint": "Klick auf eine Zeile zeigt ihre Meta-Daten vollständig.",
+      "expand": "Meta-Daten ausklappen",
+      "collapse": "Meta-Daten einklappen"
     },
     "systemLog": {
       "onlyErrors": "Nur Fehler",
