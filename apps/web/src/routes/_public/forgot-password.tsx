@@ -1,19 +1,24 @@
 /**
  * Passwort-Reset anstoßen.
  *
- * Better-Auth-Endpoint: `POST /api/auth/forget-password` (siehe
- * https://better-auth.com/docs/authentication/email-password#forget-password).
- * Wir geben dem Server immer dieselbe Erfolgs-Meldung zurück, unabhängig
- * davon, ob die E-Mail registriert war — sonst wäre das ein
- * User-Enumeration-Vektor.
+ * Better-Auth-Endpoint: `POST /api/auth/request-password-reset` — über den
+ * typisierten Client `authClient.requestPasswordReset`. Früher riefen wir
+ * `/forget-password` von Hand auf; den gibt es in Better Auth 1.6 nicht mehr,
+ * und weil die Antwort ignoriert wurde, lief das Formular still ins Leere.
+ * Mit dem Client fällt eine künftige Umbenennung beim Typecheck auf.
+ *
+ * **User-Enumeration-Schutz liegt beim Server:** Better Auth antwortet für
+ * registrierte und unbekannte Adressen identisch. Echte Fehler (Captcha,
+ * Rate-Limit, Server weg) zeigen wir deshalb an — sie hängen nicht davon ab,
+ * ob die Adresse existiert.
  */
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { type FormEvent, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { TurnstileWidget } from "~/features/auth/TurnstileWidget";
-import { api } from "~/lib/api";
 import { appHref } from "~/lib/app-path";
+import { authClient } from "~/lib/auth-client";
 
 export const Route = createFileRoute("/_public/forgot-password")({
   component: ForgotPasswordPage,
@@ -37,14 +42,8 @@ function ForgotPasswordPage() {
     }
     setLoading(true);
     try {
-      // Better-Auth's React-Client exposed `forgetPassword` nicht direkt;
-      // wir rufen den Endpoint manuell. Antwort ignorieren — wir zeigen
-      // immer „Mail ist unterwegs", egal ob die E-Mail registriert war
-      // (User-Enumeration-Schutz).
-      await api("/api/auth/forget-password", {
-        method: "POST",
-        headers: { "X-Turnstile-Token": captchaToken },
-        body: {
+      const res = await authClient.requestPasswordReset(
+        {
           email,
           // Reset-Link führt zur `/reset-password`-Route mit dem token im
           // Query-Param. appHref stellt den SPA-Basepath (/app in Prod) voran,
@@ -52,9 +51,20 @@ function ForgotPasswordPage() {
           // Reset-Formular).
           redirectTo: `${window.location.origin}${appHref("/reset-password")}`,
         },
-      }).catch(() => {
-        /* Server-Fehler still durchgehen lassen — siehe oben */
-      });
+        { headers: { "X-Turnstile-Token": captchaToken } }
+      );
+      if (res.error) {
+        // Better Auths 429-Text ist englisch — eigene Meldung statt Rohtext.
+        setError(
+          res.error.status === 429
+            ? t("auth.forgot.tooManyRequests")
+            : (res.error.message ?? t("auth.forgot.genericError"))
+        );
+        // Token verbrannt — frisches Widget rendern.
+        setCaptchaToken(null);
+        setResetCounter((n) => n + 1);
+        return;
+      }
       setSent(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : t("auth.forgot.genericError"));

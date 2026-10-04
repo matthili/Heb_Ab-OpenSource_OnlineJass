@@ -225,3 +225,49 @@ Verifikations-Mail an → niemand (auch du nicht) kann sich einloggen.
 > Tunnel — der `localhost:80`-Hop verlässt den Rechner nie. Für noch strengeren
 > Zugang kannst du zusätzlich **Cloudflare Access** davorhängen (lässt nur
 > eingeladene Mail-Adressen überhaupt an die Seite).
+
+## Fehlersuche
+
+### Captcha zeigt „Erfolg!", die Registrierung meldet trotzdem „Captcha-Validierung fehlgeschlagen" — und Mails kommen nicht an
+
+Das grüne „Erfolg!" heißt nur, dass der **Browser** die Aufgabe gelöst hat. Die
+eigentliche Prüfung macht danach die **API** bei Cloudflare, und auch der
+Mail-Versand braucht eine Verbindung nach draußen. Steht im **Admin-Bereich →
+Audit-Log** bei `security.captcha.reject` der Fehler `network-error` (und unter
+**System-Log** ein `TimeoutError` vom `TurnstileService`), kommt der
+api-Container nicht ins Internet.
+
+Häufigste Ursache: Der Container hat **keinen DNS-Server**. Prüfen:
+
+```bash
+docker exec jass-tunnel-api-1 cat /etc/resolv.conf
+```
+
+Steht dort `# NO EXTERNAL NAMESERVERS DEFINED`, hat Docker den Container
+gestartet, als in der `/etc/resolv.conf` des Rechners noch kein `nameserver`
+stand — typisch beim Hochfahren, wenn der DHCP-Client die DNS-Server erst
+einträgt, nachdem Docker die Container schon gestartet hat. Ein Neustart des
+Rechners hilft dann nicht, das passiert beim nächsten Hochfahren wieder.
+
+**Dauerhafte Abhilfe:** Docker die DNS-Server fest vorgeben. Die beiden Adressen
+unten sind Platzhalter — trag die DNS-Server deines Netzes ein (z. B. Pi-hole
+und Router; `cat /etc/resolv.conf` auf dem Rechner zeigt, welche er nutzt).
+Gibt es `/etc/docker/daemon.json` schon (`sudo cat /etc/docker/daemon.json`),
+den `"dns"`-Eintrag dort ergänzen statt die Datei zu überschreiben.
+
+```bash
+echo '{ "dns": ["192.168.1.2", "192.168.1.1"] }' | sudo tee /etc/docker/daemon.json
+```
+
+```bash
+sudo systemctl restart docker
+```
+
+```bash
+docker compose -f infra/docker-compose.tunnel.yml --env-file .env up -d --force-recreate
+```
+
+Danach zeigt `docker exec jass-tunnel-api-1 cat /etc/resolv.conf` statt der
+Warnung eine Zeile `# ExtServers: [...]` mit deinen Adressen. Die Daten in den
+Volumes bleiben bei alldem unberührt. Rückgängig:
+`sudo rm /etc/docker/daemon.json && sudo systemctl restart docker`.

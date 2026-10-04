@@ -26,6 +26,7 @@ import { PrismaService } from "../prisma/prisma.service.js";
 import { hashPassword, verifyPassword } from "./password.js";
 import { checkPasswordStrength } from "./password-strength.js";
 import { checkPasswordBreached } from "./pwned-passwords.js";
+import { AUTH_PATHS } from "./auth-paths.js";
 import { TurnstileService } from "./turnstile.service.js";
 
 // Better Auth liefert keinen stabilen `Auth`-Export-Type, der zu unserer
@@ -93,7 +94,7 @@ export class AuthService implements OnModuleInit {
           verify: ({ hash, password }) => verifyPassword(hash, password),
         },
         // M7-F: Reset-Mail via MailService. URL wird von Better Auth gebaut
-        // (basierend auf `redirectTo` aus dem forget-password-Request).
+        // (basierend auf `redirectTo` aus dem request-password-reset-Request).
         sendResetPassword: async ({ user, url }) => {
           await this.mail.sendResetPasswordMail({
             to: user.email,
@@ -167,12 +168,12 @@ export class AuthService implements OnModuleInit {
           // Rate-Limit-Eimer teilen (echte geteilte IP via CGNAT, oder ein
           // Proxy, der die Client-IP nicht durchreicht), beim normalen Klicken
           // in 429. Read-only + günstig, daher unkritisch.
-          "/get-session": { window: 60, max: 1000 },
-          "/sign-up/email": { window: 3600, max: 3 }, // 3 Registrierungen / Stunde / IP
-          "/sign-in/email": { window: 900, max: 5 }, // 5 Login-Versuche / 15 min / IP
-          "/forget-password": { window: 3600, max: 3 },
-          "/verify-email": { window: 900, max: 10 }, // gegen Token-Brute-Force
-          "/reset-password": { window: 900, max: 5 },
+          [AUTH_PATHS.getSession]: { window: 60, max: 1000 },
+          [AUTH_PATHS.signUpEmail]: { window: 3600, max: 3 }, // 3 Registrierungen / Stunde / IP
+          [AUTH_PATHS.signInEmail]: { window: 900, max: 5 }, // 5 Login-Versuche / 15 min / IP
+          [AUTH_PATHS.requestPasswordReset]: { window: 3600, max: 3 }, // 3 Reset-Mails / Stunde / IP
+          [AUTH_PATHS.verifyEmail]: { window: 900, max: 10 }, // gegen Token-Brute-Force
+          [AUTH_PATHS.resetPassword]: { window: 900, max: 5 },
         },
       },
       databaseHooks: {
@@ -278,9 +279,9 @@ export class AuthService implements OnModuleInit {
       hooks: {
         before: createAuthMiddleware(async (ctx) => {
           const path = ctx.path;
-          const isSignUp = path === "/sign-up/email";
-          const isReset = path === "/reset-password";
-          const isForgot = path === "/forget-password";
+          const isSignUp = path === AUTH_PATHS.signUpEmail;
+          const isReset = path === AUTH_PATHS.resetPassword;
+          const isForgot = path === AUTH_PATHS.requestPasswordReset;
           const needsCaptcha = isSignUp || isForgot;
           const needsStrengthCheck = isSignUp || isReset;
           if (!needsStrengthCheck && !needsCaptcha) return;

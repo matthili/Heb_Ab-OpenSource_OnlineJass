@@ -361,7 +361,8 @@
       "submit": "Reset-Link schicken",
       "submitting": "Sende…",
       "sent": "Wenn die E-Mail-Adresse bei uns registriert ist, ist der Link unterwegs.",
-      "genericError": "Fehler."
+      "genericError": "Fehler.",
+      "tooManyRequests": "Zu viele Anfragen in kurzer Zeit. Bitte versuch es später noch einmal."
     },
     "reset": {
       "title": "Neues Passwort setzen",

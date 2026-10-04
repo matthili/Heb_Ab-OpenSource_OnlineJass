@@ -227,7 +227,7 @@ export class MailService implements OnApplicationBootstrap {
   /**
    * Passwort-Reset-Link. Wird vom Better-Auth-Backend-Hook
    * `sendResetPassword` getriggert, wenn ein User
-   * `/api/auth/forget-password` aufruft.
+   * `/api/auth/request-password-reset` aufruft.
    */
   async sendResetPasswordMail(opts: {
     to: string;
