@@ -6,9 +6,9 @@
   "license": "AGPL-3.0-only",
   "engines": {
     "node": ">=22 <25",
-    "pnpm": ">=10"
+    "pnpm": ">=12"
   },
-  "packageManager": "pnpm@10.33.2",
+  "packageManager": "pnpm@12.9.1",
   "jassNn": {
     "repo": "matthili/jcn9000",
     "models": {

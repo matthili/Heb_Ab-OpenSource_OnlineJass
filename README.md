@@ -48,7 +48,7 @@ Drei Apps, geteilte Pakete, ein Reverse-Proxy — server-autoritativ, mit der Sp
 
 | Schicht          | Wahl                                                               |
 | ---------------- | ------------------------------------------------------------------ |
-| Monorepo         | pnpm 10 workspaces + Turborepo                                     |
+| Monorepo         | pnpm 12 workspaces + Turborepo                                     |
 | Sprache          | TypeScript 5 strict                                                |
 | Frontend-Spiel   | React 19 + Vite 8 + TanStack Router/Query + Tailwind 4 + Zustand 5 |
 | Frontend-Landing | Astro 6 + React-Islands                                            |
@@ -66,7 +66,7 @@ Bewusste Stack-Abweichungen vom Ursprungsplan: [`docs/JOURNEY.md`](./docs/JOURNE
 
 ## Quickstart (lokal entwickeln)
 
-> Voraussetzungen: **Node ≥22 < 25**, **pnpm 10+**, **Docker** (für Postgres + Redis), optional **gh CLI** (für den NN-Modell-Download).
+> Voraussetzungen: **Node ≥22 < 25**, **pnpm 12** (ein vorhandenes pnpm 10/11 lädt die im Projekt festgelegte Version selbst nach), **Docker** (für Postgres + Redis), optional **gh CLI** (für den NN-Modell-Download).
 
 ```powershell
 pnpm install

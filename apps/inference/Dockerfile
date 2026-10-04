@@ -25,14 +25,18 @@
 #     -v "$(pwd)/external/jass-nn":/app/external/jass-nn:ro jass-inference
 
 ARG NODE_VERSION=24-alpine
-ARG PNPM_VERSION=10.33.2
+ARG PNPM_VERSION=12.9.1
 
 # ─────────────────────────────────────────────────────────────────────────
-# Stage 1 — Basis mit pnpm via corepack
+# Stage 1 — Basis mit pnpm
 # ─────────────────────────────────────────────────────────────────────────
 FROM node:${NODE_VERSION} AS base
 ARG PNPM_VERSION
-RUN corepack enable && corepack prepare pnpm@${PNPM_VERSION} --activate
+# pnpm 12 ist ein natives Programm: `npm install -g` holt das passende Binary
+# (für Alpine: linux-x64-musl) über die optionalen Plattform-Pakete. Das
+# Install-Skript, das es verlinkt, führt npm 11 nur mit --allow-scripts aus
+# (sonst läuft pnpm über einen Node-Umweg).
+RUN npm install -g --allow-scripts=pnpm pnpm@${PNPM_VERSION} && pnpm --version
 WORKDIR /app
 # Vermeidet die nervige Pnpm-Frage nach approve-builds im non-interactive Mode.
 ENV CI=true
@@ -43,7 +47,7 @@ ENV CI=true
 FROM base AS deps
 
 # Workspace-Root-Manifeste
-COPY pnpm-lock.yaml pnpm-workspace.yaml package.json .npmrc ./
+COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
 
 # Pro Workspace nur die package.json (Sources kommen erst im Build-Stage)
 COPY apps/inference/package.json apps/inference/package.json
@@ -53,8 +57,10 @@ COPY packages/config/package.json packages/config/package.json
 # `--filter @jass/inference...` (3 Punkte = recursive deps) installiert nur
 # das, was inference (transitively) braucht: engine + config + alle Externals.
 # `--frozen-lockfile` garantiert Reproduzierbarkeit aus pnpm-lock.yaml.
+# --store-dir = der Cache-Mount: so bleibt der pnpm-Store sicher außerhalb
+# des Images (pnpm 12 legt ihn sonst unter Umständen nach node_modules/.pnpm-store).
 RUN --mount=type=cache,id=pnpm-store,target=/root/.local/share/pnpm/store \
-    pnpm install --filter @jass/inference... --frozen-lockfile
+    pnpm install --store-dir /root/.local/share/pnpm/store --filter @jass/inference... --frozen-lockfile
 
 # ─────────────────────────────────────────────────────────────────────────
 # Stage 3 — Build: dist/ für engine + inference produzieren
@@ -69,7 +75,7 @@ COPY --from=deps /app/apps/inference/node_modules ./apps/inference/node_modules
 COPY --from=deps /app/packages/engine/node_modules ./packages/engine/node_modules
 
 # pnpm-Workspace-Setup (mit package.json + Lockfile, sonst meckert pnpm)
-COPY pnpm-lock.yaml pnpm-workspace.yaml package.json .npmrc ./
+COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
 COPY apps/inference/package.json apps/inference/package.json
 COPY packages/engine/package.json packages/engine/package.json
 COPY packages/config/package.json packages/config/package.json
@@ -93,7 +99,7 @@ RUN pnpm --filter @jass/inference build
 # Vor dem Runtime-Copy: dev-deps abwerfen, damit der finale Layer mager bleibt.
 # `--prod` lässt nur Production-Deps stehen.
 RUN --mount=type=cache,id=pnpm-store,target=/root/.local/share/pnpm/store \
-    pnpm install --filter @jass/inference... --frozen-lockfile --prod
+    pnpm install --store-dir /root/.local/share/pnpm/store --filter @jass/inference... --frozen-lockfile --prod
 
 # ─────────────────────────────────────────────────────────────────────────
 # Stage 4 — Runtime: nur was zum Starten gebraucht wird

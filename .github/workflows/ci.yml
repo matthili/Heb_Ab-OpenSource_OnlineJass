@@ -23,9 +23,10 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      # Version kommt aus package.json#packageManager (pnpm@10.33.2) —
-      # kein `version:`-Input, sonst ERR_PNPM_BAD_PM_VERSION.
-      - uses: pnpm/action-setup@v6
+      # Version kommt aus package.json#packageManager — kein `version:`-Input,
+      # sonst ERR_PNPM_BAD_PM_VERSION. pnpm-12-Support gibt es ab action-setup 6.1.0
+      # (der Tag `v6` zeigt noch auf 6.0.10).
+      - uses: pnpm/action-setup@v6.1.0
 
       - uses: actions/setup-node@v7
         with:
@@ -35,8 +36,8 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      # Prisma-Client erzeugen: pnpm 10 führt die Install-Skripte von prisma
-      # nicht aus. `generate` verbindet sich nicht mit der DB, prisma.config.ts
+      # Prisma-Client erzeugen: Prisma 7 erzeugt ihn nicht beim Installieren
+      # (@prisma/client hat kein Install-Skript). `generate` verbindet sich nicht mit der DB, prisma.config.ts
       # verlangt aber eine gesetzte DATABASE_URL — daher ein Platzhalter.
       - name: Generate Prisma client
         run: pnpm --filter @jass/api exec prisma generate
@@ -61,9 +62,10 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      # Version kommt aus package.json#packageManager (pnpm@10.33.2) —
-      # kein `version:`-Input, sonst ERR_PNPM_BAD_PM_VERSION.
-      - uses: pnpm/action-setup@v6
+      # Version kommt aus package.json#packageManager — kein `version:`-Input,
+      # sonst ERR_PNPM_BAD_PM_VERSION. pnpm-12-Support gibt es ab action-setup 6.1.0
+      # (der Tag `v6` zeigt noch auf 6.0.10).
+      - uses: pnpm/action-setup@v6.1.0
 
       - uses: actions/setup-node@v7
         with:
@@ -97,9 +99,10 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      # Version kommt aus package.json#packageManager (pnpm@10.33.2) —
-      # kein `version:`-Input, sonst ERR_PNPM_BAD_PM_VERSION.
-      - uses: pnpm/action-setup@v6
+      # Version kommt aus package.json#packageManager — kein `version:`-Input,
+      # sonst ERR_PNPM_BAD_PM_VERSION. pnpm-12-Support gibt es ab action-setup 6.1.0
+      # (der Tag `v6` zeigt noch auf 6.0.10).
+      - uses: pnpm/action-setup@v6.1.0
 
       - uses: actions/setup-node@v7
         with:
@@ -177,9 +180,10 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      # Version kommt aus package.json#packageManager (pnpm@10.33.2) —
-      # kein `version:`-Input, sonst ERR_PNPM_BAD_PM_VERSION.
-      - uses: pnpm/action-setup@v6
+      # Version kommt aus package.json#packageManager — kein `version:`-Input,
+      # sonst ERR_PNPM_BAD_PM_VERSION. pnpm-12-Support gibt es ab action-setup 6.1.0
+      # (der Tag `v6` zeigt noch auf 6.0.10).
+      - uses: pnpm/action-setup@v6.1.0
 
       - uses: actions/setup-node@v7
         with:

@@ -17,3 +17,36 @@ overrides:
   # Changes betreffen deepmergeInto, Typnamen und Maps). Geprüft mit
   # `prisma generate` und `prisma migrate deploy` (Integrationstests).
   "@prisma/config>deepmerge-ts": ^8.0.2
+
+# Pakete, deren Install-Skripte laufen dürfen. Seit pnpm 11 steht das hier als
+# `allowBuilds` (ersetzt `onlyBuiltDependencies` aus der früheren .npmrc, die
+# pnpm nur noch für Registry/Auth liest). Ein Paket mit Build-Skript, das hier
+# fehlt, bricht die Installation ab (`strictDepBuilds`). Die Skripte dieser
+# Pakete sind nötig: Prisma lädt seine Engines, @node-rs/argon2 und
+# @tensorflow/tfjs-node ihre nativen Binaries, lefthook richtet die Git-Hooks ein.
+# `false` = Skript bleibt aus (wie schon unter pnpm 10): @swc/core prüft nur
+# sein natives Binary und lädt sonst @swc/wasm nach — das Binary kommt
+# ohnehin über die optionalen Plattform-Pakete.
+allowBuilds:
+  "@swc/core": false
+  "@prisma/client": true
+  prisma: true
+  "@prisma/engines": true
+  "@nestjs/core": true
+  "@node-rs/argon2": true
+  esbuild: true
+  lefthook: true
+  "@tensorflow/tfjs-node": true
+  core-js: true
+  cpu-features: true
+  ssh2: true
+  protobufjs: true
+
+# pnpm ≥ 11 installiert nichts, was jünger als 24 h ist (`minimumReleaseAge`,
+# Schutz vor kompromittierten Neu-Releases). Ausnahme NUR für diese exakte
+# Version: http-cache-semantics 4.3.0 ist die Sicherheitskorrektur zu
+# GHSA-ch52-4w7c-c8xp (hoch; ≤ 4.2.0 betroffen, kommt über astro), erschienen
+# 2026-10-04 02:56 UTC. Eingetragen von `pnpm audit --fix=update`. Ab
+# 2026-10-05 wirkungslos (dann älter als 24 h) und kann wieder raus.
+minimumReleaseAgeExclude:
+  - http-cache-semantics@4.3.0

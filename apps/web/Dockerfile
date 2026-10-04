@@ -19,26 +19,32 @@
 # VITE_TURNSTILE_SITE_KEY=...` setzen.
 
 ARG NODE_VERSION=24-alpine
-ARG PNPM_VERSION=10.33.2
+ARG PNPM_VERSION=12.9.1
 
 FROM node:${NODE_VERSION} AS base
 ARG PNPM_VERSION
-RUN corepack enable && corepack prepare pnpm@${PNPM_VERSION} --activate
+# pnpm 12 ist ein natives Programm: `npm install -g` holt das passende Binary
+# (für Alpine: linux-x64-musl) über die optionalen Plattform-Pakete. Das
+# Install-Skript, das es verlinkt, führt npm 11 nur mit --allow-scripts aus
+# (sonst läuft pnpm über einen Node-Umweg).
+RUN npm install -g --allow-scripts=pnpm pnpm@${PNPM_VERSION} && pnpm --version
 WORKDIR /app
 ENV CI=true
 
 # ─────────────────────────────────────────────────────────────────────────
 FROM base AS deps
 
-COPY pnpm-lock.yaml pnpm-workspace.yaml package.json .npmrc ./
+COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
 COPY apps/web/package.json apps/web/package.json
 COPY packages/engine/package.json packages/engine/package.json
 COPY packages/config/package.json packages/config/package.json
 COPY packages/shared-types/package.json packages/shared-types/package.json
 COPY packages/ui/package.json packages/ui/package.json
 
+# --store-dir = der Cache-Mount: so bleibt der pnpm-Store sicher außerhalb
+# des Images (pnpm 12 legt ihn sonst unter Umständen nach node_modules/.pnpm-store).
 RUN --mount=type=cache,id=pnpm-store,target=/root/.local/share/pnpm/store \
-    pnpm install --filter @jass/web... --frozen-lockfile
+    pnpm install --store-dir /root/.local/share/pnpm/store --filter @jass/web... --frozen-lockfile
 
 # ─────────────────────────────────────────────────────────────────────────
 FROM base AS build
@@ -53,7 +59,7 @@ COPY --from=deps /app/packages/engine/node_modules ./packages/engine/node_module
 COPY --from=deps /app/packages/shared-types/node_modules ./packages/shared-types/node_modules
 COPY --from=deps /app/packages/ui/node_modules ./packages/ui/node_modules
 
-COPY pnpm-lock.yaml pnpm-workspace.yaml package.json .npmrc tsconfig.base.json ./
+COPY pnpm-lock.yaml pnpm-workspace.yaml package.json tsconfig.base.json ./
 COPY apps/web/package.json apps/web/package.json
 COPY packages/engine/package.json packages/engine/package.json
 COPY packages/config ./packages/config

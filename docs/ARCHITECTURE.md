@@ -85,7 +85,7 @@ Wie eine Partie abläuft — von „Tisch offen" bis „gewonnen", mit dem Stich
 
 | Schicht          | Wahl                                                                                        |
 | ---------------- | ------------------------------------------------------------------------------------------- |
-| Monorepo / Build | pnpm 10 workspaces, Turborepo, TypeScript 5.7, Node ≥22 <25                                 |
+| Monorepo / Build | pnpm 12 workspaces, Turborepo, TypeScript 5.9, Node ≥22 <25                                 |
 | Backend          | NestJS 11 + Fastify 5, Socket.IO 4.8 (+ Redis-Adapter)                                      |
 | ORM / DB         | Prisma 7 (`@prisma/adapter-pg`) auf PostgreSQL 16                                           |
 | Auth             | Better Auth 1.6, Argon2id (`@node-rs/argon2`), Zod 4, HIBP-Pwned-Check                      |

@@ -43,10 +43,11 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      # Kein `version:`-Input — pnpm/action-setup@v6 liest die Version aus
-      # `package.json#packageManager` (pnpm@10.33.2). Beides gleichzeitig
-      # setzen lehnt die Action ab (ERR_PNPM_BAD_PM_VERSION → Job rot).
-      - uses: pnpm/action-setup@v6
+      # Kein `version:`-Input — pnpm/action-setup liest die Version aus
+      # `package.json#packageManager`. Beides gleichzeitig setzen lehnt die
+      # Action ab (ERR_PNPM_BAD_PM_VERSION → Job rot). pnpm-12-Support gibt es ab
+      # action-setup 6.1.0 (der Tag `v6` zeigt noch auf 6.0.10).
+      - uses: pnpm/action-setup@v6.1.0
 
       - uses: actions/setup-node@v7
         with:
