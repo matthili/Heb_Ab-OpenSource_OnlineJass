@@ -21,13 +21,13 @@ jobs:
     name: Lint & Typecheck
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # Version kommt aus package.json#packageManager (pnpm@10.33.2) —
       # kein `version:`-Input, sonst ERR_PNPM_BAD_PM_VERSION.
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
@@ -59,13 +59,13 @@ jobs:
     name: Dependency audit
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # Version kommt aus package.json#packageManager (pnpm@10.33.2) —
       # kein `version:`-Input, sonst ERR_PNPM_BAD_PM_VERSION.
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
@@ -95,13 +95,13 @@ jobs:
     runs-on: ubuntu-latest
     needs: lint-and-typecheck
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # Version kommt aus package.json#packageManager (pnpm@10.33.2) —
       # kein `version:`-Input, sonst ERR_PNPM_BAD_PM_VERSION.
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
@@ -152,7 +152,7 @@ jobs:
 
       - name: Upload coverage artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: coverage-reports
           path: |
@@ -175,13 +175,13 @@ jobs:
     # wenige Minuten: alle Files in EINEM Worker, Container einmal gebootet.
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # Version kommt aus package.json#packageManager (pnpm@10.33.2) —
       # kein `version:`-Input, sonst ERR_PNPM_BAD_PM_VERSION.
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm

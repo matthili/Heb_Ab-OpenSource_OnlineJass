@@ -41,14 +41,14 @@ jobs:
       contents: read
       issues: write # bei Drift Issue anlegen
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      # Kein `version:`-Input — pnpm/action-setup@v4 liest die Version aus
+      # Kein `version:`-Input — pnpm/action-setup@v6 liest die Version aus
       # `package.json#packageManager` (pnpm@10.33.2). Beides gleichzeitig
       # setzen lehnt die Action ab (ERR_PNPM_BAD_PM_VERSION → Job rot).
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
@@ -76,7 +76,7 @@ jobs:
       # Spam.
       - name: Open issue on drift
         if: failure() && steps.fixture.conclusion == 'failure'
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             const today = new Date().toISOString().slice(0, 10);
