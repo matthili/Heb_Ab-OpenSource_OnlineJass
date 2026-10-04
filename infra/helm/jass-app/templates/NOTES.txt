@@ -2,7 +2,7 @@
 Heb ab! Helm-Release "{{ .Release.Name }}" wurde deployed.
 
 Komponenten:
-  - API (NestJS):       {{ $fullname }}-api       ({{ .Values.api.replicas }} replicas)
+  - API (NestJS):       {{ $fullname }}-api       ({{ .Values.api.replicas }} replica(s) — mehr erst mit verteiltem Spiel-Lock)
   - Inferenz (TF.js):   {{ $fullname }}-inference ({{ .Values.inference.replicas }} replicas)
   - Web-SPA:            {{ $fullname }}-web       ({{ .Values.web.replicas }} replicas)
   - Landing:            {{ $fullname }}-landing   ({{ .Values.landing.replicas }} replicas)
@@ -10,17 +10,18 @@ Komponenten:
 {{- if .Values.ingress.enabled }}
 
 Ingress:
-  Host:   https://{{ .Values.ingress.host }}
+  Host:   {{ ternary "https" "http" .Values.ingress.tls.enabled }}://{{ .Values.ingress.host }}
   Routen:
     /         → landing
-    /app/*    → web (SPA)
+    /app/*    → web (SPA, Präfix per Rewrite entfernt)
     /api/*    → api
-    /ws/*     → api (sticky via Cookie {{ .Release.Name }}-affinity)
+    /ws/*     → api (sticky via Cookie jass-affinity)
+    /healthz  → api (Readiness inkl. Postgres)
 {{- end }}
 
 Schnellcheck:
   kubectl -n {{ .Release.Namespace }} get pods -l app.kubernetes.io/instance={{ .Release.Name }}
-  kubectl -n {{ .Release.Namespace }} get ingress {{ $fullname }}
+  kubectl -n {{ .Release.Namespace }} get ingress -l app.kubernetes.io/instance={{ .Release.Name }}
 
 Logs (API):
   kubectl -n {{ .Release.Namespace }} logs -f deployment/{{ $fullname }}-api
@@ -35,3 +36,11 @@ Logs (API):
 ⚠  ACHTUNG: Weder redis.host noch redis.existingSecretName ist gesetzt.
    Die API wird ohne Redis nicht hochkommen.
 {{- end }}
+{{- if not .Values.api.env.adminEmail }}
+
+ℹ  api.env.adminEmail ist leer — niemand wird automatisch Admin. Später setzen
+   und die API neu starten: das Konto mit dieser Adresse wird dann Admin.
+{{- end }}
+
+Hinweis: Der Inferenz-Dienst lädt die NN-Modelle bei jedem Pod-Start von GitHub
+(ausgehender Zugriff nötig). Ohne Modelle spielen KI-Sitze mit der Heuristik.

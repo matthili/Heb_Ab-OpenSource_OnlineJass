@@ -3,6 +3,8 @@
 {{- $pgSecret := default (printf "%s-postgres" (include "jass-app.fullname" .)) .Values.postgres.existingSecretName }}
 {{- $redisSecret := default (printf "%s-redis" (include "jass-app.fullname" .)) .Values.redis.existingSecretName }}
 {{- $appSecret := default (printf "%s-secrets" (include "jass-app.fullname" .)) .Values.secrets.existingSecretName }}
+{{- /* Öffentliche Basis-URL: Schema folgt ingress.tls.enabled (ohne TLS z. B. lokal mit kind). */}}
+{{- $publicUrl := printf "%s://%s" (ternary "https" "http" .Values.ingress.tls.enabled) .Values.ingress.host }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -11,6 +13,8 @@ metadata:
     {{- include "jass-app.component.labels" (merge (dict "component" $component) .) | nindent 4 }}
 spec:
   replicas: {{ .Values.api.replicas }}
+  strategy:
+    type: {{ .Values.api.strategy | default "Recreate" }}
   selector:
     matchLabels:
       {{- include "jass-app.component.selectorLabels" (merge (dict "component" $component) .) | nindent 6 }}
@@ -32,7 +36,7 @@ spec:
       {{- end }}
       containers:
         - name: api
-          image: "{{ .Values.image.registry }}/{{ .Values.image.apiRepository }}:{{ .Values.image.tag }}"
+          image: "{{ .Values.image.registry }}/{{ .Values.image.apiRepository }}:{{ required "image.tag muss gesetzt sein (Tag der selbst gebauten Images)" .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
@@ -43,7 +47,8 @@ spec:
           env:
             - name: NODE_ENV
               value: "production"
-            - name: PORT
+            # Die API liest API_PORT (main.ts), nicht PORT.
+            - name: API_PORT
               value: {{ .Values.api.port | quote }}
             - name: DATABASE_URL
               valueFrom:
@@ -69,23 +74,34 @@ spec:
                 secretKeyRef:
                   name: {{ $appSecret }}
                   key: app-secret
+            # Pflicht in production — ohne bricht main.ts den Start ab.
+            - name: TURNSTILE_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $appSecret }}
+                  key: turnstile-secret-key
             - name: BETTER_AUTH_URL
-              value: "https://{{ .Values.ingress.host }}"
+              value: {{ $publicUrl | quote }}
             # Pflicht in production — getTrustedOrigins() wirft sonst beim Boot.
             # Web-SPA + Landing laufen hinter demselben Ingress-Host wie die API,
             # ihr Browser-Origin ist also der Ingress-Host.
             - name: WEB_PUBLIC_URL
-              value: "https://{{ .Values.ingress.host }}"
+              value: {{ $publicUrl | quote }}
             - name: LANDING_PUBLIC_URL
-              value: "https://{{ .Values.ingress.host }}"
+              value: {{ $publicUrl | quote }}
             - name: INFERENCE_URL
               value: "http://{{ include "jass-app.fullname" . }}-inference:{{ .Values.inference.port }}"
             # Internes Health-Check-Ziel der Admin-System-Status-Seite (Cluster-DNS).
             - name: LANDING_URL
               value: "http://{{ include "jass-app.fullname" . }}-landing:{{ .Values.landing.port }}"
             {{- if .Values.api.env.extraOrigins }}
-            - name: CORS_EXTRA_ORIGINS
+            # Zusätzliche Origins für die Origin-Prüfung (trusted-origins.ts).
+            - name: TRUSTED_ORIGINS
               value: {{ .Values.api.env.extraOrigins | quote }}
+            {{- end }}
+            {{- if .Values.api.env.adminEmail }}
+            - name: ADMIN_EMAIL
+              value: {{ .Values.api.env.adminEmail | quote }}
             {{- end }}
           readinessProbe:
             httpGet:

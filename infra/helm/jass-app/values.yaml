@@ -1,12 +1,17 @@
 # Default-Values für das jass-app Helm-Chart.
 #
 # Vor `helm install` mindestens überschreiben:
+#   - `image.tag`        — Tag der selbst gebauten Images (es gibt keine
+#                          veröffentlichten; siehe README)
 #   - `postgres.url`     — DSN zur externen Postgres-Instanz
 #   - `redis.host` + `redis.port` — Adresse der externen Redis-Instanz
 #   - `secrets.betterAuthSecret` — beliebige zufällige 32-Byte-Hexkette
 #   - `secrets.appSecret`        — separat von BETTER_AUTH_SECRET (AES-Key
 #                                  für SMTP-Passwort-Verschlüsselung)
-#   - `ingress.host`     — Public-Hostname (für TLS + CORS)
+#   - `secrets.turnstileSecretKey` — Turnstile-Secret (ohne startet die API in
+#                                  production nicht)
+#   - `ingress.host`     — Public-Hostname (für TLS + Origin-Prüfung)
+#   - `api.env.adminEmail` — Konto, das beim Registrieren Admin wird
 #
 # Production-Pattern: man legt eine `values-prod.yaml` an, die nur die
 # überschriebenen Felder enthält, und installiert mit
@@ -19,14 +24,16 @@ fullnameOverride: ""
 # Image-Tag-Konvention: in CI auf den Commit-SHA setzen, lokal/dev auf
 # "dev". `pullPolicy: IfNotPresent` reicht für getaggte Images; bei
 # Floating-Tags wie "latest" auf "Always" gehen — wir empfehlen aber
-# unveränderliche Tags pro Release.
+# unveränderliche Tags pro Release. Das Repo veröffentlicht keine Images:
+# selbst bauen (apps/*/Dockerfile) und in die eigene Registry pushen. Ohne
+# `image.tag` bricht `helm install` mit einer klaren Meldung ab.
 image:
   registry: ghcr.io/matthili
   apiRepository: jass-api
   inferenceRepository: jass-inference
   webRepository: jass-web
   landingRepository: jass-landing
-  tag: "M11"
+  tag: ""
   pullPolicy: IfNotPresent
   # Optional: imagePullSecrets, falls Registry private ist.
   pullSecrets: []
@@ -59,26 +66,42 @@ secrets:
   # AES-256-GCM-Key für verschlüsseltes SMTP-Passwort in AdminSetting.
   # Separat von BETTER_AUTH_SECRET, weil unterschiedliche Lebensdauer.
   appSecret: ""
-  # Wenn gesetzt, kommen beide Secrets aus diesem existing-Secret
-  # (Keys: better-auth-secret, app-secret). Sonst wird `<release>-secrets`
-  # gerendert.
+  # Geheimer Turnstile-Schlüssel (Cloudflare). Pflicht: in production bricht
+  # die API den Start ohne ihn ab. Den öffentlichen Site-Key braucht dagegen
+  # das Web-Image schon beim Build (Build-Arg VITE_TURNSTILE_SITE_KEY).
+  turnstileSecretKey: ""
+  # Wenn gesetzt, kommen alle drei Secrets aus diesem existing-Secret
+  # (Keys: better-auth-secret, app-secret, turnstile-secret-key). Sonst wird
+  # `<release>-secrets` gerendert.
   existingSecretName: ""
 
 # ─── API (NestJS + Socket.IO) ──────────────────────────────────────────
 api:
-  replicas: 2
+  # EINE Replik, kein HPA: Der Spiel-Lock (GameLockService) und die Timer der
+  # Disconnect-Abstimmung liegen im Speicher des API-Prozesses. Bei mehreren
+  # Repliken könnten Züge am selben Tisch auf verschiedenen Pods landen, ohne
+  # dass der Lock sie gegeneinander schützt. Erst mit einem verteilten Lock
+  # (z. B. Redis SET NX EX) hochdrehen.
+  replicas: 1
+  # Recreate statt RollingUpdate: auch beim Update nie zwei API-Pods zugleich
+  # (kurze Downtime statt eines Fensters mit zwei Instanzen).
+  strategy: Recreate
   port: 3000
   resources:
     requests: { cpu: 100m, memory: 256Mi }
     limits: { cpu: 1000m, memory: 768Mi }
   env:
-    # Komma-getrennte Origins für CORS — wird aus ingress.host abgeleitet,
-    # kann hier überschrieben werden.
+    # Zusätzliche vertrauenswürdige Origins (kommagetrennt, → TRUSTED_ORIGINS).
+    # Der Ingress-Host selbst ist immer vertrauenswürdig.
     extraOrigins: ""
-  # Hpa-Schwellen aus Plan-Doc §11. Bei k6-Last-Test mit 200 Tischen
-  # sollen wir bei mittlerem CPU-Druck horizontal skalieren.
+    # Wer sich mit dieser Adresse registriert (oder schon registriert ist),
+    # wird Admin — der Weg zum ersten Admin; die CLI admin:grant gibt es im
+    # Image nicht. Leer = kein automatischer Admin.
+    adminEmail: ""
+  # HPA bleibt aus, solange der Spiel-Lock In-Memory ist (siehe replicas).
+  # Die Schwellen sind für später vorbereitet.
   hpa:
-    enabled: true
+    enabled: false
     minReplicas: 2
     maxReplicas: 10
     targetCPUUtilizationPercentage: 70
@@ -88,9 +111,11 @@ api:
 inference:
   replicas: 2
   port: 4000
+  # Welche Modelle beim Start geladen werden (→ INFERENCE_GAME_TYPES). Ohne
+  # Angabe lädt der Dienst nur kreuz + solo.
+  gameTypes: "kreuz,solo,bodensee"
   resources:
-    # tfjs-node lädt das Modell (~5 MB) und braucht moderat RAM
-    # für die Piscina-Worker-Pool-Tensoren.
+    # Pure-JS-TF.js mit drei Modellen (eines je Spielart) im Speicher.
     requests: { cpu: 200m, memory: 512Mi }
     limits: { cpu: 2000m, memory: 1.5Gi }
   hpa:
@@ -101,6 +126,9 @@ inference:
   podAnnotations: {}
 
 # ─── Web-SPA (statisches Vite-Build, Nginx-served) ─────────────────────
+# Web und Landing laufen als Stock-nginx unter der Nicht-root-UID aus
+# podSecurityContext. Die Templates hängen dafür emptyDirs für die Cache- und
+# PID-Pfade ein und erlauben per Pod-Sysctl Port 80 ohne root.
 web:
   replicas: 2
   port: 80
@@ -117,10 +145,11 @@ landing:
     limits: { cpu: 200m, memory: 128Mi }
 
 # ─── Ingress ───────────────────────────────────────────────────────────
-# Sticky-Sessions für /ws — sonst landen WebSocket-Frames eines Spielers
-# auf wechselnden API-Pods, und die Single-Owner-pro-Tisch-Annahme bricht.
-# Bei nginx-Ingress nutzen wir Cookie-Affinity; bei anderen Controllern
-# muss man `annotations` entsprechend anpassen.
+# Annotations für den (seit 03/2026 eingestellten) ingress-nginx-Controller:
+# Cookie-Affinity für /ws (greift erst bei mehreren API-Repliken) und ein
+# eigenes Ingress-Objekt für /app, das das Präfix abschneidet — das Web-Image
+# liefert am Root aus (wie hinter Caddy). Bei anderen Controllern müssen
+# `annotations` und der /app-Rewrite angepasst werden.
 ingress:
   enabled: true
   className: "nginx"
@@ -147,4 +176,6 @@ securityContext:
   allowPrivilegeEscalation: false
   capabilities:
     drop: ["ALL"]
-  readOnlyRootFilesystem: false # vite-pwa SW braucht /tmp; ggf. aktivieren
+  # Bleibt aus: nicht für alle Images geprüft, welche Pfade beschreibbar sein
+  # müssen. Inferenz-Modelle und die nginx-Pfade liegen schon auf emptyDirs.
+  readOnlyRootFilesystem: false

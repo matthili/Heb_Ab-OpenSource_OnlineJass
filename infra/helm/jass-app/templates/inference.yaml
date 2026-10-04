@@ -29,7 +29,7 @@ spec:
       {{- end }}
       containers:
         - name: inference
-          image: "{{ .Values.image.registry }}/{{ .Values.image.inferenceRepository }}:{{ .Values.image.tag }}"
+          image: "{{ .Values.image.registry }}/{{ .Values.image.inferenceRepository }}:{{ required "image.tag muss gesetzt sein (Tag der selbst gebauten Images)" .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
@@ -40,26 +40,42 @@ spec:
           env:
             - name: NODE_ENV
               value: "production"
-            - name: PORT
+            # Der Dienst liest INFERENCE_PORT (server.ts), nicht PORT.
+            - name: INFERENCE_PORT
               value: {{ .Values.inference.port | quote }}
-            # Modell-Dir ist im Container fix; das Image hat external/jass-nn/
-            # beim Build mit reingenommen (siehe apps/inference/Dockerfile).
+            - name: INFERENCE_GAME_TYPES
+              value: {{ .Values.inference.gameTypes | quote }}
+            # Die Modelle stecken NICHT im Image: Der Entrypoint lädt sie beim
+            # Start per scripts/fetch-nn.mjs aus den öffentlichen JCN9000-
+            # Releases hierher (emptyDir unten → bei jedem Pod-Start neu). Der
+            # Pod braucht dafür ausgehenden Zugriff auf GitHub.
             - name: MODEL_DIR
               value: "/app/external/jass-nn"
+          volumeMounts:
+            - name: models
+              mountPath: /app/external/jass-nn
+          # Download + Modell-Laden: bis zu 5 min Zeit, bevor Liveness greift.
+          startupProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 10
+            failureThreshold: 30
           readinessProbe:
             httpGet:
               path: /health
               port: http
-            initialDelaySeconds: 10 # Modell-Laden braucht ein paar Sekunden
             periodSeconds: 5
           livenessProbe:
             httpGet:
               path: /health
               port: http
-            initialDelaySeconds: 30
             periodSeconds: 15
           resources:
             {{- toYaml .Values.inference.resources | nindent 12 }}
+      volumes:
+        - name: models
+          emptyDir: {}
 ---
 apiVersion: v1
 kind: Service

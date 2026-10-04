@@ -7,15 +7,14 @@ metadata:
   labels:
     {{- include "jass-app.labels" . | nindent 4 }}
   annotations:
-    # Sticky-Sessions für WS-Verbindungen — sonst landen WebSocket-Frames
-    # eines Spielers auf wechselnden API-Pods und die Single-Owner-pro-
-    # Tisch-Annahme bricht. nginx-Ingress: Cookie-Affinity.
+    # Sticky-Sessions für WS-Verbindungen (nginx-Ingress: Cookie-Affinity).
+    # Wirkt erst bei mehreren API-Repliken; der Chart-Default ist eine Replik
+    # (In-Memory-Spiel-Lock, siehe values.yaml#api.replicas).
     nginx.ingress.kubernetes.io/affinity: "cookie"
     nginx.ingress.kubernetes.io/session-cookie-name: "jass-affinity"
     nginx.ingress.kubernetes.io/session-cookie-expires: "172800"
     nginx.ingress.kubernetes.io/session-cookie-max-age: "172800"
-    # WS-Upgrade-Header durchreichen — die default-nginx-Config tut das
-    # für Socket.IO normalerweise auch, hier explizit für robust.
+    # Lange Timeouts für die WebSocket-Verbindungen.
     nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
     nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
     {{- if .Values.ingress.tls.enabled }}
@@ -51,13 +50,15 @@ spec:
                 name: {{ $fullname }}-api
                 port:
                   number: {{ .Values.api.port }}
-          - path: /app
-            pathType: Prefix
+          # Readiness-Endpunkt der API am Root (wie /healthz hinter Caddy).
+          - path: /healthz
+            pathType: Exact
             backend:
               service:
-                name: {{ $fullname }}-web
+                name: {{ $fullname }}-api
                 port:
-                  number: {{ .Values.web.port }}
+                  number: {{ .Values.api.port }}
+          # /app läuft über das eigene Ingress-Objekt unten (Präfix-Rewrite).
           # Root = Landing-Marketing-Site.
           - path: /
             pathType: Prefix
@@ -66,4 +67,41 @@ spec:
                 name: {{ $fullname }}-landing
                 port:
                   number: {{ .Values.landing.port }}
+---
+# Web-SPA unter /app. Das Web-Image liefert am Root aus (Vite-Build mit
+# base /app/, hinter Caddy schneidet `handle_path /app/*` das Präfix ab). Hier
+# übernimmt das ein Rewrite: /app/assets/x.js → /assets/x.js. Eigenes Objekt,
+# weil die Rewrite-Annotation sonst für alle Pfade gälte. Kein cert-manager-
+# Annotation hier — das Zertifikat (gleiches Secret) verwaltet das Objekt oben.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ $fullname }}-web
+  labels:
+    {{- include "jass-app.labels" . | nindent 4 }}
+  annotations:
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+    {{- with .Values.ingress.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  ingressClassName: {{ .Values.ingress.className | quote }}
+  {{- if .Values.ingress.tls.enabled }}
+  tls:
+    - hosts:
+        - {{ .Values.ingress.host | quote }}
+      secretName: {{ .Values.ingress.tls.secretName | quote }}
+  {{- end }}
+  rules:
+    - host: {{ .Values.ingress.host | quote }}
+      http:
+        paths:
+          - path: /app(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: {{ $fullname }}-web
+                port:
+                  number: {{ .Values.web.port }}
 {{- end }}

@@ -17,15 +17,19 @@ spec:
         {{- include "jass-app.component.selectorLabels" (merge (dict "component" $component) .) | nindent 8 }}
     spec:
       serviceAccountName: {{ include "jass-app.serviceAccountName" . }}
+      {{- /* Stock-nginx lauscht als Nicht-root auf Port 80 → Ports < 1024 für
+      Nicht-root freigeben (sicherer, namespaced Sysctl seit k8s 1.22). Per merge,
+      damit es auch mit einem leeren podSecurityContext gültiges YAML bleibt. */}}
+      {{- $nginxSysctls := dict "sysctls" (list (dict "name" "net.ipv4.ip_unprivileged_port_start" "value" "0")) }}
       securityContext:
-        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+        {{- toYaml (merge $nginxSysctls (default (dict) .Values.podSecurityContext)) | nindent 8 }}
       {{- with .Values.image.pullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       containers:
         - name: landing
-          image: "{{ .Values.image.registry }}/{{ .Values.image.landingRepository }}:{{ .Values.image.tag }}"
+          image: "{{ .Values.image.registry }}/{{ .Values.image.landingRepository }}:{{ required "image.tag muss gesetzt sein (Tag der selbst gebauten Images)" .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
@@ -39,8 +43,20 @@ spec:
               port: http
             initialDelaySeconds: 2
             periodSeconds: 5
+          # nginx braucht beschreibbare Cache- und PID-Pfade; als Nicht-root ohne
+          # Capabilities scheitert es sonst an mkdir/chown (per Docker getestet).
+          volumeMounts:
+            - name: nginx-cache
+              mountPath: /var/cache/nginx
+            - name: nginx-run
+              mountPath: /run
           resources:
             {{- toYaml .Values.landing.resources | nindent 12 }}
+      volumes:
+        - name: nginx-cache
+          emptyDir: {}
+        - name: nginx-run
+          emptyDir: {}
 ---
 apiVersion: v1
 kind: Service

@@ -1,16 +1,20 @@
 apiVersion: v2
 name: jass-app
 description: |
-  Heb ab! — selbst-hostbare Multiplayer-Plattform für Vorarlberger Kreuz-Jass.
-  Deployt API (NestJS + Socket.IO), Inferenz-Microservice (TF.js), Web-SPA und
-  Landing-Site. Datenbank und Redis werden als externe Services konfiguriert.
+  Heb ab! — selbst-hostbare Multiplayer-Plattform für Vorarlberger Jass
+  (Kreuz, Solo, Bodensee). Deployt API (NestJS + Socket.IO), Inferenz-
+  Microservice (TF.js), Web-SPA und Landing-Site. Datenbank und Redis werden
+  als externe Services konfiguriert.
 type: application
-version: 0.1.0
-appVersion: "M11"
+# 0.2.0: API eine Replik (Recreate), Turnstile-Secret, korrigierte Port-/
+# Origin-Variablen, Modelle per emptyDir, nginx als Nicht-root, /app-Rewrite.
+version: 0.2.0
+# Kein appVersion: Die App hat keine Release-Versionen; welcher Stand läuft,
+# bestimmt image.tag.
 keywords:
   - jass
   - kartenspiel
   - vorarlberg
-home: https://github.com/matthili/vorarlberger-jass-app
+home: https://github.com/matthili/Heb_Ab-OpenSource_OnlineJass
 maintainers:
   - name: Heb ab! Maintainers
