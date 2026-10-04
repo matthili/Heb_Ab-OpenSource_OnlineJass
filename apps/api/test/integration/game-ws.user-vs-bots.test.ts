@@ -125,10 +125,11 @@ describe("M4 game-ws — 1 User (via WS) + 3 Random-KIs spielen Runde durch", ()
     let lastUpdate: StateUpdate | null = null;
     let finished = false;
     let userMovesPlayed = 0;
-    // Handgröße beim letzten eigenen Zug. Der Server darf für dieselbe
-    // Entscheidung mehrere `game:state` schicken — ruft die KI direkt vor
-    // meinem Zug Stöck, kommt ein zweiter Broadcast, weiterhin mit myTurn.
-    // Ohne diese Sperre ginge dieselbe Karte zweimal raus („Card … not in hand").
+    // Handgröße beim letzten eigenen Zug: pro Entscheidung nur EIN Zug, auch
+    // wenn mehrere `game:state` mit myTurn eintreffen. Früher schickte der
+    // Server zwei, wenn die KI direkt vor meinem Zug Stöck rief (seit dem Fix
+    // im driveAIsLoop nur noch einen) — der Client spielte dieselbe Karte dann
+    // doppelt („Card … not in hand").
     let movedAtHandSize: number | null = null;
 
     socket.on("game:state", (s: StateUpdate) => {

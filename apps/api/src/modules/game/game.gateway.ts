@@ -1053,13 +1053,15 @@ export class GameGateway
         // Move-Schritt.
         const card = await this.games.aiChooseMove(gameId, action.seat, action.aiSeatType);
         const { view } = await this.games.playMoveAsSeat(gameId, action.seat, card);
-        await this.broadcastState(gameId);
         // Stöck-Auto-Ansage: wenn die KI gerade die zweite Trumpf-O/K
         // gespielt hat (= eligible), ruft sie sofort an. Heuristik: „immer".
+        // VOR dem Broadcast, damit Zug + Stöck in EINEM `game:state` ankommen:
+        // zwei Broadcasts hintereinander lieferten dem nächsten Menschen
+        // zweimal myTurn für denselben Zug (Doppelzug-Gefahr im Client).
         if (view.stoeckEligible) {
           await this.games.announceStoeckAsSeat(gameId, action.seat);
-          await this.broadcastState(gameId);
         }
+        await this.broadcastState(gameId);
         if (view.status === "finished") {
           this.server.to(roomKey(gameId)).emit("game:ended", { finalScore: view.finalScore });
           return;
