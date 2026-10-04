@@ -41,3 +41,10 @@ Die Grundentscheidung — Inferenz als eigener Service — steht. Zwei Details d
 
 - **Runtime:** statt `@tensorflow/tfjs-node` + Piscina-Worker-Pool läuft der Service mit **`@tensorflow/tfjs` (pure-JS)** ohne Pool. Kein nativer Build → deutlich einfacheres Deployment; für die erwartete Last ausreichend.
 - **Encoder & Contract:** statt eines festen 132-dim-Vektors gibt es **variantenspezifische Encoder** (Kreuz/Solo 421-dim, Bodensee 291-dim) und **ein Modell je Spielart**. Der `/predict`-Contract trägt die Vektorlänge entsprechend der Spielart; `encoding_version` aus dem MANIFEST wird beim Boot gegen die Engine-Konstante geprüft (Fail-Fast).
+
+Stand 2026-10-04, ebenfalls abweichend von den Konsequenzen oben:
+
+- **Contract:** `POST /predict { gameType, state, mask } → { policy, value, argmax, meta }` (`gameType` = `kreuz` | `solo` | `bodensee`). Welche Modelle geladen werden, steuert `INFERENCE_GAME_TYPES`; die Compose-Stacks mit Inferenz-Dienst (dev, tunnel, prod) laden alle drei.
+- **Encoding:** Der Zustand wird in der **API** encodet (`NnPlayer` mit `@jass/engine`). Der Inferenz-Dienst importiert aus der Engine nur die Konstanten (`ENCODING_VERSION`, `STATE_DIM`, `ACTION_DIM`); die Bodensee-Erwartung `bodensee_1.0.0` steht in `apps/inference/src/server.ts`.
+- **Fallback:** Ist die Inferenz nicht erreichbar, spielt der Sitz mit der **Heuristik** (nicht zufällig). Das landet im Log und im Audit-Log (`game.ai.inference_fallback`); Sentry ist nicht eingebunden.
+- **Modelle beschaffen:** Im Tunnel-Stack lädt der Container die gepinnten Modelle beim Start selbst (`scripts/fetch-nn.mjs`), im Prod-Stack kommen sie per Mount vom Host (`pnpm sync:nn`).

@@ -76,19 +76,30 @@ Install: `helm install jass-app . -f values-prod.yaml`.
 
 ## Sticky-Sessions / WebSocket
 
-Der API-Server hält pro Tisch einen Redis-Lock (Single-Owner). Damit
-WebSocket-Frames eines Spielers immer auf demselben Pod landen, hängt
-das Ingress eine Cookie-Affinity-Annotation auf `/ws/*` (Pfad-Reihenfolge
-in `templates/ingress.yaml`: `/ws` vor `/api`).
+Damit WebSocket-Frames eines Clients immer auf demselben Pod landen, hängt
+das Ingress eine Cookie-Affinity-Annotation an (`nginx.ingress.kubernetes.io/affinity: cookie`;
+Pfad-Reihenfolge in `templates/ingress.yaml`: `/ws` vor `/api`).
+
+> ⚠️ **Mehrere API-Repliken sind derzeit nicht abgesichert.** Der Spiel-Lock
+> (`GameLockService`) und die Timer der Disconnect-Abstimmung liegen im
+> **Speicher** des API-Prozesses, nicht in Redis. Die Cookie-Affinity bindet einen
+> _Client_ an einen Pod, nicht einen _Tisch_: Spielen zwei Menschen am selben Tisch
+> über verschiedene Pods, schützt der Lock ihre Züge nicht gegeneinander. Bis es
+> einen verteilten Lock gibt (z. B. Redis `SET … NX EX`, so vermerkt in
+> `game-lock.service.ts`), die API mit **einer** Replik betreiben:
+> `--set api.replicas=1 --set api.hpa.enabled=false`. Der Inferenz-Dienst ist
+> zustandslos und darf skalieren. (Die Chart-Defaults stehen noch auf 2–10
+> API-Repliken.)
 
 Bei einem anderen Ingress-Controller (Traefik, AWS-ALB, Caddy) müssen
 die Annotations in `values.yaml#ingress.annotations` angepasst werden.
 
 ## HPA-Schwellen
 
-Default: CPU-Target 70% für API, 75% für Inferenz. Im k6-Last-Test (M11-E
-mit 200 concurrent Tischen) wird das verifiziert; bei realer Last-
-Beobachtung anpassen.
+Default: CPU-Target 70% für API, 75% für Inferenz. Gemessen ist das noch nicht:
+der k6-Lasttest (`infra/k6`) braucht vorher Anpassungen (siehe dessen README).
+Bei realer Last-Beobachtung anpassen — und für die API den Hinweis oben zu
+mehreren Repliken beachten.
 
 ## Chart-Lint
 

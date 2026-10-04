@@ -4,6 +4,21 @@
 
 > 200 concurrent Tische, Move-Latenz **p95 ≤ 200 ms**.
 
+## Stand (2026-10-04)
+
+Gemessen ist noch nichts. Gegen den aktuellen Stack laufen die Szenarien
+**nicht ohne Anpassung**:
+
+- `/api/lobby/*` verlangt eine Sitzung (`SessionGuard`); `lobby-load.js` meldet
+  sich aber nicht an.
+- Die Registrierung verlangt ein Captcha-Token (Turnstile) — ohne nur mit
+  `DISABLE_TURNSTILE=1` an der API.
+- Neue Konten müssen ihre E-Mail bestätigen bzw. vom Admin freigeschaltet werden,
+  bevor sie sich anmelden können. Einen Schalter zum Überspringen gibt es nicht.
+- Zustandsändernde Requests ohne passenden `Origin`-Header lehnt die API in
+  Production mit 403 ab (im Dev-Modus erlaubt); k6 muss ihn dann mitschicken.
+- Das im Skriptkopf von `lobby-load.js` erwähnte `move-loop.js` existiert nicht.
+
 ## Voraussetzungen
 
 ```bash
@@ -71,15 +86,14 @@ WebSocket-Latenz wird in Folge-PRs ergänzt.
 
 ## Setup-Modus für Last-Tests
 
-Der Last-Test überspringt die Email-Verifikation. Damit der Auth-Flow
-in einem Last-Test funktioniert, muss der API-Server im "Test-Modus"
-laufen:
+Vorhandene Schalter an der API — **nur für Test-Stacks**, nie in Produktion:
 
 ```bash
-# .env.test
-SKIP_EMAIL_VERIFY=true          # auto-verify nach sign-up
-RATE_LIMIT_DISABLED=true        # k6 generiert > Threshold sonst
+DISABLE_AUTH_RATE_LIMIT=1   # Better-Auth-Rate-Limit aus (sonst 429 bei vielen Registrierungen)
+DISABLE_TURNSTILE=1         # Captcha-Prüfung aus
 ```
 
-(Die Flags existieren noch nicht — werden mit dem ersten echten Last-Test
-ergänzt, da sie nur im Test-Stack gebraucht werden.)
+Einen Schalter, der die E-Mail-Verifikation überspringt, gibt es nicht
+(`ACCOUNT_ACTIVATION` kennt nur `email` und `admin`). Für einen echten Lauf
+braucht es also vorab verifizierte Test-Konten (oder einen solchen Schalter) und
+ein Login im Szenario.

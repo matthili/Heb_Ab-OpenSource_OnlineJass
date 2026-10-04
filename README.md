@@ -17,7 +17,7 @@ Selbst-hostbare Multiplayer-Plattform für **Vorarlberger Jass**, auf der echte 
 
 ![Architektur von Heb ab!](assets/diagrams/architecture.png)
 
-Drei Apps, geteilte Pakete, ein Reverse-Proxy — server-autoritativ, mit der Spiel-Logik als externer Single Source of Truth. Details: [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md).
+Vier Apps (Web-Spiel, Landing-Site, API, KI-Inferenz), geteilte Pakete, ein Reverse-Proxy — server-autoritativ, mit der Regel-Spezifikation aus dem Schwester-Projekt als Single Source of Truth. Details: [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md).
 
 ## Funktionsumfang
 
@@ -27,12 +27,13 @@ Drei Apps, geteilte Pakete, ein Reverse-Proxy — server-autoritativ, mit der Sp
 - **Server-autoritativ** über WebSockets — Clients sehen nur die eigene Hand, Schummeln ist clientseitig nicht möglich.
 - Vollständige Vorarlberger Regeln: echtes **Abheben**, **WELI**-Ansager, **Weisen**, **Stöck**, **Matsch**, **Sack**-Regel, sowie die Ansage-Varianten Trumpf/Gumpf/Oben/Unten/**Slalom**.
 - **Drei KI-Stufen:** Zufall (Üben), regelbasierte **Heuristik** (Standard-Gegner, inkl. Trumpf-Disziplin), und das trainierte **neuronale Netz** (TF.js, ein Modell je Spielart).
+- **Punkteziel** mit wählbarem Sieg-Modus (u. a. „Bergpreis") und Tisch-Optionen wie Sack-Regel und „Weis nur mit Stich"; Starter-Regel „WELI" oder „Sieger gibt".
 - **Disconnect-Handling** (mehrstufige Abstimmung bzw. Reconnect-Schonfrist mit KI-Übernahme) und **Re-Match**-Flow.
 - Spiel-**Cinematics**: Mischen/Abheben/Verteilen, WELI-Enthüllung, Stich-Auflösung, Matsch.
 
 **Lobby & Soziales**
 
-- **Lobby + Tische** mit drei Beitritts-Modi (offen / auf Anfrage / nur Einladung), KI-Auffüllung, Owner-Aktionen.
+- **Lobby + Tische** mit drei Beitritts-Modi (offen / auf Anfrage / nur Einladung), KI-Auffüllung, Sitzplatz-Wahl und -Tausch, Owner-Aktionen (u. a. Spieler vom Tisch werfen und sperren).
 - **Chat** in Lobby, am Tisch und als Privatnachricht — Markdown-light + serverseitige Sanitization, Wortfilter.
 - **Social-Layer:** klickbare Namen → Kontextmenü, Freunde-Flow, Melden (Report), Online-Präsenz (4 Status + AFK), PN-Empfangsrechte + Per-Sender-Block, Profil-Konversations-History.
 - **Web-Push** (VAPID) für Beitritts-Anfragen.
@@ -40,26 +41,26 @@ Drei Apps, geteilte Pakete, ein Reverse-Proxy — server-autoritativ, mit der Sp
 **Rund ums Spiel**
 
 - **Replays** (öffentlich teilbar, Opt-in pro Partie), **Leaderboard** (Opt-in) und Basis-Statistiken pro Variante.
-- **Admin-Panel:** SMTP, Blocklist, Chat-Wortfilter, User-Management, Audit-Log, Report-Review, globale Lobby-Einstellungen, Tisch-Übersicht (verwaiste Tische auflösen).
+- **Admin-Panel:** SMTP (mit Testmail), Blocklist, Chat-Wortfilter (auch RegEx), User-Management, Audit-Log, System-Log, System-Status, Report-Review, globale Lobby-Einstellungen, Tisch-Übersicht (verwaiste Tische auflösen), Aussteiger-Übersicht.
 - **DSGVO:** pro-Feld-Sichtbarkeit, Daten-Export, Soft-Delete mit Anonymisierung; **Erst-Admin-Bootstrap** für frische Installationen.
 - **PWA**-installierbar, **i18n** (DE-Vorarlberg + EN), drei Farbschemata (hell/dunkel/hoch­kontrast), WCAG-2.1-AA-Ziel.
 
 ## Tech-Stack (Highlights)
 
-| Schicht          | Wahl                                                               |
-| ---------------- | ------------------------------------------------------------------ |
-| Monorepo         | pnpm 12 workspaces + Turborepo                                     |
-| Sprache          | TypeScript 5 strict                                                |
-| Frontend-Spiel   | React 19 + Vite 8 + TanStack Router/Query + Tailwind 4 + Zustand 5 |
-| Frontend-Landing | Astro 6 + React-Islands                                            |
-| Backend          | NestJS 11 + Fastify 5                                              |
-| API-Stil         | REST (OpenAPI aus Zod) + WebSocket (Socket.IO)                     |
-| DB               | PostgreSQL 16 + Prisma 7                                           |
-| Cache/Pub-Sub    | Redis 7 (+ Socket.IO-Redis-Adapter)                                |
-| Auth             | Better Auth + Argon2id (`@node-rs/argon2`) + HIBP-Check + Zod 4    |
-| KI-Inferenz      | eigener Microservice mit `@tensorflow/tfjs` (pure-JS)              |
-| Reverse Proxy    | Caddy 2 (Auto-TLS, HSTS, CSP)                                      |
-| Container        | Docker Compose (Dev/NAS) + Helm (k8s)                              |
+| Schicht          | Wahl                                                                |
+| ---------------- | ------------------------------------------------------------------- |
+| Monorepo         | pnpm 12 workspaces + Turborepo                                      |
+| Sprache          | TypeScript 5 strict                                                 |
+| Frontend-Spiel   | React 19 + Vite 8 + TanStack Router/Query + Tailwind 4 + Zustand 5  |
+| Frontend-Landing | Astro 7 + React-Islands                                             |
+| Backend          | NestJS 11 + Fastify 5                                               |
+| API-Stil         | REST (Zod-validiert, OpenAPI für die Lobby) + WebSocket (Socket.IO) |
+| DB               | PostgreSQL 16 + Prisma 7                                            |
+| Cache/Pub-Sub    | Redis 7 (+ Socket.IO-Redis-Adapter)                                 |
+| Auth             | Better Auth + Argon2id (`@node-rs/argon2`) + HIBP-Check + Zod 4     |
+| KI-Inferenz      | eigener Microservice mit `@tensorflow/tfjs` (pure-JS)               |
+| Reverse Proxy    | Caddy 2 (Auto-TLS, HSTS, CSP)                                       |
+| Container        | Docker Compose (Dev/NAS) + Helm (k8s)                               |
 
 Vollständige Begründung pro Schicht: [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md).
 Bewusste Stack-Abweichungen vom Ursprungsplan: [`docs/JOURNEY.md`](./docs/JOURNEY.md).
@@ -70,7 +71,8 @@ Bewusste Stack-Abweichungen vom Ursprungsplan: [`docs/JOURNEY.md`](./docs/JOURNE
 
 ```powershell
 pnpm install
-pnpm import:cards        # migriert jasskarten-assets/ → assets/cards/
+# Die Karten-PNGs liegen bereits in assets/cards/. `pnpm import:cards` braucht
+# es nur, um sie aus dem Original-Ordner jasskarten-assets/ neu zu übernehmen.
 
 # Optional: NN-Modelle aus dem Schwester-Repo holen (für die stärkste KI-Stufe).
 # Ohne diesen Schritt laufen Zufalls- und Heuristik-KI trotzdem.
@@ -85,15 +87,16 @@ pnpm dev:stack:nn        # optional: zusätzlich den Inferenz-Service
 pnpm dev
 ```
 
-Die Web-App läuft danach unter dem von Vite ausgegebenen Port. Den **ersten Admin** richtet eine frische Installation per Umgebungsvariable bzw. CLI ein (kein DB-Gefummel nötig).
+Die Web-App läuft danach unter dem von Vite ausgegebenen Port (Standard `http://localhost:5173`). Den **ersten Admin** richtet eine frische Installation per Umgebungsvariable `ADMIN_EMAIL` oder per CLI ein — `pnpm --filter @jass/api admin:grant <email>` für ein bereits registriertes Konto (kein DB-Gefummel nötig).
 
 Weitere nützliche Skripte:
 
 ```powershell
-pnpm typecheck     # Workspace-übergreifender TS-Check
-pnpm lint          # ESLint über alle Pakete
-pnpm test          # Unit- + Integration-Tests (Vitest + Testcontainers)
-pnpm gen:openapi   # OpenAPI-Doc aus den Zod-Schemas erzeugen
+pnpm typecheck          # Workspace-übergreifender TS-Check
+pnpm lint               # ESLint über alle Pakete
+pnpm test:unit          # Unit-Tests (Vitest) — `pnpm test` macht dasselbe
+pnpm test:integration   # Integration-Tests (Vitest + Testcontainers, braucht Docker)
+pnpm gen:openapi        # OpenAPI-Doc aus den geteilten Zod-Schemas erzeugen
 ```
 
 ## Selbst-hosten (Deployment)
@@ -109,7 +112,7 @@ Docker Compose baut + startet den kompletten Stack **aus dem Quellcode** — Nod
   - **kein SMTP**: dann schaltest du als Admin jede Registrierung manuell frei (LAN-Modus, Standard von Variante A).
 - **Selbst zu erzeugende Secrets:** im LAN-Modus **keine** (der Container generiert `APP_SECRET` + `BETTER_AUTH_SECRET` selbst). Für den öffentlichen Betrieb genau **ein** DB-Passwort (`openssl rand -hex 24`) — die zwei **Turnstile**-Captcha-Schlüssel holst du dir aus deinem Cloudflare-Dashboard (nicht selbst erzeugt).
 - **Öffentlich erreichbar machen:** entweder ein **Cloudflare Tunnel** (TLS macht Cloudflare, kein Portforwarding / keine öffentliche IP nötig — empfohlen für daheim), oder der prod-Stack mit **Caddy**, das sich automatisch ein **Let's-Encrypt-TLS-Zertifikat** zieht (eigene Domain + offene Ports 80/443 nötig — ein Zertifikat manuell einbinden musst du also nicht).
-- _Optional:_ **NN-Modelle** für die stärkste KI (`pnpm sync:nn`); ohne fällt die KI sauber auf die Heuristik zurück. Erster Build kann auf kleiner Hardware ein paar Minuten + etwas RAM/Disk brauchen.
+- **NN-Modelle** für die stärkste KI: Der Tunnel-Stack (Variante B) lädt sie beim ersten Start selbst aus den öffentlichen JCN9000-Releases. Der LAN-Stack (Variante A) hat keinen Inferenz-Dienst, dort spielt die KI mit der Heuristik (NN nachrüstbar, siehe [`docs/SELFHOST.md`](./docs/SELFHOST.md)). Fehlt das NN, fällt die KI sauber auf die Heuristik zurück. Der erste Build kann auf kleiner Hardware ein paar Minuten + etwas RAM/Disk brauchen.
 
 ### Variante A — privat / LAN (am einfachsten, ohne Setup)
 
@@ -170,10 +173,10 @@ docker compose -f infra/docker-compose.tunnel.yml --env-file .env up -d --build
 │   ├── cards/          # Karten-PNGs (migriert von jasskarten-assets/)
 │   ├── diagrams/        # PlantUML-Quellen + gerenderte PNGs
 │   └── logo/           # Logo-Lockups (hell/dunkel)
-├── external/jass-nn/   # NN-Artefakt — via `pnpm sync:nn` (gitignored)
-├── infra/              # docker-compose, caddy, helm, k6, watchdog
-├── scripts/            # import-cards, sync-nn, verify-nn-manifest
-└── docs/               # ARCHITECTURE, JOURNEY, NN-CONTRACT, SECURITY, ADRs
+├── external/jass-nn/   # NN-Artefakte je Spielart — via `pnpm sync:nn` (gitignored)
+├── infra/              # docker-compose (dev/selfhost/tunnel/prod), caddy, backup, watchdog, helm, k6
+├── scripts/            # sync-nn, fetch-nn, verify-nn-manifest, import-cards, Karten-Sync
+└── docs/               # ARCHITECTURE, SELFHOST, JOURNEY, NN-CONTRACT, SECURITY, ADRs
 ```
 
 ## Schwester-Projekt: JCN9000
@@ -190,18 +193,19 @@ Spielregeln, Encoding-Spezifikation und die trainierten Modelle kommen aus dem u
 - **Repo:** [`matthili/jcn9000`](https://github.com/matthili/jcn9000)
 - **Wie integriert:** versionierter Artefakt-Download, gepinnt in `package.json#jassNn` — siehe [`docs/NN-CONTRACT.md`](./docs/NN-CONTRACT.md).
 
-Die Web-App **dupliziert Spielregeln nicht** — Single Source of Truth ist `external/jass-nn/jass_rules.json`; der TS-Port der Engine wird gegen die Python-Fixtures byte-equivalent verifiziert.
+Single Source of Truth für die Spielregeln ist die Regel-Spezifikation `external/jass-nn/<spielart>/jass_rules.json`. Der TS-Port der Engine bildet sie nach und wird per Test dagegen geprüft: die Regel-Konstanten gegen die Spezifikation, der State-Encoder byte-equivalent gegen die Python-Fixtures. Eine Abweichung lässt die Tests scheitern.
 
 ## Dokumentation
 
-| Dokument                                         | Inhalt                                                                     |
-| ------------------------------------------------ | -------------------------------------------------------------------------- |
-| [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) | Schichten, Datenfluss, konkrete Versionen, Diagramme                       |
-| [`docs/SELFHOST.md`](./docs/SELFHOST.md)         | Selbst-hosten: Mini-PC/LAN (ein Befehl) + öffentlich via Cloudflare-Tunnel |
-| [`docs/JOURNEY.md`](./docs/JOURNEY.md)           | Werdegang + bewusste Abweichungen vom Ursprungsplan                        |
-| [`docs/NN-CONTRACT.md`](./docs/NN-CONTRACT.md)   | Schnittstelle zu JCN9000: Artefakte, Versionierung, Verifikation           |
-| [`docs/SECURITY.md`](./docs/SECURITY.md)         | Sicherheits-Checkliste + Threat-Model                                      |
-| [`docs/ADRs/`](./docs/ADRs/)                     | Architecture Decision Records                                              |
+| Dokument                                         | Inhalt                                                                                                                                                           |
+| ------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) | Schichten, Datenfluss, konkrete Versionen, Diagramme                                                                                                             |
+| [`docs/SELFHOST.md`](./docs/SELFHOST.md)         | Selbst-hosten: Mini-PC/LAN (ein Befehl) + öffentlich via Cloudflare-Tunnel                                                                                       |
+| [`docs/JOURNEY.md`](./docs/JOURNEY.md)           | Werdegang + bewusste Abweichungen vom Ursprungsplan                                                                                                              |
+| [`docs/NN-CONTRACT.md`](./docs/NN-CONTRACT.md)   | Schnittstelle zu JCN9000: Artefakte, Versionierung, Verifikation                                                                                                 |
+| [`docs/SECURITY.md`](./docs/SECURITY.md)         | Sicherheits-Checkliste + Threat-Model                                                                                                                            |
+| [`docs/ADRs/`](./docs/ADRs/)                     | Architecture Decision Records                                                                                                                                    |
+| `infra/*/README.md`                              | Betrieb: [Backups](./infra/backup/README.md), [Watchdog](./infra/watchdog/README.md), [Helm](./infra/helm/jass-app/README.md), [Lasttests](./infra/k6/README.md) |
 
 ## Lizenz
 

@@ -1,16 +1,18 @@
 # NN-Schnittstelle zum Schwester-Projekt (JCN9000)
 
-Die Web-App importiert Spiel-Logik und Modelle aus dem unabhängigen Python-Projekt **[JCN9000](https://github.com/matthili/jcn9000)** (`matthili/jcn9000`) — als versionierte Release-Artefakte, **nie** als duplizierten Code.
+Die Web-App bezieht Regel-Spezifikation, Encoding-Spezifikation und Modelle aus dem unabhängigen Python-Projekt **[JCN9000](https://github.com/matthili/jcn9000)** (`matthili/jcn9000`) — als versionierte Release-Artefakte, nicht als kopierten Code. Die Spiel-Logik selbst ist ein TS-Port (`packages/engine`), der per Test gegen diese Artefakte geprüft wird.
 
 ![NN-Artefakt-Pipeline](../assets/diagrams/nn-pipeline.png)
 
-| Artefakt              | Pfad nach Sync                              | Zweck                                                                   |
-| --------------------- | ------------------------------------------- | ----------------------------------------------------------------------- |
-| **Regel-Spec**        | `external/jass-nn/jass_rules.json`          | Quelle für `packages/engine/src/types.ts` (Type-Gen) + alle Spielregeln |
-| **Encoding-Spec**     | `external/jass-nn/state_encoding.md`        | Referenz-Doku für `packages/engine/src/encoder.ts`                      |
-| **Encoding-Fixtures** | `external/jass-nn/encoding_fixtures.json`   | Verifikations-Tests für TS-Encoder (byte-equivalent)                    |
-| **TF.js-Modell**      | `external/jass-nn/<spielart>/tfjs/`         | Geladen vom `apps/inference`-Service — ein Modell je Spielart           |
-| **MANIFEST**          | `external/jass-nn/<spielart>/MANIFEST.json` | Version, Hashes, encoding_version, spec_version                         |
+Jedes Release landet in einem eigenen Ordner je Spielart (`kreuz`, `solo`, `bodensee`):
+
+| Artefakt              | Pfad nach Sync                                                           | Zweck                                                                                                                     |
+| --------------------- | ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------- |
+| **Regel-Spec**        | `external/jass-nn/<spielart>/jass_rules.json`                            | Quelle aller Spielregeln; die hand-codierten Konstanten in `packages/engine/src/types.ts` werden per Test dagegen geprüft |
+| **Encoding-Spec**     | `…/state_encoding.md` (Bodensee: `bodensee_state_encoding.md`)           | Referenz-Doku für den TS-Encoder (`packages/engine/src/encoder.ts` bzw. `src/bodensee/`)                                  |
+| **Encoding-Fixtures** | `…/encoding_fixtures.json` (Bodensee: `bodensee_encoding_fixtures.json`) | Verifikations-Tests für den TS-Encoder (byte-equivalent)                                                                  |
+| **TF.js-Modell**      | `external/jass-nn/<spielart>/tfjs/`                                      | Geladen vom `apps/inference`-Service — ein Modell je Spielart                                                             |
+| **MANIFEST**          | `external/jass-nn/<spielart>/MANIFEST.json`                              | Version, Hashes, encoding_version, spec_version                                                                           |
 
 ## Versionierung — drei Modelle, eines je Spielart
 
@@ -29,29 +31,32 @@ Jede Spielart hat ihr eigenes Modell mit eigener Version und eigenem Encoder. Di
 
 - **Kreuz** und **Solo** teilen den Encoder `3.0.0` (421-dim), haben aber je ein eigenes, separat trainiertes Modell.
 - **Bodensee** (2 Spieler) nutzt einen eigenen Encoder `bodensee_1.0.0` (291-dim).
-- `pnpm sync:nn` lädt für jede Spielart den gepinnten Release und legt ihn unter `external/jass-nn/<spielart>/` ab.
+- `pnpm sync:nn` lädt für jede Spielart den gepinnten Release (über `gh release download`) und legt ihn unter `external/jass-nn/<spielart>/` ab.
+- `scripts/fetch-nn.mjs` macht dasselbe ohne `gh` und ohne Token über die öffentliche GitHub-REST-API. Der Inferenz-Container ruft es bei jedem Start auf (`apps/inference/docker-entrypoint.sh`) und lädt nur, was nicht schon zur gepinnten Version passt (MANIFEST-Check).
 
 ## Sync-Workflow
 
 ```powershell
-# 1. JCN9000 veröffentlicht je Spielart ein Release-ZIP mit:
+# 1. JCN9000 veröffentlicht je Spielart ein Release-ZIP mit u. a.:
 #    tfjs/, jass_rules.json, state_encoding.md, encoding_fixtures.json, MANIFEST.json
+#    (Bodensee: bodensee_state_encoding.md, bodensee_encoding_fixtures.json)
 
 # 2. Web-Repo: lokal oder in CI
 pnpm sync:nn       # gh release download + unzip → external/jass-nn/<spielart>/
 pnpm verify:nn     # Manifest- + SHA-256- + Versions-Verifikation
 
-# 3. Engine-Type-Generierung:
-pnpm --filter @jass/engine build
+# 3. Abgleich prüfen (Fixture- + Spec-Konsistenz-Tests der Engine):
+pnpm --filter @jass/engine test
 ```
 
 ## Konsistenz-Garantien
 
 **Drift wird verhindert** durch:
 
-- **Type-Gen** aus `jass_rules.json` — jede Spec-Änderung erzeugt neue TS-Types → Compile-Fail, wenn der Code nicht nachgezogen wird.
-- **Fixture-Tests** gegen `encoding_fixtures.json` — jede Encoder-Änderung schlägt fehl, sobald die Vektoren nicht mehr byte-equivalent sind.
-- **`MANIFEST.encoding_version`** muss exakt der `EXPECTED_ENCODING_VERSION` in `packages/engine` entsprechen, sonst Hard-Error beim Modell-Boot in `apps/inference`.
+- **Spec-Konsistenz-Test** (`packages/engine/test/rules-spec.consistency.test.ts`) — vergleicht die hand-codierten Konstanten aus `types.ts` (Punktwerte, Rangordnungen, …) mit `jass_rules.json`. Ändert sich die Spec, schlägt der Test fehl, bis der Code nachgezogen ist. (Eine Typ-Generierung aus der Spec gibt es nicht.)
+- **Fixture-Tests** gegen die Encoding-Fixtures — jede Encoder-Änderung schlägt fehl, sobald die Vektoren nicht mehr byte-equivalent sind.
+- **`MANIFEST.encoding_version`** muss exakt der erwarteten Version entsprechen, sonst Hard-Error beim Modell-Boot in `apps/inference`: Kreuz/Solo gegen `ENCODING_VERSION` aus `@jass/engine` (`3.0.0`), Bodensee gegen `bodensee_1.0.0` (in `apps/inference/src/server.ts`).
+- **Nightly-Workflow** (`.github/workflows/nightly-nn-parity.yml`) — lädt täglich die gepinnten Releases, prüft die MANIFEST-Hashes und fährt die Engine-Fixture- und Spec-Tests. Bei Drift legt er ein Issue an.
 
 ## Modell-Updates
 
@@ -60,7 +65,7 @@ Ein neues Modell für eine Spielart wird so eingespielt:
 1. JCN9000 veröffentlicht `vX.Y.Z` für die Spielart.
 2. Web-Repo-PR: `package.json#jassNn.models.<spielart>.version` (+ ggf. `encodingVersion`/`specVersion`) auf den neuen Stand setzen.
 3. `pnpm sync:nn && pnpm verify:nn && pnpm test`.
-4. Bei Tests-grün: Merge. Der Container-Build greift in den neuen Pin.
+4. Bei Tests-grün: Merge. Ausrollen: Im **Tunnel-Stack** das Inferenz-Image neu bauen (der Pin steckt im Image) — beim Start lädt `fetch-nn.mjs` die neue Version. Im **Prod-Stack** ist `external/jass-nn` vom Host eingebunden: dort `pnpm sync:nn` auf dem Host und den Inferenz-Container neu starten.
 
 > **Achtung Encoder-Bump:** Bei einem `encodingVersion`-Wechsel (Breaking Change im Encoder) müssen TS-Port (`encoder.ts`) und Fixture-Tests parallel angepasst werden — der Spec-/Encoder-Test in `packages/engine` schlägt sonst sofort fehl.
 
@@ -76,6 +81,8 @@ Aktuell gepinnt: **Kreuz `v0.7.2`**, **Solo `v0.8.2`**, **Bodensee `v0.9.2`** (a
 | Encoder Bodensee `bodensee_1.0.0` (291-dim) | ✅ eigener Encoder + eigene Fixtures                    |
 | TF.js-Modelle (1 je Spielart)               | ✅ in den jeweiligen Releases, vom Hash-Check abgedeckt |
 | `pnpm sync:nn` (Download + SHA-Verify)      | ✅ produktiv, je Spielart ein Release                   |
+| `fetch-nn.mjs` (ohne `gh`, im Container)    | ✅ Tunnel-Stack lädt die Modelle beim Start selbst      |
+| Nightly-Parity-Workflow                     | ✅ täglich gegen die gepinnten Releases                 |
 
 ### Encoder-Version-History (Kreuz/Solo)
 

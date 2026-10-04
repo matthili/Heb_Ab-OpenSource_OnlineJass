@@ -34,10 +34,11 @@ das drei versionierte Artefakte liefert:
    Feature-Vektor für das neuronale Netz wird;
 3. das **trainierte Modell** selbst, plus Test-Fixtures.
 
-Die Web-App **importiert** diese Artefakte als versionierte Releases und
-**dupliziert die Spielregeln niemals im Code**. Der TS-Port der Engine
-(`packages/engine`) wird gegen die Python-Fixtures verifiziert — so kann das
-Modell-Training und die Anwendung nie auseinanderdriften. Details dazu in
+Die Web-App **importiert** diese Artefakte als versionierte Releases. Der
+TS-Port der Engine (`packages/engine`) bildet die Regeln nach und wird per Test
+dagegen geprüft — die Regel-Konstanten gegen die Spezifikation, der Encoder
+byte-genau gegen die Python-Fixtures. So können Modell-Training und Anwendung
+nicht unbemerkt auseinanderdriften. Details dazu in
 [`NN-CONTRACT.md`](./NN-CONTRACT.md).
 
 ## Die Reise in Meilensteinen
@@ -69,12 +70,12 @@ Geschichte:
 
 | Bereich            | Ursprünglich geplant                  | Tatsächlich umgesetzt                                          | Warum                                                                              |
 | ------------------ | ------------------------------------- | -------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
-| **Auth**           | Lucia v3                              | **Better Auth 1.6**                                            | Lucia wurde eingestellt; Better Auth ist aktiv gepflegt, bringt Verify/Reset mit   |
+| **Auth**           | Lucia v3                              | **Better Auth 1.7**                                            | Lucia wurde eingestellt; Better Auth ist aktiv gepflegt, bringt Verify/Reset mit   |
 | **ORM**            | Prisma 5                              | **Prisma 7** (mit `@prisma/adapter-pg`)                        | Aktuelle Major-Version, modernes Treiber-Adapter-Modell                            |
 | **Validation**     | Zod 3 + `nestjs-zod`                  | **Zod 4** (nativ, ohne Zwischenschicht)                        | Zod 4 bringt u. a. `z.toJSONSchema()` von Haus aus mit                             |
 | **UI-Primitives**  | Radix UI + Tailwind                   | **Tailwind 4** (ohne Radix)                                    | Weniger Abhängigkeiten; Tailwind 4 deckt den Bedarf ab                             |
 | **Build/Frontend** | Vite 5                                | **Vite 8**, React 19                                           | Jeweils aktuelle Majors                                                            |
-| **Landing**        | Astro 4                               | **Astro 6**                                                    | dito                                                                               |
+| **Landing**        | Astro 4                               | **Astro 7**                                                    | dito                                                                               |
 | **KI-Inferenz**    | `@tensorflow/tfjs-node` + Worker-Pool | **`@tensorflow/tfjs`** (pure-JS, kein Pool)                    | Kein nativer Build nötig → einfacheres Deployment; reicht für die Last             |
 | **State-Encoder**  | ein 132-dim Encoder                   | **variantenspezifisch** (Kreuz/Solo 421-dim, Bodensee 291-dim) | Jede Spielart hat ihren eigenen Encoder + ihr eigenes Modell                       |
 | **Contract-Tests** | Pact                                  | **verworfen**                                                  | Playwright-E2E + Integration-Tests + die OpenAPI-aus-Zod-Generierung decken das ab |
@@ -110,14 +111,20 @@ erwähnte:
 - **Lobby-Präsenz** („wer ist gerade online?") und eine
   **Profil-Konversations-History**, die Privatnachrichten dem Spiel-Kontext
   zuordnet.
-- **Chat-Wortfilter** und **globale Lobby-Einstellungen** im Admin-Bereich.
+- **Chat-Wortfilter** (auch RegEx, ReDoS-sicher über RE2) und **globale Lobby-Einstellungen** im Admin-Bereich, dazu System-Status, System-Log, SMTP-Testmail und eine Aussteiger-Übersicht.
+- **Tisch-Regeln** über den Plan hinaus: wählbarer Sieg-Modus (u. a. „Bergpreis"), „Sieger gibt", echtes Abheben, Sitzplatz-Wahl und -Tausch, Spieler vom Tisch werfen und sperren.
+- **Self-Hosting ohne Handarbeit:** ein LAN-Stack, der Secrets und Datenbank-Tabellen beim ersten Start selbst anlegt, und ein öffentlicher Tunnel-Stack (Cloudflare Tunnel, Turnstile, E-Mail-Verifikation), dessen Inferenz-Container die NN-Modelle selbst lädt.
+- **Betrieb:** tägliche DB- und Secret-Backups, Autoheal, Log-Rotation, ein Uptime-Watchdog mit Mail-Alarm und ein Wächter für hängende Partien.
+- **Sitzungsende trennt Live-Verbindungen:** Logout, Sitzungs-Widerruf, Passwort-Reset, Sperre und Konto-Löschung beenden auch offene WebSockets.
+- Eine animierte **Jass-Schule** auf der zweisprachigen Landing-Site.
 
 ## Leitprinzipien, die durchgehalten haben
 
 Vier Grundsätze sind über die gesamte Entwicklung stabil geblieben:
 
 1. **Single Source of Truth für die Spielregeln** — sie kommen aus dem
-   Schwester-Projekt und werden nie im App-Code dupliziert.
+   Schwester-Projekt; der App-Code bildet sie nach und wird per Test dagegen
+   geprüft.
 2. **Server-autoritativer Spielzustand** — Clients sehen nur ihre eigene Hand;
    schummeln ist clientseitig nicht möglich.
 3. **Sicherheit ab Tag 1** — Argon2id, CSRF-Schutz, Rate-Limiting, CSP,

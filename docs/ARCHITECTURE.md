@@ -4,13 +4,13 @@
 
 ## Überblick
 
-Drei Apps, vier Pakete, ein Reverse-Proxy:
+Vier Apps, vier Pakete, ein Reverse-Proxy:
 
 ![Architektur von Heb ab!](../assets/diagrams/architecture.png)
 
 > Quelle des Diagramms: [`assets/diagrams/architecture.puml`](../assets/diagrams/architecture.puml) — gerendert mit PlantUML (helle „Karte", damit es auf GitHub hell wie dunkel lesbar bleibt).
 
-- **`apps/landing/`** — Astro-Site für Marketing, Regeln, Datenschutz, Impressum. Statisch gebaut, React-Islands für interaktive Demos.
+- **`apps/landing/`** — Astro-Site (DE/EN) für Startseite, Jass-Schule (Regeln), Über, Datenschutz, Impressum. Statisch gebaut, React-Islands für interaktive Demos.
 - **`apps/web/`** — React-SPA (das eigentliche Spiel + Lobby). PWA-installierbar.
 - **`apps/api/`** — NestJS-Backend (REST + Socket.IO-Gateway). Server-autoritativer Spielzustand.
 - **`apps/inference/`** — Fastify-Microservice mit `@tensorflow/tfjs` (pure-JS, kein nativer tfjs-node-Build) für die KI-Züge. Lädt pro Spielart ein eigenes Modell.
@@ -18,8 +18,8 @@ Drei Apps, vier Pakete, ein Reverse-Proxy:
 Geteilte Logik:
 
 - **`packages/engine/`** — TS-Port der Jass-Regeln + State-Encoder, Quelle der Wahrheit für API _und_ Inference. Variantenspezifische Encoder: Kreuz/Solo `v3.0.0` (421-dim), Bodensee `bodensee_1.0.0` (291-dim). Abgeglichen gegen die Python-Engine im Schwester-Repo.
-- **`packages/shared-types/`** — geteilte **Zod-Schemas** als Single Source of Truth für REST-DTOs (FE + BE leiten daraus ab) + Generator für ein OpenAPI-Doc (`pnpm gen:openapi`).
-- **`packages/ui/`** — Card, Hand, Trick, Scoreboard, ChatBubble.
+- **`packages/shared-types/`** — geteilte **Zod-Schemas** für die Lobby-Verträge (FE + BE leiten daraus ab), die KI-Namen und ein Generator für ein OpenAPI-Dokument daraus (`pnpm gen:openapi` → `openapi.json`). Die übrigen REST-DTOs liegen als Zod-Schemas in `apps/api` (`*.dto.ts`).
+- **`packages/ui/`** — Card, Hand, Trick, Scoreboard.
 - **`packages/config/`** — geteilte tsconfig-/eslint-/prettier-Basis.
 
 ## Schichtarchitektur
@@ -40,13 +40,14 @@ Geteilte Logik:
 │  - Auto-TLS, HSTS, CSP                                                  │
 │  - /             → landing (static)                                     │
 │  - /app/*        → web (SPA fallback)                                   │
-│  - /api/*        → api (round-robin)                                    │
-│  - /ws/*         → api (sticky ip_hash)                                 │
+│  - /api/*        → api                                                  │
+│  - /ws*          → api (lb_policy ip_hash = sticky, prod/tunnel)        │
+│  - /healthz      → api                                                  │
 └──────────┬───────────────────────────────────────┬──────────────────────┘
            ▼                                       ▼
 ┌─────────────────────────────┐         ┌──────────────────────────────┐
 │  apps/api (NestJS+Fastify)  │         │  apps/web + apps/landing      │
-│  ├─ REST Controllers        │         │  (statisch via Caddy)         │
+│  ├─ REST Controllers        │         │  (nginx-Container, statisch)  │
 │  ├─ Socket.IO Gateway       │         └──────────────────────────────┘
 │  ├─ Better Auth (Sessions PG)│
 │  ├─ Prisma Client           │
@@ -77,7 +78,7 @@ Kurz gelesen: ein **User** hat ein **Profile** (Sichtbarkeit pro Feld), eröffne
 
 ## Spiel-Loop
 
-Wie eine Partie abläuft — von „Tisch offen" bis „gewonnen", mit dem Stich-Loop innen und dem Partie-/Re-Match-Loop außen. Die fett gesetzten Zustände sind Werte von `LobbyTableStatus`.
+Wie ein Tisch läuft — von „Tisch offen" bis „Partie gewonnen": innen der Stich-Loop eines Spiels, außen der Re-Match-Loop von Spiel zu Spiel, bis ein Team (bzw. bei Solo ein Spieler) das Punkteziel erreicht. Eine **Partie** sind also mehrere Spiele bis zum Punkteziel. Die fett gesetzten Zustände sind Werte von `LobbyTableStatus`.
 
 ![Spiel-Loop von Heb ab!](../assets/diagrams/game-loop.png)
 
@@ -88,10 +89,10 @@ Wie eine Partie abläuft — von „Tisch offen" bis „gewonnen", mit dem Stich
 | Monorepo / Build | pnpm 12 workspaces, Turborepo, TypeScript 5.9, Node ≥22 <25                                 |
 | Backend          | NestJS 11 + Fastify 5, Socket.IO 4.8 (+ Redis-Adapter)                                      |
 | ORM / DB         | Prisma 7 (`@prisma/adapter-pg`) auf PostgreSQL 16                                           |
-| Auth             | Better Auth 1.6, Argon2id (`@node-rs/argon2`), Zod 4, HIBP-Pwned-Check                      |
+| Auth             | Better Auth 1.7, Argon2id (`@node-rs/argon2`), Zod 4, HIBP-Pwned-Check                      |
 | Cache / Live     | Redis 7 (Socket.IO-Adapter, Live-GameState, Presence, Rate-Limit)                           |
 | Frontend-Spiel   | React 19, Vite 8, Tailwind 4, TanStack Router/Query, Zustand 5, i18next 26, vite-plugin-pwa |
-| Frontend-Landing | Astro 6 + React-Islands                                                                     |
+| Frontend-Landing | Astro 7 + React-Islands                                                                     |
 | KI-Inferenz      | Fastify + `@tensorflow/tfjs` 4 (pure-JS), ein Modell je Spielart                            |
 | Spielvarianten   | KREUZ_4P, SOLO_4P, BODENSEE_2P (KREUZ_6P / KREUZ_STEIGERN reserviert)                       |
 | Geteilte Pakete  | `engine` (Regeln + Encoder), `shared-types` (Zod + OpenAPI), `ui`, `config`                 |
@@ -99,6 +100,20 @@ Wie eine Partie abläuft — von „Tisch offen" bis „gewonnen", mit dem Stich
 | Reverse Proxy    | Caddy 2 (Auto-TLS, HSTS, CSP)                                                               |
 | Container        | Docker Compose (Dev/NAS) + Helm-Chart (k8s)                                                 |
 | Tests            | Vitest 4 (Unit), Testcontainers 11 (Integration), Playwright (E2E)                          |
+
+## Betrieb & Skalierung
+
+| Stack               | Datei                               | Dienste                                                         | Zweck                                                   |
+| ------------------- | ----------------------------------- | --------------------------------------------------------------- | ------------------------------------------------------- |
+| Dev                 | `infra/docker-compose.dev.yml`      | Postgres, Redis, Mailhog, Inferenz (nur mit Profil `nn`)        | lokale Entwicklung; die Apps laufen per `pnpm dev`      |
+| Self-Host (LAN)     | `infra/docker-compose.selfhost.yml` | Postgres, Redis, API, Web, Landing, Caddy, Backup, Autoheal     | ein Befehl, HTTP, Konten schaltet der Admin frei        |
+| Tunnel (öffentlich) | `infra/docker-compose.tunnel.yml`   | wie Self-Host + Inferenz + Watchdog                             | Cloudflare Tunnel (TLS), Turnstile, E-Mail-Verifikation |
+| Prod                | `infra/docker-compose.prod.yml`     | wie Tunnel; Caddy holt Let's-Encrypt-Zertifikate (Ports 80/443) | eigene Domain mit offenen Ports                         |
+| Kubernetes          | `infra/helm/jass-app/`              | API, Inferenz, Web, Landing, Ingress (Postgres/Redis extern)    | Cluster-Betrieb                                         |
+
+Anleitungen: [`SELFHOST.md`](./SELFHOST.md), Backups und Restore in [`infra/backup/README.md`](../infra/backup/README.md), Ausfall-Alarm in [`infra/watchdog/README.md`](../infra/watchdog/README.md).
+
+**Skalierung:** Die API ist derzeit auf **eine Instanz** ausgelegt. Der Spiel-Lock (`GameLockService`) und die Timer der Disconnect-Abstimmung liegen im Speicher des Prozesses. Socket.IO-Redis-Adapter und Spielzustand in Redis sind für mehrere Instanzen vorbereitet; vor einem Betrieb mit mehreren API-Repliken braucht es aber einen verteilten Lock und verteilte Timer (so vermerkt in `game-lock.service.ts` und `disconnect-vote.service.ts`). Der Inferenz-Dienst ist zustandslos und lässt sich beliebig vervielfachen.
 
 ## Tech-Stack-Entscheidungen — Verweis auf ADRs
 
@@ -111,7 +126,7 @@ Wie eine Partie abläuft — von „Tisch offen" bis „gewonnen", mit dem Stich
 
 ## Sicherheit
 
-Siehe [`SECURITY.md`](./SECURITY.md) für die Checkliste, was ab welchem Meilenstein eingebaut wird.
+Siehe [`SECURITY.md`](./SECURITY.md) für die umgesetzten Kontrollen (mit Fundstelle im Code) und das Threat-Model.
 
 ## NN-Schnittstelle
 

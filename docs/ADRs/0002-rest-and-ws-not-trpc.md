@@ -35,4 +35,8 @@ Backend und Frontend sind beide TypeScript. tRPC wäre eine offensichtliche Opti
 
 ## Nachtrag (Umsetzung)
 
-Die OpenAPI-Typen werden **aus den Zod-Schemas generiert** (`pnpm gen:openapi`) statt über eine separate `openapi-typescript`-Quelle: die DTO-Schemas leben einmal in `packages/shared-types`, FE und BE leiten daraus ab. WS-Events bleiben TS-Discriminated-Unions mit Zod-Runtime-Validierung im Gateway. Die Grundentscheidung (REST + WS statt tRPC) ist unverändert.
+Die OpenAPI-Typen werden **aus den Zod-Schemas generiert** (`pnpm gen:openapi`) statt über eine separate `openapi-typescript`-Quelle. Die Grundentscheidung (REST + WS statt tRPC) ist unverändert. Stand 2026-10-04 weicht die Umsetzung in drei Punkten von den Konsequenzen oben ab:
+
+- **Kein NestJS-Swagger.** Das OpenAPI-3.1-Dokument erzeugt `packages/shared-types` aus seinen Zod-Schemas (`openapi.json`, im Repo committet). Es umfasst die geteilten **Lobby-Verträge** (Tische, Einladung, Re-Match-Abstimmung), nicht die ganze API.
+- **REST-DTOs:** Die Lobby-Schemas teilen sich FE und BE über `packages/shared-types`; die übrigen DTOs liegen als Zod-Schemas in `apps/api` (`*.dto.ts`) und werden dort per `ZodValidationPipe` geprüft.
+- **WS-Events:** Eine `ws-events.ts` in `packages/shared-types` gibt es nicht. Die Gateways prüfen eingehende Payloads selbst (Typ und Form der Felder), dazu kommen Rate-Limit pro Socket und die Sitz-/Zug-Validierung der Engine.

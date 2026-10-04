@@ -30,7 +30,8 @@ Er ist die dritte Verteidigungslinie:
 
 ## In Produktion
 
-Läuft automatisch im `infra/docker-compose.prod.yml` (Service `watchdog`).
+Läuft automatisch im prod- und im tunnel-Stack (Service `watchdog` in
+`infra/docker-compose.prod.yml` bzw. `infra/docker-compose.tunnel.yml`).
 Die Admin-Mail-Adresse in der `.env` hinterlegen:
 
 ```

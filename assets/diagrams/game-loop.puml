@@ -1,6 +1,7 @@
 @startuml game-loop
-' Spiel-Loop einer Partie (Kreuz/Solo: 9 Stiche, Bodensee: 18). Helle "Karte" —
-' lesbar auf GitHub hell wie dunkel. Status in <b>…</b> = LobbyTableStatus.
+' Ablauf an einem Tisch: eine Partie = mehrere Spiele bis zum Punkteziel
+' (je Spiel Kreuz/Solo 9 Stiche, Bodensee 18). Helle "Karte" — lesbar auf
+' GitHub hell wie dunkel. Status in <b>…</b> = LobbyTableStatus.
 skinparam backgroundColor #F4ECD8
 skinparam shadowing false
 skinparam defaultFontName "DejaVu Sans"
@@ -19,35 +20,35 @@ skinparam partitionBackgroundColor #F0E8D2
 
 start
 :Owner öffnet Tisch  <b>(WAITING)</b>;
-:Sitze füllen — Spieler joinen\noder KI-Auto-Fill nach Timer;
+:Sitze füllen — Spieler joinen\noder KI-Auto-Fill nach Timer\n(der Owner kann auch sofort starten);
 :Tisch voll → Spiel startet  <b>(IN_GAME)</b>;
 
 repeat
-  partition "Eine Partie" {
-    :Karten mischen;
-    if (Abheben aktiv\n& kein WELI-Deal?) then (ja)
+  partition "Ein Spiel (Kreuz/Solo: 9 Stiche · Bodensee: 18)" {
+    :Ansager bestimmen —\nPartie-Start: wer den WELI bekommt\n(„Sieger gibt": ab der 2. Partie\nsagt der Verlierer an)\nsonst im Uhrzeigersinn weiter;
+    :Geber mischt;
+    if (Abheben aktiv?\n(Tisch-Option, Kreuz/Solo)) then (ja)
       :Abheben (rechts vom Geber) — oder klopfen;
     else (nein)
     endif
     :Karten geben;
-    :Ansager bestimmen (der WELI bzw. Rotation);
-    :Ansage — Trumpf / Gumpf / Oben / Unten / Slalom\n(optional an Partner schieben);
-    :Weisen (1. Runde);
+    :Ansage — Trumpf / Gumpf / Oben / Unten / Slalom\n(Kreuz: optional an den Partner schieben);
+    :Weisen im 1. Stich (nicht Bodensee);
     repeat :nächster Stich;
       :jeder Sitz spielt 1 Karte\n(server-autoritativ validiert);
       :Stich-Gewinner ermitteln;
     repeat while (noch Karten auf der Hand?) is (ja) not (nein)
-    :Wertung — Kartenpunkte + Weis + Stöck + Matsch\n(Sack-Regel: < 21 Pkt → Runde verfällt);
-    :kumulativen Partie-Stand fortschreiben;
+    :Wertung — Kartenpunkte + Weis + Stöck + Matsch\n(Tisch-Option Sack: < 21 Kartenpunkte → alles verfällt);
+    :Partie-Stand fortschreiben;
   }
   if (Punkteziel erreicht?) then (ja)
-    :Partie gewonnen  <b>(MATCH_OVER)</b>;
+    :Partie gewonnen  <b>(MATCH_OVER)</b>\nOwner kann eine neue Partie starten → <b>WAITING</b>;
     stop
   else (nein)
   endif
   :Re-Match-Abstimmung  <b>(POST_GAME)</b>;
-repeat while (alle YES?) is (ja → neue Partie) not (nein)
+repeat while (alle YES?) is (ja → nächstes Spiel) not (nein)
 
-:zurück in die Lobby  <b>(WAITING)</b>;
+:zurück in die Lobby  <b>(WAITING)</b>\n(wer NO stimmt, verlässt den Tisch);
 stop
 @enduml

@@ -19,16 +19,19 @@ left to right direction
 rectangle "<b>JCN9000</b>  (Python, Schwester-Repo)\nSelf-Play-Training → Release <i>vX.Y.Z</i> (ZIP)\njass_rules.json · state_encoding.md\nencoding_fixtures.json · tfjs/ · MANIFEST.json" as nn #E7D2B0
 
 rectangle "<b>pnpm sync:nn</b>\ngh release download + unzip\nVersionen aus package.json#jassNn\n(je Spielart 1 Release)" as sync #F3E3B3
+rectangle "<b>scripts/fetch-nn.mjs</b>\nohne gh / Token (GitHub-REST-API)\nim Inferenz-Container bei jedem Start\n(lädt nur, was fehlt)" as fetch #F3E3B3
 
-rectangle "<b>external/jass-nn/</b>\nlokal / CI  (gitignored)" as ext #EADFC4
+rectangle "<b>external/jass-nn/</b>\nje Spielart ein Ordner (kreuz · solo · bodensee)\nlokal / CI (gitignored)\nbzw. Volume im Tunnel-Stack" as ext #EADFC4
 
-rectangle "<b>packages/engine</b>\nType-Gen aus jass_rules.json\n→ Compile-Fail bei Spec-Drift\nFixtures: Encoder byte-equivalent" as engine #DCEFD8
-rectangle "<b>apps/inference</b>\nlädt tfjs/model.json (1 je Spielart)\nencoding_version vs. EXPECTED\n→ Hard-Fail bei Mismatch" as inf #DCD8EF
-rectangle "<b>pnpm verify:nn</b>\nMANIFEST: SHA-256 + Versionen" as verify #F2D0C5
+rectangle "<b>packages/engine</b>\nKonsistenz-Test: Konstanten\nin types.ts ↔ jass_rules.json\nFixtures: Encoder byte-equivalent" as engine #DCEFD8
+rectangle "<b>apps/inference</b>\nlädt tfjs/model.json (1 je Spielart)\nencoding_version vs. erwartete Version\n→ Hard-Fail bei Mismatch" as inf #DCD8EF
+rectangle "<b>pnpm verify:nn</b>\nMANIFEST: SHA-256 + Versionen\n(auch nightly in der CI)" as verify #F2D0C5
 
 nn --> sync : Release-Artefakte
+nn --> fetch : Release-Artefakte
 sync --> ext
-ext --> engine : jass_rules.json\n+ encoding_fixtures.json
+fetch --> ext
+ext --> engine : jass_rules.json\n+ Encoding-Fixtures
 ext --> inf : tfjs/ + MANIFEST
 ext --> verify : MANIFEST + Hashes
 @enduml

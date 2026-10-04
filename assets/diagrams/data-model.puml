@@ -105,11 +105,12 @@ game ||--o{ gseat
 game ||--o{ move
 game ||--o{ round
 game ||--o{ vote
-game ||--o{ chat : "optional\n(In-Game-DM)"
+game ||--o{ chat : "optional\n(Tisch-Chat,\nPN im Spiel)"
 
 note as N
   Für die Übersicht ausgelassen: Session, Account, Verification,
-  PushSubscription, DmBlock, DmRead, GameJoinRequest, TableInvite,
-  BannedWord, ArchivedChatMessage, AuditLog, AdminSetting, Blocklist.
+  PushSubscription, UsernameHistory, DmBlock, DmRead, GameJoinRequest,
+  TableInvite, TableBan, BannedWord, ArchivedChatMessage, AuditLog,
+  AdminSetting, Blocklist.
 end note
 @enduml

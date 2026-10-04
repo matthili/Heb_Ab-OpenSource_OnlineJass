@@ -39,3 +39,12 @@ In der ursprünglichen Plan-Diskussion hatten wir **Lucia v3** gewählt — was 
 ## Historie
 
 - 2026-05-14: ursprünglich Lucia v3 gewählt, dann wegen Lucia-Sunset auf Better Auth umgestellt.
+
+## Nachtrag (Stand 2026-10-04)
+
+Die Entscheidung steht; im Einsatz ist **Better Auth 1.7**. Ergänzt bzw. präzisiert gegenüber den Konsequenzen oben:
+
+- **Captcha (Turnstile)** bei Registrierung und Passwort-Reset-Anfrage, nicht beim Login. Den Login begrenzt das Better-Auth-Rate-Limit pro IP (5 Versuche / 15 min); jeder Auth-Pfad hat eigene Grenzen.
+- **Passwort-Reset** beendet alle Sitzungen des Kontos (`revokeSessionsOnPasswordReset`).
+- **WS-Auth** prüft die Sitzung nur beim Verbindungsaufbau. Deshalb trennt jedes Sitzungsende — Logout, Sitzungs-Widerruf, Passwort-Reset, Sperre, Konto-Löschung — auch die offenen Sockets (`modules/realtime/user-sockets.service.ts`).
+- **CSRF:** zusätzlich zu SameSite=Lax prüft ein globaler Guard den `Origin`-Header jeder zustandsändernden Anfrage (`common/guards/origin-check.guard.ts`).

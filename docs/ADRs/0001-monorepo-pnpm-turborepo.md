@@ -27,3 +27,12 @@ Das Projekt besteht aus mehreren Apps (`landing`, `web`, `api`, `inference`) und
 - Alle Pakete leben unter `apps/*` und `packages/*` (pnpm-workspace.yaml).
 - `turbo.json` definiert das Task-Graph (build → typecheck → lint → test).
 - Bei Wachstum (z.B. Mobile-App via Flutter) ist Nx-Migration möglich, aber heute nicht notwendig.
+
+## Nachtrag (Stand 2026-10-04)
+
+Die Entscheidung steht unverändert. Aktuell: **pnpm 12** und **Turborepo 2.11**.
+
+- Die pnpm-Version ist über `package.json#packageManager` festgelegt; ein lokal installiertes pnpm 10/11 lädt sie selbst nach.
+- Alle pnpm-Einstellungen stehen in `pnpm-workspace.yaml` (Overrides, `allowBuilds` für erlaubte Install-Skripte, `minimumReleaseAgeExclude`). `.npmrc` liest pnpm seit Version 11 nur noch für Registry/Auth — im Repo gibt es keine mehr.
+- Seit pnpm 11 installiert pnpm keine Paketversion, die jünger als 24 Stunden ist (Schutz gegen kompromittierte Neu-Releases).
+- Task-Graph in `turbo.json`: `build`, `typecheck` und die Test-Tasks hängen von `^build` der Abhängigkeiten ab; `lint` läuft ohne Vorbedingung.

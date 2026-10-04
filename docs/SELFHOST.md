@@ -7,7 +7,8 @@ selbst ein.
 > **Sicherheits-Hinweis:** Dieser Modus ist für **private/LAN-Trials** gedacht.
 > Er läuft über **HTTP ohne TLS** und **ohne Captcha** (`SELF_HOST=1`). Stelle
 > ihn **nicht ungeschützt ins offene Internet**. Für einen öffentlichen Betrieb
-> nutze `infra/docker-compose.prod.yml` (Domain + Let's-Encrypt-TLS + Turnstile).
+> nutze den **Tunnel-Stack** (unten: Cloudflare Tunnel + Turnstile) oder
+> `infra/docker-compose.prod.yml` (eigene Domain + Let's-Encrypt-TLS + Turnstile).
 
 ## Voraussetzungen
 
@@ -16,8 +17,9 @@ selbst ein.
   die Repo-Dateien auf die Kiste zu bringen (siehe nächster Abschnitt).
 
 > Der eigentliche Build läuft **in Docker** — Node/pnpm musst du dafür NICHT auf
-> dem Host installieren. Auf den Host gehören nur: Docker, das **Repo selbst**,
-> (für die NN-Variante) die Modelldateien und cloudflared für den Tunnel.
+> dem Host installieren. Auf den Host gehören nur: Docker, das **Repo selbst** und
+> (für den Tunnel) cloudflared. Die NN-Modelle holt sich der Inferenz-Container des
+> Tunnel-Stacks selbst.
 
 ## Repo auf den Mini-PC holen
 
@@ -73,14 +75,15 @@ JASS_HOST=http://192.168.0.42 docker compose -f infra/docker-compose.selfhost.ym
 ADMIN_EMAIL=du@example.com docker compose -f infra/docker-compose.selfhost.yml up -d
 ```
 
-Der Account mit dieser Adresse wird beim Registrieren automatisch **Admin**.
-(Alternativ später im Container: `node apps/api/dist/src/... admin:grant`.)
+Der Account mit dieser Adresse wird beim Registrieren automatisch **Admin** —
+gibt es ihn schon, beim nächsten Start der API. Weitere Admins vergibst du danach
+im **Admin-Bereich → Users** über die Rolle.
 
 ## Konten freischalten (statt E-Mail-Verifikation)
 
 Mail ist im Self-Host-Modus **aus** (`ACCOUNT_ACTIVATION=admin`). Neue Spieler
 registrieren sich, sind aber bis zur Freischaltung gesperrt. Der Admin schaltet
-sie im **Admin-Bereich → Nutzer → „Freischalten"** frei. Kein SMTP nötig.
+sie im **Admin-Bereich → Users → „Freischalten"** frei. Kein SMTP nötig.
 
 > Willst du echten Mailversand (Verifikations- + Passwort-Reset-Mails), setze im
 > Admin-Panel die SMTP-Daten oder gib die `SMTP_*`-Variablen mit — siehe
@@ -88,14 +91,15 @@ sie im **Admin-Bereich → Nutzer → „Freischalten"** frei. Kein SMTP nötig.
 
 ## Stärkere KI (neuronales Netz) optional nachrüsten
 
-Standardmäßig spielen KI-Sitze mit der **Heuristik** (kein Inferenz-Container).
-Für das neuronale Netz:
+Standardmäßig spielen KI-Sitze mit der **Heuristik** — der LAN-Stack hat keinen
+Inferenz-Container. Für das neuronale Netz zwei Wege:
 
-```bash
-pnpm sync:nn          # lädt die TF.js-Modelle (braucht gh CLI)
-# danach den Inferenz-Service ergänzen (eigener Container, MODEL_DIR auf
-# external/jass-nn gemountet) — siehe infra/docker-compose.prod.yml als Vorlage.
-```
+- **Einfach:** gleich den Tunnel-Stack nehmen (unten). Sein Inferenz-Container lädt
+  die Modelle beim ersten Start selbst.
+- **Im LAN-Stack nachrüsten:** den Dienst `inference` samt Volume aus
+  `infra/docker-compose.tunnel.yml` übernehmen und beim Dienst `api`
+  `INFERENCE_URL: http://inference:4000` ergänzen. Auch dann holt sich der Container
+  die Modelle selbst (öffentliche JCN9000-Releases, kein `gh`, kein Token).
 
 Ohne NN fallen „nn"-Sitze automatisch sauber auf die Heuristik zurück; der
 Engine-Status-Tooltip am KI-Sitz zeigt das an.
@@ -184,16 +188,11 @@ SMTP_FROM=noreply@jass.example.org
 EOF
 ```
 
-**3. NN-Modelle holen** (für die starke KI; ohne fallen „nn"-Sitze sauber auf die
-Heuristik zurück). `pnpm sync:nn` braucht **Node + pnpm + gh CLI** — die hast du
-auf einem nackten Mini-PC i.d.R. NICHT. Zwei Wege:
-
-- **Auf deinem Dev-Rechner** `pnpm sync:nn` laufen lassen und den entstandenen
-  Ordner `external/jass-nn/` per `scp`/`rsync` auf den Mini-PC ins Repo kopieren, **oder**
-- gh CLI + Node/pnpm auf dem Mini-PC installieren und dort `pnpm sync:nn` ausführen.
-
-Beim allerersten Trial kannst du das auch **weglassen** — dann spielt die KI mit
-der (recht starken) Heuristik; das NN rüstest du später nach.
+**3. NN-Modelle:** nichts zu tun. Der Inferenz-Container lädt beim ersten Start die
+in `package.json#jassNn` gepinnten Modelle aus den öffentlichen JCN9000-Releases
+(`scripts/fetch-nn.mjs`, ohne `gh` und ohne Token) und legt sie im Volume
+`jass-tunnel_jass-tunnel-nn` ab; bei Neustarts bleiben sie liegen. Klappt der
+Download nicht (z. B. kein Internet), spielen „nn"-Sitze mit der Heuristik.
 
 **4. Stack starten:**
 
@@ -222,6 +221,11 @@ SMTP** ändern (dort verschlüsselt) und mit **„Testmail senden"** sofort prü
 der Versand klappt — bei einem Fehler zeigt das Panel die Meldung des Mailservers.
 Ohne funktionierendes SMTP kommt keine Verifikations-Mail an → niemand (auch du
 nicht) kann sich einloggen.
+
+**Betrieb:** Backups (Datenbank + Secrets, täglich, 14 Tage), Autoheal,
+Log-Rotation und der Ausfall-Watchdog laufen im Stack automatisch mit. Restore und
+Off-site-Kopie: [`infra/backup/README.md`](../infra/backup/README.md); die
+Alarm-Mails des Watchdogs gehen an `WATCHDOG_ALERT_EMAIL`.
 
 > **Captcha:** aktiv (Turnstile). **TLS:** Cloudflare-Edge + verschlüsselter
 > Tunnel — der `localhost:80`-Hop verlässt den Rechner nie. Für noch strengeren
