@@ -16,6 +16,14 @@ export const SmtpSettingsDtoSchema = z
   .strict();
 export type SmtpSettingsDto = z.infer<typeof SmtpSettingsDtoSchema>;
 
+/** Empfänger der SMTP-Testmail (Admin-Panel → SMTP → „Testmail senden"). */
+export const SmtpTestDtoSchema = z
+  .object({
+    to: z.email().max(254),
+  })
+  .strict();
+export type SmtpTestDto = z.infer<typeof SmtpTestDtoSchema>;
+
 export const AddBlocklistDtoSchema = z
   .object({
     pattern: z

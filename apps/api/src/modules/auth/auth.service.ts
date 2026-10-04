@@ -95,13 +95,43 @@ export class AuthService implements OnModuleInit {
         },
         // M7-F: Reset-Mail via MailService. URL wird von Better Auth gebaut
         // (basierend auf `redirectTo` aus dem request-password-reset-Request).
-        sendResetPassword: async ({ user, url }) => {
-          await this.mail.sendResetPasswordMail({
-            to: user.email,
-            displayName: user.name,
-            resetUrl: url,
+        // Better Auth ruft das nur für EXISTIERENDE Konten auf — unbekannte
+        // Adressen erzeugen bewusst keinen Audit-Eintrag (kein Konto betroffen,
+        // keine fremden Adressen im Log).
+        sendResetPassword: async ({ user, url }, request) => {
+          let mailSent = false;
+          try {
+            await this.mail.sendResetPasswordMail({
+              to: user.email,
+              displayName: user.name,
+              resetUrl: url,
+            });
+            mailSent = true;
+            this.log.debug({ userId: user.id }, "reset-password mail dispatched");
+          } catch (err) {
+            // Nicht weiterwerfen: Better Auth würde den Fehler ohnehin nur loggen
+            // und gleich antworten (sonst verriete ein SMTP-Ausfall, dass die
+            // Adresse existiert). Dafür laut ins System-Log.
+            this.log.error({ err, userId: user.id }, "Reset-Mail konnte nicht verschickt werden");
+          }
+          // Wer den Reset anfordert, ist nicht angemeldet und muss nicht der
+          // Konto-Inhaber sein → kein actorId; das betroffene Konto ist target.
+          await this.audit.record({
+            action: "auth.password.reset_requested",
+            target: user.id,
+            meta: { email: user.email, mailSent },
+            ip: extractIp({ request }),
           });
-          this.log.debug({ userId: user.id }, "reset-password mail dispatched");
+        },
+        // Neues Passwort gesetzt. Wer den Link aus der Mail hatte, hatte Zugriff
+        // auf das Postfach des Kontos → als Akteur zählt der Konto-Inhaber.
+        onPasswordReset: async ({ user }, request) => {
+          await this.audit.record({
+            action: "auth.password.reset_completed",
+            actorId: user.id,
+            target: user.id,
+            ip: extractIp({ request }),
+          });
         },
         resetPasswordTokenExpiresIn: 60 * 60, // 1 Stunde
       },

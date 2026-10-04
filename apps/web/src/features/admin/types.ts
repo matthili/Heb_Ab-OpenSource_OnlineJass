@@ -32,6 +32,9 @@ export interface SmtpSettingsView {
   hasPassword: boolean;
 }
 
+/** Antwort von `POST /api/admin/smtp/test` — Fehler des Mailservers kommen als `ok: false`. */
+export type SmtpTestResult = { ok: true } | { ok: false; error: string };
+
 export interface BlocklistEntry {
   pattern: string;
   reason: string | null;

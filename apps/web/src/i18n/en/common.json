@@ -1323,7 +1323,16 @@
       "saveSuccess": "Saved. The next mail delivery uses the new settings.",
       "saving": "Saving …",
       "save": "Save settings",
-      "hint": "Note: the next mail delivery (verify, reset, …) automatically rebuilds the SMTP transporter. You can verify the new settings right away by, for example, triggering a password reset for a test user."
+      "hint": "Note: the next mail delivery (verify, reset, …) automatically rebuilds the SMTP transporter. Use a test mail below to check that the saved settings work.",
+      "testHeading": "Send test mail",
+      "testIntro": "Sends a short test mail with the saved settings — so you can see right away whether delivery works, without creating a user or resetting a password.",
+      "testToLabel": "Recipient",
+      "testSubmit": "Send test mail",
+      "testSending": "Sending …",
+      "testSuccess": "The mail server accepted the test mail to {{to}}. Check the inbox (and the spam folder).",
+      "testError": "Test mail failed: {{error}}",
+      "testUnsaved": "Unsaved changes — save first, the test mail uses the saved settings.",
+      "testFailedGeneric": "Could not trigger the test mail."
     },
     "users": {
       "searchPlaceholder": "Name or e-mail …",

@@ -7,9 +7,11 @@
  * ignoriert), Captcha-Pflicht und Rate-Limit hingen ebenfalls am alten Pfad —
  * und kein Test deckte den Ablauf ab (der Mail-Sink verwarf Reset-Mails sogar).
  *
- *   1. POST /api/auth/request-password-reset → 200, Reset-Mail im Sink.
+ *   1. POST /api/auth/request-password-reset → 200, Reset-Mail im Sink,
+ *      Audit `auth.password.reset_requested`.
  *   2. GET  <Link aus der Mail>              → 302 auf redirectTo?token=…
- *   3. POST /api/auth/reset-password          → 200.
+ *   3. POST /api/auth/reset-password          → 200, Audit
+ *      `auth.password.reset_completed`.
  *   4. Login mit dem neuen Passwort klappt, mit dem alten nicht mehr.
  */
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
@@ -17,7 +19,7 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vite
 import { TurnstileService } from "../../src/modules/auth/turnstile.service.js";
 import { signUpAndIn } from "./auth-helper.js";
 import { createHttpClient, type HttpClient } from "./http-client.js";
-import { setupTestApp, type TestAppHandle } from "./setup.js";
+import { MAIL_FAIL_PREFIX, setupTestApp, type TestAppHandle } from "./setup.js";
 
 const RESET_REQUEST = "/api/auth/request-password-reset";
 const PASSWORD = "test-passw0rd-very-long-12!";
@@ -43,7 +45,7 @@ describe("Passwort vergessen (request-password-reset → Link → neues Passwort
   it("schickt eine Reset-Mail, deren Link ein neues Passwort setzen lässt", async () => {
     const email = "reset@jass.local";
     const newPassword = "neues-passw0rt-sehr-lang-34!";
-    await signUpAndIn(app, { email, password: PASSWORD, name: "reset_user" });
+    const { userId } = await signUpAndIn(app, { email, password: PASSWORD, name: "reset_user" });
 
     // ─── 1. Reset anfordern ───────────────────────────────────────────────
     const request = await http.request(RESET_REQUEST, {
@@ -53,6 +55,15 @@ describe("Passwort vergessen (request-password-reset → Link → neues Passwort
     expect(request.status, JSON.stringify(request.body)).toBe(200);
     expect(app.capturedResetMails).toHaveLength(1);
     expect(app.capturedResetMails[0]?.to).toBe(email);
+
+    // Audit: angefordert — anonym (kein actorId), das Konto als target.
+    const requested = await app.prisma.auditLog.findMany({
+      where: { action: "auth.password.reset_requested" },
+    });
+    expect(requested).toHaveLength(1);
+    expect(requested[0]?.actorId).toBeNull();
+    expect(requested[0]?.target).toBe(userId);
+    expect(requested[0]?.meta).toMatchObject({ email, mailSent: true });
 
     // ─── 2. Link aus der Mail → Weiterleitung mit Token ───────────────────
     // Die URL trägt das Schema von BETTER_AUTH_URL — Pfad + Query an unsere
@@ -72,6 +83,14 @@ describe("Passwort vergessen (request-password-reset → Link → neues Passwort
       body: JSON.stringify({ newPassword, token }),
     });
     expect(reset.status, JSON.stringify(reset.body)).toBe(200);
+
+    // Audit: abgeschlossen — durch den Konto-Inhaber (hatte den Mail-Link).
+    const completed = await app.prisma.auditLog.findMany({
+      where: { action: "auth.password.reset_completed" },
+    });
+    expect(completed).toHaveLength(1);
+    expect(completed[0]?.actorId).toBe(userId);
+    expect(completed[0]?.target).toBe(userId);
 
     // ─── 4. Altes Passwort gilt nicht mehr, neues schon ───────────────────
     const oldLogin = await createHttpClient(app.baseUrl).request("/api/auth/sign-in/email", {
@@ -103,6 +122,33 @@ describe("Passwort vergessen (request-password-reset → Link → neues Passwort
     expect(forUnknown.status).toBe(forKnown.status);
     expect(forUnknown.body).toEqual(forKnown.body);
     expect(app.capturedResetMails.map((m) => m.to)).toEqual([known]);
+
+    // Audit nur für das existierende Konto — keine fremde Adresse im Log.
+    const requested = await app.prisma.auditLog.findMany({
+      where: { action: "auth.password.reset_requested" },
+    });
+    expect(requested.map((r) => (r.meta as { email?: string }).email)).toEqual([known]);
+  });
+
+  it("scheitert die Reset-Mail am Mailserver: gleiche Antwort, Audit mit mailSent:false", async () => {
+    const email = `${MAIL_FAIL_PREFIX}jass.local`;
+    const { userId } = await signUpAndIn(app, { email, password: PASSWORD, name: "smtp_fail" });
+
+    const response = await http.request(RESET_REQUEST, {
+      method: "POST",
+      body: JSON.stringify({ email, redirectTo: "/reset-password" }),
+    });
+    // Nach außen dieselbe Antwort wie immer — ein SMTP-Ausfall verrät nicht,
+    // dass die Adresse existiert.
+    expect(response.status, JSON.stringify(response.body)).toBe(200);
+    expect(app.capturedResetMails).toHaveLength(0);
+
+    const requested = await app.prisma.auditLog.findMany({
+      where: { action: "auth.password.reset_requested" },
+    });
+    expect(requested).toHaveLength(1);
+    expect(requested[0]?.target).toBe(userId);
+    expect(requested[0]?.meta).toMatchObject({ email, mailSent: false });
   });
 
   it("verlangt auf dem Reset-Endpunkt das Captcha", async () => {
@@ -135,6 +181,11 @@ describe("Passwort vergessen (request-password-reset → Link → neues Passwort
         path: "/request-password-reset",
         errors: ["test-reject"],
       });
+      // Abgewiesen = kein Reset angefordert.
+      const requested = await app.prisma.auditLog.findMany({
+        where: { action: "auth.password.reset_requested" },
+      });
+      expect(requested).toHaveLength(0);
     } finally {
       if (before !== undefined) process.env["DISABLE_TURNSTILE"] = before;
     }

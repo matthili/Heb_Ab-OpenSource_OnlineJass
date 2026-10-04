@@ -1323,7 +1323,16 @@
       "saveSuccess": "Gespeichert. Der nächste Mail-Versand nutzt die neuen Settings.",
       "saving": "Speichere …",
       "save": "Settings speichern",
-      "hint": "Hinweis: Der nächste Mail-Versand (Verify, Reset, …) baut den SMTP-Transporter automatisch neu. Du kannst die neuen Settings sofort verifizieren, indem du z.B. ein Passwort-Reset für einen Test-User auslöst."
+      "hint": "Hinweis: Der nächste Mail-Versand (Verify, Reset, …) baut den SMTP-Transporter automatisch neu. Ob die gespeicherten Settings funktionieren, prüfst du unten mit einer Testmail.",
+      "testHeading": "Testmail senden",
+      "testIntro": "Schickt eine kurze Testmail mit den gespeicherten Settings — so siehst du sofort, ob der Versand klappt, ohne einen User anzulegen oder ein Passwort zurückzusetzen.",
+      "testToLabel": "Empfänger",
+      "testSubmit": "Testmail senden",
+      "testSending": "Sende …",
+      "testSuccess": "Der Mailserver hat die Testmail an {{to}} angenommen. Schau ins Postfach (auch in den Spam-Ordner).",
+      "testError": "Testmail fehlgeschlagen: {{error}}",
+      "testUnsaved": "Ungespeicherte Änderungen — erst speichern, die Testmail nutzt die gespeicherten Settings.",
+      "testFailedGeneric": "Die Testmail konnte nicht ausgelöst werden."
     },
     "users": {
       "searchPlaceholder": "Name oder E-Mail …",

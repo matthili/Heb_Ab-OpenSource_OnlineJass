@@ -74,6 +74,19 @@ export interface CapturedResetMail {
 }
 
 /**
+ * Empfänger-Präfix, für den der Sink einen Versandfehler (abgelehnter
+ * SMTP-Login) simuliert — für die Fehlerpfade von SMTP-Testmail und Reset-Mail.
+ */
+export const MAIL_FAIL_PREFIX = "smtp-fail@";
+
+function simulatedSmtpLoginError(): Error {
+  // So sieht ein Nodemailer-Fehler bei falschem SMTP-Passwort aus.
+  return Object.assign(new Error("Invalid login: 535 5.7.8 Authentication failed"), {
+    code: "EAUTH",
+  });
+}
+
+/**
  * Stub-Antwort-Konfiguration für den Inferenz-Stub.
  *
  * Default: `mode: "argmax-of-mask"` → der Stub gibt das erste legale Bit aus
@@ -118,6 +131,8 @@ export interface TestAppHandle {
   capturedMails: CapturedMail[];
   /** Capture-Sink für Passwort-Reset-Mails. */
   capturedResetMails: CapturedResetMail[];
+  /** Empfänger erfolgreicher SMTP-Testmails (Admin-Panel). */
+  capturedSmtpTestMails: string[];
   /** Steuerung des Inferenz-Stubs. */
   inference: InferenceStubControl;
   /** Tabellen-Truncate + Redis-Flush + Capture-Reset. Zwischen Tests aufrufen. */
@@ -253,6 +268,7 @@ export async function setupTestApp(): Promise<TestAppHandle> {
   // ─── 5. Mail-Sink statt echtem SMTP ───────────────────────────────────
   const capturedMails: CapturedMail[] = [];
   const capturedResetMails: CapturedResetMail[] = [];
+  const capturedSmtpTestMails: string[] = [];
   // Nach dem App-Bau mit der echten SmtpSettingsService befüllt — so liefert
   // `effectiveConfig()` echte Env+DB-Werte, statt die Merge-Logik im Stub zu doppeln.
   let realSmtpSettings: SmtpSettingsService | null = null;
@@ -261,6 +277,7 @@ export async function setupTestApp(): Promise<TestAppHandle> {
     | "send"
     | "sendVerificationMail"
     | "sendResetPasswordMail"
+    | "sendSmtpTestMail"
     | "verifyConnection"
     | "effectiveConfig"
   > = {
@@ -275,11 +292,16 @@ export async function setupTestApp(): Promise<TestAppHandle> {
       });
     },
     async sendResetPasswordMail(opts) {
+      if (opts.to.startsWith(MAIL_FAIL_PREFIX)) throw simulatedSmtpLoginError();
       capturedResetMails.push({
         to: opts.to,
         displayName: opts.displayName,
         resetUrl: opts.resetUrl,
       });
+    },
+    async sendSmtpTestMail(to) {
+      if (to.startsWith(MAIL_FAIL_PREFIX)) throw simulatedSmtpLoginError();
+      capturedSmtpTestMails.push(to);
     },
     async verifyConnection() {
       // Kein echter SMTP-Connect im Test; das Status-Dashboard begnügt sich mit ok:false.
@@ -361,6 +383,7 @@ export async function setupTestApp(): Promise<TestAppHandle> {
   async function resetData(): Promise<void> {
     capturedMails.length = 0;
     capturedResetMails.length = 0;
+    capturedSmtpTestMails.length = 0;
     stub.control.reset();
     // Raw-SQL bewusst: ein typsicheres "TRUNCATE viele Tabellen mit RESTART
     // IDENTITY CASCADE in einer Anweisung" gibt es im Prisma-Client nicht.
@@ -403,6 +426,7 @@ export async function setupTestApp(): Promise<TestAppHandle> {
     chatCleanup: chatCleanupSvc,
     capturedMails,
     capturedResetMails,
+    capturedSmtpTestMails,
     inference: stub.control,
     resetData,
   };

@@ -11,6 +11,8 @@
 import {
   BadRequestException,
   ConflictException,
+  HttpException,
+  HttpStatus,
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
@@ -27,8 +29,19 @@ import type {
   SetUserStatusDto,
   SmtpSettingsDto,
 } from "./admin.dto.js";
-import { MailService } from "../mail/mail.service.js";
+import { describeMailError, MailService } from "../mail/mail.service.js";
 import { SmtpSettingsService } from "../mail/smtp-settings.service.js";
+
+/** Ergebnis der SMTP-Testmail: geklappt, oder die Meldung des Mailservers. */
+export type SmtpTestResult = { ok: true } | { ok: false; error: string };
+
+/**
+ * Deckel für Testmails pro Admin: höchstens `SMTP_TEST_MAX` Versuche je
+ * `SMTP_TEST_WINDOW_MS`. Genug zum Ausprobieren verschiedener Einstellungen,
+ * aber das Feld wird nicht zum Mail-Werfer an beliebige Adressen.
+ */
+const SMTP_TEST_MAX = 10;
+const SMTP_TEST_WINDOW_MS = 10 * 60_000;
 
 export interface AdminUserView {
   id: string;
@@ -95,6 +108,43 @@ export class AdminService {
         passwordChanged: dto.password !== undefined,
       },
     });
+  }
+
+  /** Zeitstempel der letzten Testmail-Versuche je Admin (in-memory, Single-Instance). */
+  private readonly smtpTestAttempts = new Map<string, number[]>();
+
+  /**
+   * Testmail mit der aktiven SMTP-Konfiguration verschicken. Ein Fehlschlag
+   * beim Mailserver ist hier ein normales Ergebnis (`ok: false` + dessen
+   * Meldung), kein HTTP-Fehler. Jeder Versuch landet im Audit-Log.
+   */
+  async sendSmtpTestMail(actorId: string, to: string): Promise<SmtpTestResult> {
+    const now = Date.now();
+    const recent = (this.smtpTestAttempts.get(actorId) ?? []).filter(
+      (t) => now - t < SMTP_TEST_WINDOW_MS
+    );
+    if (recent.length >= SMTP_TEST_MAX) {
+      throw new HttpException(
+        "Zu viele Testmails in kurzer Zeit — bitte ein paar Minuten warten.",
+        HttpStatus.TOO_MANY_REQUESTS
+      );
+    }
+    recent.push(now);
+    this.smtpTestAttempts.set(actorId, recent);
+
+    let result: SmtpTestResult;
+    try {
+      await this.mail.sendSmtpTestMail(to);
+      result = { ok: true };
+    } catch (err) {
+      result = { ok: false, error: describeMailError(err) };
+    }
+    await this.audit.record({
+      action: "admin.smtp.test",
+      actorId,
+      meta: result.ok ? { to, ok: true } : { to, ok: false, error: result.error },
+    });
+    return result;
   }
 
   // ─── Blocklist ─────────────────────────────────────────────────────

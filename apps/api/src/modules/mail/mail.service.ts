@@ -13,8 +13,8 @@
  * Settings-Change SOFORT ohne API-Restart.
  *
  * Templates sind absichtlich Inline-HTML (kein MJML) — M3 hatte genau
- * eine Mail-Art (Verify), inzwischen sind's drei. Bei mehr Templates
- * können wir auf eine Template-Lib umsteigen.
+ * eine Mail-Art (Verify), inzwischen sind's vier (+ SMTP-Testmail). Bei
+ * mehr Templates können wir auf eine Template-Lib umsteigen.
  */
 import { Injectable, Logger, type OnApplicationBootstrap } from "@nestjs/common";
 import { createHash } from "node:crypto";
@@ -38,6 +38,9 @@ interface MailEnvelope {
   html: string;
   text: string;
 }
+
+/** Wie lange die Admin-Testmail auf den Mailserver wartet. */
+const SMTP_TEST_TIMEOUT_MS = 20_000;
 
 @Injectable()
 export class MailService implements OnApplicationBootstrap {
@@ -273,6 +276,117 @@ export class MailService implements OnApplicationBootstrap {
 </html>`;
     await this.send({ to, subject, html, text });
   }
+
+  /**
+   * SMTP-Testmail aus dem Admin-Bereich. Geht mit der EFFEKTIVEN Konfiguration
+   * raus (DB-Overrides + Env) — genau wie Verify- und Reset-Mails. Bricht nach
+   * `SMTP_TEST_TIMEOUT_MS` ab, damit ein stummer Server das Panel nicht
+   * minutenlang hängen lässt (Nodemailer wartet aufs Connect sonst bis zu 2 min).
+   * Wirft bei Fehler — der Caller macht daraus eine Meldung (`describeMailError`).
+   */
+  async sendSmtpTestMail(to: string): Promise<void> {
+    const cfg = await this.resolveConfig();
+    const content = buildSmtpTestMail({
+      host: cfg.host,
+      port: cfg.port,
+      from: cfg.from,
+      noReply: cfg.noReply,
+      instanceUrl: process.env["BETTER_AUTH_URL"] ?? null,
+      sentAt: new Date(),
+    });
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const timeout = new Promise<never>((_resolve, reject) => {
+      timer = setTimeout(
+        () =>
+          reject(
+            new Error(
+              `Zeitüberschreitung: Der Mailserver hat nicht innerhalb von ${SMTP_TEST_TIMEOUT_MS / 1000} s geantwortet.`
+            )
+          ),
+        SMTP_TEST_TIMEOUT_MS
+      );
+    });
+    try {
+      await Promise.race([this.send({ to, ...content }), timeout]);
+    } finally {
+      if (timer) clearTimeout(timer);
+    }
+  }
+}
+
+/**
+ * Inhalt der SMTP-Testmail. Rein (für Unit-Tests exportiert) und bewusst OHNE
+ * Login-Name und Passwort — nur Server, Port und Absender, damit man sieht,
+ * über welche Konfiguration die Mail kam.
+ */
+export function buildSmtpTestMail(opts: {
+  host: string;
+  port: number;
+  from: string;
+  noReply: boolean;
+  instanceUrl: string | null;
+  sentAt: Date;
+}): { subject: string; text: string; html: string } {
+  const note = replyPolicyNote(opts.noReply);
+  const facts: [string, string][] = [
+    ["Versendet über", `${opts.host}:${opts.port}`],
+    ["Absender", opts.from],
+    ...(opts.instanceUrl ? [["Instanz", opts.instanceUrl] as [string, string]] : []),
+    ["Zeitpunkt (UTC)", opts.sentAt.toISOString()],
+  ];
+  const subject = "Heb ab! — SMTP-Testmail";
+  const text = [
+    `Servus,`,
+    ``,
+    `wenn du diese Mail liest, funktioniert der Mail-Versand von „Heb ab!".`,
+    ``,
+    ...facts.map(([k, v]) => `${k}: ${v}`),
+    ``,
+    `Angefordert im Admin-Bereich unter SMTP. Wenn du damit nichts anfangen kannst, ignoriere diese Mail einfach.`,
+    ``,
+    note,
+  ].join("\n");
+  const rows = facts
+    .map(
+      ([k, v]) =>
+        `<tr><td style="padding:2px 12px 2px 0; color:#666;">${escapeHtml(k)}</td><td><code>${escapeHtml(v)}</code></td></tr>`
+    )
+    .join("\n      ");
+  const html = `<!doctype html>
+<html lang="de">
+  <body style="font-family: system-ui, sans-serif; max-width: 540px; margin: 0 auto; padding: 24px;">
+    <h2 style="color:#444;">Servus,</h2>
+    <p>wenn du diese Mail liest, funktioniert der Mail-Versand von „Heb ab!".</p>
+    <table style="font-size: 13px; margin: 16px 0;">
+      ${rows}
+    </table>
+    <p style="font-size: 12px; color: #999; margin-top: 32px;">
+      Angefordert im Admin-Bereich unter SMTP. Wenn du damit nichts anfangen kannst, ignoriere diese Mail einfach.
+    </p>
+    <p style="font-size: 12px; color: #999;">${escapeHtml(note)}</p>
+  </body>
+</html>`;
+  return { subject, text, html };
+}
+
+/**
+ * Fehler beim Mail-Versand als eine Admin-taugliche Zeile. Nodemailer liefert
+ * einen `code` (z.B. EAUTH, ECONNECTION, ETIMEDOUT) und in `message` meist die
+ * Antwort des Servers („535 5.7.8 Authentication failed") — keine Zugangsdaten.
+ * Auf 300 Zeichen gekürzt.
+ */
+export function describeMailError(err: unknown): string {
+  let msg: string;
+  if (err instanceof Error) {
+    const code = (err as { code?: unknown }).code;
+    msg =
+      typeof code === "string" && code !== "" && !err.message.startsWith(code)
+        ? `${code}: ${err.message}`
+        : err.message;
+  } else {
+    msg = String(err);
+  }
+  return msg.length > 300 ? `${msg.slice(0, 297)}...` : msg;
 }
 
 /**

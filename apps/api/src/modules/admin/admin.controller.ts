@@ -46,6 +46,7 @@ import {
   SetUserRoleDtoSchema,
   SetUserStatusDtoSchema,
   SmtpSettingsDtoSchema,
+  SmtpTestDtoSchema,
   UpdateLobbySettingsDtoSchema,
   UpdateNameCooldownsDtoSchema,
   type AddBannedWordDto,
@@ -56,6 +57,7 @@ import {
   type SetUserRoleDto,
   type SetUserStatusDto,
   type SmtpSettingsDto,
+  type SmtpTestDto,
   type UpdateLobbySettingsDto,
   type UpdateNameCooldownsDto,
 } from "./admin.dto.js";
@@ -64,6 +66,7 @@ import {
   type AdminAuditEntry,
   type AdminQuitterEntry,
   type AdminUserView,
+  type SmtpTestResult,
 } from "./admin.service.js";
 import { SystemStatusService, type SystemStatus } from "./system-status.service.js";
 
@@ -116,6 +119,19 @@ export class AdminController {
   ): Promise<{ ok: true }> {
     await this.admin.updateSmtp(req.user!.id, dto);
     return { ok: true };
+  }
+
+  /**
+   * Testmail mit den GESPEICHERTEN Einstellungen an `to`. Antwortet bei einem
+   * Fehler des Mailservers trotzdem 2xx — `ok: false` + dessen Meldung, damit
+   * das Panel sie anzeigen kann. 429 bei zu vielen Versuchen.
+   */
+  @Post("smtp/test")
+  testSmtp(
+    @Req() req: FastifyRequest,
+    @Body(new ZodValidationPipe(SmtpTestDtoSchema)) dto: SmtpTestDto
+  ): Promise<SmtpTestResult> {
+    return this.admin.sendSmtpTestMail(req.user!.id, dto.to);
   }
 
   // ─── Blocklist ─────────────────────────────────────────────────────

@@ -218,8 +218,10 @@ also verschickt das System sofort Verifikations-Mails. Registriere dich mit dein
 `ADMIN_EMAIL`, klick den Link in der Mail → du bist freigeschaltet **und** Admin
 (die `ADMIN_EMAIL`-Beförderung vergibt nur die Admin-Rolle, die Verifikation
 machst du wie alle per Mail). Danach kannst du SMTP bei Bedarf im **Admin-Bereich →
-SMTP** ändern (dort verschlüsselt). Ohne funktionierendes SMTP kommt keine
-Verifikations-Mail an → niemand (auch du nicht) kann sich einloggen.
+SMTP** ändern (dort verschlüsselt) und mit **„Testmail senden"** sofort prüfen, ob
+der Versand klappt — bei einem Fehler zeigt das Panel die Meldung des Mailservers.
+Ohne funktionierendes SMTP kommt keine Verifikations-Mail an → niemand (auch du
+nicht) kann sich einloggen.
 
 > **Captcha:** aktiv (Turnstile). **TLS:** Cloudflare-Edge + verschlüsselter
 > Tunnel — der `localhost:80`-Hop verlässt den Rechner nie. Für noch strengeren
